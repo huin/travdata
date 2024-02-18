@@ -1,3 +1,6 @@
+# Don't include extracted data that might be proprietary to Mongoose.
+*.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
