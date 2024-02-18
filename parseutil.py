@@ -23,23 +23,27 @@ class TabluarTable(TypedDict):
 
 
 def amalgamate_streamed_rows(
-    rows: Iterable[dict[str, TablularCell]],
-    continuation: Callable[[dict[str, TablularCell]], bool],
+    rows: Iterable[list[str]],
+    continuation: Callable[[int, list[str]], bool],
     join: str = "\n",
-) -> Iterator[dict[str, str]]:
-    row_accum: dict[str, list[str]] = collections.defaultdict(list)
-
+) -> Iterator[list[str]]:
+    row_accum: list[list[str]] = []
+ 
     def form_row():
-        return {label: join.join(cell) for label, cell in row_accum.items()}
-
+        return [join.join(cell) for cell in row_accum]
+ 
     try:
-        for row in rows:
-            if not continuation(row) and row_accum:
+        for i, row in enumerate(rows):
+            if not continuation(i, row) and row_accum:
                 yield form_row()
-                row_accum = collections.defaultdict(list)
-            for label, cell in row.items():
-                if text := cell["text"]:
-                    row_accum[label].append(text)
+                row_accum = []
+            missing_count = len(row) - len(row_accum)
+            if missing_count > 0:
+                for _ in range(missing_count):
+                    row_accum.append([])
+            for acc, text in zip(row_accum, row):
+                if text:
+                    acc.append(text)
 
         if row_accum:
             yield form_row()
@@ -49,32 +53,25 @@ def amalgamate_streamed_rows(
 
 
 def headers_and_iter_rows(
-    rows: Iterable[TabularRow],
-) -> tuple[list[str], Iterator[TabularRow]]:
+    rows: Iterable[list[str]],
+) -> tuple[list[str], Iterator[list[str]]]:
     rows_iter = iter(rows)
-    header = row_text(next(rows_iter))
+    header = next(rows_iter)
     return header, rows_iter
 
 
-def clean_labelled_rows(rows: Iterable[dict[str, str]]) -> Iterator[dict[str, str]]:
+def clean_rows(rows: Iterable[list[str]]) -> Iterator[list[str]]:
     for row in rows:
-        yield {label: clean_text(text) for label, text in row.items()}
-
-
-def concat_rows(tables: list[TabluarTable]) -> list[TabularRow]:
-    rows: list[TabularRow] = []
-    for t in tables:
-        rows.extend(t["data"])
-    return rows
+        yield [clean_text(text) for text in row]
 
 
 def label_rows(
-    rows: Iterable[TabularRow],
+    rows: Iterable[list[str]],
     header: list[str],
-) -> Iterator[dict[str, TablularCell]]:
+) -> Iterator[dict[str, str]]:
     try:
         for row in rows:
-            yield {label: cell for label, cell in zip(header, row)}
+            yield {label: text for label, text in zip(header, row)}
     except Exception as e:
         e.add_note(f"for {row=}")
         raise
@@ -166,3 +163,15 @@ def read_pdf_with_template(
         )
 
     return result
+
+
+def table_rows_concat(tables: list[TabluarTable]) -> list[TabularRow]:
+    rows: list[TabularRow] = []
+    for t in tables:
+        rows.extend(t["data"])
+    return rows
+
+
+def table_rows_text(rows: Iterable[TabularRow]) -> Iterator[list[str]]:
+    for row in rows:
+        yield row_text(row)

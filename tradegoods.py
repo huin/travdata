@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import dataclasses
-import itertools
 import pathlib
 import re
-from typing import Iterator, Optional
+from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 import jsonenc
 import parseutil
@@ -14,9 +13,10 @@ import parseutil
 class TradeGoodProperties(jsonenc.Decodable, jsonenc.Encodable):
     availability: set[str]
     tons: str
-    base_price: int
+    base_price: str
     purchase_dm: dict[str, int]
     sale_dm: dict[str, int]
+    examples: str
 
     @classmethod
     def json_type(cls) -> str:
@@ -35,6 +35,7 @@ class TradeGoodProperties(jsonenc.Decodable, jsonenc.Encodable):
 class TradeGood(jsonenc.Decodable, jsonenc.Encodable):
     d66: str
     name: str
+    description: Optional[str]
     properties: Optional[TradeGoodProperties]
 
     @classmethod
@@ -64,35 +65,108 @@ def _parse_trade_dm(s: str) -> dict[str, int]:
     return result
 
 
-def extract_from_pdf(core_rulebook: pathlib.Path) -> list[TradeGood]:
-    tables = parseutil.read_pdf(pdf_path=core_rulebook, pages=[245, 246])
+_RawRow = TypedDict(
+    "_RawRow",
+    {
+        "D66": str,
+        "Type": str,
+        "Availability": str,
+        "Tons": str,
+        "Base Price": str,
+        "Purchase DM": str,
+        "Sale DM": str,
+        "Examples": str,
+    },
+    total=True,
+)
 
-    goods: list[TradeGood] = []
-    rows = itertools.chain(*[t["data"] for t in tables])
 
-    for d66, row in zip(parseutil.d66_enum(), rows):
-        (name, availability, tons, base_price, purchase_dm, sale_dm) = [
-            v["text"] for v in row
-        ]
-        goods.append(
-            TradeGood(
-                d66=str(d66),
-                name=parseutil.clean_text(name),
-                properties=TradeGoodProperties(
-                    availability=parseutil.parse_set(availability),
-                    tons=tons,
-                    base_price=parseutil.parse_credits(base_price),
-                    purchase_dm=_parse_trade_dm(purchase_dm),
-                    sale_dm=_parse_trade_dm(sale_dm),
-                ),
-            )
-        )
-    goods.append(
-        TradeGood(
-            d66="66",
-            name="Exotics",
-            properties=None,
+def _preprocess_rows(
+    rows: Iterable[parseutil.TabularRow],
+) -> Iterator[list[str]]:
+    text_rows = parseutil.table_rows_text(rows)
+    text_rows = parseutil.amalgamate_streamed_rows(
+        rows=text_rows,
+        # The first column is always empty on subsequent continuation rows.
+        continuation=lambda _, row: row[0] == "",
+    )
+    return parseutil.clean_rows(text_rows)
+
+
+def _extract_rows(
+    core_rulebook: pathlib.Path,
+    templates_dir: pathlib.Path,
+) -> Iterator[TradeGood]:
+    rows_list: list[parseutil.TabularRow] = parseutil.table_rows_concat(
+        parseutil.read_pdf_with_template(
+            pdf_path=core_rulebook,
+            template_path=templates_dir / "trade-goods.json",
         )
     )
+
+    rows = _preprocess_rows(rows_list)
+    header, rows = parseutil.headers_and_iter_rows(rows)
+    labeled_rows = parseutil.label_rows(rows, header)
+
+    for row in cast(Iterator[_RawRow], labeled_rows):
+        yield TradeGood(
+            d66=row["D66"],
+            name=row["Type"],
+            description=None,
+            properties=TradeGoodProperties(
+                availability=parseutil.parse_set(row["Availability"]),
+                tons=row["Tons"],
+                base_price=row["Base Price"],
+                purchase_dm=_parse_trade_dm(row["Purchase DM"]),
+                sale_dm=_parse_trade_dm(row["Sale DM"]),
+                examples=row["Examples"],
+            ),
+        )
+
+
+_SpecialRawRow = TypedDict(
+    "_SpecialRawRow",
+    {
+        "D66": str,
+        "Type": str,
+        "Description": str,
+    },
+    total=True,
+)
+
+
+def _extract_special_rows(
+    core_rulebook: pathlib.Path,
+    templates_dir: pathlib.Path,
+) -> Iterator[TradeGood]:
+    rows_list = parseutil.table_rows_concat(
+        parseutil.read_pdf_with_template(
+            pdf_path=core_rulebook,
+            template_path=templates_dir / "trade-goods-special.json",
+        )
+    )
+
+    header = ["D66", "Type", "Description"]
+    rows = _preprocess_rows(rows_list)
+    labeled_rows = parseutil.label_rows(rows, header)
+
+    for special_row in cast(Iterator[_SpecialRawRow], labeled_rows):
+        yield TradeGood(
+            d66=parseutil.clean_text(special_row["D66"]),
+            name=parseutil.clean_text(special_row["Type"]),
+            description=parseutil.clean_text(special_row["Description"]),
+            properties=None,
+        )
+
+
+def extract_from_pdf(
+    *,
+    core_rulebook: pathlib.Path,
+    templates_dir: pathlib.Path,
+) -> list[TradeGood]:
+
+    goods: list[TradeGood] = []
+    goods.extend(_extract_rows(core_rulebook, templates_dir))
+    goods.extend(_extract_special_rows(core_rulebook, templates_dir))
 
     return goods
