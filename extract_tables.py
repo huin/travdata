@@ -2,17 +2,20 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import itertools
 import pathlib
-from pprint import pprint
 
+import governments
 import jsonenc
 import tradegoods
 
 
 def main() -> None:
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("core_rulebook", type=pathlib.Path, metavar="PDF")
+    argparser.add_argument(
+        "core_rulebook",
+        type=pathlib.Path,
+        metavar="PDF",
+    )
     argparser.add_argument(
         "--templates-dir",
         type=pathlib.Path,
@@ -20,7 +23,14 @@ def main() -> None:
         default=pathlib.Path("./tabula-templates"),
         required=True,
     )
-    argparser.add_argument(
+
+    extract_grp = argparser.add_argument_group("Table extractors")
+    extract_grp.add_argument(
+        "--governments",
+        type=argparse.FileType("wt", encoding="utf-8"),
+        metavar="JSON_FILE",
+    )
+    extract_grp.add_argument(
         "--trade-goods",
         type=argparse.FileType("wt", encoding="utf-8"),
         metavar="JSON_FILE",
@@ -28,12 +38,22 @@ def main() -> None:
 
     args = argparser.parse_args()
 
-    if out := args.trade_goods:
-        goods = tradegoods.extract_from_pdf(
-            core_rulebook=args.core_rulebook,
-            templates_dir=args.templates_dir,
+    if out := args.governments:
+        jsonenc.DEFAULT_CODEC.dump(
+            fp=out,
+            obj=governments.extract_from_pdf(
+                core_rulebook=args.core_rulebook,
+                templates_dir=args.templates_dir,
+            ),
         )
-        jsonenc.DEFAULT_CODEC.dump(obj=goods, fp=out)
+    if out := args.trade_goods:
+        jsonenc.DEFAULT_CODEC.dump(
+            fp=out,
+            obj=tradegoods.extract_from_pdf(
+                core_rulebook=args.core_rulebook,
+                templates_dir=args.templates_dir,
+            ),
+        )
 
 
 if __name__ == "__main__":
