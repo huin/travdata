@@ -4,9 +4,8 @@
 import argparse
 import pathlib
 
-import governments
 import jsonenc
-import tradegoods
+from extractors import governments, tradegoods
 
 
 def main() -> None:
