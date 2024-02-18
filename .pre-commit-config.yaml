@@ -1,0 +1,41 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+    -   id: check-ast
+    -   id: check-builtin-literals
+    -   id: check-json
+    -   id: check-yaml
+    -   id: debug-statements
+    -   id: end-of-file-fixer
+    -   id: fix-encoding-pragma
+    -   id: mixed-line-ending
+    -   id: no-commit-to-branch
+        args:
+        - --branch=main
+        - --branch=master
+-   repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.1.0
+    hooks:
+    - id: conventional-pre-commit
+      stages: [commit-msg]
+-   repo: https://github.com/FalconSocial/pre-commit-python-sorter
+    rev: b57ce61dbbeff813cc8786584d3c98c885ac3e14
+    hooks:
+    -   id: python-import-sorter
+-   repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+    -   id: python-check-blanket-noqa
+    -   id: python-check-blanket-type-ignore
+    -   id: python-check-mock-methods
+    -   id: python-no-log-warn
+    -   id: python-use-type-annotations
+    -   id: text-unicode-replacement-char
+-   repo: local
+    hooks:
+    -   id: check-xxx
+        name: Check xxx
+        language: pygrep
+        files: .
+        entry: "[X]XX"
