@@ -64,7 +64,7 @@ class Codec:
 
     def self_register_builtins(self) -> None:
         self._decode_adapt["set"] = lambda v: set(v["v"])
-        self._encode_adapt[set] = lambda v: {_TYPE_FIELD: "set", "v": list(v)}
+        self._encode_adapt[set] = lambda v: {_TYPE_FIELD: "set", "v": sorted(v)}
 
     def register_json_decodable(self, cls: JD) -> JD:
         self._decode_adapt[cls.json_type()] = cls.from_json
