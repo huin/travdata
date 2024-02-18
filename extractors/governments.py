@@ -5,6 +5,7 @@ from typing import Iterator, TypedDict, cast
 
 import jsonenc
 import parseutil
+import tabulautil
 
 
 @dataclasses.dataclass
@@ -55,15 +56,15 @@ def extract_from_pdf(
     core_rulebook: pathlib.Path,
     templates_dir: pathlib.Path,
 ) -> list[Government]:
-    rows_list = parseutil.table_rows_concat(
-        parseutil.read_pdf_with_template(
+    rows_list = tabulautil.table_rows_concat(
+        tabulautil.read_pdf_with_template(
             pdf_path=core_rulebook,
             template_path=templates_dir / "governments.json",
         ),
     )
 
     rows = parseutil.amalgamate_streamed_rows(
-        rows=parseutil.table_rows_text(rows_list),
+        rows=tabulautil.table_rows_text(rows_list),
         continuation=_continuation,
     )
     rows = parseutil.clean_rows(rows)
