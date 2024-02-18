@@ -6,6 +6,7 @@ from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 import jsonenc
 import parseutil
+import tabulautil
 
 
 @dataclasses.dataclass
@@ -82,9 +83,9 @@ _RawRow = TypedDict(
 
 
 def _preprocess_rows(
-    rows: Iterable[parseutil.TabularRow],
+    rows: Iterable[tabulautil.TabularRow],
 ) -> Iterator[list[str]]:
-    text_rows = parseutil.table_rows_text(rows)
+    text_rows = tabulautil.table_rows_text(rows)
     text_rows = parseutil.amalgamate_streamed_rows(
         rows=text_rows,
         # The first column is always empty on subsequent continuation rows.
@@ -97,8 +98,8 @@ def _extract_rows(
     core_rulebook: pathlib.Path,
     templates_dir: pathlib.Path,
 ) -> Iterator[TradeGood]:
-    rows_list: list[parseutil.TabularRow] = parseutil.table_rows_concat(
-        parseutil.read_pdf_with_template(
+    rows_list: list[parseutil.TabularRow] = tabulautil.table_rows_concat(
+        tabulautil.read_pdf_with_template(
             pdf_path=core_rulebook,
             template_path=templates_dir / "trade-goods.json",
         )
@@ -139,8 +140,8 @@ def _extract_special_rows(
     core_rulebook: pathlib.Path,
     templates_dir: pathlib.Path,
 ) -> Iterator[TradeGood]:
-    rows_list = parseutil.table_rows_concat(
-        parseutil.read_pdf_with_template(
+    rows_list = tabulautil.table_rows_concat(
+        tabulautil.read_pdf_with_template(
             pdf_path=core_rulebook,
             template_path=templates_dir / "trade-goods-special.json",
         )
