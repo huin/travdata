@@ -1,25 +1,10 @@
 # -*- coding: utf-8 -*-
-import collections
-import dataclasses
 import json
 import pathlib
 import re
 from typing import Callable, Iterable, Iterator, TypeAlias, TypedDict, cast
 
 import tabula
-
-
-class TablularCell(TypedDict):
-    # Ignoring irrelevant fields.
-    text: str
-
-
-TabularRow: TypeAlias = list[TablularCell]
-
-
-class TabluarTable(TypedDict):
-    # Ignoring irrelevant fields.
-    data: list[TabularRow]
 
 
 def amalgamate_streamed_rows(
@@ -77,10 +62,6 @@ def label_rows(
         raise
 
 
-def row_text(row: TabularRow) -> list[str]:
-    return [cell["text"] for cell in row]
-
-
 _WHITESPACE_RUN_RX = re.compile(r"\s+")
 
 
@@ -104,6 +85,19 @@ def parse_credits(s: str) -> int:
 def d66_enum() -> Iterator[str]:
     for i in range(36):
         yield f"{1 + i // 6}{1 + i % 6}"
+
+
+class TablularCell(TypedDict):
+    # Ignoring irrelevant fields.
+    text: str
+
+
+TabularRow: TypeAlias = list[TablularCell]
+
+
+class TabluarTable(TypedDict):
+    # Ignoring irrelevant fields.
+    data: list[TabularRow]
 
 
 def read_pdf(*, pdf_path: pathlib.Path, pages: list[int]) -> list[TabluarTable]:
@@ -172,6 +166,10 @@ def table_rows_concat(tables: list[TabluarTable]) -> list[TabularRow]:
     return rows
 
 
+def table_row_text(row: TabularRow) -> list[str]:
+    return [cell["text"] for cell in row]
+
+
 def table_rows_text(rows: Iterable[TabularRow]) -> Iterator[list[str]]:
     for row in rows:
-        yield row_text(row)
+        yield table_row_text(row)
