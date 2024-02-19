@@ -71,7 +71,7 @@ class Codec:
         return cls
 
     def _json_object_hook(self, o: Object) -> Any:
-        if tname := o.pop(_TYPE_FIELD):
+        if tname := o.pop(_TYPE_FIELD, None):
             return self._decode_adapt[tname](o)
         else:
             return o
