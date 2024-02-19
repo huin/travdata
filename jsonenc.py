@@ -40,7 +40,7 @@ class _Encoder(json.JSONEncoder):
 
     def default(self, o: Any):
         if isinstance(o, Encodable):
-            return o.to_json()
+            return o.to_json() | {_TYPE_FIELD: o.json_type()}
         elif enc := self._encode_adapt.get(type(o)):
             return enc(o)
         return super().default(o)
