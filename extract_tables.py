@@ -5,7 +5,7 @@ import argparse
 import pathlib
 
 import jsonenc
-from extractors import governments, lawlevels, tradegoods
+from extractors import governments, lawlevels, tradecodes, tradegoods
 
 
 def main() -> None:
@@ -35,6 +35,11 @@ def main() -> None:
         metavar="JSON_FILE",
     )
     extract_grp.add_argument(
+        "--trade-codes",
+        type=argparse.FileType("wt", encoding="utf-8"),
+        metavar="JSON_FILE",
+    )
+    extract_grp.add_argument(
         "--trade-goods",
         type=argparse.FileType("wt", encoding="utf-8"),
         metavar="JSON_FILE",
@@ -54,6 +59,14 @@ def main() -> None:
         jsonenc.DEFAULT_CODEC.dump(
             fp=out,
             obj=lawlevels.extract_from_pdf(
+                core_rulebook=args.core_rulebook,
+                templates_dir=args.templates_dir,
+            ),
+        )
+    if out := args.trade_codes:
+        jsonenc.DEFAULT_CODEC.dump(
+            fp=out,
+            obj=tradecodes.extract_from_pdf(
                 core_rulebook=args.core_rulebook,
                 templates_dir=args.templates_dir,
             ),
