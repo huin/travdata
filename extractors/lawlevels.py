@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import dataclasses
-import pathlib
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 import jsonenc
 import parseutil
 import tabulautil
+from extractors import params
 
 
 @dataclasses.dataclass
@@ -54,14 +54,12 @@ def _preprocess_rows(
 
 
 def extract_from_pdf(
-    *,
-    core_rulebook: pathlib.Path,
-    templates_dir: pathlib.Path,
+    param: params.CoreParams,
 ) -> list[LawLevel]:
     rows_list = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
-            pdf_path=core_rulebook,
-            template_path=templates_dir / "law-levels.tabula-template.json",
+            pdf_path=param.core_rulebook,
+            template_path=param.templates_dir / "law-levels.tabula-template.json",
         ),
     )
 

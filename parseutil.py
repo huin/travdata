@@ -9,10 +9,10 @@ def amalgamate_streamed_rows(
     join: str = "\n",
 ) -> Iterator[list[str]]:
     row_accum: list[list[str]] = []
- 
+
     def form_row():
         return [join.join(cell) for cell in row_accum]
- 
+
     try:
         for i, row in enumerate(rows):
             if not continuation(i, row) and row_accum:

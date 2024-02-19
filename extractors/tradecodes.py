@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 import dataclasses
-import pathlib
-import re
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 import jsonenc
 import parseutil
 import tabulautil
+from extractors import params
 
 _MAX_SIZE = 10
 _MAX_ATMOSPHERE = 15
@@ -98,13 +97,12 @@ def _parse_set(v: str, max_value: Optional[int] = None) -> set[int]:
 
 
 def extract_from_pdf(
-    core_rulebook: pathlib.Path,
-    templates_dir: pathlib.Path,
-) -> list[TradeCode]:
+    param: params.CoreParams,
+) -> Iterator[TradeCode]:
     rows_list: list[parseutil.TabularRow] = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
-            pdf_path=core_rulebook,
-            template_path=templates_dir / "trade-codes.tabula-template.json",
+            pdf_path=param.core_rulebook,
+            template_path=param.templates_dir / "trade-codes.tabula-template.json",
         )
     )
 
@@ -112,20 +110,15 @@ def extract_from_pdf(
     header, rows = parseutil.headers_and_iter_rows(rows)
     labeled_rows = parseutil.label_rows(rows, header)
 
-    result: list[TradeCode] = []
     for row in cast(Iterator[_RawRow], labeled_rows):
-        result.append(
-            TradeCode(
-                classification=row["Classification"],
-                code=row["Code"],
-                planet_sizes=_parse_set(row["Planet Size"], _MAX_SIZE),
-                atmospheres=_parse_set(row["Atmosphere"], _MAX_ATMOSPHERE),
-                hydro=_parse_set(row["Hydro"], _MAX_HYDRO),
-                population=_parse_set(row["Population"], _MAX_POPULATION),
-                government=_parse_set(row["Government"]),
-                law_level=_parse_set(row["Law Level"]),
-                tech_level=_parse_set(row["Tech Level"], _MAX_TECH),
-            )
+        yield TradeCode(
+            classification=row["Classification"],
+            code=row["Code"],
+            planet_sizes=_parse_set(row["Planet Size"], _MAX_SIZE),
+            atmospheres=_parse_set(row["Atmosphere"], _MAX_ATMOSPHERE),
+            hydro=_parse_set(row["Hydro"], _MAX_HYDRO),
+            population=_parse_set(row["Population"], _MAX_POPULATION),
+            government=_parse_set(row["Government"]),
+            law_level=_parse_set(row["Law Level"]),
+            tech_level=_parse_set(row["Tech Level"], _MAX_TECH),
         )
-
-    return result

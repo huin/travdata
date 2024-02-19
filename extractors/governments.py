@@ -6,6 +6,7 @@ from typing import Iterator, TypedDict, cast
 import jsonenc
 import parseutil
 import tabulautil
+from extractors import params
 
 
 @dataclasses.dataclass
@@ -52,14 +53,12 @@ def _continuation(
 
 
 def extract_from_pdf(
-    *,
-    core_rulebook: pathlib.Path,
-    templates_dir: pathlib.Path,
-) -> list[Government]:
+    param: params.CoreParams,
+) -> Iterator[Government]:
     rows_list = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
-            pdf_path=core_rulebook,
-            template_path=templates_dir / "governments.json",
+            pdf_path=param.core_rulebook,
+            template_path=param.templates_dir / "governments.json",
         ),
     )
 
@@ -71,16 +70,11 @@ def extract_from_pdf(
     header, rows = parseutil.headers_and_iter_rows(rows)
     labeled_rows = parseutil.label_rows(rows, header)
 
-    results: list[Government] = []
     for row in cast(Iterator[_RawRow], labeled_rows):
-        results.append(
-            Government(
-                code=row["Government"],
-                name=row["Government Type"],
-                description=row["Description"],
-                examples=row["Examples"],
-                example_contaband=parseutil.parse_set(row["Example Contraband"]),
-            ),
+        yield Government(
+            code=row["Government"],
+            name=row["Government Type"],
+            description=row["Description"],
+            examples=row["Examples"],
+            example_contaband=parseutil.parse_set(row["Example Contraband"]),
         )
-
-    return results
