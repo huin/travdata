@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import dataclasses
-import pathlib
 import re
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 import jsonenc
 import parseutil
 import tabulautil
+from extractors import params
 
 
 @dataclasses.dataclass
@@ -95,13 +95,12 @@ def _preprocess_rows(
 
 
 def _extract_rows(
-    core_rulebook: pathlib.Path,
-    templates_dir: pathlib.Path,
+    param: params.CoreParams,
 ) -> Iterator[TradeGood]:
     rows_list: list[parseutil.TabularRow] = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
-            pdf_path=core_rulebook,
-            template_path=templates_dir / "trade-goods.json",
+            pdf_path=param.core_rulebook,
+            template_path=param.templates_dir / "trade-goods.json",
         )
     )
 
@@ -137,13 +136,12 @@ _SpecialRawRow = TypedDict(
 
 
 def _extract_special_rows(
-    core_rulebook: pathlib.Path,
-    templates_dir: pathlib.Path,
+    param: params.CoreParams,
 ) -> Iterator[TradeGood]:
     rows_list = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
-            pdf_path=core_rulebook,
-            template_path=templates_dir / "trade-goods-special.json",
+            pdf_path=param.core_rulebook,
+            template_path=param.templates_dir / "trade-goods-special.json",
         )
     )
 
@@ -161,13 +159,7 @@ def _extract_special_rows(
 
 
 def extract_from_pdf(
-    *,
-    core_rulebook: pathlib.Path,
-    templates_dir: pathlib.Path,
-) -> list[TradeGood]:
-
-    goods: list[TradeGood] = []
-    goods.extend(_extract_rows(core_rulebook, templates_dir))
-    goods.extend(_extract_special_rows(core_rulebook, templates_dir))
-
-    return goods
+    param: params.CoreParams,
+) -> Iterator[TradeGood]:
+    yield from _extract_rows(param)
+    yield from _extract_special_rows(param)

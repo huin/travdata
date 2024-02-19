@@ -5,7 +5,26 @@ import argparse
 import pathlib
 
 import jsonenc
-from extractors import governments, lawlevels, tradecodes, tradegoods
+from extractors import params, registry
+
+
+def _add_extractor_args(argparser: argparse._ArgumentGroup) -> None:
+    for ext in registry.EXTRACTORS:
+        flag = ext.name.replace("_", "-")
+        argparser.add_argument(
+            f"--{flag}",
+            type=argparse.FileType("wt", encoding="utf-8"),
+            metavar="JSON_FILE",
+        )
+
+
+def _handle_extractor_args(args: argparse.Namespace, param: params.CoreParams) -> None:
+    for ext in registry.EXTRACTORS:
+        if out := getattr(args, ext.name):
+            jsonenc.DEFAULT_CODEC.dump(
+                fp=out,
+                obj=list(ext.fn(param)),
+            )
 
 
 def main() -> None:
@@ -24,61 +43,17 @@ def main() -> None:
     )
 
     extract_grp = argparser.add_argument_group("Table extractors")
-    extract_grp.add_argument(
-        "--governments",
-        type=argparse.FileType("wt", encoding="utf-8"),
-        metavar="JSON_FILE",
-    )
-    extract_grp.add_argument(
-        "--law-levels",
-        type=argparse.FileType("wt", encoding="utf-8"),
-        metavar="JSON_FILE",
-    )
-    extract_grp.add_argument(
-        "--trade-codes",
-        type=argparse.FileType("wt", encoding="utf-8"),
-        metavar="JSON_FILE",
-    )
-    extract_grp.add_argument(
-        "--trade-goods",
-        type=argparse.FileType("wt", encoding="utf-8"),
-        metavar="JSON_FILE",
-    )
+    _add_extractor_args(extract_grp)
 
     args = argparser.parse_args()
 
-    if out := args.governments:
-        jsonenc.DEFAULT_CODEC.dump(
-            fp=out,
-            obj=governments.extract_from_pdf(
-                core_rulebook=args.core_rulebook,
-                templates_dir=args.templates_dir,
-            ),
-        )
-    if out := args.law_levels:
-        jsonenc.DEFAULT_CODEC.dump(
-            fp=out,
-            obj=lawlevels.extract_from_pdf(
-                core_rulebook=args.core_rulebook,
-                templates_dir=args.templates_dir,
-            ),
-        )
-    if out := args.trade_codes:
-        jsonenc.DEFAULT_CODEC.dump(
-            fp=out,
-            obj=tradecodes.extract_from_pdf(
-                core_rulebook=args.core_rulebook,
-                templates_dir=args.templates_dir,
-            ),
-        )
-    if out := args.trade_goods:
-        jsonenc.DEFAULT_CODEC.dump(
-            fp=out,
-            obj=tradegoods.extract_from_pdf(
-                core_rulebook=args.core_rulebook,
-                templates_dir=args.templates_dir,
-            ),
-        )
+    _handle_extractor_args(
+        args,
+        param=params.CoreParams(
+            core_rulebook=args.core_rulebook,
+            templates_dir=args.templates_dir,
+        ),
+    )
 
 
 if __name__ == "__main__":
