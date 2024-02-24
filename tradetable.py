@@ -115,6 +115,18 @@ def main() -> None:
         type=bool,
         action=argparse.BooleanOptionalAction,
     )
+    argparser.add_argument(
+        "--format-legal",
+        help="Python str.format string for DMs of goods that are legal on a"
+        " world.",
+        default="{}",
+    )
+    argparser.add_argument(
+        "--format-illegal",
+        help="Python str.format string for DMs of goods that are illegal on a"
+        " world.",
+        default="<b>{}</b>",
+    )
 
     args = argparser.parse_args()
 
@@ -165,14 +177,18 @@ def main() -> None:
                 continue
 
             purchase_dm = max(tprops.purchase_dm.get(wt, 0) for wt in world_trades)
-            if illegality is not None and world.uwp.law_level >= illegality:
-                sale_dm = world.uwp.law_level - illegality
+            illegal = illegality is not None and world.uwp.law_level >= illegality
+            if illegal:
+                fmt = args.format_illegal
+                sale_dm = world.uwp.law_level - cast(int, illegality)
             else:
+                fmt = args.format_legal
                 sale_dm = max(tprops.sale_dm.get(wt, 0) for wt in world_trades)
 
             dm = purchase_dm - sale_dm
+            dm_str = f"{dm:+}"
 
-            row.append(f"{dm:+}")
+            row.append(fmt.format(dm_str))
 
         w.writerow(row)
 
