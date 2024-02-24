@@ -8,7 +8,8 @@ import dataclasses
 import enum
 import io
 import sys
-from typing import Iterator, Optional, TypeAlias, TypeVar, cast
+from typing import (Any, Callable, Iterator, Optional, TypeAlias, TypedDict,
+                    TypeVar, cast)
 
 import jsonenc
 from extractors import tradecodes, tradegoods
@@ -16,6 +17,28 @@ from extractors import tradecodes, tradegoods
 T = TypeVar("T")
 # Maps from TradeGood.d66 to the lowest law level at which that good is illegal.
 TradeGoodIllegality: TypeAlias = dict[str, int]
+
+
+# Trade overrides for a trade good on a world.
+@dataclasses.dataclass
+class WorldTradeOverrides:
+    available: Optional[bool] = None
+    purchase_dm: Optional[int] = None
+    sale_dm: Optional[int] = None
+    illegal: Optional[bool] = None
+
+
+def _eval_override(v: T, override: Optional[T]) -> T:
+    if override is not None:
+        return override
+    return v
+
+
+_EMPTY_OVERRIDES = WorldTradeOverrides()
+
+
+# Maps: [world location hex,trade good d66] -> overrides
+WorldTradeOverridesMap: TypeAlias = dict[tuple[str, str], WorldTradeOverrides]
 
 
 def _load_json(t: type[T], fp: io.TextIOBase) -> T:
@@ -81,6 +104,38 @@ def _load_world_data(fp: io.TextIOBase) -> Iterator[_WorldData]:
         )
 
 
+def _pbool(s: str) -> bool:
+    v = s.lower()
+    if v == "true":
+        return True
+    elif v == "false":
+        return False
+    raise ValueError(v)
+
+
+def _map_opt_dict_key(t: Callable[[str], T], d: dict[str, str], k: str) -> Optional[T]:
+    if k not in d:
+        return None
+    v = d[k]
+    if not v:
+        return None
+    return t(v)
+
+
+def _load_world_trade_overrides(fp: io.TextIOBase) -> WorldTradeOverridesMap:
+    r = csv.DictReader(fp)
+    result: WorldTradeOverridesMap = {}
+    for row in r:
+        key = row["Location"], row["D66"]
+        result[key] = WorldTradeOverrides(
+            available=_map_opt_dict_key(_pbool, row, "Available"),
+            purchase_dm=_map_opt_dict_key(int, row, "Purchase DM"),
+            sale_dm=_map_opt_dict_key(int, row, "Sale DM"),
+            illegal=_map_opt_dict_key(_pbool, row, "Illegal"),
+        )
+    return result
+
+
 def _trade_dm(dms: dict[str, int], world_trades: set[str]) -> int:
     return max(
         (dms[wt] for wt in world_trades if wt in dms),
@@ -126,6 +181,14 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
         ),
         type=argparse.FileType("rt"),
         metavar="trade-good-illegality.json",
+    )
+    data_inputs_grp.add_argument(
+        "--world-trade-overrides",
+        help="""File containing trade overrides for the worlds. CSV file with
+        columns: Location,D66,Available,Purchase DM,Sale DM,Illegal
+        """,
+        type=argparse.FileType("rt"),
+        metavar="world-trade-overrides.csv",
     )
     data_inputs_grp.add_argument(
         "--world-data",
@@ -205,6 +268,10 @@ def process(args: argparse.Namespace) -> None:
         tgood_illegality = _load_json(TradeGoodIllegality, args.trade_good_illegality)
     else:
         tgood_illegality = {}
+    if args.world_trade_overrides:
+        wt_overrides = _load_world_trade_overrides(args.world_trade_overrides)
+    else:
+        wt_overrides = {}
 
     worlds = list(_load_world_data(args.world_data))
     tcodes_by_code = {tc.code: tc for tc in tcodes}
@@ -236,23 +303,34 @@ def process(args: argparse.Namespace) -> None:
             worlds,
             per_world_trades,
         ):
+            overrides = wt_overrides.get(
+                (world.hex_location, tgood.d66), _EMPTY_OVERRIDES
+            )
+
             fmts = []
             is_common = "All" in tprops.availability
             if is_common:
                 fmts.append(args.format_common)
 
             is_available = is_common or not tprops.availability.isdisjoint(world_trades)
+            is_available = _eval_override(is_available, overrides.available)
             if not is_available:
                 fmts.append(args.format_unavailable)
 
             purchase_dm = _trade_dm(tprops.purchase_dm, world_trades)
+            purchase_dm = _eval_override(purchase_dm, overrides.purchase_dm)
+
             illegal = illegality is not None and world.uwp.law_level >= illegality
+            illegal = _eval_override(illegal, overrides.illegal)
             if illegal:
                 fmts.append(args.format_illegal)
-                sale_dm = world.uwp.law_level - cast(int, illegality)
             else:
                 fmts.append(args.format_legal)
+            if illegal and illegality is not None:
+                sale_dm = world.uwp.law_level - illegality
+            else:
                 sale_dm = _trade_dm(tprops.sale_dm, world_trades)
+            sale_dm = _eval_override(sale_dm, overrides.sale_dm)
 
             dm = purchase_dm - sale_dm
             dm_str = f"{dm:+}"
