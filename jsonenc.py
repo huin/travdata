@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import dataclasses
 import io
 import json
 from typing import (Any, AnyStr, Callable, ClassVar, Protocol, TypeAlias,
@@ -8,6 +9,11 @@ _TYPE_FIELD = "__type__"
 
 
 Object: TypeAlias = dict[str, Any]
+
+
+def dataclass_to_dict(o: Any) -> Object:
+    """Shallow equivalent of dataclasses.asdict()."""
+    return {field.name: getattr(o, field.name) for field in dataclasses.fields(o)}
 
 
 @runtime_checkable

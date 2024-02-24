@@ -26,7 +26,7 @@ class LawLevel(jsonenc.Decodable, jsonenc.Encodable):
         return cls(**o)
 
     def to_json(self) -> jsonenc.Object:
-        return dataclasses.asdict(self)
+        return jsonenc.dataclass_to_dict(self)
 
 
 _RawRow = TypedDict(
