@@ -13,6 +13,7 @@ def _add_extractor_args(argparser: argparse._ArgumentGroup) -> None:
         flag = ext.name.replace("_", "-")
         argparser.add_argument(
             f"--{flag}",
+            help=f"Path to file to extract {ext.description} data to.",
             type=argparse.FileType("wt", encoding="utf-8"),
             metavar="JSON_FILE",
         )
@@ -28,14 +29,40 @@ def _handle_extractor_args(args: argparse.Namespace, param: params.CoreParams) -
 
 
 def main() -> None:
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument(
-        "core_rulebook",
-        type=pathlib.Path,
-        metavar="PDF",
+    argparser = argparse.ArgumentParser(
+        description="""
+        Extracts data tables from the Mongoose Traveller 2022 core rules PDF.
+
+        The extracted data is *not* for redistribution, as it is almost
+        certainly subject to copyright. This utility (and its output) is
+        intended as an aid to those who legally own a copy of the Mongoose
+        Traveller materials, and wish to make use of the data for their own
+        purposes.
+
+        It is the sole responsibility of the user of this program to use the
+        extracted data in a manner that respects the publisher's IP rights.
+        """,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    argparser.add_argument(
+
+    inputs_grp = argparser.add_argument_group(
+        title="Inputs",
+        description="""
+        Arguments that provide input for the extraction process.
+        """,
+    )
+    inputs_grp.add_argument(
+        "core_rulebook",
+        help="Path to the core rules 2022 update PDF.",
+        type=pathlib.Path,
+        metavar="CORE_RULES_PDF",
+    )
+    inputs_grp.add_argument(
         "--templates-dir",
+        help="""
+        Path to the directory containing the Tabula templates supplied with this
+        program.
+        """,
         type=pathlib.Path,
         metavar="DIR",
         default=pathlib.Path("./tabula-templates"),
