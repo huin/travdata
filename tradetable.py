@@ -81,6 +81,13 @@ def _load_world_data(fp: io.TextIOBase) -> Iterator[_WorldData]:
         )
 
 
+def _trade_dm(dms: dict[str, int], world_trades: set[str]) -> int:
+    return max(
+        (dms[wt] for wt in world_trades if wt in dms),
+        default=0,
+    )
+
+
 def main() -> None:
     argparser = argparse.ArgumentParser(
         description="""Produce a purchase DM table based on:
@@ -111,21 +118,43 @@ def main() -> None:
         required=True,
     )
     argparser.add_argument(
-        "--omit-unavailable",
-        type=bool,
-        action=argparse.BooleanOptionalAction,
+        "--format-common",
+        help="Python str.format string for DMs of commonly available goods." " world.",
+        default="<b>{}</b>",
+    )
+    argparser.add_argument(
+        "--format-unavailable",
+        help="Python str.format string for items that are unavailable for purchase.",
+        default="{}!",
     )
     argparser.add_argument(
         "--format-legal",
-        help="Python str.format string for DMs of goods that are legal on a"
-        " world.",
+        help="Python str.format string for DMs of goods that are legal on a" " world.",
         default="{}",
     )
     argparser.add_argument(
         "--format-illegal",
         help="Python str.format string for DMs of goods that are illegal on a"
         " world.",
-        default="<b>{}</b>",
+        default="<ul>{}</ul>",
+    )
+    argparser.add_argument(
+        "--include-headers",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    argparser.add_argument(
+        "--include-key",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    argparser.add_argument(
+        "--include-explanation",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        default=True,
     )
 
     args = argparser.parse_args()
@@ -149,9 +178,11 @@ def main() -> None:
     ]
 
     w = csv.writer(sys.stdout)
-    w.writerow(
-        ["D66", "Goods", "Tons", "Base Price (cr)"] + [w.hex_location for w in worlds]
-    )
+    if args.include_headers:
+        w.writerow(
+            ["D66", "Goods", "Tons", "Base Price (cr)"]
+            + [w.hex_location for w in worlds]
+        )
     for tgood in tgoods:
         row = [
             tgood.d66,
@@ -162,35 +193,60 @@ def main() -> None:
             continue
         tprops = tgood.properties
         row.append(tprops.tons)
-        row.append(tprops.base_price)
+        row.append(str(tprops.base_price))
         illegality = tgood_illegality.get(tgood.d66, None)
         for world, world_trades in zip(
             worlds,
             per_world_trades,
         ):
-            is_available = (
-                "All" in tprops.availability
-                or not tprops.availability.isdisjoint(world_trades)
-            )
-            if not is_available and args.omit_unavailable:
-                row.append("")
-                continue
+            fmts = []
+            is_common = "All" in tprops.availability
+            if is_common:
+                fmts.append(args.format_common)
 
-            purchase_dm = max(tprops.purchase_dm.get(wt, 0) for wt in world_trades)
+            is_available = is_common or not tprops.availability.isdisjoint(world_trades)
+            if not is_available:
+                fmts.append(args.format_unavailable)
+
+            purchase_dm = _trade_dm(tprops.purchase_dm, world_trades)
             illegal = illegality is not None and world.uwp.law_level >= illegality
             if illegal:
-                fmt = args.format_illegal
+                fmts.append(args.format_illegal)
                 sale_dm = world.uwp.law_level - cast(int, illegality)
             else:
-                fmt = args.format_legal
-                sale_dm = max(tprops.sale_dm.get(wt, 0) for wt in world_trades)
+                fmts.append(args.format_legal)
+                sale_dm = _trade_dm(tprops.sale_dm, world_trades)
 
             dm = purchase_dm - sale_dm
             dm_str = f"{dm:+}"
 
-            row.append(fmt.format(dm_str))
+            for fmt in fmts:
+                dm_str = fmt.format(dm_str)
+
+            row.append(dm_str)
 
         w.writerow(row)
+
+    if args.include_key:
+        w.writerow(["Key:"])
+        entries = [
+            (args.format_common, "Commonly available goods."),
+            (args.format_unavailable, "Good unavailable for purchase."),
+            (args.format_legal, "Legal by planetary law."),
+            (args.format_illegal, "Illegal by planetary law."),
+        ]
+        for fmt, explanation in entries:
+            w.writerow([fmt.format("Good name"), explanation])
+
+    if args.include_explanation:
+        if args.include_key:
+            w.writerow([])
+        w.writerow(
+            ["Number is added when buying goods, and subtracted when selling goods."]
+        )
+        w.writerow(
+            ["High numbers indicate excess of supply, low numbers indicate demand."]
+        )
 
 
 if __name__ == "__main__":
