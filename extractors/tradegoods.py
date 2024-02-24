@@ -14,7 +14,7 @@ from extractors import params
 class TradeGoodProperties(jsonenc.Decodable, jsonenc.Encodable):
     availability: set[str]
     tons: str
-    base_price: str
+    base_price: int
     purchase_dm: dict[str, int]
     sale_dm: dict[str, int]
     examples: str
@@ -116,7 +116,7 @@ def _extract_rows(
             properties=TradeGoodProperties(
                 availability=parseutil.parse_set(row["Availability"]),
                 tons=row["Tons"],
-                base_price=row["Base Price"],
+                base_price=parseutil.parse_credits(row["Base Price"]),
                 purchase_dm=_parse_trade_dm(row["Purchase DM"]),
                 sale_dm=_parse_trade_dm(row["Sale DM"]),
                 examples=row["Examples"],
