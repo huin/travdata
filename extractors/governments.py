@@ -11,7 +11,7 @@ from extractors import params
 
 @dataclasses.dataclass
 @jsonenc.DEFAULT_CODEC.register_json_decodable
-class Government:
+class Government(jsonenc.Decodable, jsonenc.Encodable):
     code: str
     name: str
     description: str
