@@ -93,6 +93,7 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
         description="""Produce a purchase DM table based on:
         https://sirpoley.tumblr.com/post/643218580118323200/on-creating-a-frictionless-traveller-part-i
         """,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     data_inputs_grp = argparser.add_argument_group("Data inputs")
