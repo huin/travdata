@@ -88,77 +88,113 @@ def _trade_dm(dms: dict[str, int], world_trades: set[str]) -> int:
     )
 
 
-def main() -> None:
+def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
     argparser = argparse.ArgumentParser(
         description="""Produce a purchase DM table based on:
         https://sirpoley.tumblr.com/post/643218580118323200/on-creating-a-frictionless-traveller-part-i
         """,
     )
-    argparser.add_argument(
+
+    data_inputs_grp = argparser.add_argument_group("Data inputs")
+    data_inputs_grp.add_argument(
         "--trade-codes",
+        help=(
+            "Traveller data for trade codes. This can be the output from"
+            " extract_tables.py --trade-codes."
+        ),
         type=argparse.FileType("rt"),
         metavar="trade-codes.json",
         required=True,
     )
-    argparser.add_argument(
+    data_inputs_grp.add_argument(
         "--trade-goods",
+        help=(
+            "Traveller data for trade goods. This can be the output from"
+            " extract_tables.py --trade-goods."
+        ),
         type=argparse.FileType("rt"),
         metavar="trade-goods.json",
         required=True,
     )
-    argparser.add_argument(
+    data_inputs_grp.add_argument(
         "--trade-good-illegality",
+        help=(
+            "Goods illegality data. Simple JSON mapping from trade good d66"
+            " string to the numeric minimum law level at which it considered"
+            " illegal."
+        ),
         type=argparse.FileType("rt"),
         metavar="trade-good-illegality.json",
     )
-    argparser.add_argument(
+    data_inputs_grp.add_argument(
         "--world-data",
+        help="World data within a single subsector.",
         type=argparse.FileType("rt"),
         metavar="world-data.csv",
         required=True,
     )
-    argparser.add_argument(
+
+    fmt_grp = argparser.add_argument_group(
+        title="DM formatting",
+        description=(
+            "Extra formatting for DM cells, based on the goods status on a"
+            " world. Each takes a single unamed argument `{}`, and is"
+            " formatted according to Python str.format - see"
+            " https://docs.python.org/3/library/stdtypes.html#str.format."
+        ),
+    )
+    fmt_grp.add_argument(
         "--format-common",
-        help="Python str.format string for DMs of commonly available goods." " world.",
+        help="When the goods are commonly available.",
         default="<b>{}</b>",
+        metavar="FORMAT_STRING",
     )
-    argparser.add_argument(
+    fmt_grp.add_argument(
         "--format-unavailable",
-        help="Python str.format string for items that are unavailable for purchase.",
+        help="When the goods is unavailable for purchase.",
         default="{}!",
+        metavar="FORMAT_STRING",
     )
-    argparser.add_argument(
+    fmt_grp.add_argument(
         "--format-legal",
-        help="Python str.format string for DMs of goods that are legal on a" " world.",
+        help="When the goods are legal.",
         default="{}",
+        metavar="FORMAT_STRING",
     )
-    argparser.add_argument(
+    fmt_grp.add_argument(
         "--format-illegal",
-        help="Python str.format string for DMs of goods that are illegal on a"
-        " world.",
+        help="When the goods are illegal.",
         default="<ul>{}</ul>",
+        metavar="FORMAT_STRING",
     )
-    argparser.add_argument(
+
+    inc_grp = argparser.add_argument_group("Extra information to include")
+    inc_grp.add_argument(
         "--include-headers",
+        help="Include the table headers.",
         type=bool,
         action=argparse.BooleanOptionalAction,
         default=True,
     )
-    argparser.add_argument(
+    inc_grp.add_argument(
         "--include-key",
+        help="Include a key to the DM formatting.",
         type=bool,
         action=argparse.BooleanOptionalAction,
         default=True,
     )
-    argparser.add_argument(
+    inc_grp.add_argument(
         "--include-explanation",
+        help="Include explanation for how to use the table.",
         type=bool,
         action=argparse.BooleanOptionalAction,
         default=True,
     )
 
-    args = argparser.parse_args()
+    return argparser.parse_args()
 
+
+def process(args: argparse.Namespace) -> None:
     jsonenc.DEFAULT_CODEC.self_register_builtins()
 
     tcodes = _load_json(list[tradecodes.TradeCode], args.trade_codes)
@@ -247,6 +283,11 @@ def main() -> None:
         w.writerow(
             ["High numbers indicate excess of supply, low numbers indicate demand."]
         )
+
+
+def main() -> None:
+    args = parse_args()
+    process(args)
 
 
 if __name__ == "__main__":
