@@ -12,9 +12,11 @@ else:
     DataclassInstance = object
 
 
-
 # https://wiki.travellerrpg.com/Base_Code
 BaseCode = NewType("BaseCode", str)
+StellarCode = NewType("StellarCode", str)
+SubsectorCode = NewType("SubsectorCode", str)
+TradeCode = NewType("TradeCode", str)
 
 
 @enum.unique
@@ -119,9 +121,7 @@ def _merged(
             continue
         if av == bv:
             kw[f.name] = av
-        raise ValueError(
-            f"conflicting values for field {f.name}: {av} versus {bv}"
-        )
+        raise ValueError(f"conflicting values for field {f.name}: {av} versus {bv}")
     return t(**kw)
 
 
@@ -129,9 +129,7 @@ def _merged(
 class World:
     comments: Optional[str] = None
     ext: Optional["WorldExtensions"] = field(default=None, metadata=_MD_RECURSE_MERGE)
-    location: Optional["WorldLocation"] = field(
-        default=None, metadata=_MD_RECURSE_MERGE
-    )
+    location: Optional["WorldLocation"] = field(default=None, metadata=_MD_RECURSE_MERGE)
     name: Optional[str] = None
     travel_code: Optional[TravelCode] = None
     social: Optional["WorldSocial"] = field(default=None, metadata=_MD_RECURSE_MERGE)
@@ -146,7 +144,7 @@ class World:
 class WorldLocation:
     sector: Optional[str] = None
     sector_abbv: Optional[str] = None
-    subsector: Optional[str] = None
+    subsector: Optional[SubsectorCode] = None
     subsector_hex: Optional[SubSectorLoc] = None
 
     def merge(self, b: "WorldLocation") -> "WorldLocation":
@@ -170,7 +168,7 @@ class WorldSocial:
     bases: Optional[frozenset[BaseCode]] = None
     nobility: Optional[str] = None
     pop_multiplier: Optional[int] = None
-    trade_codes: Optional[frozenset[str]] = None
+    trade_codes: Optional[frozenset[TradeCode]] = None
 
     def merge(self, b: "WorldSocial") -> "WorldSocial":
         return _merged(WorldSocial, self, b)
@@ -182,7 +180,7 @@ class WorldSystem:
     num_gas_giants: Optional[int] = None
     num_stars: Optional[int] = None
     num_worlds: Optional[int] = None
-    stellar: Optional[tuple[str, ...]] = None
+    stellar: Optional[tuple[StellarCode, ...]] = None
 
     def merge(self, b: "WorldSystem") -> "WorldSystem":
         return _merged(WorldSystem, self, b)
