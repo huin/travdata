@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
-from typing import Callable, Iterable, Iterator
+from typing import Callable, Iterable, Iterator, Optional, TypeVar
+
+T = TypeVar("T")
 
 
 def amalgamate_streamed_rows(
@@ -56,6 +58,16 @@ def label_rows(
     except Exception as e:
         e.add_note(f"for {row=}")
         raise
+
+
+def map_opt_dict_key(t: Callable[[str], T], d: dict[str, str], k: str) -> Optional[T]:
+    """Maps the given string value in d if present, otherwise returns None."""
+    if k not in d:
+        return None
+    v = d[k]
+    if not v:
+        return None
+    return t(v)
 
 
 _WHITESPACE_RUN_RX = re.compile(r"\s+")

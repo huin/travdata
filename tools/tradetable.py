@@ -8,9 +8,9 @@ import dataclasses
 import enum
 import io
 import sys
-from typing import Callable, Iterator, Optional, TypeAlias, TypeVar, cast
+from typing import Iterator, Optional, TypeAlias, TypeVar, cast
 
-from travellerutil import jsonenc
+from travellerutil import jsonenc, parseutil
 from travellerutil.extractors import tradecodes, tradegoods
 
 T = TypeVar("T")
@@ -112,25 +112,16 @@ def _pbool(s: str) -> bool:
     raise ValueError(v)
 
 
-def _map_opt_dict_key(t: Callable[[str], T], d: dict[str, str], k: str) -> Optional[T]:
-    if k not in d:
-        return None
-    v = d[k]
-    if not v:
-        return None
-    return t(v)
-
-
 def _load_world_trade_overrides(fp: io.TextIOBase) -> WorldTradeOverridesMap:
     r = csv.DictReader(fp)
     result: WorldTradeOverridesMap = {}
     for row in r:
         key = row["Location"], row["D66"]
         result[key] = WorldTradeOverrides(
-            available=_map_opt_dict_key(_pbool, row, "Available"),
-            purchase_dm=_map_opt_dict_key(int, row, "Purchase DM"),
-            sale_dm=_map_opt_dict_key(int, row, "Sale DM"),
-            illegal=_map_opt_dict_key(_pbool, row, "Illegal"),
+            available=parseutil.map_opt_dict_key(_pbool, row, "Available"),
+            purchase_dm=parseutil.map_opt_dict_key(int, row, "Purchase DM"),
+            sale_dm=parseutil.map_opt_dict_key(int, row, "Sale DM"),
+            illegal=parseutil.map_opt_dict_key(_pbool, row, "Illegal"),
         )
     return result
 
