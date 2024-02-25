@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import dataclasses
-import pathlib
 from typing import Iterator, TypedDict, cast
 
 from travellerutil import jsonenc, parseutil, tabulautil
