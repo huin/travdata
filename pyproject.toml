@@ -6,7 +6,7 @@ authors = ["John Beisley <johnbeisleyuk@gmail.com>"]
 keywords = ["traveller", "ttrpg"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/huin/travllerutil"
+repository = "https://github.com/huin/travdata"
 packages = [
     {include = "travdata", from = "src"},
 ]
