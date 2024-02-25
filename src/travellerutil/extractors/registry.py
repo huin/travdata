@@ -2,8 +2,9 @@
 import dataclasses
 from typing import Callable, Iterable
 
-import jsonenc
-from extractors import governments, lawlevels, params, tradecodes, tradegoods
+from travellerutil import jsonenc
+from travellerutil.extractors import (governments, lawlevels, params,
+                                      tradecodes, tradegoods)
 
 
 @dataclasses.dataclass

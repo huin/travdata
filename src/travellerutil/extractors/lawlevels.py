@@ -2,10 +2,8 @@
 import dataclasses
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
-import jsonenc
-import parseutil
-import tabulautil
-from extractors import params
+from travellerutil import jsonenc, parseutil, tabulautil
+from travellerutil.extractors import params
 
 
 @dataclasses.dataclass

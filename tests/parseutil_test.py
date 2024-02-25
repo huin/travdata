@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import unittest
 
-import parseutil
+from travellerutil import parseutil
 
 
 class ParseEhex(unittest.TestCase):
@@ -25,7 +26,7 @@ class ParseEhex(unittest.TestCase):
                 self.assertEqual(got, want)
 
     def test_parse_invalid(self) -> None:
-        cases: list[parseutil.EhexDigit] = [
+        cases: list[str] = [
             "I",
             "O",
             "a",

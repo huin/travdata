@@ -2,10 +2,8 @@
 import dataclasses
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
-import jsonenc
-import parseutil
-import tabulautil
-from extractors import params
+from travellerutil import jsonenc, parseutil, tabulautil
+from travellerutil.extractors import params
 
 _MAX_SIZE = 10
 _MAX_ATMOSPHERE = 15
@@ -99,7 +97,7 @@ def _parse_set(v: str, max_value: Optional[int] = None) -> set[int]:
 def extract_from_pdf(
     param: params.CoreParams,
 ) -> Iterator[TradeCode]:
-    rows_list: list[parseutil.TabularRow] = tabulautil.table_rows_concat(
+    rows_list: list[tabulautil.TabularRow] = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
             pdf_path=param.core_rulebook,
             template_path=param.templates_dir / "trade-codes.tabula-template.json",

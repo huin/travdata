@@ -8,11 +8,10 @@ import dataclasses
 import enum
 import io
 import sys
-from typing import (Any, Callable, Iterator, Optional, TypeAlias, TypedDict,
-                    TypeVar, cast)
+from typing import Callable, Iterator, Optional, TypeAlias, TypeVar, cast
 
-import jsonenc
-from extractors import tradecodes, tradegoods
+from travellerutil import jsonenc
+from travellerutil.extractors import tradecodes, tradegoods
 
 T = TypeVar("T")
 # Maps from TradeGood.d66 to the lowest law level at which that good is illegal.
@@ -277,16 +276,12 @@ def process(args: argparse.Namespace) -> None:
     tcodes_by_code = {tc.code: tc for tc in tcodes}
     # Parallel list of the trade classifications that the world has.
     per_world_trades: list[set[str]] = [
-        {tcodes_by_code[tc].classification for tc in world.trade_codes}
-        for world in worlds
+        {tcodes_by_code[tc].classification for tc in world.trade_codes} for world in worlds
     ]
 
     w = csv.writer(sys.stdout)
     if args.include_headers:
-        w.writerow(
-            ["D66", "Goods", "Tons", "Base Price (cr)"]
-            + [w.hex_location for w in worlds]
-        )
+        w.writerow(["D66", "Goods", "Tons", "Base Price (cr)"] + [w.hex_location for w in worlds])
     for tgood in tgoods:
         row = [
             tgood.d66,
@@ -303,9 +298,7 @@ def process(args: argparse.Namespace) -> None:
             worlds,
             per_world_trades,
         ):
-            overrides = wt_overrides.get(
-                (world.hex_location, tgood.d66), _EMPTY_OVERRIDES
-            )
+            overrides = wt_overrides.get((world.hex_location, tgood.d66), _EMPTY_OVERRIDES)
 
             fmts = []
             is_common = "All" in tprops.availability
@@ -356,12 +349,8 @@ def process(args: argparse.Namespace) -> None:
     if args.include_explanation:
         if args.include_key:
             w.writerow([])
-        w.writerow(
-            ["Number is added when buying goods, and subtracted when selling goods."]
-        )
-        w.writerow(
-            ["High numbers indicate excess of supply, low numbers indicate demand."]
-        )
+        w.writerow(["Number is added when buying goods, and subtracted when selling goods."])
+        w.writerow(["High numbers indicate excess of supply, low numbers indicate demand."])
 
 
 def main() -> None:
