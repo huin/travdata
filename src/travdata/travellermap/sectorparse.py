@@ -8,8 +8,8 @@ import csv
 import io
 from typing import Iterator
 
-from travellerutil import parseutil
-from travellerutil.travellermap import world
+from travdata import parseutil
+from travdata.travellermap import world
 
 _T5_TRAVEL_CODES: dict[str, world.TravelCode] = {
     "A": world.TravelCode.AMBER,
@@ -24,7 +24,7 @@ def _remove_brackets(v: str, brackets: str) -> str:
 
 def t5_tsv(fp: io.TextIOBase) -> Iterator[world.World]:
     """Parses T5 Tab Delimited Format.
-    
+
     Specified by https://travellermap.com/doc/fileformats#t5col
 
     :param fp: File to read TSV data from.

@@ -10,8 +10,8 @@ import io
 import sys
 from typing import Iterator, Optional, TypeAlias, TypeVar, cast
 
-from travellerutil import jsonenc, parseutil
-from travellerutil.extractors import tradecodes, tradegoods
+from travdata import jsonenc, parseutil
+from travdata.extractors import tradecodes, tradegoods
 
 T = TypeVar("T")
 # Maps from TradeGood.d66 to the lowest law level at which that good is illegal.

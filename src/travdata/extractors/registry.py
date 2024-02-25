@@ -2,9 +2,9 @@
 import dataclasses
 from typing import Callable, Iterable
 
-from travellerutil import jsonenc
-from travellerutil.extractors import (governments, lawlevels, params,
-                                      tradecodes, tradegoods)
+from travdata import jsonenc
+from travdata.extractors import (governments, lawlevels, params, tradecodes,
+                                 tradegoods)
 
 
 @dataclasses.dataclass
@@ -28,11 +28,11 @@ EXTRACTORS: list[Extractor] = [
     Extractor(
         name="trade_codes",
         description="trade types",
-        fn= tradecodes.extract_from_pdf,
+        fn=tradecodes.extract_from_pdf,
     ),
     Extractor(
         name="trade_goods",
         description="trade good types",
-        fn= tradegoods.extract_from_pdf,
+        fn=tradegoods.extract_from_pdf,
     ),
 ]

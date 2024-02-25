@@ -4,12 +4,12 @@ import unittest
 from typing import Callable, TypeVar
 
 import testfixtures
-from travellerutil.travellermap import sectorparse
-from travellerutil.travellermap.world import (UWP, BaseCode, StellarCode,
-                                              SubsectorCode, SubSectorLoc,
-                                              TradeCode, TravelCode, World,
-                                              WorldExtensions, WorldLocation,
-                                              WorldSocial, WorldSystem)
+from travdata.travellermap import sectorparse
+from travdata.travellermap.world import (UWP, BaseCode, StellarCode,
+                                         SubsectorCode, SubSectorLoc,
+                                         TradeCode, TravelCode, World,
+                                         WorldExtensions, WorldLocation,
+                                         WorldSocial, WorldSystem)
 
 C = TypeVar("C")
 T = TypeVar("T")

@@ -1,14 +1,14 @@
 [tool.poetry]
-name = "travellerutil"
+name = "travdata"
 version = "0.1.0"
-description = "Utilities for the Mongoose Traveller TTRPG."
+description = "Data utility code for Mongoose Traveller TTRPG."
 authors = ["John Beisley <johnbeisleyuk@gmail.com>"]
 keywords = ["traveller", "ttrpg"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/huin/travllerutil"
 packages = [
-    {include = "travellerutil", from = "src"},
+    {include = "travdata", from = "src"},
 ]
 
 [tool.poetry.group.dev.dependencies]

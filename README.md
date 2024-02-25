@@ -1,4 +1,4 @@
-# Traveller Utils
+# Traveller Data Utils
 
 Python library and assorted tools for assisting with the Mongoose Traveller
 TTRPG system.

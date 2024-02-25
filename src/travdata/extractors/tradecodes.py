@@ -2,8 +2,8 @@
 import dataclasses
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
-from travellerutil import jsonenc, parseutil, tabulautil
-from travellerutil.extractors import params
+from travdata import jsonenc, parseutil, tabulautil
+from travdata.extractors import params
 
 _MAX_SIZE = 10
 _MAX_ATMOSPHERE = 15

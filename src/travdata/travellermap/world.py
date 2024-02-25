@@ -4,7 +4,7 @@ import enum
 from dataclasses import field
 from typing import TYPE_CHECKING, Any, NewType, Optional, TypeVar
 
-from travellerutil import parseutil
+from travdata import parseutil
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance

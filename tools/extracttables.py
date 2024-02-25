@@ -4,8 +4,8 @@
 import argparse
 import pathlib
 
-from travellerutil import jsonenc
-from travellerutil.extractors import params, registry
+from travdata import jsonenc
+from travdata.extractors import params, registry
 
 
 def _add_extractor_args(argparser: argparse._ArgumentGroup) -> None:

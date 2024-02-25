@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from travellerutil import parseutil
+from travdata import parseutil
 
 
 class ParseEhex(unittest.TestCase):
@@ -40,9 +40,9 @@ class ParseEhex(unittest.TestCase):
     def test_fmt_valid(self) -> None:
         cases: list[tuple[int, str]] = [
             # (input, want)
-            (0 , "0"),
-            (5 , "5"),
-            (9 , "9"),
+            (0, "0"),
+            (5, "5"),
+            (9, "9"),
             (10, "A"),
             (17, "H"),
             (18, "J"),
