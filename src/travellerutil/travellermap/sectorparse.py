@@ -23,11 +23,18 @@ def _remove_brackets(v: str, brackets: str) -> str:
 
 
 def t5_tsv(fp: io.TextIOBase) -> Iterator[world.World]:
-    # By the spec:
-    # * Blank lines should be ignored.
-    # * Line breaks do not occur in fields.
+    """Parses T5 Tab Delimited Format.
+    
+    Specified by https://travellermap.com/doc/fileformats#t5col
+
+    :param fp: File to read TSV data from.
+    :yield: World records.
+    """
     r = csv.DictReader(fp, delimiter="\t", quoting=csv.QUOTE_NONE, strict=True)
     for row in r:
+        if not row:
+            # Skip blank lines.
+            continue
         pbg = row["PBG"]
         yield world.World(
             ext=world.WorldExtensions(
