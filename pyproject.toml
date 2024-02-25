@@ -13,6 +13,7 @@ packages = [
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.2"
+testfixtures = "^8.0.0"
 
 [tool.black]
 line-length = 100

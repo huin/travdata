@@ -255,6 +255,22 @@ jpype = ["jpype1"]
 test = ["pytest"]
 
 [[package]]
+name = "testfixtures"
+version = "8.0.0"
+description = "A collection of helpers and mock objects for unit tests and doc tests."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "testfixtures-8.0.0-py3-none-any.whl", hash = "sha256:8a71c4f1d782a9fbc8041e530db93f59f9bb49a36062e5677a748a779b0a2f11"},
+    {file = "testfixtures-8.0.0.tar.gz", hash = "sha256:b8d61206c7426545443edaee714553cd8d2d1203276c6a6b36282a86667e6d4e"},
+]
+
+[package.extras]
+build = ["setuptools-git", "twine", "wheel"]
+docs = ["django", "furo", "sphinx", "sybil (>=6)", "twisted"]
+test = ["django", "mypy", "pytest (>=7.1)", "pytest-cov", "pytest-django", "sybil (>=6)", "twisted"]
+
+[[package]]
 name = "tzdata"
 version = "2024.1"
 description = "Provider of IANA time zone data"
@@ -268,4 +284,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "677738f13220e0cc47f2b25c5e7b7c4d1b85428f9ffe0f49ccaeb4e79821c4fe"
+content-hash = "4a1bc0478cf1aa6c5dc5759d6691928471b89eafb1a0da7cdbb0dcae484f4b31"
