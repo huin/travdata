@@ -15,8 +15,8 @@ def amalgamate_streamed_rows(
     def form_row():
         return [join.join(cell) for cell in row_accum]
 
-    try:
-        for i, row in enumerate(rows):
+    for i, row in enumerate(rows):
+        try:
             if not continuation(i, row) and row_accum:
                 yield form_row()
                 row_accum = []
@@ -27,12 +27,12 @@ def amalgamate_streamed_rows(
             for acc, text in zip(row_accum, row):
                 if text:
                     acc.append(text)
+        except Exception as e:
+            e.add_note(f"for {row=}")
+            raise
 
-        if row_accum:
-            yield form_row()
-    except Exception as e:
-        e.add_note(f"for {row=}")
-        raise
+    if row_accum:
+        yield form_row()
 
 
 def clean_rows(rows: Iterable[list[str]]) -> Iterator[list[str]]:
