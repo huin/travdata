@@ -6,7 +6,7 @@ import csv
 import pathlib
 
 from travdata import jsonenc
-from travdata.extractors import core_rulebook
+from travdata.tableconverters import core_rulebook
 
 
 def main() -> None:

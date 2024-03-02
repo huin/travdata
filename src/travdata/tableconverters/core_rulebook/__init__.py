@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from travdata.extractors import Converter
-from travdata.extractors.core_rulebook import (governments, lawlevels,
-                                               tradecodes, tradegoods)
+from travdata.tableconverters import Converter
+from travdata.tableconverters.core_rulebook import (governments, lawlevels,
+                                                    tradecodes, tradegoods)
 
 CONVERTERS: list[Converter] = [
     Converter(

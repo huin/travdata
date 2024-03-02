@@ -11,7 +11,7 @@ import sys
 from typing import Iterator, Optional, TypeAlias, TypeVar, cast
 
 from travdata import jsonenc, parseutil
-from travdata.extractors.core_rulebook import tradecodes, tradegoods
+from travdata.tableconverters.core_rulebook import tradecodes, tradegoods
 
 T = TypeVar("T")
 # Maps from TradeGood.d66 to the lowest law level at which that good is illegal.
