@@ -83,8 +83,8 @@ def _parse_set(v: str, max_value: Optional[int] = None) -> set[int]:
     return result
 
 
-def convert_from_csv(csv_file: io.TextIOBase) -> Iterator[TradeCode]:
-    for row in cast(Iterable[_RawRow], csv.DictReader(csv_file)):
+def convert_from_rows(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[TradeCode]:
+    for row in cast(Iterable[_RawRow], rows):
         yield TradeCode(
             classification=row["Classification"],
             code=row["Code"],

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-import csv
 import dataclasses
-import io
 import re
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
@@ -81,8 +79,8 @@ _RawRow = TypedDict(
 )
 
 
-def convert_from_csv(csv_file: io.TextIOBase) -> Iterator[TradeGood]:
-    for row in cast(Iterable[_RawRow], csv.DictReader(csv_file)):
+def convert_from_rows(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[TradeGood]:
+    for row in cast(Iterable[_RawRow], rows):
         if row["Base Price"] is None:
             properties = None
             description = row["Availability"]

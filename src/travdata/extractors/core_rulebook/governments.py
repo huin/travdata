@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 import csv
 import dataclasses
-import io
-from typing import Iterable, Iterator, TypedDict, cast
+from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 from travdata import jsonenc, parseutil
 
@@ -41,8 +40,8 @@ _RawRow = TypedDict(
 )
 
 
-def convert_from_csv(csv_file: io.TextIOBase) -> Iterator[Government]:
-    for row in cast(Iterable[_RawRow], csv.DictReader(csv_file)):
+def convert_from_rows(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[Government]:
+    for row in cast(Iterable[_RawRow], rows):
         yield Government(
             code=row["Government"],
             name=row["Government Type"],

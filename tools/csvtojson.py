@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import csv
 import pathlib
 
 from travdata import jsonenc
@@ -47,7 +48,8 @@ def main() -> None:
             open(args.input_dir / f"{ext.name}.csv", "rt") as csv_file_in,
             open(args.output_dir / f"{ext.name}.json", "wt") as json_file_out,
         ):
-            data = ext.fn(csv_file_in)
+            r = csv.DictReader(csv_file_in)
+            data = ext.fn(iter(r))
             jsonenc.DEFAULT_CODEC.dump(
                 fp=json_file_out,
                 obj=list(data),

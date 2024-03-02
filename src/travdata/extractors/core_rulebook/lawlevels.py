@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-import csv
 import dataclasses
-import io
-from typing import Iterable, Optional, TypedDict, cast
+from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 from travdata import jsonenc
 
@@ -38,9 +36,9 @@ _RawRow = TypedDict(
 )
 
 
-def convert_from_csv(csv_file: io.TextIOBase) -> list[LawLevel]:
+def convert_from_rows(rows: Iterable[dict[str, Optional[str]]]) -> list[LawLevel]:
     results: list[LawLevel] = []
-    for row in cast(Iterable[_RawRow], csv.DictReader(csv_file)):
+    for row in cast(Iterable[_RawRow], rows):
         level = row["Law Level"]
         if level.endswith("+"):
             min_level = int(level.removesuffix("+"))

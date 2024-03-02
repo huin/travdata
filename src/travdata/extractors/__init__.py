@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import dataclasses
 import io
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Optional
 
 from travdata import jsonenc
 
@@ -10,4 +10,4 @@ from travdata import jsonenc
 class Converter:
     name: str
     description: str
-    fn: Callable[[io.TextIOBase], Iterable[jsonenc.Encodable]]
+    fn: Callable[[Iterable[dict[str, Optional[str]]]], Iterable[jsonenc.Encodable]]
