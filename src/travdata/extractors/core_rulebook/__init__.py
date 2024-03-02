@@ -1,18 +1,7 @@
 # -*- coding: utf-8 -*-
-import dataclasses
-import io
-from typing import Callable, Iterable
-
-from travdata import jsonenc
-from travdata.extractors import governments, lawlevels, tradecodes, tradegoods
-
-
-@dataclasses.dataclass
-class Converter:
-    name: str
-    description: str
-    fn: Callable[[io.TextIOBase], Iterable[jsonenc.Encodable]]
-
+from travdata.extractors import Converter
+from travdata.extractors.core_rulebook import (governments, lawlevels,
+                                               tradecodes, tradegoods)
 
 CONVERTERS: list[Converter] = [
     Converter(

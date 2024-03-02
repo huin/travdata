@@ -5,7 +5,7 @@ import argparse
 import pathlib
 
 from travdata import jsonenc
-from travdata.extractors import registry
+from travdata.extractors import core_rulebook
 
 
 def main() -> None:
@@ -42,7 +42,7 @@ def main() -> None:
 
     args = argparser.parse_args()
 
-    for ext in registry.CONVERTERS:
+    for ext in core_rulebook.CONVERTERS:
         with (
             open(args.input_dir / f"{ext.name}.csv", "rt") as csv_file_in,
             open(args.output_dir / f"{ext.name}.json", "wt") as json_file_out,
