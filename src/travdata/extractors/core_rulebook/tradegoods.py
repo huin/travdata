@@ -52,7 +52,6 @@ _DM_ITEM_RX = re.compile(r"(.+) ([-+]\d+)")
 
 
 def _parse_trade_dm(s: str) -> dict[str, int]:
-    s = parseutil.clean_text(s)
     result: dict[str, int] = {}
     for item in s.split(","):
         match = _DM_ITEM_RX.fullmatch(item)

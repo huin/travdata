@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import dataclasses
 import pathlib
-from typing import Iterator, Optional
+from typing import Callable, Iterable, Iterator, Optional
 
 from ruamel import yaml
 from travdata import parseutil, tabulautil
@@ -61,11 +61,11 @@ def _extract_table(
             return row[table.continuation_empty_column] == ""
 
     text_rows = tabulautil.table_rows_text(tabula_rows)
-    text_rows = parseutil.amalgamate_streamed_rows(
+    text_rows = _amalgamate_streamed_rows(
         rows=text_rows,
         continuation=continuation,
     )
-    return parseutil.clean_rows(text_rows)
+    return _clean_rows(text_rows)
 
 
 @dataclasses.dataclass
@@ -95,3 +95,38 @@ def extract_tables(
                 tabula_tmpl_dir=cfg.tabula_tmpl_dir,
             ),
         )
+
+
+def _amalgamate_streamed_rows(
+    rows: Iterable[list[str]],
+    continuation: Callable[[int, list[str]], bool],
+    join: str = "\n",
+) -> Iterator[list[str]]:
+    row_accum: list[list[str]] = []
+
+    def form_row():
+        return [join.join(cell) for cell in row_accum]
+
+    for i, row in enumerate(rows):
+        try:
+            if not continuation(i, row) and row_accum:
+                yield form_row()
+                row_accum = []
+            missing_count = len(row) - len(row_accum)
+            if missing_count > 0:
+                for _ in range(missing_count):
+                    row_accum.append([])
+            for acc, text in zip(row_accum, row):
+                if text:
+                    acc.append(text)
+        except Exception as e:
+            e.add_note(f"for {row=}")
+            raise
+
+    if row_accum:
+        yield form_row()
+
+
+def _clean_rows(rows: Iterable[list[str]]) -> Iterator[list[str]]:
+    for row in rows:
+        yield [parseutil.clean_text(text) for text in row]
