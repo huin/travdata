@@ -1,4 +1,5 @@
 # Don't include extracted data that might be proprietary to Mongoose.
+*.csv
 *.json
 
 # Byte-compiled / optimized / DLL files

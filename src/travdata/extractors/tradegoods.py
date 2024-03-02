@@ -92,13 +92,13 @@ def _preprocess_rows(
     return parseutil.clean_rows(text_rows)
 
 
-def _extract_rows(
+def extract_from_pdf(
     param: params.CoreParams,
 ) -> Iterator[TradeGood]:
-    rows_list: list[tabulautil.TabularRow] = tabulautil.table_rows_concat(
+    rows_list: Iterator[tabulautil.TabularRow] = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
             pdf_path=param.core_rulebook,
-            template_path=param.templates_dir / "trade-goods.json",
+            template_path=param.templates_dir / "trade-goods.tabula-template.json",
         )
     )
 
@@ -107,57 +107,22 @@ def _extract_rows(
     labeled_rows = parseutil.label_rows(rows, header)
 
     for row in cast(Iterator[_RawRow], labeled_rows):
-        yield TradeGood(
-            d66=row["D66"],
-            name=row["Type"],
-            description=None,
-            properties=TradeGoodProperties(
+        if len(row) == 3:
+            properties = None
+            description = row["Availability"]
+        else:
+            properties = TradeGoodProperties(
                 availability=parseutil.parse_set(row["Availability"]),
                 tons=row["Tons"],
                 base_price=parseutil.parse_credits(row["Base Price"]),
                 purchase_dm=_parse_trade_dm(row["Purchase DM"]),
                 sale_dm=_parse_trade_dm(row["Sale DM"]),
                 examples=row["Examples"],
-            ),
-        )
-
-
-_SpecialRawRow = TypedDict(
-    "_SpecialRawRow",
-    {
-        "D66": str,
-        "Type": str,
-        "Description": str,
-    },
-    total=True,
-)
-
-
-def _extract_special_rows(
-    param: params.CoreParams,
-) -> Iterator[TradeGood]:
-    rows_list = tabulautil.table_rows_concat(
-        tabulautil.read_pdf_with_template(
-            pdf_path=param.core_rulebook,
-            template_path=param.templates_dir / "trade-goods-special.json",
-        )
-    )
-
-    header = ["D66", "Type", "Description"]
-    rows = _preprocess_rows(rows_list)
-    labeled_rows = parseutil.label_rows(rows, header)
-
-    for special_row in cast(Iterator[_SpecialRawRow], labeled_rows):
+            )
+            description = None
         yield TradeGood(
-            d66=parseutil.clean_text(special_row["D66"]),
-            name=parseutil.clean_text(special_row["Type"]),
-            description=parseutil.clean_text(special_row["Description"]),
-            properties=None,
+            d66=row["D66"],
+            name=row["Type"],
+            description=description,
+            properties=properties,
         )
-
-
-def extract_from_pdf(
-    param: params.CoreParams,
-) -> Iterator[TradeGood]:
-    yield from _extract_rows(param)
-    yield from _extract_special_rows(param)

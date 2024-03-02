@@ -78,11 +78,9 @@ def read_pdf_with_template(
     return result
 
 
-def table_rows_concat(tables: list[TabluarTable]) -> list[TabularRow]:
-    rows: list[TabularRow] = []
+def table_rows_concat(tables: Iterable[TabluarTable]) -> Iterator[TabularRow]:
     for t in tables:
-        rows.extend(t["data"])
-    return rows
+        yield from t["data"]
 
 
 def table_row_text(row: TabularRow) -> list[str]:

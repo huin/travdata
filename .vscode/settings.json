@@ -1,0 +1,10 @@
+{
+    "autoDocstring.docstringFormat": "sphinx-notypes",
+    "python.analysis.typeCheckingMode": "standard",
+    "python.testing.pytestEnabled": true,
+    "reflowMarkdown.preferredLineLength": 80,
+    "yaml.customTags": [
+        "!Config mapping",
+        "!Table mapping"
+    ]
+}

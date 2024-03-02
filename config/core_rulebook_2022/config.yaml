@@ -1,0 +1,12 @@
+!Config
+tables:
+  - !Table
+    name: governments
+    num_header_lines: 2
+  - !Table
+    name: law-levels
+    num_header_lines: 2
+  - !Table
+    name: trade-codes
+  - !Table
+    name: trade-goods

@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "marvhen.reflow-markdown",
+        "ms-python.black-formatter",
+        "ms-python.mypy-type-checker",
+        "ms-python.python",
+        "redhat.vscode-yaml",
+        "zeshuaro.vscode-python-poetry"
+    ]
+}

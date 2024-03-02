@@ -56,7 +56,7 @@ def extract_from_pdf(
     rows_list = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
             pdf_path=param.core_rulebook,
-            template_path=param.templates_dir / "governments.json",
+            template_path=param.templates_dir / "governments.tabula-template.json",
         ),
     )
 
