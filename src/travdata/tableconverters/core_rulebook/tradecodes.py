@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-import csv
 import dataclasses
-import io
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 from travdata import jsonenc

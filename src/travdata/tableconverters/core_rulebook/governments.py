@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import csv
 import dataclasses
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
