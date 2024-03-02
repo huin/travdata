@@ -1,38 +1,38 @@
 # -*- coding: utf-8 -*-
 import dataclasses
+import io
 from typing import Callable, Iterable
 
 from travdata import jsonenc
-from travdata.extractors import (governments, lawlevels, params, tradecodes,
-                                 tradegoods)
+from travdata.extractors import governments, lawlevels, tradecodes, tradegoods
 
 
 @dataclasses.dataclass
-class Extractor:
+class Converter:
     name: str
     description: str
-    fn: Callable[[params.CoreParams], Iterable[jsonenc.Encodable]]
+    fn: Callable[[io.TextIOBase], Iterable[jsonenc.Encodable]]
 
 
-EXTRACTORS: list[Extractor] = [
-    Extractor(
+CONVERTERS: list[Converter] = [
+    Converter(
         name="governments",
         description="government types",
-        fn=governments.extract_from_pdf,
+        fn=governments.convert_from_csv,
     ),
-    Extractor(
-        name="law_levels",
+    Converter(
+        name="law-levels",
         description="law levels",
-        fn=lawlevels.extract_from_pdf,
+        fn=lawlevels.convert_from_csv,
     ),
-    Extractor(
-        name="trade_codes",
+    Converter(
+        name="trade-codes",
         description="trade types",
-        fn=tradecodes.extract_from_pdf,
+        fn=tradecodes.convert_from_csv,
     ),
-    Extractor(
-        name="trade_goods",
+    Converter(
+        name="trade-goods",
         description="trade good types",
-        fn=tradegoods.extract_from_pdf,
+        fn=tradegoods.convert_from_csv,
     ),
 ]

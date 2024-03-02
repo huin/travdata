@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+import csv
 import dataclasses
-from typing import Iterable, Iterator, Optional, TypedDict, cast
+import io
+from typing import Iterable, Optional, TypedDict, cast
 
-from travdata import jsonenc, parseutil, tabulautil
-from travdata.extractors import params
+from travdata import jsonenc
 
 
 @dataclasses.dataclass
@@ -37,43 +38,16 @@ _RawRow = TypedDict(
 )
 
 
-def _preprocess_rows(
-    rows: Iterable[tabulautil.TabularRow],
-) -> Iterator[list[str]]:
-    text_rows = tabulautil.table_rows_text(rows)
-    text_rows = parseutil.amalgamate_streamed_rows(
-        rows=text_rows,
-        # Header is split over two lines.
-        # Thereafter, the first column is always empty on subsequent
-        # continuation rows.
-        continuation=lambda i, row: i == 1 or (i > 1 and row[0] == ""),
-    )
-    return parseutil.clean_rows(text_rows)
-
-
-def extract_from_pdf(
-    param: params.CoreParams,
-) -> list[LawLevel]:
-    rows_list = tabulautil.table_rows_concat(
-        tabulautil.read_pdf_with_template(
-            pdf_path=param.core_rulebook,
-            template_path=param.templates_dir / "law-levels.tabula-template.json",
-        ),
-    )
-
-    rows = _preprocess_rows(rows_list)
-    header, rows = parseutil.headers_and_iter_rows(rows)
-    labeled_rows = parseutil.label_rows(rows, header)
-
+def convert_from_csv(csv_file: io.TextIOBase) -> list[LawLevel]:
     results: list[LawLevel] = []
-    for row in cast(Iterator[_RawRow], labeled_rows):
+    for row in cast(Iterable[_RawRow], csv.DictReader(csv_file)):
         level = row["Law Level"]
         if level.endswith("+"):
             min_level = int(level.removesuffix("+"))
             max_level = None
         else:
             min_level = max_level = int(level)
-        if "Armour" not in row:
+        if row["Armour"] is None:
             results.append(
                 LawLevel(
                     min_level=min_level,

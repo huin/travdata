@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+import csv
 import dataclasses
+import io
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
-from travdata import jsonenc, parseutil, tabulautil
-from travdata.extractors import params
+from travdata import jsonenc
 
 _MAX_SIZE = 10
 _MAX_ATMOSPHERE = 15
@@ -53,18 +54,6 @@ _RawRow = TypedDict(
 )
 
 
-def _preprocess_rows(
-    rows: Iterable[tabulautil.TabularRow],
-) -> Iterator[list[str]]:
-    text_rows = tabulautil.table_rows_text(rows)
-    text_rows = parseutil.amalgamate_streamed_rows(
-        rows=text_rows,
-        # The first column is always empty on subsequent continuation rows.
-        continuation=lambda _, row: row[0] == "",
-    )
-    return parseutil.clean_rows(text_rows)
-
-
 _RANGE_HYPHEN = "–"
 
 
@@ -94,21 +83,8 @@ def _parse_set(v: str, max_value: Optional[int] = None) -> set[int]:
     return result
 
 
-def extract_from_pdf(
-    param: params.CoreParams,
-) -> Iterator[TradeCode]:
-    rows_list: list[tabulautil.TabularRow] = tabulautil.table_rows_concat(
-        tabulautil.read_pdf_with_template(
-            pdf_path=param.core_rulebook,
-            template_path=param.templates_dir / "trade-codes.tabula-template.json",
-        )
-    )
-
-    rows = _preprocess_rows(rows_list)
-    header, rows = parseutil.headers_and_iter_rows(rows)
-    labeled_rows = parseutil.label_rows(rows, header)
-
-    for row in cast(Iterator[_RawRow], labeled_rows):
+def convert_from_csv(csv_file: io.TextIOBase) -> Iterator[TradeCode]:
+    for row in cast(Iterable[_RawRow], csv.DictReader(csv_file)):
         yield TradeCode(
             classification=row["Classification"],
             code=row["Code"],

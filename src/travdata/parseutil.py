@@ -35,29 +35,9 @@ def amalgamate_streamed_rows(
         raise
 
 
-def headers_and_iter_rows(
-    rows: Iterable[list[str]],
-) -> tuple[list[str], Iterator[list[str]]]:
-    rows_iter = iter(rows)
-    header = next(rows_iter)
-    return header, rows_iter
-
-
 def clean_rows(rows: Iterable[list[str]]) -> Iterator[list[str]]:
     for row in rows:
         yield [clean_text(text) for text in row]
-
-
-def label_rows(
-    rows: Iterable[list[str]],
-    header: list[str],
-) -> Iterator[dict[str, str]]:
-    try:
-        for row in rows:
-            yield {label: text for label, text in zip(header, row)}
-    except Exception as e:
-        e.add_note(f"for {row=}")
-        raise
 
 
 def map_opt_dict_key(t: Callable[[str], T], d: dict[str, str], k: str) -> Optional[T]:

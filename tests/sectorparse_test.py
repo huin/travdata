@@ -3,7 +3,7 @@ import io
 import unittest
 from typing import Callable, TypeVar
 
-import testfixtures
+import testfixtures  # type: ignore[import-untyped]
 from travdata.travellermap import sectorparse
 from travdata.travellermap.world import (UWP, BaseCode, StellarCode,
                                          SubsectorCode, SubSectorLoc,

@@ -22,7 +22,7 @@ class TabluarTable(TypedDict):
 def read_pdf(*, pdf_path: pathlib.Path, pages: list[int]) -> list[TabluarTable]:
     return cast(
         list[TabluarTable],
-        tabula.read_pdf(
+        tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
             pdf_path,
             pages=pages,
             java_options=["-Djava.awt.headless=true"],
@@ -59,7 +59,7 @@ def read_pdf_with_template(
         result.extend(
             cast(
                 list[TabluarTable],
-                tabula.read_pdf(
+                tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
                     pdf_path,
                     pages=[entry["page"]],
                     java_options=["-Djava.awt.headless=true"],

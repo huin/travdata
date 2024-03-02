@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
+import csv
 import dataclasses
+import io
 import re
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
-from travdata import jsonenc, parseutil, tabulautil
-from travdata.extractors import params
+from travdata import jsonenc, parseutil
 
 
 @dataclasses.dataclass
@@ -80,34 +81,9 @@ _RawRow = TypedDict(
 )
 
 
-def _preprocess_rows(
-    rows: Iterable[tabulautil.TabularRow],
-) -> Iterator[list[str]]:
-    text_rows = tabulautil.table_rows_text(rows)
-    text_rows = parseutil.amalgamate_streamed_rows(
-        rows=text_rows,
-        # The first column is always empty on subsequent continuation rows.
-        continuation=lambda _, row: row[0] == "",
-    )
-    return parseutil.clean_rows(text_rows)
-
-
-def extract_from_pdf(
-    param: params.CoreParams,
-) -> Iterator[TradeGood]:
-    rows_list: Iterator[tabulautil.TabularRow] = tabulautil.table_rows_concat(
-        tabulautil.read_pdf_with_template(
-            pdf_path=param.core_rulebook,
-            template_path=param.templates_dir / "trade-goods.tabula-template.json",
-        )
-    )
-
-    rows = _preprocess_rows(rows_list)
-    header, rows = parseutil.headers_and_iter_rows(rows)
-    labeled_rows = parseutil.label_rows(rows, header)
-
-    for row in cast(Iterator[_RawRow], labeled_rows):
-        if len(row) == 3:
+def convert_from_csv(csv_file: io.TextIOBase) -> Iterator[TradeGood]:
+    for row in cast(Iterable[_RawRow], csv.DictReader(csv_file)):
+        if row["Base Price"] is None:
             properties = None
             description = row["Availability"]
         else:

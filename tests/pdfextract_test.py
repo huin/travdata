@@ -2,7 +2,7 @@
 import textwrap
 import unittest
 
-import testfixtures
+import testfixtures  # type: ignore[import-untyped]
 from travdata import pdfextract
 
 
