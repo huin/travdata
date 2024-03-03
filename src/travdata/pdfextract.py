@@ -45,7 +45,7 @@ def _extract_table(
     pdf_path: pathlib.Path,
     tabula_tmpl_dir: pathlib.Path,
 ) -> Iterator[list[str]]:
-    tabula_rows: Iterator[tabulautil.TabularRow] = tabulautil.table_rows_concat(
+    tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
             pdf_path=pdf_path,
             template_path=tabula_tmpl_dir / f"{table.name}.tabula-template.json",

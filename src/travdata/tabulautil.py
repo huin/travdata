@@ -6,17 +6,17 @@ from typing import Iterable, Iterator, TypeAlias, TypedDict, cast
 import tabula
 
 
-class TablularCell(TypedDict):
+class TabulaCell(TypedDict):
     # Ignoring irrelevant fields.
     text: str
 
 
-TabularRow: TypeAlias = list[TablularCell]
+TabulaRow: TypeAlias = list[TabulaCell]
 
 
-class TabluarTable(TypedDict):
+class TabulaTable(TypedDict):
     # Ignoring irrelevant fields.
-    data: list[TabularRow]
+    data: list[TabulaRow]
 
 
 class _TemplateEntry(TypedDict):
@@ -34,14 +34,14 @@ def read_pdf_with_template(
     *,
     pdf_path: pathlib.Path,
     template_path: pathlib.Path,
-) -> list[TabluarTable]:
+) -> list[TabulaTable]:
     """Reads table(s) from a PDF, based on the Tabula template.
 
     :param pdf_path: Path to PDF to read from.
     :param template_path: Path to the Tabula template JSON file.
     :return: Tables read from the PDF.
     """
-    result: list[TabluarTable] = []
+    result: list[TabulaTable] = []
     with template_path.open() as tf:
         template = cast(list[_TemplateEntry], json.load(tf))
 
@@ -49,7 +49,7 @@ def read_pdf_with_template(
         method = entry["extraction_method"]
         result.extend(
             cast(
-                list[TabluarTable],
+                list[TabulaTable],
                 tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
                     pdf_path,
                     pages=[entry["page"]],
@@ -69,7 +69,7 @@ def read_pdf_with_template(
     return result
 
 
-def table_rows_concat(tables: Iterable[TabluarTable]) -> Iterator[TabularRow]:
+def table_rows_concat(tables: Iterable[TabulaTable]) -> Iterator[TabulaRow]:
     """Concatenates rows from multiple Tabula tables into a single row iterator.
 
     :param tables: Tables to concatenate rows from.
@@ -79,11 +79,11 @@ def table_rows_concat(tables: Iterable[TabluarTable]) -> Iterator[TabularRow]:
         yield from t["data"]
 
 
-def _table_row_text(row: TabularRow) -> list[str]:
+def _table_row_text(row: TabulaRow) -> list[str]:
     return [cell["text"] for cell in row]
 
 
-def table_rows_text(rows: Iterable[TabularRow]) -> Iterator[list[str]]:
+def table_rows_text(rows: Iterable[TabulaRow]) -> Iterator[list[str]]:
     """Converts Tabula row dictionaries into simple lists of cells.
 
     :param rows: Tabula rows to read from.
