@@ -35,6 +35,12 @@ def read_pdf_with_template(
     pdf_path: pathlib.Path,
     template_path: pathlib.Path,
 ) -> list[TabluarTable]:
+    """Reads table(s) from a PDF, based on the Tabula template.
+
+    :param pdf_path: Path to PDF to read from.
+    :param template_path: Path to the Tabula template JSON file.
+    :return: Tables read from the PDF.
+    """
     result: list[TabluarTable] = []
     with template_path.open() as tf:
         template = cast(list[_TemplateEntry], json.load(tf))
@@ -64,6 +70,11 @@ def read_pdf_with_template(
 
 
 def table_rows_concat(tables: Iterable[TabluarTable]) -> Iterator[TabularRow]:
+    """Concatenates rows from multiple Tabula tables into a single row iterator.
+
+    :param tables: Tables to concatenate rows from.
+    :yield: Rows from the tables.
+    """
     for t in tables:
         yield from t["data"]
 
@@ -73,5 +84,10 @@ def _table_row_text(row: TabularRow) -> list[str]:
 
 
 def table_rows_text(rows: Iterable[TabularRow]) -> Iterator[list[str]]:
+    """Converts Tabula row dictionaries into simple lists of cells.
+
+    :param rows: Tabula rows to read from.
+    :yield: Lists of strings, each presenting the text from the cell.
+    """
     for row in rows:
         yield _table_row_text(row)
