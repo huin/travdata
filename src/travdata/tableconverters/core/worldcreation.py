@@ -3,6 +3,7 @@ import re
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 from travdata import parseutil
+from travdata.datatypes import basic
 from travdata.datatypes.core import trade, worldcreation
 
 
@@ -69,39 +70,7 @@ def law_levels(rows: Iterable[dict[str, Optional[str]]]) -> list[worldcreation.L
     return results
 
 
-def _parse_range(v: str, max_value: Optional[int]) -> Iterable[int]:
-    _range_hyphen = "–"
-    if not v:
-        return ()
-    elif v.endswith("+"):
-        min_value = int(v.removesuffix("+"))
-        if max_value is None or max_value < min_value:
-            raise ValueError(f"{v=} {min_value=} {max_value=}")
-        return range(min_value, max_value + 1)
-    elif v.endswith(_range_hyphen):
-        max_value = int(v.removesuffix(_range_hyphen))
-        return range(0, max_value + 1)
-    elif _range_hyphen in v:
-        min_s, _, max_s = v.partition(_range_hyphen)
-        return range(int(min_s), int(max_s) + 1)
-    else:
-        return (int(v),)
-
-
-def _parse_set(v: str, max_value: Optional[int] = None) -> set[int]:
-    ranges = v.split(",")
-    result: set[int] = set()
-    for r in ranges:
-        result.update(_parse_range(r, max_value))
-    return result
-
-
 def trade_codes(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreation.TradeCode]:
-    max_size = 10
-    max_atmosphere = 15
-    max_hydro = 10
-    max_population = 12
-    max_tech = 15
     _RawRow = TypedDict(
         "_RawRow",
         {
@@ -120,13 +89,13 @@ def trade_codes(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreat
         yield worldcreation.TradeCode(
             classification=row["Classification"],
             code=row["Code"],
-            planet_sizes=_parse_set(row["Planet Size"], max_size),
-            atmospheres=_parse_set(row["Atmosphere"], max_atmosphere),
-            hydro=_parse_set(row["Hydro"], max_hydro),
-            population=_parse_set(row["Population"], max_population),
-            government=_parse_set(row["Government"]),
-            law_level=_parse_set(row["Law Level"]),
-            tech_level=_parse_set(row["Tech Level"], max_tech),
+            planet_sizes=basic.IntRangeSet.parse(row["Planet Size"]),
+            atmospheres=basic.IntRangeSet.parse(row["Atmosphere"]),
+            hydro=basic.IntRangeSet.parse(row["Hydro"]),
+            population=basic.IntRangeSet.parse(row["Population"]),
+            government=basic.IntRangeSet.parse(row["Government"]),
+            law_level=basic.IntRangeSet.parse(row["Law Level"]),
+            tech_level=basic.IntRangeSet.parse(row["Tech Level"]),
         )
 
 

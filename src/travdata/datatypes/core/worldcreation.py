@@ -10,6 +10,7 @@ import enum
 from typing import Optional
 
 from travdata import jsonenc, parseutil
+from travdata.datatypes import basic
 
 
 @dataclasses.dataclass
@@ -59,13 +60,13 @@ class LawLevel(jsonenc.Decodable, jsonenc.Encodable):
 class TradeCode(jsonenc.Decodable, jsonenc.Encodable):
     classification: str
     code: str
-    planet_sizes: set[int]
-    atmospheres: set[int]
-    hydro: set[int]
-    population: set[int]
-    government: set[int]
-    law_level: set[int]
-    tech_level: set[int]
+    planet_sizes: basic.IntRangeSet
+    atmospheres: basic.IntRangeSet
+    hydro: basic.IntRangeSet
+    population: basic.IntRangeSet
+    government: basic.IntRangeSet
+    law_level: basic.IntRangeSet
+    tech_level: basic.IntRangeSet
 
     @classmethod
     def json_type(cls) -> str:
