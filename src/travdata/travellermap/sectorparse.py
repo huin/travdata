@@ -9,6 +9,7 @@ import io
 from typing import Iterator
 
 from travdata import parseutil
+from travdata.datatypes.core import worldcreation
 from travdata.travellermap import world
 
 _T5_TRAVEL_CODES: dict[str, world.TravelCode] = {
@@ -63,5 +64,5 @@ def t5_tsv(fp: io.TextIOBase) -> Iterator[world.World]:
                 stellar=tuple(world.StellarCode(sc) for sc in row["Stars"].split()),
             ),
             travel_code=_T5_TRAVEL_CODES[row["Zone"]],
-            uwp=world.UWP.parse(row["UWP"]),
+            uwp=worldcreation.UWP.parse(row["UWP"]),
         )
