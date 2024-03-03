@@ -5,6 +5,7 @@ from dataclasses import field
 from typing import TYPE_CHECKING, Any, NewType, Optional, TypeVar
 
 from travdata import parseutil
+from travdata.datatypes.core import worldcreation
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
@@ -17,16 +18,6 @@ BaseCode = NewType("BaseCode", str)
 StellarCode = NewType("StellarCode", str)
 SubsectorCode = NewType("SubsectorCode", str)
 TradeCode = NewType("TradeCode", str)
-
-
-@enum.unique
-class StarportType(enum.StrEnum):
-    EXCELLENT = "A"
-    GOOD = "B"
-    ROUTINE = "C"
-    POOR = "D"
-    FRONTIER = "E"
-    NONE = "X"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -52,40 +43,6 @@ class TravelCode(enum.StrEnum):
     NONE = ""
     AMBER = "Amber"
     RED = "Red"
-
-
-@dataclasses.dataclass(frozen=True)
-class UWP:
-    starport: StarportType
-    size: int
-    atmosphere: int
-    hydrographic: int
-    population: int
-    government: int
-    law_level: int
-    tech_level: int
-
-    @classmethod
-    def parse(cls, uwp: str) -> "UWP":
-        codes = uwp.replace("-", "")
-        if len(codes) != 8:
-            raise ValueError(uwp)
-        int_codes = [parseutil.parse_ehex_char(v) for v in codes[1:]]
-        return UWP(StarportType(codes[0]), *int_codes)
-
-    def __str__(self) -> str:
-        return "".join(
-            [
-                str(self.starport),
-                parseutil.fmt_ehex_char(self.size),
-                parseutil.fmt_ehex_char(self.atmosphere),
-                parseutil.fmt_ehex_char(self.hydrographic),
-                parseutil.fmt_ehex_char(self.population),
-                parseutil.fmt_ehex_char(self.government),
-                parseutil.fmt_ehex_char(self.law_level),
-                parseutil.fmt_ehex_char(self.tech_level),
-            ]
-        )
 
 
 _DC = TypeVar("_DC", bound=DataclassInstance)
@@ -134,7 +91,7 @@ class World:
     travel_code: Optional[TravelCode] = None
     social: Optional["WorldSocial"] = field(default=None, metadata=_MD_RECURSE_MERGE)
     system: Optional["WorldSystem"] = field(default=None, metadata=_MD_RECURSE_MERGE)
-    uwp: Optional[UWP] = None
+    uwp: Optional[worldcreation.UWP] = None
 
     def merged(self, b: "World") -> "World":
         return _merged(World, self, b)
