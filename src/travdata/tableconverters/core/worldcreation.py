@@ -4,7 +4,7 @@ from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 from travdata import parseutil
 from travdata.datatypes import basic
-from travdata.datatypes.core import trade, worldcreation
+from travdata.datatypes.core import worldcreation
 
 
 def governments(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreation.Government]:
