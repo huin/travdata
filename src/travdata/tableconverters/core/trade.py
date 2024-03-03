@@ -19,23 +19,23 @@ def _parse_trade_dm(s: str) -> dict[str, int]:
     return result
 
 
-_RawRow = TypedDict(
-    "_RawRow",
-    {
-        "D66": str,
-        "Type": str,
-        "Availability": str,
-        "Tons": str,
-        "Base Price": str,
-        "Purchase DM": str,
-        "Sale DM": str,
-        "Examples": str,
-    },
-    total=True,
-)
 
 
-def convert_from_rows(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[trade.TradeGood]:
+def trade_goods(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[trade.TradeGood]:
+    _RawRow = TypedDict(
+        "_RawRow",
+        {
+            "D66": str,
+            "Type": str,
+            "Availability": str,
+            "Tons": str,
+            "Base Price": str,
+            "Purchase DM": str,
+            "Sale DM": str,
+            "Examples": str,
+        },
+        total=True,
+    )
     for row in cast(Iterable[_RawRow], rows):
         if row["Base Price"] is None:
             properties = None
