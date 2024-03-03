@@ -19,21 +19,6 @@ class TabluarTable(TypedDict):
     data: list[TabularRow]
 
 
-def read_pdf(*, pdf_path: pathlib.Path, pages: list[int]) -> list[TabluarTable]:
-    return cast(
-        list[TabluarTable],
-        tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
-            pdf_path,
-            pages=pages,
-            java_options=["-Djava.awt.headless=true"],
-            multiple_tables=True,
-            output_format="json",
-            # jpype doesn't work for me.
-            force_subprocess=True,
-        ),
-    )
-
-
 class _TemplateEntry(TypedDict):
     page: int
     extraction_method: str
@@ -83,10 +68,10 @@ def table_rows_concat(tables: Iterable[TabluarTable]) -> Iterator[TabularRow]:
         yield from t["data"]
 
 
-def table_row_text(row: TabularRow) -> list[str]:
+def _table_row_text(row: TabularRow) -> list[str]:
     return [cell["text"] for cell in row]
 
 
 def table_rows_text(rows: Iterable[TabularRow]) -> Iterator[list[str]]:
     for row in rows:
-        yield table_row_text(row)
+        yield _table_row_text(row)
