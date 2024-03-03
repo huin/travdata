@@ -1,30 +1,7 @@
 # -*- coding: utf-8 -*-
-import dataclasses
-from typing import Iterable, Iterator, Optional, TypedDict, cast
+from typing import Iterable, Optional, TypedDict, cast
 
-from travdata import jsonenc
-
-
-@dataclasses.dataclass
-@jsonenc.DEFAULT_CODEC.register_json_decodable
-class LawLevel(jsonenc.Decodable, jsonenc.Encodable):
-    min_level: int
-    max_level: Optional[int]
-    description: Optional[str]
-    weapons_banned: Optional[str]
-    armour_banned: Optional[str]
-
-    @classmethod
-    def json_type(cls) -> str:
-        return "LawLevel"
-
-    @classmethod
-    def from_json(cls, o: jsonenc.Object) -> "LawLevel":
-        return cls(**o)
-
-    def to_json(self) -> jsonenc.Object:
-        return jsonenc.dataclass_to_dict(self)
-
+from travdata.datatypes.core import worldcreation
 
 _RawRow = TypedDict(
     "_RawRow",
@@ -36,8 +13,8 @@ _RawRow = TypedDict(
 )
 
 
-def convert_from_rows(rows: Iterable[dict[str, Optional[str]]]) -> list[LawLevel]:
-    results: list[LawLevel] = []
+def convert_from_rows(rows: Iterable[dict[str, Optional[str]]]) -> list[worldcreation.LawLevel]:
+    results: list[worldcreation.LawLevel] = []
     for row in cast(Iterable[_RawRow], rows):
         level = row["Law Level"]
         if level.endswith("+"):
@@ -47,7 +24,7 @@ def convert_from_rows(rows: Iterable[dict[str, Optional[str]]]) -> list[LawLevel
             min_level = max_level = int(level)
         if row["Armour"] is None:
             results.append(
-                LawLevel(
+                worldcreation.LawLevel(
                     min_level=min_level,
                     max_level=max_level,
                     description=row["Weapons Banned"],
@@ -57,7 +34,7 @@ def convert_from_rows(rows: Iterable[dict[str, Optional[str]]]) -> list[LawLevel
             )
         else:
             results.append(
-                LawLevel(
+                worldcreation.LawLevel(
                     min_level=min_level,
                     max_level=max_level,
                     description=None,

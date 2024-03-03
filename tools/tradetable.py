@@ -11,7 +11,7 @@ import sys
 from typing import Iterator, Optional, TypeAlias, TypeVar, cast
 
 from travdata import jsonenc, parseutil
-from travdata.tableconverters.core_rulebook import tradecodes, tradegoods
+from travdata.datatypes.core import trade, worldcreation
 
 T = TypeVar("T")
 # Maps from TradeGood.d66 to the lowest law level at which that good is illegal.
@@ -251,8 +251,8 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
 def process(args: argparse.Namespace) -> None:
     jsonenc.DEFAULT_CODEC.self_register_builtins()
 
-    tcodes = _load_json(list[tradecodes.TradeCode], args.trade_codes)
-    tgoods = _load_json(list[tradegoods.TradeGood], args.trade_goods)
+    tcodes = _load_json(list[worldcreation.TradeCode], args.trade_codes)
+    tgoods = _load_json(list[trade.TradeGood], args.trade_goods)
     tgood_illegality: TradeGoodIllegality
     if args.trade_good_illegality:
         tgood_illegality = _load_json(TradeGoodIllegality, args.trade_good_illegality)

@@ -1,39 +1,13 @@
 # -*- coding: utf-8 -*-
-import dataclasses
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
-from travdata import jsonenc
+from travdata.datatypes.core import worldcreation
 
 _MAX_SIZE = 10
 _MAX_ATMOSPHERE = 15
 _MAX_HYDRO = 10
 _MAX_POPULATION = 12
 _MAX_TECH = 15
-
-
-@dataclasses.dataclass
-@jsonenc.DEFAULT_CODEC.register_json_decodable
-class TradeCode(jsonenc.Decodable, jsonenc.Encodable):
-    classification: str
-    code: str
-    planet_sizes: set[int]
-    atmospheres: set[int]
-    hydro: set[int]
-    population: set[int]
-    government: set[int]
-    law_level: set[int]
-    tech_level: set[int]
-
-    @classmethod
-    def json_type(cls) -> str:
-        return "TradeCode"
-
-    @classmethod
-    def from_json(cls, o: jsonenc.Object) -> "TradeCode":
-        return cls(**o)
-
-    def to_json(self) -> jsonenc.Object:
-        return jsonenc.dataclass_to_dict(self)
 
 
 _RawRow = TypedDict(
@@ -81,9 +55,11 @@ def _parse_set(v: str, max_value: Optional[int] = None) -> set[int]:
     return result
 
 
-def convert_from_rows(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[TradeCode]:
+def convert_from_rows(
+    rows: Iterable[dict[str, Optional[str]]]
+) -> Iterator[worldcreation.TradeCode]:
     for row in cast(Iterable[_RawRow], rows):
-        yield TradeCode(
+        yield worldcreation.TradeCode(
             classification=row["Classification"],
             code=row["Code"],
             planet_sizes=_parse_set(row["Planet Size"], _MAX_SIZE),
