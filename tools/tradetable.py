@@ -7,10 +7,12 @@ import csv
 import dataclasses
 import enum
 import io
+import pathlib
 import sys
 from typing import Iterator, Optional, TypeAlias, TypeVar, cast
 
-from travdata import jsonenc, parseutil
+from travdata import parseutil
+from travdata.datatypes import yamlcodec
 from travdata.datatypes.core import trade, worldcreation
 
 T = TypeVar("T")
@@ -20,6 +22,7 @@ TradeGoodIllegality: TypeAlias = dict[str, int]
 
 # Trade overrides for a trade good on a world.
 @dataclasses.dataclass
+@yamlcodec.register_type
 class WorldTradeOverrides:
     available: Optional[bool] = None
     purchase_dm: Optional[int] = None
@@ -40,8 +43,11 @@ _EMPTY_OVERRIDES = WorldTradeOverrides()
 WorldTradeOverridesMap: TypeAlias = dict[tuple[str, str], WorldTradeOverrides]
 
 
-def _load_json(t: type[T], fp: io.TextIOBase) -> T:
-    return cast(T, jsonenc.DEFAULT_CODEC.load(fp))
+def _load_yaml(t: type[T], stream: pathlib.Path | io.TextIOBase) -> T:
+    data = yamlcodec.DATATYPES_YAML.load(stream)
+    if not isinstance(data, t):
+        raise TypeError(type(data))
+    return data
 
 
 class StarportType(enum.StrEnum):
@@ -143,34 +149,20 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
 
     data_inputs_grp = argparser.add_argument_group("Data inputs")
     data_inputs_grp.add_argument(
-        "--trade-codes",
-        help=(
-            "Traveller data for trade codes. This can be the output from"
-            " extract_tables.py --trade-codes."
-        ),
-        type=argparse.FileType("rt"),
-        metavar="trade-codes.json",
-        required=True,
-    )
-    data_inputs_grp.add_argument(
-        "--trade-goods",
-        help=(
-            "Traveller data for trade goods. This can be the output from"
-            " extract_tables.py --trade-goods."
-        ),
-        type=argparse.FileType("rt"),
-        metavar="trade-goods.json",
-        required=True,
+        "data_dir",
+        help="Path to the directory to read the Traveller YAML files from.",
+        type=pathlib.Path,
+        metavar="IN_DIR",
     )
     data_inputs_grp.add_argument(
         "--trade-good-illegality",
         help=(
-            "Goods illegality data. Simple JSON mapping from trade good d66"
+            "Goods illegality data. Simple YAML mapping from trade good d66"
             " string to the numeric minimum law level at which it considered"
             " illegal."
         ),
         type=argparse.FileType("rt"),
-        metavar="trade-good-illegality.json",
+        metavar="trade-good-illegality.yaml",
     )
     data_inputs_grp.add_argument(
         "--world-trade-overrides",
@@ -181,11 +173,10 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
         metavar="world-trade-overrides.csv",
     )
     data_inputs_grp.add_argument(
-        "--world-data",
+        "world_data",
         help="World data within a single subsector.",
         type=argparse.FileType("rt"),
         metavar="world-data.csv",
-        required=True,
     )
 
     fmt_grp = argparser.add_argument_group(
@@ -249,13 +240,13 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
 
 
 def process(args: argparse.Namespace) -> None:
-    jsonenc.DEFAULT_CODEC.self_register_builtins()
-
-    tcodes = _load_json(list[worldcreation.TradeCode], args.trade_codes)
-    tgoods = _load_json(list[trade.TradeGood], args.trade_goods)
+    tcodes = cast(
+        list[worldcreation.TradeCode], _load_yaml(list, args.data_dir / "trade-codes.yaml")
+    )
+    tgoods = cast(list[trade.TradeGood], _load_yaml(list, args.data_dir / "trade-goods.yaml"))
     tgood_illegality: TradeGoodIllegality
     if args.trade_good_illegality:
-        tgood_illegality = _load_json(TradeGoodIllegality, args.trade_good_illegality)
+        tgood_illegality = cast(TradeGoodIllegality, _load_yaml(dict, args.trade_good_illegality))
     else:
         tgood_illegality = {}
     if args.world_trade_overrides:
