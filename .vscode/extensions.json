@@ -1,5 +1,6 @@
 {
     "recommendations": [
+        "donjayamanne.python-environment-manager",
         "marvhen.reflow-markdown",
         "ms-python.black-formatter",
         "ms-python.mypy-type-checker",
