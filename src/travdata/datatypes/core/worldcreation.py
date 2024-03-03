@@ -7,14 +7,15 @@ in the core rulebook.
 
 import dataclasses
 import enum
-from typing import Optional
+from typing import ClassVar, Optional
 
 from travdata import jsonenc, parseutil
-from travdata.datatypes import basic
+from travdata.datatypes import basic, yamlcodec
 
 
 @dataclasses.dataclass
 @jsonenc.DEFAULT_CODEC.register_json_decodable
+@yamlcodec.register_type
 class Government(jsonenc.Decodable, jsonenc.Encodable):
     code: str
     name: str
@@ -36,6 +37,7 @@ class Government(jsonenc.Decodable, jsonenc.Encodable):
 
 @dataclasses.dataclass
 @jsonenc.DEFAULT_CODEC.register_json_decodable
+@yamlcodec.register_type
 class LawLevel(jsonenc.Decodable, jsonenc.Encodable):
     min_level: int
     max_level: Optional[int]
@@ -57,6 +59,7 @@ class LawLevel(jsonenc.Decodable, jsonenc.Encodable):
 
 @dataclasses.dataclass
 @jsonenc.DEFAULT_CODEC.register_json_decodable
+@yamlcodec.register_type
 class TradeCode(jsonenc.Decodable, jsonenc.Encodable):
     classification: str
     code: str
@@ -81,6 +84,7 @@ class TradeCode(jsonenc.Decodable, jsonenc.Encodable):
 
 
 @enum.unique
+@yamlcodec.register_type
 class StarportType(enum.StrEnum):
     EXCELLENT = "A"
     GOOD = "B"
@@ -91,7 +95,9 @@ class StarportType(enum.StrEnum):
 
 
 @dataclasses.dataclass(frozen=True)
+@yamlcodec.register_type
 class UWP:
+    yaml_tag: ClassVar = "!UWP"
     starport: StarportType
     size: int
     atmosphere: int
@@ -122,3 +128,11 @@ class UWP:
                 parseutil.fmt_ehex_char(self.tech_level),
             ]
         )
+
+    @classmethod
+    def to_yaml(cls, representer, node):
+        return representer.represent_scalar(cls.yaml_tag, str(node))
+
+    @classmethod
+    def from_yaml(cls, constructor, node):
+        return cls.parse(node.value)

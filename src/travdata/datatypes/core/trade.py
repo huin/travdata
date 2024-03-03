@@ -3,10 +3,12 @@ import dataclasses
 from typing import Optional
 
 from travdata import jsonenc
+from travdata.datatypes import yamlcodec
 
 
 @dataclasses.dataclass
 @jsonenc.DEFAULT_CODEC.register_json_decodable
+@yamlcodec.register_type
 class TradeGoodProperties(jsonenc.Decodable, jsonenc.Encodable):
     availability: set[str]
     tons: str
@@ -29,6 +31,7 @@ class TradeGoodProperties(jsonenc.Decodable, jsonenc.Encodable):
 
 @dataclasses.dataclass
 @jsonenc.DEFAULT_CODEC.register_json_decodable
+@yamlcodec.register_type
 class TradeGood(jsonenc.Decodable, jsonenc.Encodable):
     d66: str
     name: str

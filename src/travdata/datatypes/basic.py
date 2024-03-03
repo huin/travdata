@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
 import dataclasses
-from typing import Any, Optional, TypeVar
+from typing import Any, ClassVar, Optional, TypeVar
 
 from travdata import jsonenc
+from travdata.datatypes import yamlcodec
 
 T = TypeVar("T")
 
 
 @dataclasses.dataclass
 @jsonenc.DEFAULT_CODEC.register_json_decodable
+@yamlcodec.register_type
 class IntRange:
     """Inclusive integer range [self.min, self.max]."""
-
     min: Optional[int]
     max: Optional[int]
 
@@ -89,8 +90,10 @@ class IntRange:
 
 @dataclasses.dataclass
 @jsonenc.DEFAULT_CODEC.register_json_decodable
+@yamlcodec.register_type
 class IntRangeSet:
     """A set of inclusive integer ranges."""
+    yaml_tag: ClassVar = "!IntRangeSet"
     ranges: list[IntRange] = dataclasses.field(default_factory=list)
 
     @classmethod
@@ -124,3 +127,11 @@ class IntRangeSet:
 
     def to_json(self) -> jsonenc.Object:
         return jsonenc.dataclass_to_dict(self)
+
+    @classmethod
+    def to_yaml(cls, representer, node):
+        return representer.represent_sequence(cls.yaml_tag, node.ranges)
+
+    @classmethod
+    def from_yaml(cls, constructor, node):
+        return cls(node.value)

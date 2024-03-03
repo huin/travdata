@@ -5,6 +5,13 @@
     "reflowMarkdown.preferredLineLength": 80,
     "yaml.customTags": [
         "!Config mapping",
-        "!Table mapping"
+        "!Government mapping",
+        "!IntRange mapping",
+        "!IntRangeSet sequence",
+        "!LawLevel mapping",
+        "!Table mapping",
+        "!TradeCode mapping",
+        "!TradeGood mapping",
+        "!TradeGoodProperties mapping"
     ]
 }
