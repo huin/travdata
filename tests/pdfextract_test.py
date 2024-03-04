@@ -13,17 +13,20 @@ class LoadConfigTest(unittest.TestCase):
             textwrap.dedent(
                 """
         !Config
-        tables:
-        -   !Table
-            name: foo
-            num_header_lines: 2
-            continuation_empty_column: 0
-        -   !Table
-            name: bar
-            num_header_lines: 1
-            continuation_empty_column: 3
-        -   !Table
-            name: defaults
+        groups:
+        -   !Group
+            name: grp-a
+            tables:
+            -   !Table
+                name: foo
+                num_header_lines: 2
+                continuation_empty_column: 0
+            -   !Table
+                name: bar
+                num_header_lines: 1
+                continuation_empty_column: 3
+            -   !Table
+                name: defaults
         """
             )
         )
@@ -31,21 +34,26 @@ class LoadConfigTest(unittest.TestCase):
         testfixtures.compare(
             actual=actual,
             expected=pdfextract.Config(
-                tables=[
-                    pdfextract.Table(
-                        name="foo",
-                        num_header_lines=2,
-                        continuation_empty_column=0,
+                groups=[
+                    pdfextract.Group(
+                        name="grp-a",
+                        tables=[
+                            pdfextract.Table(
+                                name="foo",
+                                num_header_lines=2,
+                                continuation_empty_column=0,
+                            ),
+                            pdfextract.Table(
+                                name="bar",
+                                num_header_lines=1,
+                                continuation_empty_column=3,
+                            ),
+                            pdfextract.Table(
+                                name="defaults",
+                            ),
+                        ],
                     ),
-                    pdfextract.Table(
-                        name="bar",
-                        num_header_lines=1,
-                        continuation_empty_column=3,
-                    ),
-                    pdfextract.Table(
-                        name="defaults",
-                    ),
-                ],
+                ]
             ),
         )
 

@@ -46,13 +46,13 @@ def main() -> None:
     for ext in core.CONVERTERS:
         with (
             open(args.input_dir / f"{ext.name}.csv", "rt") as csv_file_in,
-            open(args.output_dir / f"{ext.name}.yaml", "wt") as json_file_out,
+            open(args.output_dir / f"{ext.name}.yaml", "wt") as yaml_file_out,
         ):
             r = csv.DictReader(csv_file_in)
             data = ext.fn(iter(r))
             yamlcodec.DATATYPES_YAML.dump(
                 data=list(data),
-                stream=json_file_out,
+                stream=yaml_file_out,
             )
 
 

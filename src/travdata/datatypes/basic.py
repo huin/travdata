@@ -2,14 +2,12 @@
 import dataclasses
 from typing import Any, ClassVar, Optional, TypeVar
 
-from travdata import jsonenc
 from travdata.datatypes import yamlcodec
 
 T = TypeVar("T")
 
 
 @dataclasses.dataclass
-@jsonenc.DEFAULT_CODEC.register_json_decodable
 @yamlcodec.register_type
 class IntRange:
     """Inclusive integer range [self.min, self.max]."""
@@ -76,20 +74,8 @@ class IntRange:
             return False
         return True
 
-    @classmethod
-    def json_type(cls) -> str:
-        return "IntRange"
-
-    @classmethod
-    def from_json(cls, o: jsonenc.Object) -> "IntRange":
-        return cls(**o)
-
-    def to_json(self) -> jsonenc.Object:
-        return jsonenc.dataclass_to_dict(self)
-
 
 @dataclasses.dataclass
-@jsonenc.DEFAULT_CODEC.register_json_decodable
 @yamlcodec.register_type
 class IntRangeSet:
     """A set of inclusive integer ranges."""
@@ -116,17 +102,6 @@ class IntRangeSet:
 
     def __contains__(self, v: Any) -> bool:
         return any(v in r for r in self.ranges)
-
-    @classmethod
-    def json_type(cls) -> str:
-        return "IntRangeSet"
-
-    @classmethod
-    def from_json(cls, o: jsonenc.Object) -> "IntRangeSet":
-        return cls(**o)
-
-    def to_json(self) -> jsonenc.Object:
-        return jsonenc.dataclass_to_dict(self)
 
     @classmethod
     def to_yaml(cls, representer, node):

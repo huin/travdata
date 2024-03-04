@@ -9,58 +9,33 @@ import dataclasses
 import enum
 from typing import ClassVar, Optional
 
-from travdata import jsonenc, parseutil
+from travdata import parseutil
 from travdata.datatypes import basic, yamlcodec
 
 
 @dataclasses.dataclass
-@jsonenc.DEFAULT_CODEC.register_json_decodable
 @yamlcodec.register_type
-class Government(jsonenc.Decodable, jsonenc.Encodable):
+class Government:
     code: str
     name: str
     description: str
     examples: str
     example_contaband: set[str]
 
-    @classmethod
-    def json_type(cls) -> str:
-        return "Government"
-
-    @classmethod
-    def from_json(cls, o: jsonenc.Object) -> "Government":
-        return cls(**o)
-
-    def to_json(self) -> jsonenc.Object:
-        return jsonenc.dataclass_to_dict(self)
-
 
 @dataclasses.dataclass
-@jsonenc.DEFAULT_CODEC.register_json_decodable
 @yamlcodec.register_type
-class LawLevel(jsonenc.Decodable, jsonenc.Encodable):
+class LawLevel:
     min_level: int
     max_level: Optional[int]
     description: Optional[str]
     weapons_banned: Optional[str]
     armour_banned: Optional[str]
 
-    @classmethod
-    def json_type(cls) -> str:
-        return "LawLevel"
-
-    @classmethod
-    def from_json(cls, o: jsonenc.Object) -> "LawLevel":
-        return cls(**o)
-
-    def to_json(self) -> jsonenc.Object:
-        return jsonenc.dataclass_to_dict(self)
-
 
 @dataclasses.dataclass
-@jsonenc.DEFAULT_CODEC.register_json_decodable
 @yamlcodec.register_type
-class TradeCode(jsonenc.Decodable, jsonenc.Encodable):
+class TradeCode:
     classification: str
     code: str
     planet_sizes: basic.IntRangeSet
@@ -70,17 +45,6 @@ class TradeCode(jsonenc.Decodable, jsonenc.Encodable):
     government: basic.IntRangeSet
     law_level: basic.IntRangeSet
     tech_level: basic.IntRangeSet
-
-    @classmethod
-    def json_type(cls) -> str:
-        return "TradeCode"
-
-    @classmethod
-    def from_json(cls, o: jsonenc.Object) -> "TradeCode":
-        return cls(**o)
-
-    def to_json(self) -> jsonenc.Object:
-        return jsonenc.dataclass_to_dict(self)
 
 
 @enum.unique
