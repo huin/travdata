@@ -12,8 +12,22 @@ _YAML = yaml.YAML(typ="safe")
 @dataclasses.dataclass
 @yaml.yaml_object(_YAML)
 class Config:
-    tables: list["Table"]
+    groups: list["Group"]
     tabula_tmpl_dir: Optional[pathlib.Path] = None
+
+
+@dataclasses.dataclass
+@yaml.yaml_object(_YAML)
+class Group:
+    """Group of items to extract from the PDF.
+
+    A group is notionally aligned with a book chapter, but may not always be.
+
+    These items have Tabula templates in their named subdirectory of the parent
+    ``Config``.
+    """
+    name: str
+    tables: list["Table"]
 
 
 @dataclasses.dataclass
@@ -86,15 +100,16 @@ def extract_tables(
     """
     if cfg.tabula_tmpl_dir is None:
         raise ValueError("cfg.tabula_tmpl_dir must be set")
-    for table in cfg.tables:
-        yield ExtractedTable(
-            name=table.name,
-            rows=_extract_table(
-                table=table,
-                pdf_path=pdf_path,
-                tabula_tmpl_dir=cfg.tabula_tmpl_dir,
-            ),
-        )
+    for group in cfg.groups:
+        for table in group.tables:
+            yield ExtractedTable(
+                name=table.name,
+                rows=_extract_table(
+                    table=table,
+                    pdf_path=pdf_path,
+                    tabula_tmpl_dir=cfg.tabula_tmpl_dir / group.name,
+                ),
+            )
 
 
 def _amalgamate_streamed_rows(

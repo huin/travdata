@@ -1,12 +1,18 @@
 !Config
-tables:
-  - !Table
-    name: governments
-    num_header_lines: 2
-  - !Table
-    name: law-levels
-    num_header_lines: 2
-  - !Table
-    name: trade-codes
-  - !Table
-    name: trade-goods
+groups:
+  - !Group
+    name: trade
+    tables:
+      - !Table
+        name: trade-goods
+  - !Group
+    name: worldcreation
+    tables:
+      - !Table
+        name: governments
+        num_header_lines: 2
+      - !Table
+        name: law-levels
+        num_header_lines: 2
+      - !Table
+        name: trade-codes

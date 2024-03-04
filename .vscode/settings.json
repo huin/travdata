@@ -5,6 +5,7 @@
     "reflowMarkdown.preferredLineLength": 80,
     "yaml.customTags": [
         "!Config mapping",
+        "!Group mapping",
         "!Government mapping",
         "!IntRange mapping",
         "!IntRangeSet sequence",
