@@ -84,7 +84,8 @@ def _extract_table(
 
 @dataclasses.dataclass
 class ExtractedTable:
-    name: str
+    group_name: str
+    table_name: str
     rows: Iterator[list[str]]
 
 
@@ -103,7 +104,8 @@ def extract_tables(
     for group in cfg.groups:
         for table in group.tables:
             yield ExtractedTable(
-                name=table.name,
+                group_name=group.name,
+                table_name=table.name,
                 rows=_extract_table(
                     table=table,
                     pdf_path=pdf_path,

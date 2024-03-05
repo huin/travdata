@@ -12,6 +12,8 @@ from typing import ClassVar, Optional
 from travdata import parseutil
 from travdata.datatypes import basic, yamlcodec
 
+GROUP = "worldcreation"
+
 
 @dataclasses.dataclass
 @yamlcodec.register_type

@@ -241,9 +241,12 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
 
 def process(args: argparse.Namespace) -> None:
     tcodes = cast(
-        list[worldcreation.TradeCode], _load_yaml(list, args.data_dir / "trade-codes.yaml")
+        list[worldcreation.TradeCode],
+        _load_yaml(list, args.data_dir / worldcreation.GROUP / "trade-codes.yaml"),
     )
-    tgoods = cast(list[trade.TradeGood], _load_yaml(list, args.data_dir / "trade-goods.yaml"))
+    tgoods = cast(
+        list[trade.TradeGood], _load_yaml(list, args.data_dir / trade.GROUP / "trade-goods.yaml")
+    )
     tgood_illegality: TradeGoodIllegality
     if args.trade_good_illegality:
         tgood_illegality = cast(TradeGoodIllegality, _load_yaml(dict, args.trade_good_illegality))

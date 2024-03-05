@@ -19,6 +19,7 @@ testfixtures = "^8.0.0"
 line-length = 100
 
 [tool.poetry.dependencies]
+progress = "^1.6"
 python = "^3.11"
 tabula-py = "^2.9.0"
 ruamel-yaml = "^0.18.6"

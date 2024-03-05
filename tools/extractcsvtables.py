@@ -57,8 +57,12 @@ def main() -> None:
         pdf_path=args.input_pdf,
     )
 
+    created_directories: set[pathlib.Path] = set()
     for table in extracted_tables:
-        with open(args.output_dir / f"{table.name}.csv", "wt") as f:
+        group_dir = args.output_dir / table.group_name
+        if group_dir not in created_directories:
+            group_dir.mkdir(parents=True, exist_ok=True)
+        with open(group_dir / f"{table.table_name}.csv", "wt") as f:
             csv.writer(f).writerows(table.rows)
 
 

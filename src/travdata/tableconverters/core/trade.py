@@ -4,6 +4,9 @@ from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 from travdata import parseutil
 from travdata.datatypes.core import trade
+from travdata.tableconverters import core
+
+_register_conv = core.CONVERTERS.make_group_decorator(trade.GROUP)
 
 _DM_ITEM_RX = re.compile(r"(.+) ([-+]\d+)")
 
@@ -19,8 +22,7 @@ def _parse_trade_dm(s: str) -> dict[str, int]:
     return result
 
 
-
-
+@_register_conv("trade-goods")
 def trade_goods(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[trade.TradeGood]:
     _RawRow = TypedDict(
         "_RawRow",

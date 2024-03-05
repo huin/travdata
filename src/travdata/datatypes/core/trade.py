@@ -4,6 +4,8 @@ from typing import Optional
 
 from travdata.datatypes import yamlcodec
 
+GROUP = "trade"
+
 
 @dataclasses.dataclass
 @yamlcodec.register_type

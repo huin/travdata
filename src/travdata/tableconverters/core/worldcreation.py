@@ -5,8 +5,12 @@ from typing import Iterable, Iterator, Optional, TypedDict, cast
 from travdata import parseutil
 from travdata.datatypes import basic
 from travdata.datatypes.core import worldcreation
+from travdata.tableconverters import core
+
+_register_conv = core.CONVERTERS.make_group_decorator(worldcreation.GROUP)
 
 
+@_register_conv("governments")
 def governments(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreation.Government]:
     _RawRow = TypedDict(
         "_RawRow",
@@ -29,6 +33,7 @@ def governments(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreat
         )
 
 
+@_register_conv("law-levels")
 def law_levels(rows: Iterable[dict[str, Optional[str]]]) -> list[worldcreation.LawLevel]:
     _RawRow = TypedDict(
         "_RawRow",
@@ -70,6 +75,7 @@ def law_levels(rows: Iterable[dict[str, Optional[str]]]) -> list[worldcreation.L
     return results
 
 
+@_register_conv("trade-codes")
 def trade_codes(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreation.TradeCode]:
     _RawRow = TypedDict(
         "_RawRow",

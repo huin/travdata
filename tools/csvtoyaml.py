@@ -43,13 +43,20 @@ def main() -> None:
 
     args = argparser.parse_args()
 
-    for ext in core.CONVERTERS:
+    core.load_all_converters()
+
+    created_directories: set[pathlib.Path] = set()
+    for conv_key, conv_fn in core.CONVERTERS.converters.items():
+        in_group_dir = args.input_dir / conv_key.group_name
+        out_group_dir = args.output_dir / conv_key.group_name
+        if out_group_dir not in created_directories:
+            out_group_dir.mkdir(parents=True, exist_ok=True)
         with (
-            open(args.input_dir / f"{ext.name}.csv", "rt") as csv_file_in,
-            open(args.output_dir / f"{ext.name}.yaml", "wt") as yaml_file_out,
+            open(in_group_dir / f"{conv_key.table_name}.csv", "rt") as csv_file_in,
+            open(out_group_dir / f"{conv_key.table_name}.yaml", "wt") as yaml_file_out,
         ):
             r = csv.DictReader(csv_file_in)
-            data = ext.fn(iter(r))
+            data = conv_fn(iter(r))
             yamlcodec.DATATYPES_YAML.dump(
                 data=list(data),
                 stream=yaml_file_out,
