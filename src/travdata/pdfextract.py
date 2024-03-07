@@ -126,8 +126,6 @@ def extract_tables(
     set to a valid path.
     :param pdf_path: Path to the PDF file to read from.
     """
-    if group.directory is None:
-        raise ValueError("cfg.tabula_tmpl_dir must be set")
     for table in group.tables.values():
         yield ExtractedTable(
             table_cfg=table,
