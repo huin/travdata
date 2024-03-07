@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import pathlib
 import textwrap
 import unittest
 
@@ -12,48 +13,51 @@ class LoadConfigTest(unittest.TestCase):
         actual = pdfextract.load_config_from_str(
             textwrap.dedent(
                 """
-        !Config
+        !Group
         groups:
-        -   !Group
-            name: grp-a
-            tables:
-            -   !Table
-                name: foo
-                num_header_lines: 2
-                continuation_empty_column: 0
-            -   !Table
-                name: bar
-                num_header_lines: 1
-                continuation_empty_column: 3
-            -   !Table
-                name: defaults
+            grp-a: !Group
+                tables:
+                    foo: !Table
+                        type: Foo
+                        num_header_lines: 2
+                        continuation_empty_column: 0
+                    bar: !Table
+                        type: Bar
+                        num_header_lines: 1
+                        continuation_empty_column: 3
+                    defaults: !Table
+                        type: Defaults
         """
             )
         )
 
         testfixtures.compare(
             actual=actual,
-            expected=pdfextract.Config(
-                groups=[
-                    pdfextract.Group(
-                        name="grp-a",
-                        tables=[
-                            pdfextract.Table(
-                                name="foo",
+            expected=pdfextract.Group(
+                directory=pathlib.Path("."),
+                groups={
+                    "grp-a": pdfextract.Group(
+                        directory=pathlib.Path("./grp-a"),
+                        tables={
+                            "foo": pdfextract.Table(
+                                file_stem=pathlib.Path("./grp-a/foo"),
+                                type="Foo",
                                 num_header_lines=2,
                                 continuation_empty_column=0,
                             ),
-                            pdfextract.Table(
-                                name="bar",
+                            "bar": pdfextract.Table(
+                                file_stem=pathlib.Path("./grp-a/bar"),
+                                type="Bar",
                                 num_header_lines=1,
                                 continuation_empty_column=3,
                             ),
-                            pdfextract.Table(
-                                name="defaults",
+                            "defaults": pdfextract.Table(
+                                file_stem=pathlib.Path("./grp-a/defaults"),
+                                type="Defaults",
                             ),
-                        ],
+                        },
                     ),
-                ]
+                },
             ),
         )
 

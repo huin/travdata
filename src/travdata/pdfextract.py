@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import dataclasses
 import pathlib
-from typing import Callable, Iterable, Iterator, Optional
+from typing import Any, Callable, ClassVar, Iterable, Iterator
 
 from ruamel import yaml
 from travdata import parseutil, tabulautil
@@ -10,59 +10,86 @@ _YAML = yaml.YAML(typ="safe")
 
 
 @dataclasses.dataclass
-@yaml.yaml_object(_YAML)
-class Config:
-    groups: list["Group"]
-    tabula_tmpl_dir: Optional[pathlib.Path] = None
+@_YAML.register_class
+class _YamlGroup:
+    yaml_tag: ClassVar = "!Group"
+    groups: dict[str, "_YamlGroup"] = dataclasses.field(default_factory=dict)
+    tables: dict[str, "_YamlTable"] = dataclasses.field(default_factory=dict)
+
+    def __setstate__(self, state):
+        self.__init__(**state)
+
+    def prepare(self, directory: pathlib.Path) -> "Group":
+        return Group(
+            directory=directory,
+            tables={name: table.prepare(name, directory) for name, table in self.tables.items()},
+            groups={name: group.prepare(directory / name) for name, group in self.groups.items()},
+        )
 
 
 @dataclasses.dataclass
-@yaml.yaml_object(_YAML)
+@_YAML.register_class
+class _YamlTable:
+    yaml_tag: ClassVar = "!Table"
+    type: str
+    num_header_lines: int = 1
+    continuation_empty_column: int = 0
+
+    def __setstate__(self, state):
+        self.__init__(**state)
+
+    def prepare(self, name: str, directory: pathlib.Path) -> "Table":
+        kw = dataclasses.asdict(self)
+        return Table(file_stem=directory / name, **kw)
+
+
+@dataclasses.dataclass
 class Group:
     """Group of items to extract from the PDF.
 
-    A group is notionally aligned with a book chapter, but may not always be.
+    A top-level group within a book is often aligned with a book chapter.
 
-    These items have Tabula templates in their named subdirectory of the parent
-    ``Config``.
+    The table items have Tabula templates in ``.directory``.
     """
-    name: str
-    tables: list["Table"]
+
+    directory: pathlib.Path
+    tables: dict[str, "Table"] = dataclasses.field(default_factory=dict)
+    groups: dict[str, "Group"] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
-@yaml.yaml_object(_YAML)
 class Table:
-    name: str
+    file_stem: pathlib.Path
+    type: str
     num_header_lines: int = 1
     continuation_empty_column: int = 0
 
 
-def load_config_from_str(yaml: str) -> Config:
+def _prepare_config(cfg: Any, cfg_dir: pathlib.Path) -> Group:
+    if not isinstance(cfg, _YamlGroup):
+        raise TypeError(cfg)
+    return cfg.prepare(cfg_dir)
+
+
+def load_config_from_str(yaml: str) -> Group:
     cfg = _YAML.load(yaml)
-    if not isinstance(cfg, Config):
-        raise TypeError(cfg)
-    return cfg
+    return _prepare_config(cfg, pathlib.Path("."))
 
 
-def load_config(cfg_dir: pathlib.Path) -> Config:
+def load_config(cfg_dir: pathlib.Path) -> Group:
     cfg = _YAML.load(cfg_dir / "config.yaml")
-    if not isinstance(cfg, Config):
-        raise TypeError(cfg)
-    if cfg.tabula_tmpl_dir is None:
-        cfg.tabula_tmpl_dir = cfg_dir
-    return cfg
+    return _prepare_config(cfg, pathlib.Path("."))
 
 
 def _extract_table(
-    table: Table,
+    config_dir: pathlib.Path,
     pdf_path: pathlib.Path,
-    tabula_tmpl_dir: pathlib.Path,
+    table: Table,
 ) -> Iterator[list[str]]:
     tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
             pdf_path=pdf_path,
-            template_path=tabula_tmpl_dir / f"{table.name}.tabula-template.json",
+            template_path=config_dir / table.file_stem.with_suffix(".tabula-template.json"),
         )
     )
 
@@ -84,13 +111,13 @@ def _extract_table(
 
 @dataclasses.dataclass
 class ExtractedTable:
-    group_name: str
-    table_name: str
+    table_cfg: Table
     rows: Iterator[list[str]]
 
 
 def extract_tables(
-    cfg: Config,
+    group: Group,
+    config_dir: pathlib.Path,
     pdf_path: pathlib.Path,
 ) -> Iterator[ExtractedTable]:
     """Extracts table data from the PDF.
@@ -99,19 +126,19 @@ def extract_tables(
     set to a valid path.
     :param pdf_path: Path to the PDF file to read from.
     """
-    if cfg.tabula_tmpl_dir is None:
+    if group.directory is None:
         raise ValueError("cfg.tabula_tmpl_dir must be set")
-    for group in cfg.groups:
-        for table in group.tables:
-            yield ExtractedTable(
-                group_name=group.name,
-                table_name=table.name,
-                rows=_extract_table(
-                    table=table,
-                    pdf_path=pdf_path,
-                    tabula_tmpl_dir=cfg.tabula_tmpl_dir / group.name,
-                ),
-            )
+    for table in group.tables.values():
+        yield ExtractedTable(
+            table_cfg=table,
+            rows=_extract_table(
+                config_dir=config_dir,
+                table=table,
+                pdf_path=pdf_path,
+            ),
+        )
+    for sub_group in group.groups.values():
+        yield from extract_tables(group=sub_group, config_dir=config_dir, pdf_path=pdf_path)
 
 
 def _amalgamate_streamed_rows(

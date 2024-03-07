@@ -51,19 +51,21 @@ def main() -> None:
 
     args = argparser.parse_args()
 
-    cfg = pdfextract.load_config(args.config_dir)
+    group = pdfextract.load_config(args.config_dir)
     extracted_tables = pdfextract.extract_tables(
-        cfg=cfg,
+        group=group,
+        config_dir=args.config_dir,
         pdf_path=args.input_pdf,
     )
 
     created_directories: set[pathlib.Path] = set()
-    for table in extracted_tables:
-        group_dir = args.output_dir / table.group_name
+    for ext_table in extracted_tables:
+        out_filepath = args.output_dir / ext_table.table_cfg.file_stem.with_suffix(".csv")
+        group_dir = out_filepath.parent
         if group_dir not in created_directories:
             group_dir.mkdir(parents=True, exist_ok=True)
-        with open(group_dir / f"{table.table_name}.csv", "wt") as f:
-            csv.writer(f).writerows(table.rows)
+        with open(out_filepath, "wt") as f:
+            csv.writer(f).writerows(ext_table.rows)
 
 
 if __name__ == "__main__":
