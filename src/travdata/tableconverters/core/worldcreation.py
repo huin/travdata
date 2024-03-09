@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import re
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 from travdata import parseutil
@@ -103,17 +102,3 @@ def trade_codes(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreat
             law_level=basic.IntRangeSet.parse(row["Law Level"]),
             tech_level=basic.IntRangeSet.parse(row["Tech Level"]),
         )
-
-
-_DM_ITEM_RX = re.compile(r"(.+) ([-+]\d+)")
-
-
-def _parse_trade_dm(s: str) -> dict[str, int]:
-    result: dict[str, int] = {}
-    for item in s.split(","):
-        match = _DM_ITEM_RX.fullmatch(item)
-        if not match:
-            raise ValueError(item)
-        name, dm = match.group(1, 2)
-        result[name.strip()] = int(dm)
-    return result
