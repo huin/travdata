@@ -3,6 +3,7 @@
 
 import argparse
 import csv
+import dataclasses
 import pathlib
 
 from progress import bar as progress  # type: ignore[import-untyped]
@@ -49,6 +50,14 @@ def main() -> None:
         metavar="OUT_DIR",
         default=pathlib.Path("./csv-tables"),
     )
+    argparser.add_argument(
+        "--overwrite-existing",
+        help="""Extract CSV tables that already exist in the output. This is
+        useful when testing larger scale changes to the configuration or
+        code.""",
+        action="store_true",
+        default=False,
+    )
 
     tab_grp = argparser.add_argument_group("Tabula")
     tab_grp.add_argument(
@@ -66,22 +75,41 @@ def main() -> None:
     )
 
     group = pdfextract.load_config(args.config_dir)
-    extracted_tables = pdfextract.extract_tables(
+    table_extractors = pdfextract.extract_tables(
         group=group,
         config_dir=args.config_dir,
         pdf_path=args.input_pdf,
         tabula_cfg=tabula_cfg,
     )
-    progress_bar = progress.Bar("Extracting tables", max=group.num_tables())
 
+    outputs = [
+        _OutputTable(_output_filepath(args.output_dir, ext_table), ext_table)
+        for ext_table in table_extractors
+    ]
+    if not args.overwrite_existing:
+        outputs = [o for o in outputs if not o.filepath.exists()]
+
+    progress_bar = progress.Bar("Extracting tables", max=len(outputs))
     created_directories: set[pathlib.Path] = set()
-    for ext_table in progress_bar.iter(extracted_tables):
-        out_filepath = args.output_dir / ext_table.table_cfg.file_stem.with_suffix(".csv")
-        group_dir = out_filepath.parent
+    for output in progress_bar.iter(outputs):
+        group_dir = output.filepath.parent
         if group_dir not in created_directories:
             group_dir.mkdir(parents=True, exist_ok=True)
-        with open(out_filepath, "wt") as f:
-            csv.writer(f).writerows(ext_table.rows)
+        with open(output.filepath, "wt") as f:
+            csv.writer(f).writerows(output.ext_table.extract_rows())
+
+
+@dataclasses.dataclass
+class _OutputTable:
+    filepath: pathlib.Path
+    ext_table: pdfextract.TableExtractor
+
+
+def _output_filepath(
+    output_dir: pathlib.Path,
+    ext_table: pdfextract.TableExtractor,
+) -> pathlib.Path:
+    return output_dir / ext_table.table_cfg.file_stem.with_suffix(".csv")
 
 
 if __name__ == "__main__":

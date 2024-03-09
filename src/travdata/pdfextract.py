@@ -56,13 +56,6 @@ class Group:
     tables: dict[str, "Table"] = dataclasses.field(default_factory=dict)
     groups: dict[str, "Group"] = dataclasses.field(default_factory=dict)
 
-    def num_tables(self) -> int:
-        """Calculates the number of tables in this group and child groups.
-
-        :return: Number of tables.
-        """
-        return len(self.tables) + sum(group.num_tables() for group in self.groups.values())
-
 
 @dataclasses.dataclass
 class Table:
@@ -121,9 +114,9 @@ def _extract_table(
 
 
 @dataclasses.dataclass
-class ExtractedTable:
+class TableExtractor:
     table_cfg: Table
-    rows: Iterator[list[str]]
+    extract_rows: Callable[[], Iterator[list[str]]]
 
 
 def extract_tables(
@@ -131,7 +124,7 @@ def extract_tables(
     config_dir: pathlib.Path,
     pdf_path: pathlib.Path,
     tabula_cfg: tabulautil.TabulaConfig,
-) -> Iterator[ExtractedTable]:
+) -> Iterator[TableExtractor]:
     """Extracts table data from the PDF.
 
     :param cfg: Configuration of tables to extact. `cfg.tabula_tmpl_dir` must be
@@ -139,14 +132,18 @@ def extract_tables(
     :param pdf_path: Path to the PDF file to read from.
     """
     for table in group.tables.values():
-        yield ExtractedTable(
-            table_cfg=table,
-            rows=_extract_table(
+
+        def extract_rows() -> Iterator[list[str]]:
+            return _extract_table(
                 config_dir=config_dir,
                 table=table,
                 pdf_path=pdf_path,
                 tabula_cfg=tabula_cfg,
-            ),
+            )
+
+        yield TableExtractor(
+            table_cfg=table,
+            extract_rows=extract_rows,
         )
     for sub_group in group.groups.values():
         yield from extract_tables(
