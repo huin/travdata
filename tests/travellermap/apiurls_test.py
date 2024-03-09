@@ -125,6 +125,9 @@ class UWPDataTest(unittest.TestCase):
                 self.assertEqual("travellermap.com", actual.netloc)
                 self.assertEqual("/api/sec", actual.path)
                 self.assertFalse(actual.params)
+                self.assertFalse(actual.username)
+                self.assertFalse(actual.password)
+                self.assertFalse(actual.fragment)
                 actual_query = urlparse.parse_qs(actual.query)
                 self.assertEqual(expected_query, actual_query)
 
