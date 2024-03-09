@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
+import dataclasses
 import json
 import pathlib
 from typing import Iterable, Iterator, TypeAlias, TypedDict, cast
 
 import tabula
+
+
+@dataclasses.dataclass
+class TabulaConfig:
+    force_subprocess: bool
 
 
 class TabulaCell(TypedDict):
@@ -34,6 +40,7 @@ def read_pdf_with_template(
     *,
     pdf_path: pathlib.Path,
     template_path: pathlib.Path,
+    config: TabulaConfig,
 ) -> list[TabulaTable]:
     """Reads table(s) from a PDF, based on the Tabula template.
 
@@ -57,8 +64,7 @@ def read_pdf_with_template(
                     multiple_tables=True,
                     output_format="json",
                     area=[entry["y1"], entry["x1"], entry["y2"], entry["x2"]],
-                    # jpype doesn't work for me.
-                    force_subprocess=True,
+                    force_subprocess=config.force_subprocess,
                     stream=method == "stream",
                     guess=method == "guess",
                     lattice=method == "lattice",

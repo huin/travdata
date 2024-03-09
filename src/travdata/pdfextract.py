@@ -92,11 +92,13 @@ def _extract_table(
     config_dir: pathlib.Path,
     pdf_path: pathlib.Path,
     table: Table,
+    tabula_cfg: tabulautil.TabulaConfig,
 ) -> Iterator[list[str]]:
     tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
             pdf_path=pdf_path,
             template_path=config_dir / table.file_stem.with_suffix(".tabula-template.json"),
+            config=tabula_cfg,
         )
     )
 
@@ -128,6 +130,7 @@ def extract_tables(
     group: Group,
     config_dir: pathlib.Path,
     pdf_path: pathlib.Path,
+    tabula_cfg: tabulautil.TabulaConfig,
 ) -> Iterator[ExtractedTable]:
     """Extracts table data from the PDF.
 
@@ -142,10 +145,16 @@ def extract_tables(
                 config_dir=config_dir,
                 table=table,
                 pdf_path=pdf_path,
+                tabula_cfg=tabula_cfg,
             ),
         )
     for sub_group in group.groups.values():
-        yield from extract_tables(group=sub_group, config_dir=config_dir, pdf_path=pdf_path)
+        yield from extract_tables(
+            group=sub_group,
+            config_dir=config_dir,
+            pdf_path=pdf_path,
+            tabula_cfg=tabula_cfg,
+        )
 
 
 def _amalgamate_streamed_rows(

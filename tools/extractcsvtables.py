@@ -6,7 +6,7 @@ import csv
 import pathlib
 
 from progress import bar as progress  # type: ignore[import-untyped]
-from travdata import pdfextract
+from travdata import pdfextract, tabulautil
 
 
 def main() -> None:
@@ -50,13 +50,27 @@ def main() -> None:
         default=pathlib.Path("./csv-tables"),
     )
 
+    tab_grp = argparser.add_argument_group("Tabula")
+    tab_grp.add_argument(
+        "--tabula-force-subprocess",
+        help="""If jpype cannot use libjvm, try seting this flag to use a slower
+        path that uses Java as a subprocess.""",
+        action="store_true",
+        default=False,
+    )
+
     args = argparser.parse_args()
+
+    tabula_cfg = tabulautil.TabulaConfig(
+        force_subprocess=args.tabula_force_subprocess,
+    )
 
     group = pdfextract.load_config(args.config_dir)
     extracted_tables = pdfextract.extract_tables(
         group=group,
         config_dir=args.config_dir,
         pdf_path=args.input_pdf,
+        tabula_cfg=tabula_cfg,
     )
     progress_bar = progress.Bar("Extracting tables", max=group.num_tables())
 
