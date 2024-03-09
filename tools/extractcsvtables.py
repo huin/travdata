@@ -3,8 +3,8 @@
 
 import argparse
 import csv
-import dataclasses
 import pathlib
+from typing import cast
 
 from progress import bar as progress  # type: ignore[import-untyped]
 from travdata import pdfextract, tabulautil
@@ -75,41 +75,33 @@ def main() -> None:
     )
 
     group = pdfextract.load_config(args.config_dir)
-    table_extractors = pdfextract.extract_tables(
-        group=group,
-        config_dir=args.config_dir,
-        pdf_path=args.input_pdf,
-        tabula_cfg=tabula_cfg,
-    )
 
-    outputs = [
-        _OutputTable(_output_filepath(args.output_dir, ext_table), ext_table)
-        for ext_table in table_extractors
-    ]
-    if not args.overwrite_existing:
-        outputs = [o for o in outputs if not o.filepath.exists()]
+    output_tables: list[tuple[pathlib.Path, pdfextract.Table]] = []
+    for table in group.all_tables():
+        out_filepath = args.output_dir / table.file_stem.with_suffix(".csv")
 
-    progress_bar = progress.Bar("Extracting tables", max=len(outputs))
+        if args.overwrite_existing or not out_filepath.exists():
+            output_tables.append((out_filepath, table))
+
+    progress_bar = progress.Bar("Extracting tables", max=len(output_tables))
     created_directories: set[pathlib.Path] = set()
-    for output in progress_bar.iter(outputs):
-        group_dir = output.filepath.parent
+    for out_filepath, table in progress_bar.iter(output_tables):
+        out_filepath = cast(pathlib.Path, out_filepath)
+        table = cast(pdfextract.Table, table)
+
+        group_dir = out_filepath.parent
         if group_dir not in created_directories:
             group_dir.mkdir(parents=True, exist_ok=True)
-        with open(output.filepath, "wt") as f:
-            csv.writer(f).writerows(output.ext_table.extract_rows())
+            created_directories.add(group_dir)
 
-
-@dataclasses.dataclass
-class _OutputTable:
-    filepath: pathlib.Path
-    ext_table: pdfextract.TableExtractor
-
-
-def _output_filepath(
-    output_dir: pathlib.Path,
-    ext_table: pdfextract.TableExtractor,
-) -> pathlib.Path:
-    return output_dir / ext_table.table_cfg.file_stem.with_suffix(".csv")
+        rows = pdfextract.extract_table(
+            config_dir=args.config_dir,
+            pdf_path=args.input_pdf,
+            table=table,
+            tabula_cfg=tabula_cfg,
+        )
+        with open(out_filepath, "wt") as f:
+            csv.writer(f).writerows(rows)
 
 
 if __name__ == "__main__":

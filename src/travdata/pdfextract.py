@@ -56,6 +56,15 @@ class Group:
     tables: dict[str, "Table"] = dataclasses.field(default_factory=dict)
     groups: dict[str, "Group"] = dataclasses.field(default_factory=dict)
 
+    def all_tables(self) -> Iterator["Table"]:
+        """Iterates over all tables in this group and its child groups.
+
+        :yield: Descendent tables.
+        """
+        yield from self.tables.values()
+        for group in self.groups.values():
+            yield from group.all_tables()
+
 
 @dataclasses.dataclass
 class Table:
@@ -81,12 +90,20 @@ def load_config(cfg_dir: pathlib.Path) -> Group:
     return _prepare_config(cfg, pathlib.Path("."))
 
 
-def _extract_table(
+def extract_table(
     config_dir: pathlib.Path,
     pdf_path: pathlib.Path,
     table: Table,
     tabula_cfg: tabulautil.TabulaConfig,
 ) -> Iterator[list[str]]:
+    """Extracts a table from the PDF.
+
+    :param config_dir: Config directory containing the config.yaml file.
+    :param pdf_path: Path to the PDF to extract from.
+    :param table: Table configuration to extract.
+    :param tabula_cfg: Configuration for Tabula extractor.
+    :returns: Iterator over rows from the table.
+    """
     tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
             pdf_path=pdf_path,
@@ -111,47 +128,6 @@ def _extract_table(
         continuation=continuation,
     )
     return _clean_rows(text_rows)
-
-
-@dataclasses.dataclass
-class TableExtractor:
-    table_cfg: Table
-    extract_rows: Callable[[], Iterator[list[str]]]
-
-
-def extract_tables(
-    group: Group,
-    config_dir: pathlib.Path,
-    pdf_path: pathlib.Path,
-    tabula_cfg: tabulautil.TabulaConfig,
-) -> Iterator[TableExtractor]:
-    """Extracts table data from the PDF.
-
-    :param cfg: Configuration of tables to extact. `cfg.tabula_tmpl_dir` must be
-    set to a valid path.
-    :param pdf_path: Path to the PDF file to read from.
-    """
-    for table in group.tables.values():
-
-        def extract_rows() -> Iterator[list[str]]:
-            return _extract_table(
-                config_dir=config_dir,
-                table=table,
-                pdf_path=pdf_path,
-                tabula_cfg=tabula_cfg,
-            )
-
-        yield TableExtractor(
-            table_cfg=table,
-            extract_rows=extract_rows,
-        )
-    for sub_group in group.groups.values():
-        yield from extract_tables(
-            group=sub_group,
-            config_dir=config_dir,
-            pdf_path=pdf_path,
-            tabula_cfg=tabula_cfg,
-        )
 
 
 def _amalgamate_streamed_rows(
