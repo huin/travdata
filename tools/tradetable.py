@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-
 import argparse
 import codecs
 import csv
@@ -338,6 +337,165 @@ def _make_world_views(
     return world_views
 
 
+@dataclasses.dataclass
+class _ResultDMData:
+    world_view: _WorldView
+    dm: int
+    common: bool
+    available: bool
+    illegal: bool
+
+
+@dataclasses.dataclass
+class _ResultTradeGoodDMs:
+    tgood: trade.TradeGood
+    dms: Optional[list[_ResultDMData]]
+
+
+def _calculate_trades(
+    tgoods: list[trade.TradeGood],
+    tgood_illegality: TradeGoodIllegality,
+    world_views: list[_WorldView],
+    wt_overrides: WorldTradeOverridesMap,
+) -> Iterator[_ResultTradeGoodDMs]:
+    """Core calculation of trade DMs and properties.
+
+    :param tgoods: Trade goods.
+    :param tgood_illegality: General illegality of goods (minimum law level of
+    good being illegal).
+    :param world_views: Worlds to produce data for.
+    :param wt_overrides: Per-world calculated value overrides of trade good
+    properties (such as illegality, purchase/sale DMs).
+    :yield: Resulting trade data.
+    """
+    for tgood in tgoods:
+        if not tgood.properties:
+            yield _ResultTradeGoodDMs(tgood=tgood, dms=None)
+            continue
+
+        tprops = tgood.properties
+        illegality = tgood_illegality.get(tgood.d66, None)
+
+        dms: list[_ResultDMData] = []
+        for world_view in world_views:
+            overrides = wt_overrides.get((world_view.subsector_loc, tgood.d66), _EMPTY_OVERRIDES)
+
+            is_common = "All" in tprops.availability
+
+            is_available = is_common or not tprops.availability.isdisjoint(
+                world_view.trade_classifications
+            )
+            is_available = _eval_override(is_available, overrides.available)
+
+            purchase_dm = _trade_dm(tprops.purchase_dm, world_view.trade_classifications)
+            purchase_dm = _eval_override(purchase_dm, overrides.purchase_dm)
+
+            illegal = illegality is not None and world_view.law_level >= illegality
+            illegal = _eval_override(illegal, overrides.illegal)
+            if illegal and illegality is not None:
+                sale_dm = world_view.law_level - illegality
+            else:
+                sale_dm = _trade_dm(tprops.sale_dm, world_view.trade_classifications)
+            sale_dm = _eval_override(sale_dm, overrides.sale_dm)
+
+            dm = purchase_dm - sale_dm
+
+            dms.append(
+                _ResultDMData(
+                    world_view=world_view,
+                    common=is_common,
+                    illegal=illegal,
+                    dm=dm,
+                    available=is_available,
+                )
+            )
+
+        yield _ResultTradeGoodDMs(tgood=tgood, dms=dms)
+
+
+@dataclasses.dataclass
+class _OutputOpts:
+    include_headers: bool
+    include_key: bool
+    include_explanation: bool
+    example_good: str
+    formats: "_Formats"
+
+
+@dataclasses.dataclass
+class _Formats:
+    common: str
+    unavailable: str
+    illegal: str
+    legal: str
+
+
+def _write_results_csv(
+    fp: io.TextIOBase,
+    world_views: list[_WorldView],
+    tgood_results: list[_ResultTradeGoodDMs],
+    opts: _OutputOpts,
+) -> None:
+    csv_writer = csv.writer(fp)
+    if opts.include_headers:
+        csv_writer.writerow(
+            ["D66", "Goods", "Tons", "Base Price (cr)"] + [w.subsector_loc for w in world_views]
+        )
+    for tgood_result in tgood_results:
+        tgood = tgood_result.tgood
+        row = [tgood.d66, tgood.name]
+
+        if tprops := tgood_result.tgood.properties:
+            row.append(tprops.tons)
+            row.append(str(tprops.base_price))
+        else:
+            row.extend(["", ""])
+
+        if not tgood_result.dms:
+            csv_writer.writerow(row)
+            continue
+
+        for dms in tgood_result.dms:
+            fmts = []
+            if dms.common:
+                fmts.append(opts.formats.common)
+            if not dms.available:
+                fmts.append(opts.formats.unavailable)
+            if dms.illegal:
+                fmts.append(opts.formats.illegal)
+            else:
+                fmts.append(opts.formats.legal)
+            dm_str = f"{dms.dm:+}"
+
+            for fmt in fmts:
+                dm_str = fmt.format(dm_str)
+
+            row.append(dm_str)
+
+        csv_writer.writerow(row)
+
+    if opts.include_key:
+        csv_writer.writerow(["Key:"])
+        entries = [
+            (opts.formats.common, "Commonly available goods."),
+            (opts.formats.unavailable, "Good unavailable for purchase."),
+            (opts.formats.legal, "Legal by planetary law."),
+            (opts.formats.illegal, "Illegal by planetary law."),
+        ]
+        for fmt, explanation in entries:
+            csv_writer.writerow([fmt.format(opts.example_good), explanation])
+
+    if opts.include_explanation:
+        if opts.include_key:
+            csv_writer.writerow([])
+        csv_writer.writerow(
+            ["Number is added when buying goods, and subtracted when selling goods."]
+        )
+        csv_writer.writerow(
+            ["High numbers indicate excess of supply, low numbers indicate demand."]
+        )
+
+
 def process(args: argparse.Namespace) -> None:
     tcodes = cast(
         list[worldcreation.TradeCode],
@@ -361,84 +519,32 @@ def process(args: argparse.Namespace) -> None:
 
     world_views = _make_world_views(worlds, tcodes, args.ignore_unknowns)
 
-    csv_writer = csv.writer(sys.stdout)
-    if args.include_headers:
-        csv_writer.writerow(
-            ["D66", "Goods", "Tons", "Base Price (cr)"]
-            + [_must_world_subsector_loc(w) for w in worlds]
+    tgood_results = list(
+        _calculate_trades(
+            tgoods=tgoods,
+            tgood_illegality=tgood_illegality,
+            world_views=world_views,
+            wt_overrides=wt_overrides,
         )
-    for tgood in tgoods:
-        row = [
-            tgood.d66,
-            tgood.name,
-        ]
-        if not tgood.properties:
-            csv_writer.writerow(row)
-            continue
-        tprops = tgood.properties
-        row.append(tprops.tons)
-        row.append(str(tprops.base_price))
-        illegality = tgood_illegality.get(tgood.d66, None)
-        for world_view in world_views:
-            overrides = wt_overrides.get((world_view.subsector_loc, tgood.d66), _EMPTY_OVERRIDES)
+    )
 
-            fmts = []
-            is_common = "All" in tprops.availability
-            if is_common:
-                fmts.append(args.format_common)
-
-            is_available = is_common or not tprops.availability.isdisjoint(
-                world_view.trade_classifications
-            )
-            is_available = _eval_override(is_available, overrides.available)
-            if not is_available:
-                fmts.append(args.format_unavailable)
-
-            purchase_dm = _trade_dm(tprops.purchase_dm, world_view.trade_classifications)
-            purchase_dm = _eval_override(purchase_dm, overrides.purchase_dm)
-
-            illegal = illegality is not None and world_view.law_level >= illegality
-            illegal = _eval_override(illegal, overrides.illegal)
-            if illegal:
-                fmts.append(args.format_illegal)
-            else:
-                fmts.append(args.format_legal)
-            if illegal and illegality is not None:
-                sale_dm = world_view.law_level - illegality
-            else:
-                sale_dm = _trade_dm(tprops.sale_dm, world_view.trade_classifications)
-            sale_dm = _eval_override(sale_dm, overrides.sale_dm)
-
-            dm = purchase_dm - sale_dm
-            dm_str = f"{dm:+}"
-
-            for fmt in fmts:
-                dm_str = fmt.format(dm_str)
-
-            row.append(dm_str)
-
-        csv_writer.writerow(row)
-
-    if args.include_key:
-        csv_writer.writerow(["Key:"])
-        entries = [
-            (args.format_common, "Commonly available goods."),
-            (args.format_unavailable, "Good unavailable for purchase."),
-            (args.format_legal, "Legal by planetary law."),
-            (args.format_illegal, "Illegal by planetary law."),
-        ]
-        for fmt, explanation in entries:
-            csv_writer.writerow([fmt.format(args.example_trade_good), explanation])
-
-    if args.include_explanation:
-        if args.include_key:
-            csv_writer.writerow([])
-        csv_writer.writerow(
-            ["Number is added when buying goods, and subtracted when selling goods."]
-        )
-        csv_writer.writerow(
-            ["High numbers indicate excess of supply, low numbers indicate demand."]
-        )
+    _write_results_csv(
+        fp=cast(io.TextIOBase, sys.stdout),
+        tgood_results=tgood_results,
+        world_views=world_views,
+        opts=_OutputOpts(
+            include_headers=args.include_headers,
+            example_good=args.example_trade_good,
+            formats=_Formats(
+                common=args.format_common,
+                unavailable=args.format_unavailable,
+                legal=args.format_legal,
+                illegal=args.format_illegal,
+            ),
+            include_explanation=args.include_explanation,
+            include_key=args.include_key,
+        ),
+    )
 
 
 def main() -> None:
