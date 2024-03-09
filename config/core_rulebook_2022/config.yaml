@@ -50,12 +50,12 @@ groups:
           disease: !Table {}
           poisons: !Table
             num_header_lines: 2
-      # TODO patrons-and-missions: !Group
-        # tables:
-          # random-mission: !Table {}
-          # random-opposition: !Table {}
-          # random-patrons: !Table {}
-          # random-targets: !Table {}
+      patrons-and-missions: !Group
+        tables:
+          random-mission: !Table {}
+          random-opposition: !Table {}
+          random-patrons: !Table {}
+          random-targets: !Table {}
       random-encounters: !Group
         tables:
           rural: !Table {}
