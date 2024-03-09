@@ -3,7 +3,9 @@ groups:
   traveller-creation: !Group
     tables:
       ageing: !Table {}
-      # TODO background-skills: !Table {}
+      background-skills: !Table
+        add_header_row:
+        - Skill and level
       benefits-of-rank: !Table {}
       career-summary: !Table
         continuation_empty_column: !!null
