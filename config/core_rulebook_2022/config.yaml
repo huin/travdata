@@ -2,8 +2,22 @@
 groups:
   traveller-creation: !Group
     tables:
+      ageing: !Table {}
+      # TODO background-skills: !Table {}
+      benefits-of-rank: !Table {}
       career-summary: !Table
         continuation_empty_column: !!null
+      characteristic-modifiers: !Table {}
+      draft-selection: !Table {}
+      injuries: !Table {}
+      life-events: !Table {}
+      medical-bills: !Table {}
+      noble-titles: !Table {}
+      pension: !Table {}
+      pre-career-events: !Table {}
+      # TODO skills-package: !Table {}
+    groups: {}
+      # TODO career: !Group {}
   trade: !Group
     tables:
       trade-goods: !Table
