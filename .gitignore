@@ -3,6 +3,9 @@
 *.json
 *.yaml
 
+# Ignore any local scratch files.
+/scratch
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
