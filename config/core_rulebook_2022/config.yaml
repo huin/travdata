@@ -1,5 +1,9 @@
 !Group
 groups:
+  traveller-creation: !Group
+    tables:
+      career-summary: !Table
+        continuation_empty_column: !!null
   trade: !Group
     tables:
       trade-goods: !Table

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import dataclasses
 import pathlib
-from typing import Any, Callable, ClassVar, Iterable, Iterator
+from typing import Any, Callable, ClassVar, Iterable, Iterator, Optional
 
 from ruamel import yaml
 from travdata import parseutil, tabulautil
@@ -31,7 +31,7 @@ class _YamlGroup:
 @_YAML.register_class
 class _YamlTable:
     yaml_tag: ClassVar = "!Table"
-    type: str
+    type: Optional[str] = None
     num_header_lines: int = 1
     continuation_empty_column: int = 0
 
@@ -69,7 +69,7 @@ class Table:
     file_stem: pathlib.Path
     type: str
     num_header_lines: int = 1
-    continuation_empty_column: int = 0
+    continuation_empty_column: Optional[int] = 0
 
 
 def _prepare_config(cfg: Any, cfg_dir: pathlib.Path) -> Group:
@@ -105,6 +105,8 @@ def _extract_table(
             return False
         elif i < table.num_header_lines:
             return True
+        elif table.continuation_empty_column is None:
+            return False
         else:
             return row[table.continuation_empty_column] == ""
 
