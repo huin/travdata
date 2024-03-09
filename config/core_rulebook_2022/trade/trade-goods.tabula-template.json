@@ -1,32 +1,32 @@
 [
-    {
-        "page": 245,
-        "extraction_method": "stream",
-        "x1": 33.165,
-        "x2": 763.785,
-        "y1": 31.185,
-        "y2": 574.695,
-        "width": 730.62,
-        "height": 543.51
-    },
-    {
-        "page": 246,
-        "extraction_method": "stream",
-        "x1": 26.235,
-        "x2": 766.755,
-        "y1": 25.245,
-        "y2": 563.805,
-        "width": 740.52,
-        "height": 538.56
-    },
-    {
-        "page": 246,
-        "extraction_method": "stream",
-        "x1": 30.195,
-        "x2": 761.805,
-        "y1": 566.775,
-        "y2": 595.485,
-        "width": 731.61,
-        "height": 28.71
-    }
+  {
+    "page": 245,
+    "extraction_method": "stream",
+    "x1": 33.165,
+    "x2": 763.785,
+    "y1": 31.185,
+    "y2": 574.695,
+    "width": 730.62,
+    "height": 543.51
+  },
+  {
+    "page": 246,
+    "extraction_method": "stream",
+    "x1": 26.235,
+    "x2": 766.755,
+    "y1": 25.245,
+    "y2": 563.805,
+    "width": 740.52,
+    "height": 538.56
+  },
+  {
+    "page": 246,
+    "extraction_method": "stream",
+    "x1": 30.195,
+    "x2": 761.805,
+    "y1": 566.775,
+    "y2": 595.485,
+    "width": 731.61,
+    "height": 28.71
+  }
 ]
