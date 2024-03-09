@@ -19,7 +19,7 @@ class Format(enum.StrEnum):
 
 class SectorSelector(abc.ABC):
     @abc.abstractmethod
-    def update_params(self, params: dict[str, str]) -> None:
+    def update_query(self, query: dict[str, str]) -> None:
         ...
 
 
@@ -32,8 +32,8 @@ class SectorId:
     """
     id: str
 
-    def update_params(self, params: dict[str, str]) -> None:
-        params["sector"] = self.id
+    def update_query(self, query: dict[str, str]) -> None:
+        query["sector"] = self.id
 
 
 @dataclasses.dataclass
@@ -47,14 +47,14 @@ class SectorCoords:
     sx: int
     sy: int
 
-    def update_params(self, params: dict[str, str]) -> None:
+    def update_query(self, params: dict[str, str]) -> None:
         params["sx"] = str(self.sx)
         params["sy"] = str(self.sy)
 
 
 class SubsectorSelector(abc.ABC):
     @abc.abstractmethod
-    def update_params(self, params: dict[str, str]) -> None:
+    def update_query(self, params: dict[str, str]) -> None:
         ...
 
 
@@ -78,8 +78,8 @@ class SubSectorCode(enum.StrEnum):
     O = "O"
     P = "P"
 
-    def update_params(self, params: dict[str, str]) -> None:
-        params["subsector"] = str(self)
+    def update_query(self, query: dict[str, str]) -> None:
+        query["subsector"] = str(self)
 
 
 @SubsectorSelector.register
@@ -90,9 +90,9 @@ class SectorQuadrant(enum.StrEnum):
     GAMMA = "Gamma"
     DELTA = "Delta"
 
-    def update_params(self, params: dict[str, str]) -> None:
-        params["quadrant"] = str(self)
-        params["quadrant"] = str(self)
+    def update_query(self, query: dict[str, str]) -> None:
+        query["quadrant"] = str(self)
+        query["quadrant"] = str(self)
 
 
 class CoordsStyle(enum.Enum):
@@ -119,12 +119,12 @@ def uwp_data(
     :raises ValueError: If both subsector and quadrant are set.
     :return: URL to request data from travellermap.com.
     """
-    params: dict[str, str] = {
+    query: dict[str, str] = {
         "type": str(format),
         "sscoords": str(coords_style.value),
     }
-    sector.update_params(params)
+    sector.update_query(query)
     if subsector is not None:
-        subsector.update_params(params)
-    encoded_params = urlparse.urlencode(params)
-    return f"{_SEC_API_URL}?{encoded_params}"
+        subsector.update_query(query)
+    encoded_query = urlparse.urlencode(query)
+    return f"{_SEC_API_URL}?{encoded_query}"
