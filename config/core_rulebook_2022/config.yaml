@@ -25,6 +25,10 @@ groups:
       #   num_header_lines: 3
       task-difficulty: !Table {}
       # TODO timeframes: !Table {}
+  combat: !Group
+    tables:
+      common-modifiers: !Table {}
+      cover: !Table {}
   encounters-and-dangers: !Group
     tables:
       allies-and-enemies: !Table {}
