@@ -433,6 +433,31 @@ class _Formats:
     illegal: str
     legal: str
 
+    def fmt_dm(self, result_dm: _ResultDMData) -> str:
+        fmts = []
+        if result_dm.common:
+            fmts.append(self.common)
+        if not result_dm.available:
+            fmts.append(self.unavailable)
+        if result_dm.illegal:
+            fmts.append(self.illegal)
+        else:
+            fmts.append(self.legal)
+        dm_str = f"{result_dm.dm:+}"
+
+        for fmt in fmts:
+            dm_str = fmt.format(dm_str)
+        return dm_str
+
+    def key(self, example_good: str) -> list[tuple[str, str]]:
+        entries = [
+            (self.common, "Commonly available goods."),
+            (self.unavailable, "Good unavailable for purchase."),
+            (self.legal, "Legal by planetary law."),
+            (self.illegal, "Illegal by planetary law."),
+        ]
+        return [(fmt.format(example_good), explanation) for fmt, explanation in entries]
+
 
 def _write_results_csv(
     fp: io.TextIOBase,
@@ -465,34 +490,14 @@ def _write_results_csv(
             if not world_dm:
                 row.append("")
                 continue
-            fmts = []
-            if world_dm.common:
-                fmts.append(opts.formats.common)
-            if not world_dm.available:
-                fmts.append(opts.formats.unavailable)
-            if world_dm.illegal:
-                fmts.append(opts.formats.illegal)
-            else:
-                fmts.append(opts.formats.legal)
-            dm_str = f"{world_dm.dm:+}"
-
-            for fmt in fmts:
-                dm_str = fmt.format(dm_str)
-
-            row.append(dm_str)
+            row.append(opts.formats.fmt_dm(world_dm))
 
         csv_writer.writerow(row)
 
     if opts.include_key:
         csv_writer.writerow(["Key:"])
-        entries = [
-            (opts.formats.common, "Commonly available goods."),
-            (opts.formats.unavailable, "Good unavailable for purchase."),
-            (opts.formats.legal, "Legal by planetary law."),
-            (opts.formats.illegal, "Illegal by planetary law."),
-        ]
-        for fmt, explanation in entries:
-            csv_writer.writerow([fmt.format(opts.example_good), explanation])
+        for key_item, explanation in opts.formats.key(opts.example_good):
+            csv_writer.writerow([key_item, explanation])
 
     if opts.include_explanation:
         if opts.include_key:
