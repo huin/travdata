@@ -248,6 +248,11 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
 
     inc_grp = argparser.add_argument_group("Extra information to include")
     inc_grp.add_argument(
+        "--example-trade-good",
+        help="Name of example trade good used in the key.",
+        default="Good name",
+    )
+    inc_grp.add_argument(
         "--include-headers",
         help="Include the table headers.",
         type=bool,
@@ -405,7 +410,7 @@ def process(args: argparse.Namespace) -> None:
             (args.format_illegal, "Illegal by planetary law."),
         ]
         for fmt, explanation in entries:
-            csv_writer.writerow([fmt.format("Good name"), explanation])
+            csv_writer.writerow([fmt.format(args.example_trade_good), explanation])
 
     if args.include_explanation:
         if args.include_key:
