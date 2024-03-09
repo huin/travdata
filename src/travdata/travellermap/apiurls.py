@@ -116,7 +116,6 @@ def uwp_data(
     Format.TAB_DELIMITED.
     :param coords_style: World location format to use, defaults to
     CoordsStyle.SECTOR.
-    :raises ValueError: If both subsector and quadrant are set.
     :return: URL to request data from travellermap.com.
     """
     query: dict[str, str] = {
