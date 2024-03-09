@@ -10,8 +10,8 @@ import io
 import pathlib
 import sys
 import urllib.request
-from typing import (Callable, Iterable, Iterator, Optional, TypeAlias, TypeVar,
-                    cast)
+from typing import (Callable, Iterable, Iterator, NewType, Optional, TypeAlias,
+                    TypeVar, cast)
 
 from travdata import parseutil
 from travdata.datatypes import yamlcodec
@@ -299,8 +299,13 @@ def _must_world_law_level(w: world.World) -> int:
     return _not_none(w.uwp, "world UWP data").law_level
 
 
+# _WorldId is an arbitrary ID assigned to a world internally.
+_WorldId = NewType("_WorldId", int)
+
+
 @dataclasses.dataclass
 class _WorldView:
+    id: _WorldId
     # Full trade code name.
     trade_classifications: set[str]
     subsector_loc: str
@@ -315,7 +320,7 @@ def _make_world_views(
     """Constructs a view onto the aspects of the worlds that we need."""
     world_views: list[_WorldView] = []
     tcodes_by_code = {tc.code: tc for tc in tcodes}
-    for w in worlds:
+    for i, w in enumerate(worlds):
         trade_classifications: set[str] = set()
         for tc in _must_world_trade_codes(w):
             try:
@@ -329,6 +334,7 @@ def _make_world_views(
                 trade_classifications.add(trade_code.classification)
         world_views.append(
             _WorldView(
+                id=_WorldId(i),
                 trade_classifications=trade_classifications,
                 subsector_loc=_must_world_subsector_loc(w),
                 law_level=_must_world_law_level(w),
@@ -349,7 +355,7 @@ class _ResultDMData:
 @dataclasses.dataclass
 class _ResultTradeGoodDMs:
     tgood: trade.TradeGood
-    dms: Optional[list[_ResultDMData]]
+    dms: Optional[dict[_WorldId, _ResultDMData]]
 
 
 def _calculate_trades(
@@ -376,7 +382,7 @@ def _calculate_trades(
         tprops = tgood.properties
         illegality = tgood_illegality.get(tgood.d66, None)
 
-        dms: list[_ResultDMData] = []
+        dms: dict[_WorldId, _ResultDMData] = {}
         for world_view in world_views:
             overrides = wt_overrides.get((world_view.subsector_loc, tgood.d66), _EMPTY_OVERRIDES)
 
@@ -400,14 +406,12 @@ def _calculate_trades(
 
             dm = purchase_dm - sale_dm
 
-            dms.append(
-                _ResultDMData(
-                    world_view=world_view,
-                    common=is_common,
-                    illegal=illegal,
-                    dm=dm,
-                    available=is_available,
-                )
+            dms[world_view.id] = _ResultDMData(
+                world_view=world_view,
+                common=is_common,
+                illegal=illegal,
+                dm=dm,
+                available=is_available,
             )
 
         yield _ResultTradeGoodDMs(tgood=tgood, dms=dms)
@@ -441,6 +445,7 @@ def _write_results_csv(
         csv_writer.writerow(
             ["D66", "Goods", "Tons", "Base Price (cr)"] + [w.subsector_loc for w in world_views]
         )
+
     for tgood_result in tgood_results:
         tgood = tgood_result.tgood
         row = [tgood.d66, tgood.name]
@@ -455,17 +460,21 @@ def _write_results_csv(
             csv_writer.writerow(row)
             continue
 
-        for dms in tgood_result.dms:
+        for world_view in world_views:
+            world_dm = tgood_result.dms.get(world_view.id)
+            if not world_dm:
+                row.append("")
+                continue
             fmts = []
-            if dms.common:
+            if world_dm.common:
                 fmts.append(opts.formats.common)
-            if not dms.available:
+            if not world_dm.available:
                 fmts.append(opts.formats.unavailable)
-            if dms.illegal:
+            if world_dm.illegal:
                 fmts.append(opts.formats.illegal)
             else:
                 fmts.append(opts.formats.legal)
-            dm_str = f"{dms.dm:+}"
+            dm_str = f"{world_dm.dm:+}"
 
             for fmt in fmts:
                 dm_str = fmt.format(dm_str)
