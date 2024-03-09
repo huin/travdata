@@ -56,6 +56,13 @@ class Group:
     tables: dict[str, "Table"] = dataclasses.field(default_factory=dict)
     groups: dict[str, "Group"] = dataclasses.field(default_factory=dict)
 
+    def num_tables(self) -> int:
+        """Calculates the number of tables in this group and child groups.
+
+        :return: Number of tables.
+        """
+        return len(self.tables) + sum(group.num_tables() for group in self.groups.values())
+
 
 @dataclasses.dataclass
 class Table:

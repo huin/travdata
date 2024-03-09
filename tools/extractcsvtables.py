@@ -5,6 +5,7 @@ import argparse
 import csv
 import pathlib
 
+from progress import bar as progress
 from travdata import pdfextract
 
 
@@ -57,9 +58,10 @@ def main() -> None:
         config_dir=args.config_dir,
         pdf_path=args.input_pdf,
     )
+    progress_bar = progress.Bar("Extracting tables", max=group.num_tables())
 
     created_directories: set[pathlib.Path] = set()
-    for ext_table in extracted_tables:
+    for ext_table in progress_bar.iter(extracted_tables):
         out_filepath = args.output_dir / ext_table.table_cfg.file_stem.with_suffix(".csv")
         group_dir = out_filepath.parent
         if group_dir not in created_directories:
