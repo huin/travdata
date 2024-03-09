@@ -5,7 +5,7 @@ import argparse
 import csv
 import pathlib
 
-from progress import bar as progress
+from progress import bar as progress  # type: ignore[import-untyped]
 from travdata import pdfextract
 
 
