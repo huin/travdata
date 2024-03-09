@@ -112,8 +112,8 @@ def _load_travellermap_subsector(spec: str) -> list[world.World]:
             "Invalid format for travellermap_subsector - expected sector/subsectorletter, e.g. spin/C"
         )
     url = apiurls.uwp_data(
-        sector=apiurls.SectorId(sector), # type: ignore[arg-type]
-        subsector=apiurls.SubSectorCode[subsector_str], # type: ignore[arg-type]
+        sector=apiurls.SectorId(sector),  # type: ignore[arg-type]
+        subsector=apiurls.SubSectorCode[subsector_str],  # type: ignore[arg-type]
     )
     return _load_travellermap_tsv_url(url)
 
@@ -308,6 +308,36 @@ class _WorldView:
     law_level: int
 
 
+def _make_world_views(
+    worlds: list[world.World],
+    tcodes: list[worldcreation.TradeCode],
+    ignore_unknowns: list[_IgnoreUnknown],
+) -> list[_WorldView]:
+    """Constructs a view onto the aspects of the worlds that we need."""
+    world_views: list[_WorldView] = []
+    tcodes_by_code = {tc.code: tc for tc in tcodes}
+    for w in worlds:
+        trade_classifications: set[str] = set()
+        for tc in _must_world_trade_codes(w):
+            try:
+                trade_code = tcodes_by_code[tc]
+            except KeyError as e:
+                if _IgnoreUnknown.TRADE_CODES not in ignore_unknowns:
+                    raise UserError(
+                        f"unknown trade code {e}, use --ignore-unknowns=trade-codes to ignore"
+                    ) from e
+            else:
+                trade_classifications.add(trade_code.classification)
+        world_views.append(
+            _WorldView(
+                trade_classifications=trade_classifications,
+                subsector_loc=_must_world_subsector_loc(w),
+                law_level=_must_world_law_level(w),
+            )
+        )
+    return world_views
+
+
 def process(args: argparse.Namespace) -> None:
     tcodes = cast(
         list[worldcreation.TradeCode],
@@ -329,30 +359,7 @@ def process(args: argparse.Namespace) -> None:
     world_reader = _WORLD_DATA_TYPES[args.world_data_source]
     worlds = list(world_reader(args.world_data))
 
-    # Construct a view onto the aspects of the worlds that we need.
-    world_views: list[_WorldView] = []
-
-    tcodes_by_code = {tc.code: tc for tc in tcodes}
-    # Construct parallel list of the trade classifications that the world has.
-    per_world_trades: list[set[str]] = []
-    for w in worlds:
-        trade_classifications: set[str] = set()
-        per_world_trades.append(trade_classifications)
-        for tc in _must_world_trade_codes(w):
-            try:
-                trade_code = tcodes_by_code[tc]
-            except KeyError as e:
-                if _IgnoreUnknown.TRADE_CODES not in args.ignore_unknowns:
-                    raise UserError(
-                        f"unknown trade code {e}, use --ignore-unknowns=trade-codes to ignore"
-                    ) from e
-            else:
-                trade_classifications.add(trade_code.classification)
-        world_views.append(_WorldView(
-            trade_classifications=trade_classifications,
-            subsector_loc=_must_world_subsector_loc(w),
-            law_level=_must_world_law_level(w),
-        ))
+    world_views = _make_world_views(worlds, tcodes, args.ignore_unknowns)
 
     csv_writer = csv.writer(sys.stdout)
     if args.include_headers:
@@ -373,16 +380,16 @@ def process(args: argparse.Namespace) -> None:
         row.append(str(tprops.base_price))
         illegality = tgood_illegality.get(tgood.d66, None)
         for world_view in world_views:
-            overrides = wt_overrides.get(
-                (world_view.subsector_loc, tgood.d66), _EMPTY_OVERRIDES
-            )
+            overrides = wt_overrides.get((world_view.subsector_loc, tgood.d66), _EMPTY_OVERRIDES)
 
             fmts = []
             is_common = "All" in tprops.availability
             if is_common:
                 fmts.append(args.format_common)
 
-            is_available = is_common or not tprops.availability.isdisjoint(world_view.trade_classifications)
+            is_available = is_common or not tprops.availability.isdisjoint(
+                world_view.trade_classifications
+            )
             is_available = _eval_override(is_available, overrides.available)
             if not is_available:
                 fmts.append(args.format_unavailable)
