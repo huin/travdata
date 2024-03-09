@@ -151,7 +151,7 @@ def extract_table(
             return False
 
     text_rows = tabulautil.table_rows_text(tabula_rows)
-    text_rows = _amalgamate_streamed_rows(
+    text_rows = _fold_rows(
         rows=text_rows,
         continuation=continuation,
     )
@@ -161,7 +161,7 @@ def extract_table(
     return text_rows
 
 
-def _amalgamate_streamed_rows(
+def _fold_rows(
     rows: Iterable[list[str]],
     continuation: Callable[[int, list[str]], bool],
     join: str = "\n",
