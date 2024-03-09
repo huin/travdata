@@ -24,7 +24,9 @@ groups:
       # TODO task-chain: !Table
       #   num_header_lines: 3
       task-difficulty: !Table {}
-      # TODO timeframes: !Table {}
+      timeframes: !Table
+        continuation_empty_column: !!null
+        row_num_lines: [2, 2, 3, 2, 4, 3, 2, 2, 2, 2]
   combat: !Group
     tables:
       common-modifiers: !Table {}
