@@ -37,7 +37,6 @@ class SectorId:
 
 
 @dataclasses.dataclass
-@SectorSelector.register
 class SectorCoords:
     """Identifies a sector by its location relative to Core sector.
 
@@ -47,14 +46,14 @@ class SectorCoords:
     sx: int
     sy: int
 
-    def update_query(self, params: dict[str, str]) -> None:
-        params["sx"] = str(self.sx)
-        params["sy"] = str(self.sy)
+    def update_query(self, query: dict[str, str]) -> None:
+        query["sx"] = str(self.sx)
+        query["sy"] = str(self.sy)
 
 
 class SubsectorSelector(abc.ABC):
     @abc.abstractmethod
-    def update_query(self, params: dict[str, str]) -> None:
+    def update_query(self, query: dict[str, str]) -> None:
         ...
 
 

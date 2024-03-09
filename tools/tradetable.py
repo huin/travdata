@@ -17,7 +17,7 @@ from typing import (Callable, Iterable, Iterator, Optional, TypeAlias, TypeVar,
 from travdata import parseutil
 from travdata.datatypes import yamlcodec
 from travdata.datatypes.core import trade, worldcreation
-from travdata.travellermap import sectorparse, world
+from travdata.travellermap import apiurls, sectorparse, world
 
 T = TypeVar("T")
 # Maps from TradeGood.d66 to the lowest law level at which that good is illegal.
@@ -105,10 +105,24 @@ def _load_travellermap_tsv_url(url: str) -> list[world.World]:
         return list(sectorparse.t5_tsv(decoder))
 
 
+def _load_travellermap_subsector(spec: str) -> list[world.World]:
+    sector, slash, subsector_str = spec.partition("/")
+    if not any([sector, slash, subsector_str]):
+        raise UserError(
+            "Invalid format for travellermap_subsector - expected sector/subsectorletter, e.g. spin/C"
+        )
+    url = apiurls.uwp_data(
+        sector=apiurls.SectorId(sector), # type: ignore[arg-type]
+        subsector=apiurls.SubSectorCode[subsector_str], # type: ignore[arg-type]
+    )
+    return _load_travellermap_tsv_url(url)
+
+
 _WORLD_DATA_TYPES: dict[str, Callable[[str], Iterable[world.World]]] = {
     "csv": _load_world_csv_data,
     "travellermap_tsv_file": _load_travellermap_tsv_file,
     "travellermap_tsv_url": _load_travellermap_tsv_url,
+    "travellermap_subsector": _load_travellermap_subsector,
 }
 
 
