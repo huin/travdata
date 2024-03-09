@@ -58,6 +58,12 @@ def main() -> None:
         action="store_true",
         default=False,
     )
+    argparser.add_argument(
+        "--no-progress",
+        help="""Disable progress bar.""",
+        action="store_true",
+        default=False,
+    )
 
     tab_grp = argparser.add_argument_group("Tabula")
     tab_grp.add_argument(
@@ -83,9 +89,15 @@ def main() -> None:
         if args.overwrite_existing or not out_filepath.exists():
             output_tables.append((out_filepath, table))
 
-    progress_bar = progress.Bar("Extracting tables", max=len(output_tables))
+    if not args.no_progress:
+        monitored_output_tables = progress.Bar(
+            "Extracting tables", max=len(output_tables),
+        ).iter(output_tables)
+    else:
+        monitored_output_tables = iter(output_tables)
+
     created_directories: set[pathlib.Path] = set()
-    for out_filepath, table in progress_bar.iter(output_tables):
+    for out_filepath, table in monitored_output_tables:
         out_filepath = cast(pathlib.Path, out_filepath)
         table = cast(pdfextract.Table, table)
 
