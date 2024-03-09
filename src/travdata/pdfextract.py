@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import dataclasses
+import itertools
 import pathlib
 from typing import Any, Callable, ClassVar, Iterable, Iterator, Optional
 
@@ -33,7 +34,9 @@ class _YamlTable:
     yaml_tag: ClassVar = "!Table"
     type: Optional[str] = None
     num_header_lines: int = 1
+    add_header_row: Optional[list[str]] = None
     continuation_empty_column: int = 0
+    row_num_lines: Optional[list[int]] = None
 
     def __setstate__(self, state):
         self.__init__(**state)
@@ -71,7 +74,9 @@ class Table:
     file_stem: pathlib.Path
     type: str
     num_header_lines: int = 1
+    add_header_row: Optional[list[str]] = None
     continuation_empty_column: Optional[int] = 0
+    row_num_lines: Optional[list[int]] = None
 
 
 def _prepare_config(cfg: Any, cfg_dir: pathlib.Path) -> Group:
@@ -88,6 +93,13 @@ def load_config_from_str(yaml: str) -> Group:
 def load_config(cfg_dir: pathlib.Path) -> Group:
     cfg = _YAML.load(cfg_dir / "config.yaml")
     return _prepare_config(cfg, pathlib.Path("."))
+
+
+def _iter_num_rows_continuations(row_num_lines: list[int]) -> Iterator[bool]:
+    for num_lines in row_num_lines:
+        yield False
+        for _ in range(num_lines - 1):
+            yield True
 
 
 def extract_table(
@@ -112,22 +124,37 @@ def extract_table(
         )
     )
 
+    if table.row_num_lines is not None:
+        iter_num_rows_continuations = _iter_num_rows_continuations(table.row_num_lines)
+    else:
+        iter_num_rows_continuations = None
+
+    row_num = 0  # only used for table.row_num_lines
+
     def continuation(i: int, row: list[str]) -> bool:
-        if i == 0:
-            return False
-        elif i < table.num_header_lines:
-            return True
-        elif table.continuation_empty_column is None:
-            return False
-        else:
+        if table.add_header_row is None:
+            if i == 0:
+                return False
+            elif i < table.num_header_lines:
+                return True
+
+        if table.continuation_empty_column is not None:
             return row[table.continuation_empty_column] == ""
+        elif iter_num_rows_continuations is not None:
+            nonlocal row_num
+            return next(iter_num_rows_continuations)
+        else:
+            return False
 
     text_rows = tabulautil.table_rows_text(tabula_rows)
     text_rows = _amalgamate_streamed_rows(
         rows=text_rows,
         continuation=continuation,
     )
-    return _clean_rows(text_rows)
+    text_rows = _clean_rows(text_rows)
+    if table.add_header_row is not None:
+        text_rows = itertools.chain([table.add_header_row], text_rows)
+    return text_rows
 
 
 def _amalgamate_streamed_rows(

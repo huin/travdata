@@ -35,7 +35,12 @@ groups:
       character-experience: !Table {}
       character-quirks: !Table {}
       encounter-distance: !Table {}
-      # TODO encounter-modifiers: !Table {}
+      encounter-modifiers: !Table
+        continuation_empty_column: !!null
+        row_num_lines: [1, 1, 1, 1, 2, 2]
+        add_header_row:
+        - Circumstance
+        - Modifier
       experience-levels: !Table {}
       range-bands: !Table {}
       temperatures: !Table {}
