@@ -300,6 +300,14 @@ def _must_world_law_level(w: world.World) -> int:
     return _not_none(w.uwp, "world UWP data").law_level
 
 
+@dataclasses.dataclass
+class _WorldView:
+    # Full trade code name.
+    trade_classifications: set[str]
+    subsector_loc: str
+    law_level: int
+
+
 def process(args: argparse.Namespace) -> None:
     tcodes = cast(
         list[worldcreation.TradeCode],
@@ -321,12 +329,15 @@ def process(args: argparse.Namespace) -> None:
     world_reader = _WORLD_DATA_TYPES[args.world_data_source]
     worlds = list(world_reader(args.world_data))
 
+    # Construct a view onto the aspects of the worlds that we need.
+    world_views: list[_WorldView] = []
+
     tcodes_by_code = {tc.code: tc for tc in tcodes}
     # Construct parallel list of the trade classifications that the world has.
     per_world_trades: list[set[str]] = []
     for w in worlds:
-        trades: set[str] = set()
-        per_world_trades.append(trades)
+        trade_classifications: set[str] = set()
+        per_world_trades.append(trade_classifications)
         for tc in _must_world_trade_codes(w):
             try:
                 trade_code = tcodes_by_code[tc]
@@ -336,7 +347,12 @@ def process(args: argparse.Namespace) -> None:
                         f"unknown trade code {e}, use --ignore-unknowns=trade-codes to ignore"
                     ) from e
             else:
-                trades.add(trade_code.classification)
+                trade_classifications.add(trade_code.classification)
+        world_views.append(_WorldView(
+            trade_classifications=trade_classifications,
+            subsector_loc=_must_world_subsector_loc(w),
+            law_level=_must_world_law_level(w),
+        ))
 
     csv_writer = csv.writer(sys.stdout)
     if args.include_headers:
@@ -356,12 +372,9 @@ def process(args: argparse.Namespace) -> None:
         row.append(tprops.tons)
         row.append(str(tprops.base_price))
         illegality = tgood_illegality.get(tgood.d66, None)
-        for w, world_trades in zip(
-            worlds,
-            per_world_trades,
-        ):
+        for world_view in world_views:
             overrides = wt_overrides.get(
-                (_must_world_subsector_loc(w), tgood.d66), _EMPTY_OVERRIDES
+                (world_view.subsector_loc, tgood.d66), _EMPTY_OVERRIDES
             )
 
             fmts = []
@@ -369,26 +382,24 @@ def process(args: argparse.Namespace) -> None:
             if is_common:
                 fmts.append(args.format_common)
 
-            is_available = is_common or not tprops.availability.isdisjoint(world_trades)
+            is_available = is_common or not tprops.availability.isdisjoint(world_view.trade_classifications)
             is_available = _eval_override(is_available, overrides.available)
             if not is_available:
                 fmts.append(args.format_unavailable)
 
-            purchase_dm = _trade_dm(tprops.purchase_dm, world_trades)
+            purchase_dm = _trade_dm(tprops.purchase_dm, world_view.trade_classifications)
             purchase_dm = _eval_override(purchase_dm, overrides.purchase_dm)
 
-            law_level = _must_world_law_level(w)
-
-            illegal = illegality is not None and law_level >= illegality
+            illegal = illegality is not None and world_view.law_level >= illegality
             illegal = _eval_override(illegal, overrides.illegal)
             if illegal:
                 fmts.append(args.format_illegal)
             else:
                 fmts.append(args.format_legal)
             if illegal and illegality is not None:
-                sale_dm = law_level - illegality
+                sale_dm = world_view.law_level - illegality
             else:
-                sale_dm = _trade_dm(tprops.sale_dm, world_trades)
+                sale_dm = _trade_dm(tprops.sale_dm, world_view.trade_classifications)
             sale_dm = _eval_override(sale_dm, overrides.sale_dm)
 
             dm = purchase_dm - sale_dm
