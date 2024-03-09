@@ -133,8 +133,6 @@ def extract_table(
     else:
         iter_num_rows_continuations = None
 
-    row_num = 0  # only used for table.row_num_lines
-
     def continuation(i: int, row: list[str]) -> bool:
         if table.add_header_row is None:
             if i == 0:
@@ -145,7 +143,6 @@ def extract_table(
         if table.continuation_empty_column is not None:
             return row[table.continuation_empty_column] == ""
         elif iter_num_rows_continuations is not None:
-            nonlocal row_num
             try:
                 return next(iter_num_rows_continuations)
             except StopIteration:
