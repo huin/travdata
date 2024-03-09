@@ -18,6 +18,45 @@ groups:
       # TODO skills-package: !Table {}
     groups: {}
       # TODO career: !Group {}
+  skills-and-tasks: !Group
+    tables:
+      # TODO effect-results: !Table {}
+      # TODO task-chain: !Table
+      #   num_header_lines: 3
+      task-difficulty: !Table {}
+      # TODO timeframes: !Table {}
+  encounters-and-dangers: !Group
+    tables:
+      allies-and-enemies: !Table {}
+      character-experience: !Table {}
+      character-quirks: !Table {}
+      encounter-distance: !Table {}
+      # TODO encounter-modifiers: !Table {}
+      experience-levels: !Table {}
+      range-bands: !Table {}
+      temperatures: !Table {}
+    groups:
+      animal: !Group
+        tables:
+          # TODO behaviours: !Table {}
+          flight-or-fight: !Table {}
+          sizes: !Table {}
+      dangers: !Group
+        tables:
+          disease: !Table {}
+          poisons: !Table
+            num_header_lines: 2
+      # TODO patrons-and-missions: !Group
+        # tables:
+          # random-mission: !Table {}
+          # random-opposition: !Table {}
+          # random-patrons: !Table {}
+          # random-targets: !Table {}
+      random-encounters: !Group
+        tables:
+          rural: !Table {}
+          starport: !Table {}
+          urban: !Table {}
   trade: !Group
     tables:
       trade-goods: !Table
