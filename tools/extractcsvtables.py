@@ -4,6 +4,7 @@
 import argparse
 import csv
 import pathlib
+import sys
 from typing import cast
 
 from progress import bar as progress  # type: ignore[import-untyped]
@@ -106,14 +107,17 @@ def main() -> None:
             group_dir.mkdir(parents=True, exist_ok=True)
             created_directories.add(group_dir)
 
-        rows = pdfextract.extract_table(
-            config_dir=args.config_dir,
-            pdf_path=args.input_pdf,
-            table=table,
-            tabula_cfg=tabula_cfg,
-        )
-        with open(out_filepath, "wt") as f:
-            csv.writer(f).writerows(rows)
+        try:
+            rows = pdfextract.extract_table(
+                config_dir=args.config_dir,
+                pdf_path=args.input_pdf,
+                table=table,
+                tabula_cfg=tabula_cfg,
+            )
+            with open(out_filepath, "wt") as f:
+                csv.writer(f).writerows(rows)
+        except pdfextract.ConfigurationError as e:
+            print(f"Error while processing table {table.file_stem}: {e}", file=sys.stdout)
 
 
 if __name__ == "__main__":

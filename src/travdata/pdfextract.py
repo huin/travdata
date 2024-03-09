@@ -10,6 +10,10 @@ from travdata import parseutil, tabulautil
 _YAML = yaml.YAML(typ="safe")
 
 
+class ConfigurationError(Exception):
+    pass
+
+
 @dataclasses.dataclass
 @_YAML.register_class
 class _YamlGroup:
@@ -142,7 +146,10 @@ def extract_table(
             return row[table.continuation_empty_column] == ""
         elif iter_num_rows_continuations is not None:
             nonlocal row_num
-            return next(iter_num_rows_continuations)
+            try:
+                return next(iter_num_rows_continuations)
+            except StopIteration:
+                raise ConfigurationError("Not enough total lines specified in row_num_lines.")
         else:
             return False
 
