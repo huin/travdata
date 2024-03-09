@@ -3,21 +3,33 @@
 
 
 import argparse
+import codecs
 import csv
 import dataclasses
 import enum
 import io
 import pathlib
 import sys
-from typing import Iterator, Optional, TypeAlias, TypeVar, cast
+import urllib.request
+from typing import (Callable, Iterable, Iterator, Optional, TypeAlias, TypeVar,
+                    cast)
 
 from travdata import parseutil
 from travdata.datatypes import yamlcodec
 from travdata.datatypes.core import trade, worldcreation
+from travdata.travellermap import sectorparse, world
 
 T = TypeVar("T")
 # Maps from TradeGood.d66 to the lowest law level at which that good is illegal.
 TradeGoodIllegality: TypeAlias = dict[str, int]
+
+
+class UserError(Exception):
+    pass
+
+
+class _IgnoreUnknown(enum.StrEnum):
+    TRADE_CODES = "trade-codes"
 
 
 # Trade overrides for a trade good on a world.
@@ -50,63 +62,54 @@ def _load_yaml(t: type[T], stream: pathlib.Path | io.TextIOBase) -> T:
     return data
 
 
-class StarportType(enum.StrEnum):
-    EXCELLENT = "A"
-    GOOD = "B"
-    ROUTINE = "C"
-    POOR = "D"
-    FRONTIER = "E"
-    NONE = "X"
+def _load_world_csv_data(path: str) -> Iterator[world.World]:
+    """Parses a CSV file containing specific fields.
+
+    These fields must be declared in the header row, and must include:
+
+    - "Location" - the subsector hex location.
+    - "Name" - the name of the world.
+    - "UWP" - the UWP code.
+    - "Trade Codes" - a colon (":") delimited list of two-letter trade codes.
+
+    :param fp: File to read CSV data from.
+    :yield: World data.
+    """
+    with open(path, "rt") as fp:
+        r = csv.DictReader(fp)
+        for row in r:
+            c = row["Travel Code"]
+            yield world.World(
+                name=row["Name"],
+                location=world.WorldLocation(
+                    subsector_hex=world.SubSectorLoc.parse(row["Location"]),
+                ),
+                uwp=worldcreation.UWP.parse(row["UWP"]),
+                social=world.WorldSocial(
+                    trade_codes=frozenset(
+                        world.TradeCode(tc) for tc in row["Trade Codes"].split(":")
+                    ),
+                ),
+            )
 
 
-class TravelCode(enum.StrEnum):
-    AMBER = "Amber"
-    RED = "Red"
+def _load_travellermap_tsv_file(path: str) -> list[world.World]:
+    with open(path, "rt") as fp:
+        return list(sectorparse.t5_tsv(fp))
 
 
-@dataclasses.dataclass
-class UWP:
-    starport: StarportType
-    size: int
-    atmosphere: int
-    hydrographic: int
-    population: int
-    government: int
-    law_level: int
-    tech_level: int
-
-    @classmethod
-    def from_string(cls, uwp: str) -> "UWP":
-        codes = uwp.replace("-", "")
-        if len(codes) != 8:
-            raise ValueError(uwp)
-        int_codes = [int(v, 16) for v in codes[1:]]
-        return UWP(StarportType(codes[0]), *int_codes)
+def _load_travellermap_tsv_url(url: str) -> list[world.World]:
+    utf8 = codecs.lookup("utf-8")
+    with urllib.request.urlopen(url) as response:
+        decoder = cast(io.TextIOBase, utf8.streamreader(response))
+        return list(sectorparse.t5_tsv(decoder))
 
 
-@dataclasses.dataclass
-class _WorldData:
-    hex_location: str
-    name: str
-    uwp: UWP
-    bases: set[str]
-    trade_codes: set[str]
-    travel_code: Optional[TravelCode]
-
-
-def _load_world_data(fp: io.TextIOBase) -> Iterator[_WorldData]:
-    # TODO: Use a more generic way to load and represent world data.
-    r = csv.DictReader(fp)
-    for row in r:
-        c = row["Travel Code"]
-        yield _WorldData(
-            hex_location=row["Location"],
-            name=row["Name"],
-            uwp=UWP.from_string(row["UWP"]),
-            bases=set(row["Bases"].split(":")),
-            trade_codes=set(row["Trade Codes"].split(":")),
-            travel_code=None if not c else TravelCode(c),
-        )
+_WORLD_DATA_TYPES: dict[str, Callable[[str], Iterable[world.World]]] = {
+    "csv": _load_world_csv_data,
+    "travellermap_tsv_file": _load_travellermap_tsv_file,
+    "travellermap_tsv_url": _load_travellermap_tsv_url,
+}
 
 
 def _pbool(s: str) -> bool:
@@ -174,9 +177,18 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
     )
     data_inputs_grp.add_argument(
         "world_data",
-        help="World data within a single subsector.",
-        type=argparse.FileType("rt"),
-        metavar="world-data.csv",
+        help="""World data within a single subsector. The meaning and
+        interpretation of this parameter is determined by
+        --world-data-source. An example of the type of URL required by
+        travellermap_tsv_url is:
+        https://travellermap.com/api/sec?sector=spin&subsector=A&type=TabDelimited""",
+        metavar="WORLD_DATA",
+    )
+    data_inputs_grp.add_argument(
+        "--world-data-source",
+        help="""Determines the meaning of the world_data argument.""",
+        choices=_WORLD_DATA_TYPES.keys(),
+        default="csv",
     )
 
     fmt_grp = argparser.add_argument_group(
@@ -213,6 +225,13 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
         metavar="FORMAT_STRING",
     )
 
+    argparser.add_argument(
+        "--ignore-unknowns",
+        help="""Ignore unknown trade codes.""",
+        choices=sorted(_IgnoreUnknown),
+        action="append",
+    )
+
     inc_grp = argparser.add_argument_group("Extra information to include")
     inc_grp.add_argument(
         "--include-headers",
@@ -239,6 +258,29 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
     return argparser.parse_args()
 
 
+def _not_none(v: Optional[T], desc: str) -> T:
+    if v is None:
+        raise ValueError(f"{desc} was missing a value")
+    return v
+
+
+def _must_world_trade_codes(w: world.World) -> frozenset[world.TradeCode]:
+    return _not_none(_not_none(w.social, "world social data").trade_codes, "world trade codes")
+
+
+def _must_world_subsector_loc(w: world.World) -> str:
+    return str(
+        _not_none(
+            _not_none(w.location, "world location data").subsector_hex,
+            "world subsector location",
+        )
+    )
+
+
+def _must_world_law_level(w: world.World) -> int:
+    return _not_none(w.uwp, "world UWP data").law_level
+
+
 def process(args: argparse.Namespace) -> None:
     tcodes = cast(
         list[worldcreation.TradeCode],
@@ -257,33 +299,51 @@ def process(args: argparse.Namespace) -> None:
     else:
         wt_overrides = {}
 
-    worlds = list(_load_world_data(args.world_data))
-    tcodes_by_code = {tc.code: tc for tc in tcodes}
-    # Parallel list of the trade classifications that the world has.
-    per_world_trades: list[set[str]] = [
-        {tcodes_by_code[tc].classification for tc in world.trade_codes} for world in worlds
-    ]
+    world_reader = _WORLD_DATA_TYPES[args.world_data_source]
+    worlds = list(world_reader(args.world_data))
 
-    w = csv.writer(sys.stdout)
+    tcodes_by_code = {tc.code: tc for tc in tcodes}
+    # Construct parallel list of the trade classifications that the world has.
+    per_world_trades: list[set[str]] = []
+    for w in worlds:
+        trades: set[str] = set()
+        per_world_trades.append(trades)
+        for tc in _must_world_trade_codes(w):
+            try:
+                trade_code = tcodes_by_code[tc]
+            except KeyError as e:
+                if _IgnoreUnknown.TRADE_CODES not in args.ignore_unknowns:
+                    raise UserError(
+                        f"unknown trade code {e}, use --ignore-unknowns=trade-codes to ignore"
+                    ) from e
+            else:
+                trades.add(trade_code.classification)
+
+    csv_writer = csv.writer(sys.stdout)
     if args.include_headers:
-        w.writerow(["D66", "Goods", "Tons", "Base Price (cr)"] + [w.hex_location for w in worlds])
+        csv_writer.writerow(
+            ["D66", "Goods", "Tons", "Base Price (cr)"]
+            + [_must_world_subsector_loc(w) for w in worlds]
+        )
     for tgood in tgoods:
         row = [
             tgood.d66,
             tgood.name,
         ]
         if not tgood.properties:
-            w.writerow(row)
+            csv_writer.writerow(row)
             continue
         tprops = tgood.properties
         row.append(tprops.tons)
         row.append(str(tprops.base_price))
         illegality = tgood_illegality.get(tgood.d66, None)
-        for world, world_trades in zip(
+        for w, world_trades in zip(
             worlds,
             per_world_trades,
         ):
-            overrides = wt_overrides.get((world.hex_location, tgood.d66), _EMPTY_OVERRIDES)
+            overrides = wt_overrides.get(
+                (_must_world_subsector_loc(w), tgood.d66), _EMPTY_OVERRIDES
+            )
 
             fmts = []
             is_common = "All" in tprops.availability
@@ -298,14 +358,16 @@ def process(args: argparse.Namespace) -> None:
             purchase_dm = _trade_dm(tprops.purchase_dm, world_trades)
             purchase_dm = _eval_override(purchase_dm, overrides.purchase_dm)
 
-            illegal = illegality is not None and world.uwp.law_level >= illegality
+            law_level = _must_world_law_level(w)
+
+            illegal = illegality is not None and law_level >= illegality
             illegal = _eval_override(illegal, overrides.illegal)
             if illegal:
                 fmts.append(args.format_illegal)
             else:
                 fmts.append(args.format_legal)
             if illegal and illegality is not None:
-                sale_dm = world.uwp.law_level - illegality
+                sale_dm = law_level - illegality
             else:
                 sale_dm = _trade_dm(tprops.sale_dm, world_trades)
             sale_dm = _eval_override(sale_dm, overrides.sale_dm)
@@ -318,10 +380,10 @@ def process(args: argparse.Namespace) -> None:
 
             row.append(dm_str)
 
-        w.writerow(row)
+        csv_writer.writerow(row)
 
     if args.include_key:
-        w.writerow(["Key:"])
+        csv_writer.writerow(["Key:"])
         entries = [
             (args.format_common, "Commonly available goods."),
             (args.format_unavailable, "Good unavailable for purchase."),
@@ -329,18 +391,25 @@ def process(args: argparse.Namespace) -> None:
             (args.format_illegal, "Illegal by planetary law."),
         ]
         for fmt, explanation in entries:
-            w.writerow([fmt.format("Good name"), explanation])
+            csv_writer.writerow([fmt.format("Good name"), explanation])
 
     if args.include_explanation:
         if args.include_key:
-            w.writerow([])
-        w.writerow(["Number is added when buying goods, and subtracted when selling goods."])
-        w.writerow(["High numbers indicate excess of supply, low numbers indicate demand."])
+            csv_writer.writerow([])
+        csv_writer.writerow(
+            ["Number is added when buying goods, and subtracted when selling goods."]
+        )
+        csv_writer.writerow(
+            ["High numbers indicate excess of supply, low numbers indicate demand."]
+        )
 
 
 def main() -> None:
     args = parse_args()
-    process(args)
+    try:
+        process(args)
+    except UserError as e:
+        print(f"Error: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":
