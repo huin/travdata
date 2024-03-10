@@ -494,8 +494,11 @@ def _write_results_asciidoc(
     def writeln(s: str = "") -> None:
         print(s, file=fp)
 
-    def writecell(s: str) -> None:
-        print("|" + s, file=fp)
+    def writecell(s: str, duplication: int = 1) -> None:
+        if duplication == 1:
+            print("|" + s, file=fp)
+        else:
+            print(f"{duplication}*|{s}", file=fp)
 
     writeln("= Trading DM Table")
     writeln()
@@ -526,12 +529,10 @@ def _write_results_asciidoc(
             writecell(tprops.tons)
             writecell(str(tprops.base_price))
         else:
-            writecell("")
-            writecell("")
+            writecell("", duplication=2)
 
         if not tgood_result.dms:
-            for world_view in world_views:
-                writecell("")
+            writecell("", duplication=len(world_views))
             continue
 
         for world_view in world_views:
