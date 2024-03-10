@@ -254,11 +254,6 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
 
     inc_grp = argparser.add_argument_group("Extra information to include")
     inc_grp.add_argument(
-        "--example-trade-good",
-        help="Name of example trade good used in the key.",
-        default="Good name",
-    )
-    inc_grp.add_argument(
         "--include-headers",
         help="Include the table headers.",
         type=bool,
@@ -436,7 +431,6 @@ class _OutputOpts:
     include_headers: bool
     include_key: bool
     include_explanation: bool
-    example_good: str
     formats: "_Formats"
 
 
@@ -463,14 +457,14 @@ class _Formats:
             dm_str = fmt.format(dm_str)
         return dm_str
 
-    def key(self, example_good: str) -> list[tuple[str, str]]:
+    def key(self, example_dm: str) -> list[tuple[str, str]]:
         entries = [
             (self.common, "Commonly available goods."),
             (self.unavailable, "Good unavailable for purchase."),
             (self.legal, "Legal by planetary law."),
             (self.illegal, "Illegal by planetary law."),
         ]
-        return [(fmt.format(example_good), explanation) for fmt, explanation in entries]
+        return [(fmt.format(example_dm), explanation) for fmt, explanation in entries]
 
 
 class _ResultWriter(Protocol):
@@ -494,11 +488,11 @@ def _write_results_asciidoc(
     def writeln(s: str = "") -> None:
         print(s, file=fp)
 
-    def writecell(s: str, duplication: int = 1) -> None:
+    def writecell(s: str, duplication: int = 1, operators: str = "") -> None:
         if duplication == 1:
-            print("|" + s, file=fp)
+            print(f"{operators}|{s}", file=fp)
         else:
-            print(f"{duplication}*|{s}", file=fp)
+            print(f"{duplication}*{operators}|{s}", file=fp)
 
     writeln("= Trading DM Table")
     writeln()
@@ -540,15 +534,15 @@ def _write_results_asciidoc(
             if not world_dm:
                 writecell("")
                 continue
-            writecell(opts.formats.fmt_dm(world_dm))
+            writecell(opts.formats.fmt_dm(world_dm), operators="m")
 
     writeln("|===")  # End of table content.
 
     if opts.include_key:
         writeln()
         writeln("== Key")
-        for key_item, explanation in opts.formats.key(opts.example_good):
-            writeln(f"{explanation}:: {key_item}")
+        for key_item, explanation in opts.formats.key("+2"):
+            writeln(f"{explanation}:: `{key_item}`")
 
     if opts.include_explanation:
         writeln()
@@ -596,7 +590,7 @@ def _write_results_csv(
     if opts.include_key:
         csv_writer.writerow([])
         csv_writer.writerow(["Key:"])
-        for key_item, explanation in opts.formats.key(opts.example_good):
+        for key_item, explanation in opts.formats.key("+2"):
             csv_writer.writerow([key_item, explanation])
 
     if opts.include_explanation:
@@ -650,7 +644,6 @@ def process(args: argparse.Namespace) -> None:
         world_views=world_views,
         opts=_OutputOpts(
             include_headers=args.include_headers,
-            example_good=args.example_trade_good,
             formats=_Formats(
                 common=args.format_common,
                 unavailable=args.format_unavailable,
