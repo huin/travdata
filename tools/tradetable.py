@@ -352,6 +352,13 @@ class _ResultDMData:
     illegal: bool
 
 
+# Sentences explaining the meaning of ``_ResultDMData.dm``.
+_DM_EXPLANATION_SENTENCES = [
+    "Number is added when buying goods, and subtracted when selling goods.",
+    "High numbers indicate excess of supply, low numbers indicate demand.",
+]
+
+
 @dataclasses.dataclass
 class _ResultTradeGoodDMs:
     tgood: trade.TradeGood
@@ -502,12 +509,8 @@ def _write_results_csv(
     if opts.include_explanation:
         if opts.include_key:
             csv_writer.writerow([])
-        csv_writer.writerow(
-            ["Number is added when buying goods, and subtracted when selling goods."]
-        )
-        csv_writer.writerow(
-            ["High numbers indicate excess of supply, low numbers indicate demand."]
-        )
+        for s in _DM_EXPLANATION_SENTENCES:
+            csv_writer.writerow([s])
 
 
 def process(args: argparse.Namespace) -> None:
