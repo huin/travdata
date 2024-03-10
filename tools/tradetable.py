@@ -502,13 +502,13 @@ def _write_results_csv(
         csv_writer.writerow(row)
 
     if opts.include_key:
+        csv_writer.writerow([])
         csv_writer.writerow(["Key:"])
         for key_item, explanation in opts.formats.key(opts.example_good):
             csv_writer.writerow([key_item, explanation])
 
     if opts.include_explanation:
-        if opts.include_key:
-            csv_writer.writerow([])
+        csv_writer.writerow([])
         for s in _DM_EXPLANATION_SENTENCES:
             csv_writer.writerow([s])
 
