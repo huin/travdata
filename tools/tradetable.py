@@ -10,8 +10,8 @@ import io
 import pathlib
 import sys
 import urllib.request
-from typing import (Callable, Iterable, Iterator, NewType, Optional, TypeAlias,
-                    TypeVar, cast)
+from typing import (Callable, Iterable, Iterator, NewType, Optional, Protocol,
+                    TypeAlias, TypeVar, cast)
 
 from travdata import parseutil
 from travdata.datatypes import yamlcodec
@@ -236,6 +236,13 @@ def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
         help="When the goods are illegal.",
         default="<ul>{}</ul>",
         metavar="FORMAT_STRING",
+    )
+
+    argparser.add_argument(
+        "--output-format",
+        help="""Format of the output trading sheet.""",
+        choices=_RESULT_WRITERS.keys(),
+        metavar="FORMAT",
     )
 
     argparser.add_argument(
@@ -466,7 +473,91 @@ class _Formats:
         return [(fmt.format(example_good), explanation) for fmt, explanation in entries]
 
 
+class _ResultWriter(Protocol):
+    def __call__(
+        self,
+        *,
+        fp: io.TextIOBase,
+        world_views: list[_WorldView],
+        tgood_results: list[_ResultTradeGoodDMs],
+        opts: _OutputOpts,
+    ) -> None: ...
+
+
+def _write_results_asciidoc(
+    *,
+    fp: io.TextIOBase,
+    world_views: list[_WorldView],
+    tgood_results: list[_ResultTradeGoodDMs],
+    opts: _OutputOpts,
+) -> None:
+    def writeln(s: str = "") -> None:
+        print(s, file=fp)
+
+    def writecell(s: str) -> None:
+        print("|" + s, file=fp)
+
+    writeln("= Trading DM Table")
+    writeln()
+
+    col_specs = ["1", "4", "2", "3", f"{len(world_views)}*1"]
+    writeln(f"[cols=\"{','.join(col_specs)}\"]")
+    writeln("|===")  # Start of table content.
+    writeln(
+        "|"
+        + " |".join(
+            [
+                "D66",
+                "Goods",
+                "Tons",
+                "Base Price (cr)",
+            ]
+            + [world_view.subsector_loc for world_view in world_views]
+        )
+    )
+
+    for tgood_result in tgood_results:
+        writeln()  # Start of new row.
+        tgood = tgood_result.tgood
+        writecell(tgood.d66)
+        writecell(tgood.name)
+
+        if tprops := tgood_result.tgood.properties:
+            writecell(tprops.tons)
+            writecell(str(tprops.base_price))
+        else:
+            writecell("")
+            writecell("")
+
+        if not tgood_result.dms:
+            for world_view in world_views:
+                writecell("")
+            continue
+
+        for world_view in world_views:
+            world_dm = tgood_result.dms.get(world_view.id)
+            if not world_dm:
+                writecell("")
+                continue
+            writecell(opts.formats.fmt_dm(world_dm))
+
+    writeln("|===")  # End of table content.
+
+    if opts.include_key:
+        writeln()
+        writeln("== Key")
+        for key_item, explanation in opts.formats.key(opts.example_good):
+            writeln(f"{explanation}:: {key_item}")
+
+    if opts.include_explanation:
+        writeln()
+        writeln("== How to use")
+        for s in _DM_EXPLANATION_SENTENCES:
+            writeln(f"- {s}")
+
+
 def _write_results_csv(
+    *,
     fp: io.TextIOBase,
     world_views: list[_WorldView],
     tgood_results: list[_ResultTradeGoodDMs],
@@ -513,6 +604,12 @@ def _write_results_csv(
             csv_writer.writerow([s])
 
 
+_RESULT_WRITERS: dict[str, _ResultWriter] = {
+    "asciidoc": _write_results_asciidoc,
+    "csv": _write_results_csv,
+}
+
+
 def process(args: argparse.Namespace) -> None:
     tcodes = cast(
         list[worldcreation.TradeCode],
@@ -545,7 +642,8 @@ def process(args: argparse.Namespace) -> None:
         )
     )
 
-    _write_results_csv(
+    result_writer = _RESULT_WRITERS[args.output_format]
+    result_writer(
         fp=cast(io.TextIOBase, sys.stdout),
         tgood_results=tgood_results,
         world_views=world_views,
