@@ -8,6 +8,7 @@ import sys
 from typing import cast
 
 from progress import bar as progress  # type: ignore[import-untyped]
+from travdata import config
 from travdata.extraction import pdfextract, tabulautil
 
 
@@ -81,9 +82,9 @@ def main() -> None:
         force_subprocess=args.tabula_force_subprocess,
     )
 
-    group = pdfextract.load_config(args.config_dir)
+    group = config.load_config(args.config_dir)
 
-    output_tables: list[tuple[pathlib.Path, pdfextract.Table]] = []
+    output_tables: list[tuple[pathlib.Path, config.Table]] = []
     for table in group.all_tables():
         out_filepath = args.output_dir / table.file_stem.with_suffix(".csv")
 
@@ -100,7 +101,7 @@ def main() -> None:
     created_directories: set[pathlib.Path] = set()
     for out_filepath, table in monitored_output_tables:
         out_filepath = cast(pathlib.Path, out_filepath)
-        table = cast(pdfextract.Table, table)
+        table = cast(config.Table, table)
 
         group_dir = out_filepath.parent
         if group_dir not in created_directories:

@@ -4,13 +4,13 @@ import textwrap
 import unittest
 
 import testfixtures  # type: ignore[import-untyped]
-from travdata.extraction import pdfextract
+from travdata import config
 
 
 class LoadConfigTest(unittest.TestCase):
 
     def test_load_tables(self) -> None:
-        actual = pdfextract.load_config_from_str(
+        actual = config.load_config_from_str(
             textwrap.dedent(
                 """
         !Group
@@ -33,25 +33,25 @@ class LoadConfigTest(unittest.TestCase):
 
         testfixtures.compare(
             actual=actual,
-            expected=pdfextract.Group(
+            expected=config.Group(
                 directory=pathlib.Path("."),
                 groups={
-                    "grp-a": pdfextract.Group(
+                    "grp-a": config.Group(
                         directory=pathlib.Path("./grp-a"),
                         tables={
-                            "foo": pdfextract.Table(
+                            "foo": config.Table(
                                 file_stem=pathlib.Path("./grp-a/foo"),
                                 type="Foo",
                                 num_header_lines=2,
                                 continuation_empty_column=0,
                             ),
-                            "bar": pdfextract.Table(
+                            "bar": config.Table(
                                 file_stem=pathlib.Path("./grp-a/bar"),
                                 type="Bar",
                                 num_header_lines=1,
                                 continuation_empty_column=3,
                             ),
-                            "defaults": pdfextract.Table(
+                            "defaults": config.Table(
                                 file_stem=pathlib.Path("./grp-a/defaults"),
                                 type="Defaults",
                             ),
