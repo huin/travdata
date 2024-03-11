@@ -9,8 +9,8 @@ import dataclasses
 import enum
 from typing import ClassVar, Optional
 
-from travdata import parseutil
 from travdata.datatypes import basic, yamlcodec
+from travdata.extraction import parseutil
 
 GROUP = "worldcreation"
 

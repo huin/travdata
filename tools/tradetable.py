@@ -13,9 +13,9 @@ import urllib.request
 from typing import (Callable, Iterable, Iterator, NewType, Optional, Protocol,
                     TypeAlias, TypeVar, cast)
 
-from travdata import parseutil
 from travdata.datatypes import yamlcodec
 from travdata.datatypes.core import trade, worldcreation
+from travdata.extraction import parseutil
 from travdata.travellermap import apiurls, sectorparse, world
 
 T = TypeVar("T")

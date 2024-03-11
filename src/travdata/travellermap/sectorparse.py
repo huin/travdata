@@ -8,8 +8,8 @@ import csv
 import io
 from typing import Iterator
 
-from travdata import parseutil
 from travdata.datatypes.core import worldcreation
+from travdata.extraction import parseutil
 from travdata.travellermap import world
 
 _T5_TRAVEL_CODES: dict[str, world.TravelCode] = {

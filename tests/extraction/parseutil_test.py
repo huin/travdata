@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from travdata import parseutil
+from travdata.extraction import parseutil
 
 
 class ParseEhex(unittest.TestCase):

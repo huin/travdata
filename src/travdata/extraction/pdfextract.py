@@ -5,7 +5,7 @@ import pathlib
 from typing import Any, Callable, ClassVar, Iterable, Iterator, Optional
 
 from ruamel import yaml
-from travdata import parseutil, tabulautil
+from travdata.extraction import parseutil, tabulautil
 
 _YAML = yaml.YAML(typ="safe")
 

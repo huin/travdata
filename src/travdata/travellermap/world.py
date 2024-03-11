@@ -4,8 +4,8 @@ import enum
 from dataclasses import field
 from typing import TYPE_CHECKING, Any, NewType, Optional, TypeVar
 
-from travdata import parseutil
 from travdata.datatypes.core import worldcreation
+from travdata.extraction import parseutil
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance

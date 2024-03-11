@@ -4,7 +4,7 @@ import textwrap
 import unittest
 
 import testfixtures  # type: ignore[import-untyped]
-from travdata import pdfextract
+from travdata.extraction import pdfextract
 
 
 class LoadConfigTest(unittest.TestCase):

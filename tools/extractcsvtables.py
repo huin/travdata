@@ -8,7 +8,7 @@ import sys
 from typing import cast
 
 from progress import bar as progress  # type: ignore[import-untyped]
-from travdata import pdfextract, tabulautil
+from travdata.extraction import pdfextract, tabulautil
 
 
 def main() -> None:

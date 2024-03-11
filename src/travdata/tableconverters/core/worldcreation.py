@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
-from travdata import parseutil
 from travdata.datatypes import basic
 from travdata.datatypes.core import worldcreation
+from travdata.extraction import parseutil
 from travdata.tableconverters import core
 
 _register_conv = core.CONVERTERS.make_group_decorator(worldcreation.GROUP)

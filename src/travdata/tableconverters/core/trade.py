@@ -2,8 +2,8 @@
 import re
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
-from travdata import parseutil
 from travdata.datatypes.core import trade
+from travdata.extraction import parseutil
 from travdata.tableconverters import core
 
 _register_conv = core.CONVERTERS.make_group_decorator(trade.GROUP)
