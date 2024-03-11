@@ -10,6 +10,15 @@ _YAML = yaml.YAML(typ="safe")
 
 @dataclasses.dataclass
 @_YAML.register_class
+class TableExtraction:
+    num_header_lines: int = 1
+    add_header_row: Optional[list[str]] = None
+    continuation_empty_column: int = 0
+    row_num_lines: Optional[list[int]] = None
+
+
+@dataclasses.dataclass
+@_YAML.register_class
 class _YamlGroup:
     yaml_tag: ClassVar = "!Group"
     groups: dict[str, "_YamlGroup"] = dataclasses.field(default_factory=dict)
@@ -31,10 +40,7 @@ class _YamlGroup:
 class _YamlTable:
     yaml_tag: ClassVar = "!Table"
     type: Optional[str] = None
-    num_header_lines: int = 1
-    add_header_row: Optional[list[str]] = None
-    continuation_empty_column: int = 0
-    row_num_lines: Optional[list[int]] = None
+    extraction: "TableExtraction" = dataclasses.field(default_factory=TableExtraction)
 
     def __setstate__(self, state):
         self.__init__(**state)
@@ -71,10 +77,7 @@ class Group:
 class Table:
     file_stem: pathlib.Path
     type: str
-    num_header_lines: int = 1
-    add_header_row: Optional[list[str]] = None
-    continuation_empty_column: Optional[int] = 0
-    row_num_lines: Optional[list[int]] = None
+    extraction: "TableExtraction" = dataclasses.field(default_factory=TableExtraction)
 
 
 def _prepare_config(cfg: Any, cfg_dir: pathlib.Path) -> Group:

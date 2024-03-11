@@ -40,20 +40,22 @@ def extract_table(
         )
     )
 
-    if table.row_num_lines is not None:
-        iter_num_rows_continuations = _iter_num_rows_continuations(table.row_num_lines)
+    ext = table.extraction
+
+    if ext.row_num_lines is not None:
+        iter_num_rows_continuations = _iter_num_rows_continuations(ext.row_num_lines)
     else:
         iter_num_rows_continuations = None
 
     def continuation(i: int, row: list[str]) -> bool:
-        if table.add_header_row is None:
+        if ext.add_header_row is None:
             if i == 0:
                 return False
-            elif i < table.num_header_lines:
+            elif i < ext.num_header_lines:
                 return True
 
-        if table.continuation_empty_column is not None:
-            return row[table.continuation_empty_column] == ""
+        if ext.continuation_empty_column is not None:
+            return row[ext.continuation_empty_column] == ""
         elif iter_num_rows_continuations is not None:
             try:
                 return next(iter_num_rows_continuations)
@@ -68,8 +70,8 @@ def extract_table(
         continuation=continuation,
     )
     text_rows = _clean_rows(text_rows)
-    if table.add_header_row is not None:
-        text_rows = itertools.chain([table.add_header_row], text_rows)
+    if ext.add_header_row is not None:
+        text_rows = itertools.chain([ext.add_header_row], text_rows)
     return text_rows
 
 

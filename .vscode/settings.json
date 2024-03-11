@@ -4,15 +4,16 @@
     "python.testing.pytestEnabled": true,
     "reflowMarkdown.preferredLineLength": 80,
     "yaml.customTags": [
-        "!Config mapping",
-        "!Group mapping",
-        "!Government mapping",
-        "!IntRange mapping",
-        "!IntRangeSet sequence",
-        "!LawLevel mapping",
-        "!Table mapping",
-        "!TradeCode mapping",
-        "!TradeGood mapping",
-        "!TradeGoodProperties mapping"
+      "!Config mapping",
+      "!Group mapping",
+      "!Government mapping",
+      "!IntRange mapping",
+      "!IntRangeSet sequence",
+      "!LawLevel mapping",
+      "!Table mapping",
+      "!TableExtraction mapping",
+      "!TradeCode mapping",
+      "!TradeGood mapping",
+      "!TradeGoodProperties mapping"
     ]
 }

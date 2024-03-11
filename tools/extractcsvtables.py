@@ -109,16 +109,19 @@ def main() -> None:
             created_directories.add(group_dir)
 
         try:
-            rows = pdfextract.extract_table(
-                config_dir=args.config_dir,
-                pdf_path=args.input_pdf,
-                table=table,
-                tabula_cfg=tabula_cfg,
-            )
-            with open(out_filepath, "wt") as f:
-                csv.writer(f).writerows(rows)
+            try:
+                rows = pdfextract.extract_table(
+                    config_dir=args.config_dir,
+                    pdf_path=args.input_pdf,
+                    table=table,
+                    tabula_cfg=tabula_cfg,
+                )
+                with open(out_filepath, "wt") as f:
+                    csv.writer(f).writerows(rows)
+            except Exception as e:
+                e.add_note(f"Error while processing table {table.file_stem}: {e}")
         except pdfextract.ConfigurationError as e:
-            print(f"Error while processing table {table.file_stem}: {e}", file=sys.stdout)
+            print(e, file=sys.stdout)
 
 
 if __name__ == "__main__":

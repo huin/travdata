@@ -4,11 +4,13 @@ groups:
     tables:
       ageing: !Table {}
       background-skills: !Table
-        add_header_row:
-        - Skill and level
+        extraction: !TableExtraction
+          add_header_row:
+          - Skill and level
       benefits-of-rank: !Table {}
       career-summary: !Table
-        continuation_empty_column: !!null
+        extraction: !TableExtraction
+          continuation_empty_column: !!null
       characteristic-modifiers: !Table {}
       draft-selection: !Table {}
       injuries: !Table {}
@@ -23,16 +25,19 @@ groups:
   skills-and-tasks: !Group
     tables:
       effect-results: !Table
-        continuation_empty_column: !!null
-        row_num_lines: [3, 1, 5, 3, 1, 2]
+        extraction: !TableExtraction
+          continuation_empty_column: !!null
+          row_num_lines: [3, 1, 5, 3, 1, 2]
       task-chain: !Table
-        num_header_lines: 3
-        continuation_empty_column: !!null
-        row_num_lines: [2, 2, 2, 2, 2, 2]
+        extraction: !TableExtraction
+          num_header_lines: 3
+          continuation_empty_column: !!null
+          row_num_lines: [2, 2, 2, 2, 2, 2]
       task-difficulty: !Table {}
       timeframes: !Table
-        continuation_empty_column: !!null
-        row_num_lines: [2, 2, 3, 2, 4, 3, 2, 2, 2, 2]
+        extraction: !TableExtraction
+          continuation_empty_column: !!null
+          row_num_lines: [2, 2, 3, 2, 4, 3, 2, 2, 2, 2]
   combat: !Group
     tables:
       common-modifiers: !Table {}
@@ -44,11 +49,12 @@ groups:
       character-quirks: !Table {}
       encounter-distance: !Table {}
       encounter-modifiers: !Table
-        continuation_empty_column: !!null
-        row_num_lines: [1, 1, 1, 1, 2, 2]
-        add_header_row:
-        - Circumstance
-        - Modifier
+        extraction: !TableExtraction
+          continuation_empty_column: !!null
+          row_num_lines: [1, 1, 1, 1, 2, 2]
+          add_header_row:
+          - Circumstance
+          - Modifier
       experience-levels: !Table {}
       range-bands: !Table {}
       temperatures: !Table {}
@@ -62,7 +68,8 @@ groups:
         tables:
           disease: !Table {}
           poisons: !Table
-            num_header_lines: 2
+            extraction: !TableExtraction
+              num_header_lines: 2
       patrons-and-missions: !Group
         tables:
           random-mission: !Table {}
@@ -82,9 +89,11 @@ groups:
     tables:
       governments: !Table
         type: Government
-        num_header_lines: 2
+        extraction: !TableExtraction
+          num_header_lines: 2
       law-levels: !Table
         type: LawLevel
-        num_header_lines: 2
+        extraction: !TableExtraction
+          num_header_lines: 2
       trade-codes: !Table
         type: TradeCode
