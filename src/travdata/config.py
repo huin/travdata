@@ -4,6 +4,7 @@ import pathlib
 from typing import Any, ClassVar, Iterator, Optional
 
 from ruamel import yaml
+from travdata import dataclassutil
 
 _YAML = yaml.YAML(typ="safe")
 
@@ -11,10 +12,19 @@ _YAML = yaml.YAML(typ="safe")
 @dataclasses.dataclass
 @_YAML.register_class
 class TableExtraction:
+    """Configures the specifics of extracting the CSV from the PDF."""
+    yaml_tag: ClassVar = "!TableExtraction"
     num_header_lines: int = 1
     add_header_row: Optional[list[str]] = None
     continuation_empty_column: int = 0
     row_num_lines: Optional[list[int]] = None
+
+    def __setstate__(self, state):
+        try:
+            self.__init__(**state)
+        except Exception as e:
+            e.add_note(f"processing !TableExtraction with {state=}")
+            raise
 
 
 @dataclasses.dataclass
@@ -25,7 +35,11 @@ class _YamlGroup:
     tables: dict[str, "_YamlTable"] = dataclasses.field(default_factory=dict)
 
     def __setstate__(self, state):
-        self.__init__(**state)
+        try:
+            self.__init__(**state)
+        except Exception as e:
+            e.add_note(f"processing !Group with {state=}")
+            raise
 
     def prepare(self, directory: pathlib.Path) -> "Group":
         return Group(
@@ -43,10 +57,14 @@ class _YamlTable:
     extraction: "TableExtraction" = dataclasses.field(default_factory=TableExtraction)
 
     def __setstate__(self, state):
-        self.__init__(**state)
+        try:
+            self.__init__(**state)
+        except Exception as e:
+            e.add_note(f"processing !Table with {state=}")
+            raise
 
     def prepare(self, name: str, directory: pathlib.Path) -> "Table":
-        kw = dataclasses.asdict(self)
+        kw = dataclassutil.shallow_asdict(self)
         return Table(file_stem=directory / name, **kw)
 
 

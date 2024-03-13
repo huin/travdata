@@ -19,12 +19,14 @@ class LoadConfigTest(unittest.TestCase):
                 tables:
                     foo: !Table
                         type: Foo
-                        num_header_lines: 2
-                        continuation_empty_column: 0
+                        extraction: !TableExtraction
+                            num_header_lines: 2
+                            continuation_empty_column: 0
                     bar: !Table
                         type: Bar
-                        num_header_lines: 1
-                        continuation_empty_column: 3
+                        extraction: !TableExtraction
+                            num_header_lines: 1
+                            continuation_empty_column: 3
                     defaults: !Table
                         type: Defaults
         """
@@ -42,14 +44,18 @@ class LoadConfigTest(unittest.TestCase):
                             "foo": config.Table(
                                 file_stem=pathlib.Path("./grp-a/foo"),
                                 type="Foo",
-                                num_header_lines=2,
-                                continuation_empty_column=0,
+                                extraction=config.TableExtraction(
+                                    num_header_lines=2,
+                                    continuation_empty_column=0,
+                                ),
                             ),
                             "bar": config.Table(
                                 file_stem=pathlib.Path("./grp-a/bar"),
                                 type="Bar",
-                                num_header_lines=1,
-                                continuation_empty_column=3,
+                                extraction=config.TableExtraction(
+                                    num_header_lines=1,
+                                    continuation_empty_column=3,
+                                ),
                             ),
                             "defaults": config.Table(
                                 file_stem=pathlib.Path("./grp-a/defaults"),
