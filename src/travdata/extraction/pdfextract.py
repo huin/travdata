@@ -23,7 +23,7 @@ def extract_table(
     pdf_path: pathlib.Path,
     extraction: config.TableExtraction,
     file_stem: pathlib.Path,
-    tabula_cfg: tabulautil.TabulaConfig,
+    tabula_client: tabulautil.TabulaClient,
 ) -> Iterator[list[str]]:
     """Extracts a table from the PDF.
 
@@ -35,10 +35,9 @@ def extract_table(
     :returns: Iterator over rows from the table.
     """
     tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
-        tabulautil.read_pdf_with_template(
+        tabula_client.read_pdf_with_template(
             pdf_path=pdf_path,
             template_path=config_dir / file_stem.with_suffix(".tabula-template.json"),
-            config=tabula_cfg,
         )
     )
 

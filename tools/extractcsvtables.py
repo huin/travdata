@@ -78,7 +78,7 @@ def main() -> None:
 
     args = argparser.parse_args()
 
-    tabula_cfg = tabulautil.TabulaConfig(
+    tabula_client = tabulautil.TabulaClient(
         force_subprocess=args.tabula_force_subprocess,
     )
 
@@ -121,7 +121,7 @@ def main() -> None:
                     pdf_path=args.input_pdf,
                     file_stem=table.file_stem,
                     extraction=extraction,
-                    tabula_cfg=tabula_cfg,
+                    tabula_client=tabula_client,
                 )
                 with open(out_filepath, "wt") as f:
                     csv.writer(f).writerows(rows)

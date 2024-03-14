@@ -1,15 +1,9 @@
 # -*- coding: utf-8 -*-
-import dataclasses
 import json
 import pathlib
 from typing import Iterable, Iterator, TypeAlias, TypedDict, cast
 
 import tabula
-
-
-@dataclasses.dataclass
-class TabulaConfig:
-    force_subprocess: bool
 
 
 class TabulaCell(TypedDict):
@@ -36,43 +30,54 @@ class _TemplateEntry(TypedDict):
     height: float
 
 
-def read_pdf_with_template(
-    *,
-    pdf_path: pathlib.Path,
-    template_path: pathlib.Path,
-    config: TabulaConfig,
-) -> list[TabulaTable]:
-    """Reads table(s) from a PDF, based on the Tabula template.
+class TabulaClient:
+    _force_subprocess: bool
 
-    :param pdf_path: Path to PDF to read from.
-    :param template_path: Path to the Tabula template JSON file.
-    :return: Tables read from the PDF.
-    """
-    result: list[TabulaTable] = []
-    with template_path.open() as tf:
-        template = cast(list[_TemplateEntry], json.load(tf))
+    def __init__(self, force_subprocess: bool) -> None:
+        """Initialise the ``TabulaClient``.
 
-    for entry in template:
-        method = entry["extraction_method"]
-        result.extend(
-            cast(
-                list[TabulaTable],
-                tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
-                    pdf_path,
-                    pages=[entry["page"]],
-                    java_options=["-Djava.awt.headless=true"],
-                    multiple_tables=True,
-                    output_format="json",
-                    area=[entry["y1"], entry["x1"], entry["y2"], entry["x2"]],
-                    force_subprocess=config.force_subprocess,
-                    stream=method == "stream",
-                    guess=method == "guess",
-                    lattice=method == "lattice",
-                ),
+        :param force_subprocess: Should Tabula be run as a child process, versus
+        using the faster jpype.
+        """
+        self._force_subprocess = force_subprocess
+
+    def read_pdf_with_template(
+        self,
+        *,
+        pdf_path: pathlib.Path,
+        template_path: pathlib.Path,
+    ) -> list[TabulaTable]:
+        """Reads table(s) from a PDF, based on the Tabula template.
+
+        :param pdf_path: Path to PDF to read from.
+        :param template_path: Path to the Tabula template JSON file.
+        :return: Tables read from the PDF.
+        """
+        result: list[TabulaTable] = []
+        with template_path.open() as tf:
+            template = cast(list[_TemplateEntry], json.load(tf))
+
+        for entry in template:
+            method = entry["extraction_method"]
+            result.extend(
+                cast(
+                    list[TabulaTable],
+                    tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
+                        pdf_path,
+                        pages=[entry["page"]],
+                        java_options=["-Djava.awt.headless=true"],
+                        multiple_tables=True,
+                        output_format="json",
+                        area=[entry["y1"], entry["x1"], entry["y2"], entry["x2"]],
+                        force_subprocess=self._force_subprocess,
+                        stream=method == "stream",
+                        guess=method == "guess",
+                        lattice=method == "lattice",
+                    ),
+                )
             )
-        )
 
-    return result
+        return result
 
 
 def table_rows_concat(tables: Iterable[TabulaTable]) -> Iterator[TabulaRow]:
