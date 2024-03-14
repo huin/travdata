@@ -19,7 +19,8 @@ groups:
       noble-titles: !Table {}
       pension: !Table {}
       pre-career-events: !Table {}
-      # TODO skills-package: !Table {}
+      skills-package: !Table
+        extraction: !!null
     groups: {}
       # TODO career: !Group {}
   skills-and-tasks: !Group
@@ -61,7 +62,8 @@ groups:
     groups:
       animal: !Group
         tables:
-          # TODO behaviours: !Table {}
+          behaviours: !Table
+            extraction: !!null
           flight-or-fight: !Table {}
           sizes: !Table {}
       dangers: !Group

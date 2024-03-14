@@ -95,7 +95,7 @@ class Group:
 class Table:
     file_stem: pathlib.Path
     type: str
-    extraction: "TableExtraction" = dataclasses.field(default_factory=TableExtraction)
+    extraction: Optional[TableExtraction] = dataclasses.field(default_factory=TableExtraction)
 
 
 def _prepare_config(cfg: Any, cfg_dir: pathlib.Path) -> Group:

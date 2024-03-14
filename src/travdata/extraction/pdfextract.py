@@ -21,41 +21,41 @@ def _iter_num_rows_continuations(row_num_lines: list[int]) -> Iterator[bool]:
 def extract_table(
     config_dir: pathlib.Path,
     pdf_path: pathlib.Path,
-    table: config.Table,
+    extraction: config.TableExtraction,
+    file_stem: pathlib.Path,
     tabula_cfg: tabulautil.TabulaConfig,
 ) -> Iterator[list[str]]:
     """Extracts a table from the PDF.
 
     :param config_dir: Config directory containing the config.yaml file.
     :param pdf_path: Path to the PDF to extract from.
-    :param table: Table configuration to extract.
+    :param file_stem: Path of the Tabula table template configuration.
+    :param extraction: Table configuration configuration.
     :param tabula_cfg: Configuration for Tabula extractor.
     :returns: Iterator over rows from the table.
     """
     tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
         tabulautil.read_pdf_with_template(
             pdf_path=pdf_path,
-            template_path=config_dir / table.file_stem.with_suffix(".tabula-template.json"),
+            template_path=config_dir / file_stem.with_suffix(".tabula-template.json"),
             config=tabula_cfg,
         )
     )
 
-    ext = table.extraction
-
-    if ext.row_num_lines is not None:
-        iter_num_rows_continuations = _iter_num_rows_continuations(ext.row_num_lines)
+    if extraction.row_num_lines is not None:
+        iter_num_rows_continuations = _iter_num_rows_continuations(extraction.row_num_lines)
     else:
         iter_num_rows_continuations = None
 
     def continuation(i: int, row: list[str]) -> bool:
-        if ext.add_header_row is None:
+        if extraction.add_header_row is None:
             if i == 0:
                 return False
-            elif i < ext.num_header_lines:
+            elif i < extraction.num_header_lines:
                 return True
 
-        if ext.continuation_empty_column is not None:
-            return row[ext.continuation_empty_column] == ""
+        if extraction.continuation_empty_column is not None:
+            return row[extraction.continuation_empty_column] == ""
         elif iter_num_rows_continuations is not None:
             try:
                 return next(iter_num_rows_continuations)
@@ -70,8 +70,8 @@ def extract_table(
         continuation=continuation,
     )
     text_rows = _clean_rows(text_rows)
-    if ext.add_header_row is not None:
-        text_rows = itertools.chain([ext.add_header_row], text_rows)
+    if extraction.add_header_row is not None:
+        text_rows = itertools.chain([extraction.add_header_row], text_rows)
     return text_rows
 
 

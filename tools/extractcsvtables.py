@@ -86,6 +86,8 @@ def main() -> None:
 
     output_tables: list[tuple[pathlib.Path, config.Table]] = []
     for table in group.all_tables():
+        if table.extraction is None:
+            continue
         out_filepath = args.output_dir / table.file_stem.with_suffix(".csv")
 
         if args.overwrite_existing or not out_filepath.exists():
@@ -100,6 +102,10 @@ def main() -> None:
 
     created_directories: set[pathlib.Path] = set()
     for out_filepath, table in monitored_output_tables:
+        if table.extraction is None:
+            continue
+        extraction = table.extraction
+
         out_filepath = cast(pathlib.Path, out_filepath)
         table = cast(config.Table, table)
 
@@ -113,7 +119,8 @@ def main() -> None:
                 rows = pdfextract.extract_table(
                     config_dir=args.config_dir,
                     pdf_path=args.input_pdf,
-                    table=table,
+                    file_stem=table.file_stem,
+                    extraction=extraction,
                     tabula_cfg=tabula_cfg,
                 )
                 with open(out_filepath, "wt") as f:
