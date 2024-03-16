@@ -1,10 +1,24 @@
 # -*- coding: utf-8 -*-
 import itertools
 import pathlib
-from typing import Callable, Iterable, Iterator
+from typing import Callable, Iterable, Iterator, Protocol
 
 from travdata import config
 from travdata.extraction import parseutil, tabulautil
+
+
+class TableReader(Protocol):
+    """Required interface to extract a table from a PDF file.
+
+    :param Protocol: _description_
+    """
+
+    def read_pdf_with_template(
+        self,
+        *,
+        pdf_path: pathlib.Path,
+        template_path: pathlib.Path,
+    ) -> list[tabulautil.TabulaTable]: ...
 
 
 class ConfigurationError(Exception):
@@ -23,7 +37,7 @@ def extract_table(
     pdf_path: pathlib.Path,
     extraction: config.TableExtraction,
     file_stem: pathlib.Path,
-    tabula_client: tabulautil.TabulaClient,
+    table_reader: TableReader,
 ) -> Iterator[list[str]]:
     """Extracts a table from the PDF.
 
@@ -35,7 +49,7 @@ def extract_table(
     :returns: Iterator over rows from the table.
     """
     tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
-        tabula_client.read_pdf_with_template(
+        table_reader.read_pdf_with_template(
             pdf_path=pdf_path,
             template_path=config_dir / file_stem.with_suffix(".tabula-template.json"),
         )

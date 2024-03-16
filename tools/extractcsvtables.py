@@ -121,7 +121,7 @@ def main() -> None:
                     pdf_path=args.input_pdf,
                     file_stem=table.file_stem,
                     extraction=extraction,
-                    tabula_client=tabula_client,
+                    table_reader=tabula_client,
                 )
                 with open(out_filepath, "wt") as f:
                     csv.writer(f).writerows(rows)
