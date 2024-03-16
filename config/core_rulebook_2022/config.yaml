@@ -1,24 +1,46 @@
 !Group
+extraction_templates:
+- !TableExtraction &one-row-header
+  row_folding:
+  - !StaticRowCounts
+    row_counts: [1]
+  - !EmptyColumn
+    column_index: 0
+- !TableExtraction &two-row-header
+  row_folding:
+  - !StaticRowCounts
+    row_counts: [2]
+  - !EmptyColumn
+    column_index: 0
 groups:
   traveller-creation: !Group
     tables:
-      ageing: !Table {}
+      ageing: !Table
+        extraction: *one-row-header
       background-skills: !Table
         extraction: !TableExtraction
           add_header_row:
           - Skill and level
-      benefits-of-rank: !Table {}
+      benefits-of-rank: !Table
+        extraction: *one-row-header
       career-summary: !Table
-        extraction: !TableExtraction
-          continuation_empty_column: !!null
-      characteristic-modifiers: !Table {}
-      draft-selection: !Table {}
-      injuries: !Table {}
-      life-events: !Table {}
-      medical-bills: !Table {}
-      noble-titles: !Table {}
-      pension: !Table {}
-      pre-career-events: !Table {}
+        extraction: !TableExtraction {}
+      characteristic-modifiers: !Table
+        extraction: *one-row-header
+      draft-selection: !Table
+        extraction: *one-row-header
+      injuries: !Table
+        extraction: *one-row-header
+      life-events: !Table
+        extraction: *one-row-header
+      medical-bills: !Table
+        extraction: *one-row-header
+      noble-titles: !Table
+        extraction: *one-row-header
+      pension: !Table
+        extraction: *one-row-header
+      pre-career-events: !Table
+        extraction: *one-row-header
       skills-package: !Table
         extraction: !!null
     groups: {}
@@ -27,75 +49,98 @@ groups:
     tables:
       effect-results: !Table
         extraction: !TableExtraction
-          continuation_empty_column: !!null
-          row_num_lines: [3, 1, 5, 3, 1, 2]
+          row_folding:
+          - !StaticRowCounts
+            row_counts: [1, 3, 1, 5, 3, 1, 2]
+          - !EmptyColumn
+            column_index: 0
       task-chain: !Table
         extraction: !TableExtraction
-          num_header_lines: 3
-          continuation_empty_column: !!null
-          row_num_lines: [2, 2, 2, 2, 2, 2]
+          row_folding:
+          - !StaticRowCounts
+            row_counts: [3, 2, 2, 2, 2, 2, 2]
       task-difficulty: !Table {}
       timeframes: !Table
         extraction: !TableExtraction
-          continuation_empty_column: !!null
-          row_num_lines: [2, 2, 3, 2, 4, 3, 2, 2, 2, 2]
+          row_folding:
+          - !StaticRowCounts 
+            row_counts: [1, 2, 2, 3, 2, 4, 3, 2, 2, 2, 2]
   combat: !Group
     tables:
-      common-modifiers: !Table {}
-      cover: !Table {}
+      common-modifiers: !Table
+        extraction: *one-row-header
+      cover: !Table
+        extraction: *one-row-header
   encounters-and-dangers: !Group
     tables:
-      allies-and-enemies: !Table {}
-      character-experience: !Table {}
-      character-quirks: !Table {}
-      encounter-distance: !Table {}
+      allies-and-enemies: !Table
+        extraction: *one-row-header
+      character-experience: !Table
+        extraction: *one-row-header
+      character-quirks: !Table
+        extraction: *one-row-header
+      encounter-distance: !Table
+        extraction: *one-row-header
       encounter-modifiers: !Table
         extraction: !TableExtraction
-          continuation_empty_column: !!null
-          row_num_lines: [1, 1, 1, 1, 2, 2]
+          row_folding:
+          - !StaticRowCounts
+            row_counts: [1, 1, 1, 1, 2, 2]
           add_header_row:
           - Circumstance
           - Modifier
-      experience-levels: !Table {}
-      range-bands: !Table {}
-      temperatures: !Table {}
+      experience-levels: !Table
+        extraction: *one-row-header
+      range-bands: !Table
+        extraction: *one-row-header
+      temperatures: !Table
+        extraction: *one-row-header
     groups:
       animal: !Group
         tables:
           behaviours: !Table
             extraction: !!null
-          flight-or-fight: !Table {}
-          sizes: !Table {}
+          flight-or-fight: !Table
+            extraction: *one-row-header
+          sizes: !Table
+            extraction: *one-row-header
       dangers: !Group
         tables:
-          disease: !Table {}
+          disease: !Table
+            extraction: *one-row-header
           poisons: !Table
-            extraction: !TableExtraction
-              num_header_lines: 2
+            extraction: *two-row-header
       patrons-and-missions: !Group
         tables:
-          random-mission: !Table {}
-          random-opposition: !Table {}
-          random-patrons: !Table {}
-          random-targets: !Table {}
+          random-mission: !Table
+            extraction: *one-row-header
+          random-opposition: !Table
+            extraction: *one-row-header
+          random-patrons: !Table
+            extraction: *one-row-header
+          random-targets: !Table
+            extraction: *one-row-header
       random-encounters: !Group
         tables:
-          rural: !Table {}
-          starport: !Table {}
-          urban: !Table {}
+          rural: !Table
+            extraction: *one-row-header
+          starport: !Table
+            extraction: *one-row-header
+          urban: !Table
+            extraction: *one-row-header
   trade: !Group
     tables:
       trade-goods: !Table
         type: TradeGood
+        extraction: *one-row-header
   worldcreation: !Group
     tables:
       governments: !Table
         type: Government
-        extraction: !TableExtraction
-          num_header_lines: 2
+        extraction: *two-row-header
       law-levels: !Table
         type: LawLevel
-        extraction: !TableExtraction
-          num_header_lines: 2
+        extraction: *two-row-header
       trade-codes: !Table
         type: TradeCode
+        extraction: *one-row-header

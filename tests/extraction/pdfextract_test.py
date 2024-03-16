@@ -43,10 +43,10 @@ class FakeTableReader:
 
 
 @pytest.mark.parametrize(
-    "extraction,tables_in,expected",
+    "name,extraction,tables_in,expected",
     [
         (
-            # Base behaviour with default config.
+            "Base behaviour with default config.",
             config.TableExtraction(),
             [
                 [
@@ -60,7 +60,7 @@ class FakeTableReader:
             ],
         ),
         (
-            # Concatenates input tables.
+            "Concatenates input tables.",
             config.TableExtraction(),
             [
                 [
@@ -80,8 +80,23 @@ class FakeTableReader:
             ],
         ),
         (
-            # Merges specified header rows.
-            config.TableExtraction(num_header_lines=2),
+            "Adds specified leading rows.",
+            config.TableExtraction(add_header_row=["added header 1", "added header 2"]),
+            [
+                [
+                    ["r1c1", "r1c2"],
+                    ["r2c1", "r2c2"],
+                ],
+            ],
+            [
+                ["added header 1", "added header 2"],
+                ["r1c1", "r1c2"],
+                ["r2c1", "r2c2"],
+            ],
+        ),
+        (
+            "Merges specified header rows, and keeps individual rows thereafter.",
+            config.TableExtraction(row_folding=[config.StaticRowCounts([2])]),
             [
                 [
                     ["header 1-1", "header 2-1"],
@@ -97,24 +112,34 @@ class FakeTableReader:
             ],
         ),
         (
-            # Adds specified leading rows.
-            config.TableExtraction(add_header_row=["added header 1", "added header 2"]),
+            "Merges rows based on configured StaticRowLengths.",
+            config.TableExtraction(row_folding=[config.StaticRowCounts([2, 2, 2])]),
             [
                 [
+                    ["", "header 2-1"],
+                    ["header 1", "header 2-2"],
                     ["r1c1", "r1c2"],
-                    ["r2c1", "r2c2"],
+                    ["", "r2c2"],
+                    ["r3c1", "r3c2"],
+                    ["r4c1", ""],
+                    ["r5c1", "r5c2"],
                 ],
             ],
             [
-                ["added header 1", "added header 2"],
-                ["r1c1", "r1c2"],
-                ["r2c1", "r2c2"],
+                ["header 1", "header 2-1 header 2-2"],
+                ["r1c1", "r1c2 r2c2"],
+                ["r3c1 r4c1", "r3c2"],
+                ["r5c1", "r5c2"],
             ],
         ),
         (
-            # Merges rows based on configured continuation_empty_column and
-            # num_header_lines.
-            config.TableExtraction(num_header_lines=2, continuation_empty_column=0),
+            "Merges rows based on configured leading StaticRowLengths and EmptyColumn thereafter.",
+            config.TableExtraction(
+                row_folding=[
+                    config.StaticRowCounts([2]),
+                    config.EmptyColumn(0),
+                ]
+            ),
             [
                 [
                     ["", "header 2-1"],
@@ -134,35 +159,15 @@ class FakeTableReader:
                 ["r5c1", "r5c2"],
             ],
         ),
-        (
-            # Merges rows based on configured row_num_lines and
-            # num_header_lines.
-            config.TableExtraction(
-                num_header_lines=2,
-                continuation_empty_column=None,
-                row_num_lines=[2, 2, 1],
-            ),
-            [
-                [
-                    ["", "header 2-1"],
-                    ["header 1", "header 2-2"],
-                    ["r1c1", "r1c2"],
-                    ["", "r2c2"],
-                    ["r3c1", "r3c2"],
-                    ["r4c1", ""],
-                    ["r5c1", "r5c2"],
-                ],
-            ],
-            [
-                ["header 1", "header 2-1 header 2-2"],
-                ["r1c1", "r1c2 r2c2"],
-                ["r3c1 r4c1", "r3c2"],
-                ["r5c1", "r5c2"],
-            ],
-        ),
     ],
 )
-def test_extract_table(extraction: config.TableExtraction, tables_in, expected: list[list[str]]):
+def test_extract_table(
+    name: str,
+    extraction: config.TableExtraction,
+    tables_in,
+    expected: list[list[str]],
+):
+    print(name)
     config_dir = pathlib.Path("cfg_dir")
     pdf_path = pathlib.Path("some.pdf")
     file_stem = pathlib.Path("foo/bar")

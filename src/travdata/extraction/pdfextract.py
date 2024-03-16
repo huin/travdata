@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+import enum
 import itertools
 import pathlib
-from typing import Callable, Iterable, Iterator, Protocol
+from collections.abc import Generator
+from typing import Callable, Iterable, Iterator, Optional, Protocol, TypeAlias
 
 from travdata import config
 from travdata.extraction import parseutil, tabulautil
@@ -23,13 +25,6 @@ class TableReader(Protocol):
 
 class ConfigurationError(Exception):
     pass
-
-
-def _iter_num_rows_continuations(row_num_lines: list[int]) -> Iterator[bool]:
-    for num_lines in row_num_lines:
-        yield False
-        for _ in range(num_lines - 1):
-            yield True
 
 
 def extract_table(
@@ -54,68 +49,106 @@ def extract_table(
             template_path=config_dir / file_stem.with_suffix(".tabula-template.json"),
         )
     )
-
-    if extraction.row_num_lines is not None:
-        iter_num_rows_continuations = _iter_num_rows_continuations(extraction.row_num_lines)
-    else:
-        iter_num_rows_continuations = None
-
-    def continuation(i: int, row: list[str]) -> bool:
-        if extraction.add_header_row is None:
-            if i == 0:
-                return False
-            elif i < extraction.num_header_lines:
-                return True
-
-        if extraction.continuation_empty_column is not None:
-            return row[extraction.continuation_empty_column] == ""
-        elif iter_num_rows_continuations is not None:
-            try:
-                return next(iter_num_rows_continuations)
-            except StopIteration:
-                raise ConfigurationError("Not enough total lines specified in row_num_lines.")
-        else:
-            return False
-
     text_rows = tabulautil.table_rows_text(tabula_rows)
-    text_rows = _fold_rows(
-        rows=text_rows,
-        continuation=continuation,
-    )
+
+    if extraction.row_folding:
+        text_rows = _fold_rows(
+            lines=text_rows,
+            grouper=_MultiGrouper([_make_line_grouper(folder) for folder in extraction.row_folding]),
+        )
+
     text_rows = _clean_rows(text_rows)
+
     if extraction.add_header_row is not None:
         text_rows = itertools.chain([extraction.add_header_row], text_rows)
+
     return text_rows
 
 
+_Line: TypeAlias = list[str]
+_LineGroup: TypeAlias = list[_Line]
+_Row: TypeAlias = list[str]
+
+
+class _LineGrouper(Protocol):
+
+    def group_lines(self, lines: Iterable[_Line]) -> Iterator[_LineGroup]: ...
+
+
+class _StaticRowLengths(_LineGrouper):
+    _line_counts: list[int]
+
+    def __init__(self, cfg: config.StaticRowCounts) -> None:
+        self._line_counts = list(cfg.row_counts)
+
+    def group_lines(self, lines: Iterable[_Line]) -> Iterator[_LineGroup]:
+        for num_lines in self._line_counts:
+            yield list(itertools.islice(lines, num_lines))
+
+
+class _EmptyColumn(_LineGrouper):
+    _column_index: int
+
+    def __init__(self, cfg: config.EmptyColumn) -> None:
+        self._column_index = cfg.column_index
+
+    def group_lines(self, lines: Iterable[_Line]) -> Iterator[_LineGroup]:
+        group: _LineGroup = []
+        for line in lines:
+            if line[self._column_index] == "":
+                group.append(line)
+            else:
+                if group:
+                    yield group
+                group = [line]
+        if group:
+            yield group
+
+
+def _make_line_grouper(cfg: config.RowFolder) -> _LineGrouper:
+    match cfg:
+        case config.StaticRowCounts():
+            return _StaticRowLengths(cfg)
+        case config.EmptyColumn():
+            return _EmptyColumn(cfg)
+        case _:
+            raise ConfigurationError(f"{type(cfg).__name__} is an unknown type of row folder")
+
+
+class _MultiGrouper(_LineGrouper):
+    _groupers: list[_LineGrouper]
+
+    def __init__(self, groupers: list[_LineGrouper]) -> None:
+        self._groupers = groupers
+
+    def group_lines(self, lines: Iterable[_Line]) -> Iterator[_LineGroup]:
+        for grouper in self._groupers:
+            yield from grouper.group_lines(lines)
+        # Everything remaining is in individual groups.
+        for line in lines:
+            yield [line]
+
+
 def _fold_rows(
-    rows: Iterable[list[str]],
-    continuation: Callable[[int, list[str]], bool],
-    join: str = "\n",
-) -> Iterator[list[str]]:
-    row_accum: list[list[str]] = []
-
-    def form_row():
-        return [join.join(cell) for cell in row_accum]
-
-    for i, row in enumerate(rows):
-        try:
-            if not continuation(i, row) and row_accum:
-                yield form_row()
-                row_accum = []
-            missing_count = len(row) - len(row_accum)
+    lines: Iterable[_Line],
+    grouper: _LineGrouper,
+) -> Iterator[_Row]:
+    for line_group in grouper.group_lines(lines):
+        # List of cell texts, each of which contain the sequence of strings that
+        # make up the resulting row's cells. The following is essentially a
+        # transpose operation.
+        row_accum: list[list[str]] = []
+        for line in line_group:
+            missing_count = len(line) - len(row_accum)
             if missing_count > 0:
                 for _ in range(missing_count):
                     row_accum.append([])
-            for acc, text in zip(row_accum, row):
+            for acc, text in zip(row_accum, line):
                 if text:
                     acc.append(text)
-        except Exception as e:
-            e.add_note(f"for {row=}")
-            raise
 
-    if row_accum:
-        yield form_row()
+        row: _Row = [" ".join(cell) for cell in row_accum]
+        yield row
 
 
 def _clean_rows(rows: Iterable[list[str]]) -> Iterator[list[str]]:

@@ -20,13 +20,15 @@ class LoadConfigTest(unittest.TestCase):
                     foo: !Table
                         type: Foo
                         extraction: !TableExtraction
-                            num_header_lines: 2
-                            continuation_empty_column: 0
+                            row_folding:
+                                - !StaticRowCounts {row_counts: [2]}
+                                - !EmptyColumn {column_index: 0}
                     bar: !Table
                         type: Bar
                         extraction: !TableExtraction
-                            num_header_lines: 1
-                            continuation_empty_column: 3
+                            row_folding:
+                                - !StaticRowCounts {row_counts: [1]}
+                                - !EmptyColumn {column_index: 3}
                     defaults: !Table
                         type: Defaults
         """
@@ -45,16 +47,20 @@ class LoadConfigTest(unittest.TestCase):
                                 file_stem=pathlib.Path("./grp-a/foo"),
                                 type="Foo",
                                 extraction=config.TableExtraction(
-                                    num_header_lines=2,
-                                    continuation_empty_column=0,
+                                    row_folding=[
+                                        config.StaticRowCounts([2]),
+                                        config.EmptyColumn(0),
+                                    ],
                                 ),
                             ),
                             "bar": config.Table(
                                 file_stem=pathlib.Path("./grp-a/bar"),
                                 type="Bar",
                                 extraction=config.TableExtraction(
-                                    num_header_lines=1,
-                                    continuation_empty_column=3,
+                                    row_folding=[
+                                        config.StaticRowCounts([1]),
+                                        config.EmptyColumn(3),
+                                    ],
                                 ),
                             ),
                             "defaults": config.Table(

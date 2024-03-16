@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import abc
 import dataclasses
 import pathlib
 from typing import Any, ClassVar, Iterator, Optional
@@ -9,15 +10,32 @@ from travdata import dataclassutil
 _YAML = yaml.YAML(typ="safe")
 
 
+class RowFolder(abc.ABC):
+    """Abstract base marker for configuring row grouping."""
+
+
+@dataclasses.dataclass
+@_YAML.register_class
+class StaticRowCounts(RowFolder):
+    yaml_tag: ClassVar = "!StaticRowCounts"
+    row_counts: list[int]
+
+
+@dataclasses.dataclass
+@_YAML.register_class
+class EmptyColumn(RowFolder):
+    yaml_tag: ClassVar = "!EmptyColumn"
+    column_index: int
+
+
 @dataclasses.dataclass
 @_YAML.register_class
 class TableExtraction:
     """Configures the specifics of extracting the CSV from the PDF."""
+
     yaml_tag: ClassVar = "!TableExtraction"
-    num_header_lines: int = 1
     add_header_row: Optional[list[str]] = None
-    continuation_empty_column: Optional[int] = 0
-    row_num_lines: Optional[list[int]] = None
+    row_folding: list[RowFolder] = dataclasses.field(default_factory=list)
 
     def __setstate__(self, state):
         try:
@@ -33,6 +51,7 @@ class _YamlGroup:
     yaml_tag: ClassVar = "!Group"
     groups: dict[str, "_YamlGroup"] = dataclasses.field(default_factory=dict)
     tables: dict[str, "_YamlTable"] = dataclasses.field(default_factory=dict)
+    extraction_templates: Optional[list[TableExtraction]] = None
 
     def __setstate__(self, state):
         try:
@@ -46,6 +65,7 @@ class _YamlGroup:
             directory=directory,
             tables={name: table.prepare(name, directory) for name, table in self.tables.items()},
             groups={name: group.prepare(directory / name) for name, group in self.groups.items()},
+            # extraction_templates not included.
         )
 
 
