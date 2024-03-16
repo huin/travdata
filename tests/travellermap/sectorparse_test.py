@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
+
 import io
-import unittest
 from typing import Callable, TypeVar
 
 import testfixtures  # type: ignore[import-untyped]
@@ -137,13 +137,7 @@ Hex  Name                 UWP       Remarks              {Ix}   (Ex)    [Cx]   N
 """
 
 
-class T5TSVTest(unittest.TestCase):
-
-    def test_parse_example(self) -> None:
-        fp = io.StringIO(T5_TSV_EXAMPLE)
-        actual = list(sectorparse.t5_tsv(fp))
-        testfixtures.compare(actual=actual, expected=T5_TSV_EXAMPLE_CONTENT)
-
-
-if __name__ == "__main__":
-    unittest.main()
+def test_t5_tsv_parse_example() -> None:
+    fp = io.StringIO(T5_TSV_EXAMPLE)
+    actual = list(sectorparse.t5_tsv(fp))
+    testfixtures.compare(actual=actual, expected=T5_TSV_EXAMPLE_CONTENT)

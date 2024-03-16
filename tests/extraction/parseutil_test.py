@@ -1,69 +1,69 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import unittest
 
+import pytest
 from travdata.extraction import parseutil
 
 
-class ParseEhex(unittest.TestCase):
-
-    def test_parse_valid(self) -> None:
-        cases: list[tuple[str, int]] = [
-            # (input, want)
-            ("0", 0),
-            ("5", 5),
-            ("9", 9),
-            ("A", 10),
-            ("H", 17),
-            ("J", 18),
-            ("N", 22),
-            ("P", 23),
-            ("Z", 33),
-        ]
-        for inp, want in cases:
-            with self.subTest(inp):
-                got = parseutil.parse_ehex_char(inp)
-                self.assertEqual(got, want)
-
-    def test_parse_invalid(self) -> None:
-        cases: list[str] = [
-            "I",
-            "O",
-            "a",
-            "h",
-            ".",
-        ]
-        for inp in cases:
-            with self.assertRaises(ValueError):
-                parseutil.parse_ehex_char(inp)
-
-    def test_fmt_valid(self) -> None:
-        cases: list[tuple[int, str]] = [
-            # (input, want)
-            (0, "0"),
-            (5, "5"),
-            (9, "9"),
-            (10, "A"),
-            (17, "H"),
-            (18, "J"),
-            (22, "N"),
-            (23, "P"),
-            (33, "Z"),
-        ]
-        for inp, want in cases:
-            with self.subTest(inp):
-                got = parseutil.fmt_ehex_char(inp)
-                self.assertEqual(got, want)
-
-    def test_fmt_invalid(self) -> None:
-        cases: list[int] = [
-            -3,
-            34,
-        ]
-        for inp in cases:
-            with self.assertRaises(ValueError):
-                parseutil.fmt_ehex_char(inp)
+@pytest.mark.parametrize(
+    "inp,want",
+    [
+        ("0", 0),
+        ("5", 5),
+        ("9", 9),
+        ("A", 10),
+        ("H", 17),
+        ("J", 18),
+        ("N", 22),
+        ("P", 23),
+        ("Z", 33),
+    ],
+)
+def test_parse_ehex_char_parse_valid(inp: str, want: int) -> None:
+    got = parseutil.parse_ehex_char(inp)
+    assert got == want
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.mark.parametrize(
+    "inp",
+    [
+        "I",
+        "O",
+        "a",
+        "h",
+        ".",
+    ],
+)
+def test_parse_ehex_char_parse_invalid(inp: str) -> None:
+    with pytest.raises(ValueError):
+        parseutil.parse_ehex_char(inp)
+
+
+@pytest.mark.parametrize(
+    "inp,want",
+    [
+        (0, "0"),
+        (5, "5"),
+        (9, "9"),
+        (10, "A"),
+        (17, "H"),
+        (18, "J"),
+        (22, "N"),
+        (23, "P"),
+        (33, "Z"),
+    ],
+)
+def test_parse_ehex_char_fmt_valid(inp: int, want: str) -> None:
+    got = parseutil.fmt_ehex_char(inp)
+    assert got == want
+
+
+@pytest.mark.parametrize(
+    "inp",
+    [
+        -3,
+        34,
+    ],
+)
+def test_parse_ehex_char_fmt_invalid(inp: int) -> None:
+    with pytest.raises(ValueError):
+        parseutil.fmt_ehex_char(inp)
