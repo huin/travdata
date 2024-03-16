@@ -16,7 +16,7 @@ class TableExtraction:
     yaml_tag: ClassVar = "!TableExtraction"
     num_header_lines: int = 1
     add_header_row: Optional[list[str]] = None
-    continuation_empty_column: int = 0
+    continuation_empty_column: Optional[int] = 0
     row_num_lines: Optional[list[int]] = None
 
     def __setstate__(self, state):
