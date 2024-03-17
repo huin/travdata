@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
+"""Converts worldcreation CSV data into Python data types."""
+
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 from travdata.datatypes import basic
 from travdata.datatypes.core import worldcreation
 from travdata.extraction import parseutil
-from travdata.tableconverters import core
+from travdata.tableconverters.core import registry
 
-_register_conv = core.CONVERTERS.make_group_decorator(worldcreation.GROUP)
+_register_conv = registry.CONVERTERS.make_group_decorator(worldcreation.GROUP)
 
 
 @_register_conv("governments")
 def governments(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreation.Government]:
-    _RawRow = TypedDict(
-        "_RawRow",
+    """Converts government type CSV data into Government structures."""
+    raw_row = TypedDict(
+        "raw_row",
         {
             "Government": str,
             "Government Type": str,
@@ -22,7 +25,7 @@ def governments(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreat
         },
         total=True,
     )
-    for row in cast(Iterable[_RawRow], rows):
+    for row in cast(Iterable[raw_row], rows):
         yield worldcreation.Government(
             code=row["Government"],
             name=row["Government Type"],
@@ -34,8 +37,9 @@ def governments(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreat
 
 @_register_conv("law-levels")
 def law_levels(rows: Iterable[dict[str, Optional[str]]]) -> list[worldcreation.LawLevel]:
-    _RawRow = TypedDict(
-        "_RawRow",
+    """Converts law level CSV data into LawLevel structures."""
+    raw_row = TypedDict(
+        "raw_row",
         {
             "Law Level": str,
             "Weapons Banned": str,
@@ -43,7 +47,7 @@ def law_levels(rows: Iterable[dict[str, Optional[str]]]) -> list[worldcreation.L
         },
     )
     results: list[worldcreation.LawLevel] = []
-    for row in cast(Iterable[_RawRow], rows):
+    for row in cast(Iterable[raw_row], rows):
         level = row["Law Level"]
         if level.endswith("+"):
             min_level = int(level.removesuffix("+"))
@@ -76,8 +80,9 @@ def law_levels(rows: Iterable[dict[str, Optional[str]]]) -> list[worldcreation.L
 
 @_register_conv("trade-codes")
 def trade_codes(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreation.TradeCode]:
-    _RawRow = TypedDict(
-        "_RawRow",
+    """Converts trade code CSV data into TradeCode structures."""
+    raw_row = TypedDict(
+        "raw_row",
         {
             "Classification": str,
             "Code": str,
@@ -90,7 +95,7 @@ def trade_codes(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[worldcreat
             "Tech Level": str,
         },
     )
-    for row in cast(Iterable[_RawRow], rows):
+    for row in cast(Iterable[raw_row], rows):
         yield worldcreation.TradeCode(
             classification=row["Classification"],
             code=row["Code"],

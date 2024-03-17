@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
+"""Converts trade CSV data into Python data types."""
+
 import re
 from typing import Iterable, Iterator, Optional, TypedDict, cast
 
 from travdata.datatypes.core import trade
 from travdata.extraction import parseutil
-from travdata.tableconverters import core
+from travdata.tableconverters.core import registry
 
-_register_conv = core.CONVERTERS.make_group_decorator(trade.GROUP)
+_register_conv = registry.CONVERTERS.make_group_decorator(trade.GROUP)
 
 _DM_ITEM_RX = re.compile(r"(.+) ([-+]\d+)")
 
@@ -24,8 +26,13 @@ def _parse_trade_dm(s: str) -> dict[str, int]:
 
 @_register_conv("trade-goods")
 def trade_goods(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[trade.TradeGood]:
-    _RawRow = TypedDict(
-        "_RawRow",
+    """Parses trade goods CSV data into TradeGood structures.
+
+    :param rows: Input rows from CSV file.
+    :yield: TradeGood objects.
+    """
+    raw_row = TypedDict(
+        "raw_row",
         {
             "D66": str,
             "Type": str,
@@ -38,7 +45,7 @@ def trade_goods(rows: Iterable[dict[str, Optional[str]]]) -> Iterator[trade.Trad
         },
         total=True,
     )
-    for row in cast(Iterable[_RawRow], rows):
+    for row in cast(Iterable[raw_row], rows):
         if row["Base Price"] is None:
             properties = None
             description = row["Availability"]

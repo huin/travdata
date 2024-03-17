@@ -18,7 +18,7 @@ import csv
 import pathlib
 
 from travdata.datatypes import yamlcodec
-from travdata.tableconverters import core
+from travdata.tableconverters.core import registry
 
 
 def main() -> None:
@@ -44,10 +44,10 @@ def main() -> None:
 
     args = argparser.parse_args()
 
-    core.load_all_converters()
+    registry.load_all_converters()
 
     created_directories: set[pathlib.Path] = set()
-    for conv_key, conv_fn in core.CONVERTERS.converters.items():
+    for conv_key, conv_fn in registry.CONVERTERS.converters.items():
         in_group_dir = args.input_dir / conv_key.group_name
         out_group_dir = args.output_dir / conv_key.group_name
         if out_group_dir not in created_directories:
