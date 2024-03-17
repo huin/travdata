@@ -41,6 +41,11 @@ repos:
         language: pygrep
         files: .
         entry: "[X]XX"
+      - id: mypy
+        name: mypy
+        entry: pre-commit-hooks/mypy
+        language: script
+        files: "[.]py$"
       - id: pylint
         name: pylint
         entry: pre-commit-hooks/pylint
