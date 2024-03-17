@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=missing-function-docstring,missing-module-docstring
+# pylint: disable=missing-class-docstring,missing-function-docstring,missing-module-docstring
 
 import io
 from typing import Callable, TypeVar
