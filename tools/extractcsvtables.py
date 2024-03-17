@@ -97,7 +97,8 @@ def main() -> None:
 
     if not args.no_progress:
         monitored_output_tables = progress.Bar(
-            "Extracting tables", max=len(output_tables),
+            "Extracting tables",
+            max=len(output_tables),
         ).iter(output_tables)
     else:
         monitored_output_tables = iter(output_tables)

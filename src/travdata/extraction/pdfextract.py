@@ -54,7 +54,9 @@ def extract_table(
     if extraction.row_folding:
         text_rows = _fold_rows(
             lines=text_rows,
-            grouper=_MultiGrouper([_make_line_grouper(folder) for folder in extraction.row_folding]),
+            grouper=_MultiGrouper(
+                [_make_line_grouper(folder) for folder in extraction.row_folding]
+            ),
         )
 
     text_rows = _clean_rows(text_rows)

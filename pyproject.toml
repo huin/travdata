@@ -16,6 +16,7 @@ mypy = "^1.9.0"
 pylint = "^3.1.0"
 pytest = "^8.0.2"
 testfixtures = "^8.0.0"
+black = "^24.3.0"
 
 [tool.black]
 line-length = 100

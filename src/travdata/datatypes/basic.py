@@ -11,6 +11,7 @@ T = TypeVar("T")
 @yamlcodec.register_type
 class IntRange:
     """Inclusive integer range [self.min, self.max]."""
+
     min: Optional[int]
     max: Optional[int]
 
@@ -79,6 +80,7 @@ class IntRange:
 @yamlcodec.register_type
 class IntRangeSet:
     """A set of inclusive integer ranges."""
+
     yaml_tag: ClassVar = "!IntRangeSet"
     ranges: list[IntRange] = dataclasses.field(default_factory=list)
 

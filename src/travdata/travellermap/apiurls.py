@@ -19,8 +19,7 @@ class Format(enum.StrEnum):
 
 class SectorSelector(abc.ABC):
     @abc.abstractmethod
-    def update_query(self, query: dict[str, str]) -> None:
-        ...
+    def update_query(self, query: dict[str, str]) -> None: ...
 
 
 @dataclasses.dataclass
@@ -30,6 +29,7 @@ class SectorId:
 
     :attr id: The ID of the sector, e.g. "spin".
     """
+
     id: str
 
     def update_query(self, query: dict[str, str]) -> None:
@@ -43,6 +43,7 @@ class SectorCoords:
     :attr sx: X coordinate.
     :attr sy: Y coordinate.
     """
+
     sx: int
     sy: int
 
@@ -53,13 +54,13 @@ class SectorCoords:
 
 class SubsectorSelector(abc.ABC):
     @abc.abstractmethod
-    def update_query(self, query: dict[str, str]) -> None:
-        ...
+    def update_query(self, query: dict[str, str]) -> None: ...
 
 
 @SubsectorSelector.register
 class SubSectorCode(enum.StrEnum):
     """Selects a subset of a sector by subsector code."""
+
     A = "A"
     B = "B"
     C = "C"
@@ -84,6 +85,7 @@ class SubSectorCode(enum.StrEnum):
 @SubsectorSelector.register
 class SectorQuadrant(enum.StrEnum):
     """Selects a subset of a sector by quadrant."""
+
     ALPHA = "Alpha"
     BETA = "Beta"
     GAMMA = "Gamma"

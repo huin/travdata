@@ -15,8 +15,17 @@ import io
 import pathlib
 import sys
 import urllib.request
-from typing import (Callable, Iterable, Iterator, NewType, Optional, Protocol,
-                    TypeAlias, TypeVar, cast)
+from typing import (
+    Callable,
+    Iterable,
+    Iterator,
+    NewType,
+    Optional,
+    Protocol,
+    TypeAlias,
+    TypeVar,
+    cast,
+)
 
 from travdata.datatypes import yamlcodec
 from travdata.datatypes.core import trade, worldcreation
@@ -41,6 +50,7 @@ class _IgnoreUnknown(enum.StrEnum):
 @yamlcodec.register_type
 class WorldTradeOverrides:
     """Overrides specified on a specific world and trade good."""
+
     available: Optional[bool] = None
     purchase_dm: Optional[int] = None
     sale_dm: Optional[int] = None

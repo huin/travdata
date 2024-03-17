@@ -21,10 +21,6 @@ repos:
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
-  - repo: https://github.com/FalconSocial/pre-commit-python-sorter
-    rev: b57ce61dbbeff813cc8786584d3c98c885ac3e14
-    hooks:
-      - id: python-import-sorter
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
     hooks:
@@ -36,6 +32,11 @@ repos:
       - id: text-unicode-replacement-char
   - repo: local
     hooks:
+      - id: black
+        name: black
+        entry: pre-commit-hooks/black
+        language: script
+        files: "[.]py$"
       - id: check-xxx
         name: Check xxx
         language: pygrep

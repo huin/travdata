@@ -7,10 +7,19 @@ from typing import Callable, TypeVar
 import testfixtures  # type: ignore[import-untyped]
 from travdata.datatypes.core.worldcreation import UWP
 from travdata.travellermap import sectorparse
-from travdata.travellermap.world import (BaseCode, StellarCode, SubsectorCode,
-                                         SubSectorLoc, TradeCode, TravelCode,
-                                         World, WorldExtensions, WorldLocation,
-                                         WorldSocial, WorldSystem)
+from travdata.travellermap.world import (
+    BaseCode,
+    StellarCode,
+    SubsectorCode,
+    SubSectorLoc,
+    TradeCode,
+    TravelCode,
+    World,
+    WorldExtensions,
+    WorldLocation,
+    WorldSocial,
+    WorldSystem,
+)
 
 C = TypeVar("C")
 T = TypeVar("T")
