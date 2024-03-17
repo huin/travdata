@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+"""Defines the configuration around data extraction and other metadata.
+
+Values of these types are read from ``config.yaml`` files, relating to a single
+input PDF. See development.adoc for more information in how this is used.
+"""
+
 import abc
 import dataclasses
 import pathlib
@@ -17,6 +23,8 @@ class RowFolder(abc.ABC):
 @dataclasses.dataclass
 @_YAML.register_class
 class StaticRowCounts(RowFolder):
+    """Specifies explicit input row counts for output grouped rows."""
+
     yaml_tag: ClassVar = "!StaticRowCounts"
     row_counts: list[int]
 
@@ -24,6 +32,8 @@ class StaticRowCounts(RowFolder):
 @dataclasses.dataclass
 @_YAML.register_class
 class EmptyColumn(RowFolder):
+    """Specifies to group rows by when a given column is empty."""
+
     yaml_tag: ClassVar = "!EmptyColumn"
     column_index: int
 
@@ -61,6 +71,11 @@ class _YamlGroup:
             raise
 
     def prepare(self, directory: pathlib.Path) -> "Group":
+        """Creates a ``Group`` from self.
+
+        :param directory: Path to the directory of the parent ``Group``.
+        :return: Prepared ``Group``.
+        """
         return Group(
             directory=directory,
             tables={name: table.prepare(name, directory) for name, table in self.tables.items()},
@@ -86,6 +101,12 @@ class _YamlTable:
             raise
 
     def prepare(self, name: str, directory: pathlib.Path) -> "Table":
+        """Creates a ``Table`` from self.
+
+        :param name: Name of the table within its ``Group.groups``.
+        :param directory: Path to the directory of the parent ``Group``.
+        :return: Prepared ``Table``.
+        """
         kw = dataclassutil.shallow_asdict(self)
         return Table(file_stem=directory / name, **kw)
 
@@ -115,6 +136,13 @@ class Group:
 
 @dataclasses.dataclass
 class Table:
+    """Defines metadata and extraction configuration relating to a single table.
+
+    The "path" of group names and the table name form the path for both the
+    ``.tabula-template.json`` file within the configuration directory and the
+    output ``.csv`` file in the output directory.
+    """
+
     file_stem: pathlib.Path
     type: str
     extraction: Optional[TableExtraction] = dataclasses.field(default_factory=TableExtraction)
@@ -126,11 +154,13 @@ def _prepare_config(cfg: Any, cfg_dir: pathlib.Path) -> Group:
     return cfg.prepare(cfg_dir)
 
 
-def load_config_from_str(yaml: str) -> Group:
-    cfg = _YAML.load(yaml)
+def load_config_from_str(yaml_str: str) -> Group:
+    """Loads the configuration from the given string containing YAML."""
+    cfg = _YAML.load(yaml_str)
     return _prepare_config(cfg, pathlib.Path("."))
 
 
 def load_config(cfg_dir: pathlib.Path) -> Group:
+    """Loads the configuration from the directory."""
     cfg = _YAML.load(cfg_dir / "config.yaml")
     return _prepare_config(cfg, pathlib.Path("."))
