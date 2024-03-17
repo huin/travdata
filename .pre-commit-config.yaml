@@ -25,6 +25,10 @@ repos:
       rev: b57ce61dbbeff813cc8786584d3c98c885ac3e14
       hooks:
           - id: python-import-sorter
+    - repo: https://github.com/PyCQA/pylint
+      rev: 053c2c3a25f97f043e10cdd41d2609e495a68f57 # v3.1.0
+      hooks:
+        - id: pylint
     - repo: https://github.com/pre-commit/pygrep-hooks
       rev: v1.10.0
       hooks:
