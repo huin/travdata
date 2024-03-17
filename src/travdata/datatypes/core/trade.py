@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+"""Data types relating to trade."""
+
 import dataclasses
 from typing import Optional
 
@@ -10,6 +12,8 @@ GROUP = "trade"
 @dataclasses.dataclass
 @yamlcodec.register_type
 class TradeGoodProperties:
+    """Specific about a single trade good that are not present for all trade goods."""
+
     availability: set[str]
     tons: str
     base_price: int
@@ -21,6 +25,8 @@ class TradeGoodProperties:
 @dataclasses.dataclass
 @yamlcodec.register_type
 class TradeGood:
+    """Data about a single trade good."""
+
     d66: str
     name: str
     description: Optional[str]

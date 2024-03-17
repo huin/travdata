@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+"""General datatypes, non-specific to any specific area."""
+
 import dataclasses
+import re
 from typing import Any, ClassVar, Optional, TypeVar
 
 from travdata.datatypes import yamlcodec
@@ -7,13 +10,18 @@ from travdata.datatypes import yamlcodec
 T = TypeVar("T")
 
 
+_FULL_RANGE_RX = re.compile("(\\d+)[-\u2013](\\d+)")
+_MAX_RANGE_RX = re.compile("(\\d+)[-\u2013]")
+_MIN_RANGE_RX = re.compile("(\\d+)[+]")
+
+
 @dataclasses.dataclass
 @yamlcodec.register_type
 class IntRange:
-    """Inclusive integer range [self.min, self.max]."""
+    """Inclusive integer range [self.min_value, self.max_value]."""
 
-    min: Optional[int]
-    max: Optional[int]
+    min_value: Optional[int]
+    max_value: Optional[int]
 
     @classmethod
     def parse(cls, v: str) -> "IntRange":
@@ -29,49 +37,41 @@ class IntRange:
         :param v: The string to parse, as per the above.
         :return: Parsed IntRange.
         """
-        range_hyphen = "\u2013"
         if not v:
             return cls(None, None)
-        elif v.endswith("+"):
-            min_value = int(v.removesuffix("+"))
-            return cls(min=min_value, max=None)
-        elif v.endswith(range_hyphen):
-            max_value = int(v.removesuffix(range_hyphen))
-            return cls(min=None, max=max_value)
-        elif v.endswith("-"):
-            max_value = int(v.removesuffix("-"))
-            return cls(min=None, max=max_value)
-        elif range_hyphen in v:
-            min_s, _, max_s = v.partition(range_hyphen)
-            return cls(min=int(min_s), max=int(max_s))
-        elif "-" in v:
-            min_s, _, max_s = v.partition("-")
-            return cls(min=int(min_s), max=int(max_s))
-        else:
-            v_int = int(v)
-            return cls(min=v_int, max=v_int)
+        if match := _MIN_RANGE_RX.fullmatch(v):
+            min_value = int(match.group(1))
+            return cls(min_value=min_value, max_value=None)
+        if match := _MAX_RANGE_RX.fullmatch(v):
+            max_value = int(match.group(1))
+            return cls(min_value=None, max_value=max_value)
+        if match := _FULL_RANGE_RX.fullmatch(v):
+            min_s, max_s = match.group(1, 2)
+            return cls(min_value=int(min_s), max_value=int(max_s))
+        v_int = int(v)
+        return cls(min_value=v_int, max_value=v_int)
 
     def __str__(self) -> str:
         match self:
-            case IntRange(min=None, max=None):
+            case IntRange(min_value=None, max_value=None):
                 return ""
-            case IntRange(min=min, max=None):
-                return f"{min}+"
-            case IntRange(min=None, max=max):
-                return f"{max}-"
-            case IntRange(min=min, max=max) if min == max:
-                return str(min)
-            case IntRange(min=min, max=max):
-                return f"{min}-{max}"
+            case IntRange(min_value=min_value, max_value=None):
+                return f"{min_value}+"
+            case IntRange(min_value=None, max_value=max_value):
+                return f"{max_value}-"
+            case IntRange(min_value=min_value, max_value=max_value) if min_value == max_value:
+                return str(min_value)
+            case IntRange(min_value=min_value, max_value=max_value):
+                return f"{min_value}-{max_value}"
             case _:
                 raise TypeError(self)
 
     def __contains__(self, v: Any) -> bool:
         if not isinstance(v, (int, float)):
             return False
-        if self.min is not None and v < self.min:
+        if self.min_value is not None and v < self.min_value:
             return False
-        if self.max is not None and v > self.max:
+        if self.max_value is not None and v > self.max_value:
             return False
         return True
 
@@ -107,8 +107,11 @@ class IntRangeSet:
 
     @classmethod
     def to_yaml(cls, representer, node):
+        """Implements ruamel.yaml serialisation."""
         return representer.represent_sequence(cls.yaml_tag, node.ranges)
 
     @classmethod
     def from_yaml(cls, constructor, node):
+        """Implements ruamel.yaml serialisation."""
+        del constructor  # unused
         return cls(node.value)

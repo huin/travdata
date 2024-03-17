@@ -5,6 +5,10 @@ Notionally these are types derived from the World and Universe Creation chapter
 in the core rulebook.
 """
 
+# Many types inherently have a lot of attributes, this reflects the data from
+# the book.
+# pylint: disable=too-many-instance-attributes
+
 import dataclasses
 import enum
 from typing import ClassVar, Optional
@@ -18,6 +22,8 @@ GROUP = "worldcreation"
 @dataclasses.dataclass
 @yamlcodec.register_type
 class Government:
+    """Government type identifying code and information."""
+
     code: str
     name: str
     description: str
@@ -28,6 +34,8 @@ class Government:
 @dataclasses.dataclass
 @yamlcodec.register_type
 class LawLevel:
+    """Descriptors for law levels, and weapons and armour banned in them."""
+
     min_level: int
     max_level: Optional[int]
     description: Optional[str]
@@ -38,6 +46,8 @@ class LawLevel:
 @dataclasses.dataclass
 @yamlcodec.register_type
 class TradeCode:
+    """Criteria for a world trade classification/code."""
+
     classification: str
     code: str
     planet_sizes: basic.IntRangeSet
@@ -52,6 +62,8 @@ class TradeCode:
 @enum.unique
 @yamlcodec.register_type
 class StarportType(enum.StrEnum):
+    """Enumeration for core starport type codes."""
+
     EXCELLENT = "A"
     GOOD = "B"
     ROUTINE = "C"
@@ -63,6 +75,8 @@ class StarportType(enum.StrEnum):
 @dataclasses.dataclass(frozen=True)
 @yamlcodec.register_type
 class UWP:
+    """Universal World Profile."""
+
     yaml_tag: ClassVar = "!UWP"
     starport: StarportType
     size: int
@@ -75,6 +89,7 @@ class UWP:
 
     @classmethod
     def parse(cls, uwp: str) -> "UWP":
+        """Parse a UWP string."""
         codes = uwp.replace("-", "")
         if len(codes) != 8:
             raise ValueError(uwp)
@@ -97,8 +112,11 @@ class UWP:
 
     @classmethod
     def to_yaml(cls, representer, node):
+        """Implements ruamel.yaml serialisation."""
         return representer.represent_scalar(cls.yaml_tag, str(node))
 
     @classmethod
     def from_yaml(cls, constructor, node):
+        """Implements ruamel.yaml serialisation."""
+        del constructor  # unused
         return cls.parse(node.value)
