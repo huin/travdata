@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Extracts data tables from the Mongoose Traveller 2022 core rules PDF as
+CSV files.
+
+The extracted data is *not* for redistribution, as it is almost
+certainly subject to copyright. This utility (and its output) is
+intended as an aid to those who legally own a copy of the Mongoose
+Traveller materials, and wish to make use of the data for their own
+purposes.
+
+It is the sole responsibility of the user of this program to use the
+extracted data in a manner that respects the publisher's IP rights.
+"""
 
 import argparse
 import csv
@@ -13,20 +26,9 @@ from travdata.extraction import pdfextract, tabulautil
 
 
 def main() -> None:
+    """CLI entry point."""
     argparser = argparse.ArgumentParser(
-        description="""
-        Extracts data tables from the Mongoose Traveller 2022 core rules PDF as
-        CSV files.
-
-        The extracted data is *not* for redistribution, as it is almost
-        certainly subject to copyright. This utility (and its output) is
-        intended as an aid to those who legally own a copy of the Mongoose
-        Traveller materials, and wish to make use of the data for their own
-        purposes.
-
-        It is the sole responsibility of the user of this program to use the
-        extracted data in a manner that respects the publisher's IP rights.
-        """,
+        description=__doc__,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -123,10 +125,11 @@ def main() -> None:
                     extraction=extraction,
                     table_reader=tabula_client,
                 )
-                with open(out_filepath, "wt") as f:
+                with open(out_filepath, "wt", encoding="utf-8") as f:
                     csv.writer(f).writerows(rows)
             except Exception as e:
                 e.add_note(f"Error while processing table {table.file_stem}: {e}")
+                raise
         except pdfextract.ConfigurationError as e:
             print(e, file=sys.stdout)
 

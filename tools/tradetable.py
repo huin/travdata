@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Produce a purchase DM table based on:
+
+https://sirpoley.tumblr.com/post/643218580118323200/on-creating-a-frictionless-traveller-part-i
+"""
 
 import argparse
 import codecs
@@ -24,7 +29,7 @@ TradeGoodIllegality: TypeAlias = dict[str, int]
 
 
 class UserError(Exception):
-    pass
+    """Raised for a problem detected with user input."""
 
 
 class _IgnoreUnknown(enum.StrEnum):
@@ -35,6 +40,7 @@ class _IgnoreUnknown(enum.StrEnum):
 @dataclasses.dataclass
 @yamlcodec.register_type
 class WorldTradeOverrides:
+    """Overrides specified on a specific world and trade good."""
     available: Optional[bool] = None
     purchase_dm: Optional[int] = None
     sale_dm: Optional[int] = None
@@ -74,10 +80,9 @@ def _load_world_csv_data(path: str) -> Iterator[world.World]:
     :param fp: File to read CSV data from.
     :yield: World data.
     """
-    with open(path, "rt") as fp:
+    with open(path, "rt", encoding="utf-8") as fp:
         r = csv.DictReader(fp)
         for row in r:
-            c = row["Travel Code"]
             yield world.World(
                 name=row["Name"],
                 location=world.WorldLocation(
@@ -93,7 +98,7 @@ def _load_world_csv_data(path: str) -> Iterator[world.World]:
 
 
 def _load_travellermap_tsv_file(path: str) -> list[world.World]:
-    with open(path, "rt") as fp:
+    with open(path, "rt", encoding="utf-8") as fp:
         return list(sectorparse.t5_tsv(fp))
 
 
@@ -108,7 +113,8 @@ def _load_travellermap_subsector(spec: str) -> list[world.World]:
     sector, slash, subsector_str = spec.partition("/")
     if not any([sector, slash, subsector_str]):
         raise UserError(
-            "Invalid format for travellermap_subsector - expected sector/subsectorletter, e.g. spin/C"
+            "Invalid format for travellermap_subsector - expected"
+            " sector/subsectorletter, e.g. spin/C"
         )
     url = apiurls.uwp_data(
         sector=apiurls.SectorId(sector),  # type: ignore[arg-type]
@@ -129,7 +135,7 @@ def _pbool(s: str) -> bool:
     v = s.lower()
     if v == "true":
         return True
-    elif v == "false":
+    if v == "false":
         return False
     raise ValueError(v)
 
@@ -155,11 +161,13 @@ def _trade_dm(dms: dict[str, int], world_trades: set[str]) -> int:
     )
 
 
-def parse_args(args: Optional[list[str]] = None) -> argparse.Namespace:
+def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments.
+
+    :returns: Parsed arguments.
+    """
     argparser = argparse.ArgumentParser(
-        description="""Produce a purchase DM table based on:
-        https://sirpoley.tumblr.com/post/643218580118323200/on-creating-a-frictionless-traveller-part-i
-        """,
+        description=__doc__,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -394,36 +402,42 @@ def _calculate_trades(
         dms: dict[_WorldId, _ResultDMData] = {}
         for world_view in world_views:
             overrides = wt_overrides.get((world_view.subsector_loc, tgood.d66), _EMPTY_OVERRIDES)
-
-            is_common = "All" in tprops.availability
-
-            is_available = is_common or not tprops.availability.isdisjoint(
-                world_view.trade_classifications
-            )
-            is_available = _eval_override(is_available, overrides.available)
-
-            purchase_dm = _trade_dm(tprops.purchase_dm, world_view.trade_classifications)
-            purchase_dm = _eval_override(purchase_dm, overrides.purchase_dm)
-
-            illegal = illegality is not None and world_view.law_level >= illegality
-            illegal = _eval_override(illegal, overrides.illegal)
-            if illegal and illegality is not None:
-                sale_dm = world_view.law_level - illegality
-            else:
-                sale_dm = _trade_dm(tprops.sale_dm, world_view.trade_classifications)
-            sale_dm = _eval_override(sale_dm, overrides.sale_dm)
-
-            dm = purchase_dm - sale_dm
-
-            dms[world_view.id] = _ResultDMData(
-                world_view=world_view,
-                common=is_common,
-                illegal=illegal,
-                dm=dm,
-                available=is_available,
-            )
+            dms[world_view.id] = _calculate_world_trade(tprops, overrides, world_view, illegality)
 
         yield _ResultTradeGoodDMs(tgood=tgood, dms=dms)
+
+
+def _calculate_world_trade(
+    tprops: trade.TradeGoodProperties,
+    overrides: WorldTradeOverrides,
+    world_view: _WorldView,
+    illegality: Optional[int],
+) -> _ResultDMData:
+    is_common = "All" in tprops.availability
+
+    is_available = is_common or not tprops.availability.isdisjoint(world_view.trade_classifications)
+    is_available = _eval_override(is_available, overrides.available)
+
+    purchase_dm = _trade_dm(tprops.purchase_dm, world_view.trade_classifications)
+    purchase_dm = _eval_override(purchase_dm, overrides.purchase_dm)
+
+    illegal = illegality is not None and world_view.law_level >= illegality
+    illegal = _eval_override(illegal, overrides.illegal)
+    if illegal and illegality is not None:
+        sale_dm = world_view.law_level - illegality
+    else:
+        sale_dm = _trade_dm(tprops.sale_dm, world_view.trade_classifications)
+    sale_dm = _eval_override(sale_dm, overrides.sale_dm)
+
+    dm = purchase_dm - sale_dm
+
+    return _ResultDMData(
+        world_view=world_view,
+        common=is_common,
+        illegal=illegal,
+        dm=dm,
+        available=is_available,
+    )
 
 
 @dataclasses.dataclass
@@ -442,6 +456,11 @@ class _Formats:
     legal: str
 
     def fmt_dm(self, result_dm: _ResultDMData) -> str:
+        """Formats the given DM, based on its properties.
+
+        :param result_dm: DM and its properties.
+        :return: Formatted DM.
+        """
         fmts = []
         if result_dm.common:
             fmts.append(self.common)
@@ -458,6 +477,12 @@ class _Formats:
         return dm_str
 
     def key(self, example_dm: str) -> list[tuple[str, str]]:
+        """Formats and returns the given DM with explanation as a legend.
+
+        :param example_dm: Example DM text to format in each case.
+        :return: Tuples, each of which containing the formatted DM, and the
+        corresponding description of its meaning.
+        """
         entries = [
             (self.common, "Commonly available goods."),
             (self.unavailable, "Good unavailable for purchase."),
@@ -467,7 +492,7 @@ class _Formats:
         return [(fmt.format(example_dm), explanation) for fmt, explanation in entries]
 
 
-class _ResultWriter(Protocol):
+class _ResultWriter(Protocol):  # pylint: disable=too-few-public-methods
     def __call__(
         self,
         *,
@@ -606,6 +631,10 @@ _RESULT_WRITERS: dict[str, _ResultWriter] = {
 
 
 def process(args: argparse.Namespace) -> None:
+    """Runs the program, given the parsed command line arguments.
+
+    :param args: Command line arguments.
+    """
     tcodes = cast(
         list[worldcreation.TradeCode],
         _load_yaml(list, args.data_dir / worldcreation.GROUP / "trade-codes.yaml"),
@@ -657,6 +686,7 @@ def process(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    """Entrypoint for the program."""
     args = parse_args()
     try:
         process(args)

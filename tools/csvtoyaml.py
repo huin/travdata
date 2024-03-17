@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Converts CSV data tables from the Mongoose Traveller 2022 core rules PDF into
+YAML files.
+
+The extracted data is *not* for redistribution, as it is almost certainly
+subject to copyright. This utility (and its output) is intended as an aid to
+those who legally own a copy of the Mongoose Traveller materials, and wish to
+make use of the data for their own purposes.
+
+It is the sole responsibility of the user of this program to use the extracted
+data in a manner that respects the publisher's IP rights.
+"""
 
 import argparse
 import csv
@@ -10,20 +22,9 @@ from travdata.tableconverters import core
 
 
 def main() -> None:
+    """CLI entry point."""
     argparser = argparse.ArgumentParser(
-        description="""
-        Converts CSV data tables from the Mongoose Traveller 2022 core rules PDF
-        into YAML files.
-
-        The extracted data is *not* for redistribution, as it is almost
-        certainly subject to copyright. This utility (and its output) is
-        intended as an aid to those who legally own a copy of the Mongoose
-        Traveller materials, and wish to make use of the data for their own
-        purposes.
-
-        It is the sole responsibility of the user of this program to use the
-        extracted data in a manner that respects the publisher's IP rights.
-        """,
+        description=__doc__,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -52,8 +53,16 @@ def main() -> None:
         if out_group_dir not in created_directories:
             out_group_dir.mkdir(parents=True, exist_ok=True)
         with (
-            open(in_group_dir / f"{conv_key.table_name}.csv", "rt") as csv_file_in,
-            open(out_group_dir / f"{conv_key.table_name}.yaml", "wt") as yaml_file_out,
+            open(
+                in_group_dir / f"{conv_key.table_name}.csv",
+                "rt",
+                encoding="utf-8",
+            ) as csv_file_in,
+            open(
+                out_group_dir / f"{conv_key.table_name}.yaml",
+                "wt",
+                encoding="utf-8",
+            ) as yaml_file_out,
         ):
             r = csv.DictReader(csv_file_in)
             data = conv_fn(iter(r))
