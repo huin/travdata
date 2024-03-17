@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Tests for config."""
+# pylint: disable=missing-class-docstring,missing-function-docstring,missing-module-docstring
+
 import pathlib
 import textwrap
 
@@ -8,7 +9,6 @@ from travdata import config
 
 
 def test_load_config_from_str() -> None:
-    """Test for load_config_from_str."""
     actual = config.load_config_from_str(
         textwrap.dedent(
             """

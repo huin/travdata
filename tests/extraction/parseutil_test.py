@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=missing-function-docstring,missing-module-docstring
 
 import pytest
 from travdata.extraction import parseutil
