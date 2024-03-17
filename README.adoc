@@ -1,0 +1,234 @@
+= Traveller Data Utils
+
+Python library and assorted tools for assisting with the Mongoose Traveller
+TTRPG system.
+
+The extracted data is *not* for redistribution, as it is almost certainly
+subject to copyright (I am not a lawyer - but it's safer to assume caution over
+distribution). This utility (and its output) is intended as an aid to those who
+legally own a copy of the Mongoose Traveller materials, and wish to make use of
+the data for their own direct purposes. It is the sole responsibility of the
+user of this program to use the extracted data in a manner that respects the
+publisher's IP rights.
+
+IMPORTANT: Do not distribute the data extracted PDF files without explicit
+permission from the copyright holder.
+
+The purpose of this tool is to extract the data for usage by the legal owner of
+a copy of the original materal that it was extracted from.
+
+== Usage
+
+This package is primarily intended for the provided CLI tools, but API access is
+also possible.
+
+For any usage of the CLI or API that involves extracting CSV data from PDFs, the
+Java Runtime Environment (JRE) must be installed on the system.
+
+=== CLI `tools/extractcsvtables.py`
+
+This tool extracts CSV files from tables in the given PDF, based on the given
+configuration files that specifies the specifics of how those tables can be
+turned into useful CSV data. As such, it only supports extraction of tables from
+known PDF files, where the individual tables have been configured.
+
+The general form of the command is:
+
+[source,shell]
+----
+extractcsvtables.py CONFIG_DIR INPUT.PDF OUT_DIR
+----
+
+Where:
+
+`CONFIG_DIR`:: is the path to the directory containing a `config.yaml` file, and
+  subdirectories and `*.tabula-template.json` files. This contains information guiding the extraction, and is specific to the PDF being read from.
+`INPUT.PDF`:: is the path to the PDF file to read tables from.
+`OUT_DIR`:: is the path to a (potentially not existing) directory to output the
+  resulting CSV files. This will result in containing a directory and file
+  structure that mirrors that in `CONFIG_DIR`, but will contain `.csv` rather
+  than `.tabula-template.json` files.
+
+At the present time, the only supported input PDF file is the Mongoose Traveller
+Core Rulebook 2022, and not all tables are yet supported for extraction.
+
+== Developing
+
+The development environment is managed by [Poetry](https://python-poetry.org/).
+Ensure that Poetry is installed.
+
+Then optionally set Python virtual environment to in-project, which may help
+your IDE find types more easily.
+
+[source,shell]
+----
+poetry config virtualenvs.in-project true
+----
+
+Then run the following to install dependencies required for development:
+
+[source,shell]
+----
+poetry install
+----
+
+To run tests:
+
+[source,shell]
+----
+poetry run pytest
+----
+
+=== Adding more table configurations for extraction
+
+Overall process:
+
+. If you have not already done so, install
+  [Tabula](https://tabula.technology/). This will be used to create
+  `.tabula-template.json` files, but is not required for the actual extraction
+  itself.
+. Access Tabula through its web interface. By default this will be available
+  via [`localhost:8080`](http://localhost:8080/).
+. Import the PDF containing the tables.
+. Create a template per table in the PDF file.
+
+  . Use the tool to select individual tables, and define a template for each
+  table. Specific guidance:
+
+    * Only select a single table per template.
+    * Create multiple selections within the same template for a table that
+    is split into multiple parts. For example, a table that spans two pages.
+    * Where multiple selections are made for a single table, only include
+    the header row once, for the first selection, omit it on subsequent
+    selections.
+    * Preview extraction within Tabula. Experiment with both "Stream" and
+    "Lattice" modes.
+
+      * Lattice works very well with less processing configuration later,
+      but only works well where the table contains an outline and interior
+      gridlines.
+      * Stream works well as a fallback for other types of table, but
+      requires more processing later. Most tables from Mongoose Traveller books
+      fall into this category.
+
+  . Export the template file from Tabula, and add it to an appropriate
+    subdirrectory within the config directory corresponding to the PDF file.
+
+. For each table template, create a table entry within the `config.yaml` file.
+   See the Extraction section for details of how this works.
+. Test the extraction by running the `tools/extractcsvtables.py` tool. Adjust
+   the `config.yaml` and `.tabular-template.json` files. Remove 
+
+=== Configuration
+
+A top-level configuration directory containing a `config.yaml` and
+subdirectories and files containing `.tabula-tempalte.yaml` files is the
+configuration to extract data from a PDF file, and metadata about the extracted
+data.
+
+The schema is a typed-YAML file, with types as follows:
+
+`!Group`::
+`mapping`
++
+This is the top-level type, and can contain child groups. A group corresponds to
+a directory within the configuration directory.
+
+Fields:::
+
+`groups`::::
+optional `mapping<string, !Group>`
++
+A mapping from string (group name - a subdirectory name) to the definition of
+that group.
+
+`tables`::::
+optional `mapping<string, !Table>`
++
+The map key is the filename stem of the table. This is the filename without the
+`.tabula-template.json` suffix within the configuration directory, and the
+filename without the `.csv` suffix in the output directory.
+
+The map value is the metadata and extraction configuration of the table.
+
+`extraction_templates`::::
+optional `list<!TableExtraction>`
++
+A list of table extraction configurations. This can be used with the YAML
+"anchor" (`&`) syntax to define common table extraction configurations
+elsewhere in the file, which can be used by the "alias" (`*`) syntax.
+
+`!Table`::
+`mapping`
++
+Defines metadata and extraction configuration relating to a single table. The
+"path" of group names and the table name form the path  for both the
+`.tabula-template.json` file within the configuration directory and the output
+`.csv` file in the output directory.
+
+Fields:::
+
+`type`::::
+optional `string`
++
+Name of the type. This is very optional, and relates to a speculative feature to
+translate tables further from CSV to YAML files, names the type of each row. At
+this time, ignore this field.
+
+`extraction`::::
+optional `!TableExtraction`
++
+Configures processing of data extracted by Tabula. If left unset or set to
+`!!null`, then no PDF to CSV extraction will be attempted. See the section on
+Extraction for more information.
+
+==== Extraction
+
+`!TableExtraction`::
+`mapping`
++
+When present as the value of an `extraction` field in a `!Table`, requests
+extraction of that table. Fields inside this type adjust how the data is
+adjusted from the data emitted by Tabula into the rows in the final CSV file.
+
+Fields:::
+
+`add_header_row`::::
+optional `list<string>`
++
+Adds the list of strings as the first row in the resulting CSV file. This row is
+not subject to any configured `row_folding`.
+
+`row_folding`::::
+optional `list<!StaticRowCount | !EmptyColumn>`
++
+Specifies how to merge together a sequence of rows into single rows in the
+output. For entries in this list that cover a limited number of input rows (like
+`!StaticRowCount`), following rows will fall into grouping by the subsequent
+entry. Any input rows not covered by these entries will pass through ungrouped.
+
+`!StaticRowCounts`::
+`mapping`
++
+Groups input rows according to each of the numbers in turn.
+
+Fields:::
+
+`row_counts`::::
+`list[integer]`
++
+Specifies input row counts per output row.
+
+`!EmptyColumn`::
+`mapping`
++
+Groups input rows together with previous input rows when the given column is
+empty.
+
+Fields:::
+
+`column_index`::::
+`integer`
++
+Specifies the zero-based index of the column that must be empty in order to
+group it with previous input rows.
