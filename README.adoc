@@ -54,7 +54,7 @@ Core Rulebook 2022, and not all tables are yet supported for extraction.
 
 == Developing
 
-The development environment is managed by [Poetry](https://python-poetry.org/).
+The development environment is managed by https://python-poetry.org/[Poetry].
 Ensure that Poetry is installed.
 
 Then optionally set Python virtual environment to in-project, which may help
@@ -83,12 +83,11 @@ poetry run pytest
 
 Overall process:
 
-. If you have not already done so, install
-  [Tabula](https://tabula.technology/). This will be used to create
-  `.tabula-template.json` files, but is not required for the actual extraction
-  itself.
-. Access Tabula through its web interface. By default this will be available
-  via [`localhost:8080`](http://localhost:8080/).
+. If you have not already done so, install https://tabula.technology/[Tabula].
+This will be used to create `.tabula-template.json` files, but is not required
+for the actual extraction itself.
+. Access Tabula through its web interface. By default this will be available via
+http://localhost:8080/[`localhost:8080`].
 . Import the PDF containing the tables.
 . Create a template per table in the PDF file.
 
@@ -112,12 +111,12 @@ Overall process:
       fall into this category.
 
   . Export the template file from Tabula, and add it to an appropriate
-    subdirrectory within the config directory corresponding to the PDF file.
+  subdirrectory within the config directory corresponding to the PDF file.
 
 . For each table template, create a table entry within the `config.yaml` file.
-   See the Extraction section for details of how this works.
+See the Extraction section for details of how this works.
 . Test the extraction by running the `tools/extractcsvtables.py` tool. Adjust
-   the `config.yaml` and `.tabular-template.json` files. Remove 
+the `config.yaml` and `.tabular-template.json` files. Remove 
 
 === Configuration
 
