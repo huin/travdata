@@ -37,15 +37,15 @@ EXPECTED_DEFAULTS = {
         # Format:
         (
             EXPECTED_DEFAULTS | {"sector": ["spin"], "type": ["Legacy"]},
-            {"sector": apiurls.SectorId("spin"), "format": apiurls.Format.LEGACY},
+            {"sector": apiurls.SectorId("spin"), "response_type": apiurls.Type.LEGACY},
         ),
         (
             EXPECTED_DEFAULTS | {"sector": ["spin"], "type": ["SecondSurvey"]},
-            {"sector": apiurls.SectorId("spin"), "format": apiurls.Format.SECOND_SURVEY},
+            {"sector": apiurls.SectorId("spin"), "response_type": apiurls.Type.SECOND_SURVEY},
         ),
         (
             EXPECTED_DEFAULTS | {"sector": ["spin"], "type": ["TabDelimited"]},
-            {"sector": apiurls.SectorId("spin"), "format": apiurls.Format.TAB_DELIMITED},
+            {"sector": apiurls.SectorId("spin"), "response_type": apiurls.Type.TAB_DELIMITED},
         ),
         # Coords style:
         (

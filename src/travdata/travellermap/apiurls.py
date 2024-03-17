@@ -11,15 +11,21 @@ _API_URL = "https://travellermap.com/api/"
 _SEC_API_URL = urlparse.urljoin(_API_URL, "sec")
 
 
-class Format(enum.StrEnum):
+class Type(enum.StrEnum):
+    """Response format types for UWP data from Travellermap."""
+
     LEGACY = "Legacy"
     SECOND_SURVEY = "SecondSurvey"
     TAB_DELIMITED = "TabDelimited"
 
 
 class SectorSelector(abc.ABC):
+    """Abstract base class for sector selection."""
+
     @abc.abstractmethod
-    def update_query(self, query: dict[str, str]) -> None: ...
+    def update_query(self, query: dict[str, str]) -> None:
+        """Updates query values from self."""
+        raise NotImplementedError
 
 
 @dataclasses.dataclass
@@ -33,6 +39,7 @@ class SectorId:
     id: str
 
     def update_query(self, query: dict[str, str]) -> None:
+        """Updates query values from self."""
         query["sector"] = self.id
 
 
@@ -48,13 +55,18 @@ class SectorCoords:
     sy: int
 
     def update_query(self, query: dict[str, str]) -> None:
+        """Updates query values from self."""
         query["sx"] = str(self.sx)
         query["sy"] = str(self.sy)
 
 
 class SubsectorSelector(abc.ABC):
+    """Selects a subsector."""
+
     @abc.abstractmethod
-    def update_query(self, query: dict[str, str]) -> None: ...
+    def update_query(self, query: dict[str, str]) -> None:
+        """Updates query values from self."""
+        raise NotImplementedError
 
 
 @SubsectorSelector.register
@@ -79,6 +91,7 @@ class SubSectorCode(enum.StrEnum):
     P = "P"
 
     def update_query(self, query: dict[str, str]) -> None:
+        """Updates query values from self."""
         query["subsector"] = str(self)
 
 
@@ -92,11 +105,14 @@ class SectorQuadrant(enum.StrEnum):
     DELTA = "Delta"
 
     def update_query(self, query: dict[str, str]) -> None:
+        """Updates query values from self."""
         query["quadrant"] = str(self)
         query["quadrant"] = str(self)
 
 
 class CoordsStyle(enum.Enum):
+    """Indicate how to return world coordinates."""
+
     SUBSECTOR = 0  # Subsector style: 0101-0810.
     SECTOR = 1  # Sector style: 0101-3240.
 
@@ -105,7 +121,7 @@ def uwp_data(
     *,
     sector: SectorSelector,
     subsector: Optional[SubsectorSelector] = None,
-    format: Format = Format.TAB_DELIMITED,
+    response_type: Type = Type.TAB_DELIMITED,
     coords_style: CoordsStyle = CoordsStyle.SECTOR,
 ) -> str:
     """Returns a URL to request UWP and other data from travellermap.com.
@@ -120,7 +136,7 @@ def uwp_data(
     :return: URL to request data from travellermap.com.
     """
     query: dict[str, str] = {
-        "type": str(format),
+        "type": str(response_type),
         "sscoords": str(coords_style.value),
     }
     sector.update_query(query)
