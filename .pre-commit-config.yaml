@@ -1,4 +1,9 @@
 repos:
+    - repo: https://github.com/floatingpurr/sync_with_poetry
+      rev: "41b6bf233c52f08f344e09107bdda253e6d8b57a" # 1.1.0
+      hooks:
+        - id: sync_with_poetry
+          args: [] # optional args
     - repo: https://github.com/pre-commit/pre-commit-hooks
       rev: v4.5.0
       hooks:
