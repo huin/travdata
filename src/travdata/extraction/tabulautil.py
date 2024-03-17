@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+"""Utility wrapper for tabular-py."""
+
 import json
 import pathlib
 from typing import Iterable, Iterator, TypeAlias, TypedDict, cast
@@ -7,14 +9,19 @@ import tabula
 
 
 class TabulaCell(TypedDict):
+    """Type of table cells emitted by tabula-py."""
+
     # Ignoring irrelevant fields.
     text: str
 
 
+# Type of table rows emitted by tabula-py.
 TabulaRow: TypeAlias = list[TabulaCell]
 
 
 class TabulaTable(TypedDict):
+    """Type of tables emitted by tabula-py."""
+
     # Ignoring irrelevant fields.
     data: list[TabulaRow]
 
@@ -31,6 +38,8 @@ class _TemplateEntry(TypedDict):
 
 
 class TabulaClient:
+    """Client wrapper around Tabula."""
+
     _force_subprocess: bool
 
     def __init__(self, force_subprocess: bool) -> None:

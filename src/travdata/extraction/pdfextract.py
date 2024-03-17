@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-import enum
+"""Extracts tables from a PDF."""
+
 import itertools
 import pathlib
-from collections.abc import Generator
-from typing import Callable, Iterable, Iterator, Optional, Protocol, TypeAlias
+from typing import Iterable, Iterator, Protocol, TypeAlias
 
 from travdata import config
 from travdata.extraction import parseutil, tabulautil
@@ -20,11 +20,18 @@ class TableReader(Protocol):
         *,
         pdf_path: pathlib.Path,
         template_path: pathlib.Path,
-    ) -> list[tabulautil.TabulaTable]: ...
+    ) -> list[tabulautil.TabulaTable]:
+        """Reads tables from a PDF file, using the named template file.
+
+        :param pdf_path: Path to the PDF file.
+        :param template_path: Path to the tabula-template.json file.
+        :return: List of extracted tables.
+        """
+        raise NotImplementedError
 
 
 class ConfigurationError(Exception):
-    pass
+    """Exception indication error in the given configuration."""
 
 
 def extract_table(
@@ -74,7 +81,13 @@ _Row: TypeAlias = list[str]
 
 class _LineGrouper(Protocol):
 
-    def group_lines(self, lines: Iterable[_Line]) -> Iterator[_LineGroup]: ...
+    def group_lines(self, lines: Iterable[_Line]) -> Iterator[_LineGroup]:
+        """Group input rows into groups, according to the implementation.
+
+        :param lines: Input rows.
+        :yield: Row groups.
+        """
+        raise NotImplementedError
 
 
 class _StaticRowLengths(_LineGrouper):

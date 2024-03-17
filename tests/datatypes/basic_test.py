@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=missing-class-docstring,missing-function-docstring,missing-module-docstring
 
 import pytest
 import testfixtures  # type: ignore[import-untyped]
