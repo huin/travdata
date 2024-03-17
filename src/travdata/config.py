@@ -65,7 +65,9 @@ class _YamlGroup:
             directory=directory,
             tables={name: table.prepare(name, directory) for name, table in self.tables.items()},
             groups={name: group.prepare(directory / name) for name, group in self.groups.items()},
-            # extraction_templates not included.
+            # extraction_templates not included, as it is only for use in
+            # anchoring and aliasing by the YAML file author at the time of YAML
+            # parsing.
         )
 
 
@@ -74,7 +76,7 @@ class _YamlGroup:
 class _YamlTable:
     yaml_tag: ClassVar = "!Table"
     type: Optional[str] = None
-    extraction: "TableExtraction" = dataclasses.field(default_factory=TableExtraction)
+    extraction: Optional["TableExtraction"] = None
 
     def __setstate__(self, state):
         try:

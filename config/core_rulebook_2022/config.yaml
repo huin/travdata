@@ -59,7 +59,8 @@ groups:
           row_folding:
           - !StaticRowCounts
             row_counts: [3, 2, 2, 2, 2, 2, 2]
-      task-difficulty: !Table {}
+      task-difficulty: !Table
+        extraction: !TableExtraction {}
       timeframes: !Table
         extraction: !TableExtraction
           row_folding:
