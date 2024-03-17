@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Tests for config."""
 import pathlib
 import textwrap
 
@@ -7,6 +8,7 @@ from travdata import config
 
 
 def test_load_config_from_str() -> None:
+    """Test for load_config_from_str."""
     actual = config.load_config_from_str(
         textwrap.dedent(
             """
@@ -63,6 +65,7 @@ def test_load_config_from_str() -> None:
                         "defaults": config.Table(
                             file_stem=pathlib.Path("./grp-a/defaults"),
                             type="Defaults",
+                            extraction=None,
                         ),
                     },
                 ),
