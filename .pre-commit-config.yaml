@@ -51,3 +51,8 @@ repos:
         entry: pre-commit-hooks/pylint
         language: script
         files: "[.]py$"
+      - id: pytest
+        name: pytest
+        entry: pre-commit-hooks/pytest
+        language: script
+        files: "[.]py$"
