@@ -1,52 +1,48 @@
 repos:
-    - repo: https://github.com/floatingpurr/sync_with_poetry
-      rev: "41b6bf233c52f08f344e09107bdda253e6d8b57a" # 1.1.0
-      hooks:
-        - id: sync_with_poetry
-          args: [] # optional args
-    - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v4.5.0
-      hooks:
-          - id: check-ast
-          - id: check-builtin-literals
-          - id: check-json
-          - id: check-yaml
-            args:
-                - --unsafe
-          - id: debug-statements
-          - id: end-of-file-fixer
-          - id: fix-encoding-pragma
-          - id: mixed-line-ending
-          - id: no-commit-to-branch
-            args:
-                - --branch=main
-                - --branch=master
-    - repo: https://github.com/compilerla/conventional-pre-commit
-      rev: v3.1.0
-      hooks:
-          - id: conventional-pre-commit
-            stages: [commit-msg]
-    - repo: https://github.com/FalconSocial/pre-commit-python-sorter
-      rev: b57ce61dbbeff813cc8786584d3c98c885ac3e14
-      hooks:
-          - id: python-import-sorter
-    - repo: https://github.com/PyCQA/pylint
-      rev: 053c2c3a25f97f043e10cdd41d2609e495a68f57 # v3.1.0
-      hooks:
-        - id: pylint
-    - repo: https://github.com/pre-commit/pygrep-hooks
-      rev: v1.10.0
-      hooks:
-          - id: python-check-blanket-noqa
-          - id: python-check-blanket-type-ignore
-          - id: python-check-mock-methods
-          - id: python-no-log-warn
-          - id: python-use-type-annotations
-          - id: text-unicode-replacement-char
-    - repo: local
-      hooks:
-          - id: check-xxx
-            name: Check xxx
-            language: pygrep
-            files: .
-            entry: "[X]XX"
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-json
+      - id: check-yaml
+        args:
+          - --unsafe
+      - id: debug-statements
+      - id: end-of-file-fixer
+      - id: fix-encoding-pragma
+      - id: mixed-line-ending
+      - id: no-commit-to-branch
+        args:
+          - --branch=main
+          - --branch=master
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.1.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+  - repo: https://github.com/FalconSocial/pre-commit-python-sorter
+    rev: b57ce61dbbeff813cc8786584d3c98c885ac3e14
+    hooks:
+      - id: python-import-sorter
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-check-blanket-noqa
+      - id: python-check-blanket-type-ignore
+      - id: python-check-mock-methods
+      - id: python-no-log-warn
+      - id: python-use-type-annotations
+      - id: text-unicode-replacement-char
+  - repo: local
+    hooks:
+      - id: check-xxx
+        name: Check xxx
+        language: pygrep
+        files: .
+        entry: "[X]XX"
+      - id: pylint
+        name: pylint
+        entry: pre-commit-hooks/pylint
+        language: script
+        files: "[.]py$"
