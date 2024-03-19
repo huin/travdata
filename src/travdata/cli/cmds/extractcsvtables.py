@@ -1,23 +1,14 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Extracts data tables from the Mongoose Traveller 2022 core rules PDF as
 CSV files.
-
-The extracted data is *not* for redistribution, as it is almost
-certainly subject to copyright. This utility (and its output) is
-intended as an aid to those who legally own a copy of the Mongoose
-Traveller materials, and wish to make use of the data for their own
-purposes.
-
-It is the sole responsibility of the user of this program to use the
-extracted data in a manner that respects the publisher's IP rights.
 """
 
 import argparse
 import csv
 import pathlib
 import sys
+import textwrap
 from typing import cast
 
 from progress import bar as progress  # type: ignore[import-untyped]
@@ -25,19 +16,25 @@ from travdata import config
 from travdata.extraction import pdfextract, tabulautil
 
 
-def main() -> None:
-    """CLI entry point."""
-    argparser = argparse.ArgumentParser(
+def add_subparser(subparsers) -> None:
+    """Adds a subcommand parser to ``subparsers``."""
+    argparser: argparse.ArgumentParser = subparsers.add_parser(
+        "extractcsvtables",
         description=__doc__,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=argparse.RawTextHelpFormatter,
     )
+    argparser.set_defaults(run=run)
 
     argparser.add_argument(
         "config_dir",
-        help="""Path to the extraction configuration directory for the given
-        PDF. This must contain a config.yaml file, and its required Tabula
-        templates. Some configurations for this should be included with this
-        program's distribution.""",
+        help=textwrap.dedent(
+            """
+            Path to the extraction configuration directory for the given PDF.
+            This must contain a config.yaml file, and its required Tabula
+            templates. Some configurations for this should be included with this
+            program's distribution.
+            """
+        ),
         type=pathlib.Path,
         metavar="CONFIG_DIR",
     )
@@ -56,9 +53,13 @@ def main() -> None:
     )
     argparser.add_argument(
         "--overwrite-existing",
-        help="""Extract CSV tables that already exist in the output. This is
-        useful when testing larger scale changes to the configuration or
-        code.""",
+        help=textwrap.dedent(
+            """
+            Extract CSV tables that already exist in the
+            output. This is useful when testing larger scale changes to the
+            configuration or code.
+            """
+        ),
         action="store_true",
         default=False,
     )
@@ -72,13 +73,19 @@ def main() -> None:
     tab_grp = argparser.add_argument_group("Tabula")
     tab_grp.add_argument(
         "--tabula-force-subprocess",
-        help="""If jpype cannot use libjvm, try seting this flag to use a slower
-        path that uses Java as a subprocess.""",
+        help=textwrap.dedent(
+            """
+            If jpype cannot use libjvm, try seting this flag to use a slower
+            path that uses Java as a subprocess.
+            """
+        ),
         action="store_true",
         default=False,
     )
 
-    args = argparser.parse_args()
+
+def run(args: argparse.Namespace) -> None:
+    """CLI entry point."""
 
     tabula_client = tabulautil.TabulaClient(
         force_subprocess=args.tabula_force_subprocess,
@@ -133,7 +140,3 @@ def main() -> None:
                 raise
         except pdfextract.ConfigurationError as e:
             print(e, file=sys.stdout)
-
-
-if __name__ == "__main__":
-    main()

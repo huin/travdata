@@ -14,6 +14,9 @@ packages = [
 [tool.poetry.urls]
 "Issues" = "https://github.com/huin/travdata/issues"
 
+[tool.poetry.scripts]
+travdata_cli = "travdata.cli.cli:main"
+
 [tool.poetry.group.dev.dependencies]
 black = "^24.3.0"
 mypy = "^1.9.0"

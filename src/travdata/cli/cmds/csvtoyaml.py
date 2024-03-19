@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Converts CSV data tables from the Mongoose Traveller 2022 core rules PDF into
@@ -21,12 +20,14 @@ from travdata.datatypes import yamlcodec
 from travdata.tableconverters.core import registry
 
 
-def main() -> None:
-    """CLI entry point."""
-    argparser = argparse.ArgumentParser(
+def add_subparser(subparsers) -> None:
+    """Adds a subcommand parser to ``subparsers``."""
+    argparser: argparse.ArgumentParser = subparsers.add_parser(
+        "csvtoyaml",
         description=__doc__,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=argparse.RawTextHelpFormatter,
     )
+    argparser.set_defaults(run=run)
 
     argparser.add_argument(
         "input_dir",
@@ -42,8 +43,9 @@ def main() -> None:
         metavar="OUT_DIR",
     )
 
-    args = argparser.parse_args()
 
+def run(args: argparse.Namespace) -> None:
+    """CLI entry point."""
     registry.load_all_converters()
 
     created_directories: set[pathlib.Path] = set()
@@ -70,7 +72,3 @@ def main() -> None:
                 data=list(data),
                 stream=yaml_file_out,
             )
-
-
-if __name__ == "__main__":
-    main()

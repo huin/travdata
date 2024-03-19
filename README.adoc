@@ -36,7 +36,7 @@ The general form of the command is:
 
 [source,shell]
 ----
-extractcsvtables.py CONFIG_DIR INPUT.PDF OUT_DIR
+travdata-cli extractcsvtables CONFIG_DIR INPUT.PDF OUT_DIR
 ----
 
 Where:

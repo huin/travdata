@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Produce a purchase DM table based on:
@@ -14,6 +13,7 @@ import enum
 import io
 import pathlib
 import sys
+import textwrap
 import urllib.request
 from typing import (
     Callable,
@@ -171,15 +171,14 @@ def _trade_dm(dms: dict[str, int], world_trades: set[str]) -> int:
     )
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse CLI arguments.
-
-    :returns: Parsed arguments.
-    """
-    argparser = argparse.ArgumentParser(
+def add_subparser(subparsers) -> None:
+    """Adds a subcommand parser to ``subparsers``."""
+    argparser: argparse.ArgumentParser = subparsers.add_parser(
+        "tradetable",
         description=__doc__,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=argparse.RawTextHelpFormatter,
     )
+    argparser.set_defaults(run=run)
 
     data_inputs_grp = argparser.add_argument_group("Data inputs")
     data_inputs_grp.add_argument(
@@ -190,29 +189,38 @@ def parse_args() -> argparse.Namespace:
     )
     data_inputs_grp.add_argument(
         "--trade-good-illegality",
-        help=(
-            "Goods illegality data. Simple YAML mapping from trade good d66"
-            " string to the numeric minimum law level at which it considered"
-            " illegal."
+        help=textwrap.dedent(
+            """
+            Goods illegality data. Simple YAML mapping from trade good d66
+            string to the numeric minimum law level at which it considered
+            illegal.
+            """
         ),
         type=argparse.FileType("rt"),
         metavar="trade-good-illegality.yaml",
     )
     data_inputs_grp.add_argument(
         "--world-trade-overrides",
-        help="""File containing trade overrides for the worlds. CSV file with
-        columns: Location,D66,Available,Purchase DM,Sale DM,Illegal
-        """,
+        help=textwrap.dedent(
+            """
+            File containing trade overrides for the worlds. CSV file with
+            columns: Location,D66,Available,Purchase DM,Sale DM,Illegal
+            """
+        ),
         type=argparse.FileType("rt"),
         metavar="world-trade-overrides.csv",
     )
     data_inputs_grp.add_argument(
         "world_data",
-        help="""World data within a single subsector. The meaning and
-        interpretation of this parameter is determined by
-        --world-data-source. An example of the type of URL required by
-        travellermap_tsv_url is:
-        https://travellermap.com/api/sec?sector=spin&subsector=A&type=TabDelimited""",
+        help=textwrap.dedent(
+            """
+            World data within a single subsector. The meaning and interpretation
+            of this parameter is determined by
+            --world-data-source. An example of the type of URL required by
+            travellermap_tsv_url is:
+            https://travellermap.com/api/sec?sector=spin&subsector=A&type=TabDelimited
+            """
+        ),
         metavar="WORLD_DATA",
     )
     data_inputs_grp.add_argument(
@@ -224,11 +232,13 @@ def parse_args() -> argparse.Namespace:
 
     fmt_grp = argparser.add_argument_group(
         title="DM formatting",
-        description=(
-            "Extra formatting for DM cells, based on the goods status on a"
-            " world. Each takes a single unamed argument `{}`, and is"
-            " formatted according to Python str.format - see"
-            " https://docs.python.org/3/library/stdtypes.html#str.format."
+        description=textwrap.dedent(
+            """
+            Extra formatting for DM cells, based on the goods status on a world.
+            Each takes a single unamed argument `{}`, and is formatted according
+            to Python str.format - see
+            https://docs.python.org/3/library/stdtypes.html#str.format.
+            """
         ),
     )
     fmt_grp.add_argument(
@@ -292,8 +302,6 @@ def parse_args() -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=True,
     )
-
-    return argparser.parse_args()
 
 
 def _not_none(v: Optional[T], desc: str) -> T:
@@ -695,14 +703,9 @@ def process(args: argparse.Namespace) -> None:
     )
 
 
-def main() -> None:
+def run(args: argparse.Namespace) -> None:
     """Entrypoint for the program."""
-    args = parse_args()
     try:
         process(args)
     except UserError as e:
         print(f"Error: {e}", file=sys.stderr)
-
-
-if __name__ == "__main__":
-    main()
