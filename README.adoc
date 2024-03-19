@@ -36,7 +36,7 @@ The general form of the command is:
 
 [source,shell]
 ----
-travdata-cli extractcsvtables CONFIG_DIR INPUT.PDF OUT_DIR
+travdata_cli extractcsvtables CONFIG_DIR INPUT.PDF OUT_DIR
 ----
 
 Where:
