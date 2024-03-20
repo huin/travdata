@@ -43,7 +43,8 @@ Where:
 is the path to the directory containing a `config.yaml` file, and
 subdirectories and `*.tabula-template.json` files. This contains
 information guiding the extraction, and is specific to the PDF being
-read from.
+read from. These configurations are provided with the source code to
+this program in the directories under the `config` directory.
 
 `INPUT.PDF`  
 is the path to the PDF file to read tables from.
@@ -57,6 +58,10 @@ rather than `.tabula-template.json` files.
 At the present time, the only supported input PDF file is the Mongoose
 Traveller Core Rulebook 2022, and not all tables are yet supported for
 extraction.
+
+Example:
+
+    travdata_cli extractcsvtables config/core_rulebook_2022 update_2022_core_rulebook.pdf core_rulebook
 
 # Developing
 
