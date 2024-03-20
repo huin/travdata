@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "travdata"
-version = "0.1.0"
+version = "0.1.1"
 description = "Data utility code for Mongoose Traveller TTRPG."
 authors = ["John Beisley <johnbeisleyuk@gmail.com>"]
 keywords = ["traveller", "ttrpg"]
 license = "MIT"
-readme = "README.adoc"
+readme = "README.rst"  # rebuilt from README.adoc
 repository = "https://github.com/huin/travdata"
 packages = [
     {include = "travdata", from = "src"},
