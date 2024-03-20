@@ -25,7 +25,7 @@ For any usage of the CLI or API that involves extracting CSV data from
 PDFs, the Java Runtime Environment (JRE) must be installed on the
 system.
 
-## CLI `tools/extractcsvtables.py`
+## CLI `travdata_cli extractcsvtables`
 
 This tool extracts CSV files from tables in the given PDF, based on the
 given configuration files that specifies the specifics of how those
@@ -60,5 +60,7 @@ extraction.
 
 # Developing
 
-See development.adoc for more information on developing and adding more
-tables to the configuration.
+See
+[`development.adoc`](https://github.com/huin/travdata/blob/main/development.adoc)
+for more information on developing and adding more tables to the
+configuration.
