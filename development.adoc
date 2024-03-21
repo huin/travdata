@@ -177,3 +177,16 @@ Fields:::
 +
 Specifies the zero-based index of the column that must be empty in order to
 group it with previous input rows.
+
+== Updating README
+
+`README.adoc` is the source of truth, perform any edits there. When completed,
+run the following command to update the `.rst` and `.md` files:
+
+[source,shell]
+----
+./devscripts/convertadoc.sh README.adoc
+----
+
+Explanation: Asciidoc is the preferred format for documentation in this project,
+the other formats are for compatibility with PyPI and other sites.
