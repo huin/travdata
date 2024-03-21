@@ -56,11 +56,73 @@ class TableExtraction:
 
 
 @dataclasses.dataclass
+class Table:
+    """Defines metadata and extraction configuration relating to a single table.
+
+    The "path" of group names and the table name form the path for both the
+    ``.tabula-template.json`` file within the configuration directory and the
+    output ``.csv`` file in the output directory.
+    """
+
+    file_stem: pathlib.Path
+    type: str
+    extraction: Optional[TableExtraction] = dataclasses.field(default_factory=TableExtraction)
+
+
+@dataclasses.dataclass
+class Group:
+    """Group of items to extract from the PDF.
+
+    A top-level group within a book is often aligned with a book chapter.
+
+    The table items have Tabula templates in ``.directory``.
+    """
+
+    directory: pathlib.Path
+    tables: dict[str, Table] = dataclasses.field(default_factory=dict)
+    groups: dict[str, "Group"] = dataclasses.field(default_factory=dict)
+
+    def all_tables(self) -> Iterator[Table]:
+        """Iterates over all tables in this group and its child groups.
+
+        :yield: Descendent tables.
+        """
+        yield from self.tables.values()
+        for group in self.groups.values():
+            yield from group.all_tables()
+
+
+@dataclasses.dataclass
+@_YAML.register_class
+class _YamlTable:
+    yaml_tag: ClassVar = "!Table"
+    type: Optional[str] = None
+    extraction: Optional[TableExtraction] = None
+
+    def __setstate__(self, state):
+        try:
+            self.__init__(**state)
+        except Exception as e:
+            e.add_note(f"processing !Table with {state=}")
+            raise
+
+    def prepare(self, name: str, directory: pathlib.Path) -> Table:
+        """Creates a ``Table`` from self.
+
+        :param name: Name of the table within its ``Group.groups``.
+        :param directory: Path to the directory of the parent ``Group``.
+        :return: Prepared ``Table``.
+        """
+        kw = dataclassutil.shallow_asdict(self)
+        return Table(file_stem=directory / name, **kw)
+
+
+@dataclasses.dataclass
 @_YAML.register_class
 class _YamlGroup:
     yaml_tag: ClassVar = "!Group"
     groups: dict[str, "_YamlGroup"] = dataclasses.field(default_factory=dict)
-    tables: dict[str, "_YamlTable"] = dataclasses.field(default_factory=dict)
+    tables: dict[str, _YamlTable] = dataclasses.field(default_factory=dict)
     extraction_templates: Optional[list[TableExtraction]] = None
 
     def __setstate__(self, state):
@@ -70,7 +132,7 @@ class _YamlGroup:
             e.add_note(f"processing !Group with {state=}")
             raise
 
-    def prepare(self, directory: pathlib.Path) -> "Group":
+    def prepare(self, directory: pathlib.Path) -> Group:
         """Creates a ``Group`` from self.
 
         :param directory: Path to the directory of the parent ``Group``.
@@ -84,68 +146,6 @@ class _YamlGroup:
             # anchoring and aliasing by the YAML file author at the time of YAML
             # parsing.
         )
-
-
-@dataclasses.dataclass
-@_YAML.register_class
-class _YamlTable:
-    yaml_tag: ClassVar = "!Table"
-    type: Optional[str] = None
-    extraction: Optional["TableExtraction"] = None
-
-    def __setstate__(self, state):
-        try:
-            self.__init__(**state)
-        except Exception as e:
-            e.add_note(f"processing !Table with {state=}")
-            raise
-
-    def prepare(self, name: str, directory: pathlib.Path) -> "Table":
-        """Creates a ``Table`` from self.
-
-        :param name: Name of the table within its ``Group.groups``.
-        :param directory: Path to the directory of the parent ``Group``.
-        :return: Prepared ``Table``.
-        """
-        kw = dataclassutil.shallow_asdict(self)
-        return Table(file_stem=directory / name, **kw)
-
-
-@dataclasses.dataclass
-class Group:
-    """Group of items to extract from the PDF.
-
-    A top-level group within a book is often aligned with a book chapter.
-
-    The table items have Tabula templates in ``.directory``.
-    """
-
-    directory: pathlib.Path
-    tables: dict[str, "Table"] = dataclasses.field(default_factory=dict)
-    groups: dict[str, "Group"] = dataclasses.field(default_factory=dict)
-
-    def all_tables(self) -> Iterator["Table"]:
-        """Iterates over all tables in this group and its child groups.
-
-        :yield: Descendent tables.
-        """
-        yield from self.tables.values()
-        for group in self.groups.values():
-            yield from group.all_tables()
-
-
-@dataclasses.dataclass
-class Table:
-    """Defines metadata and extraction configuration relating to a single table.
-
-    The "path" of group names and the table name form the path for both the
-    ``.tabula-template.json`` file within the configuration directory and the
-    output ``.csv`` file in the output directory.
-    """
-
-    file_stem: pathlib.Path
-    type: str
-    extraction: Optional[TableExtraction] = dataclasses.field(default_factory=TableExtraction)
 
 
 def _prepare_config(cfg: Any, cfg_dir: pathlib.Path) -> Group:
