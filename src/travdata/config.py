@@ -16,13 +16,35 @@ from travdata import dataclassutil
 _YAML = yaml.YAML(typ="safe")
 
 
+class YamlDataclassMixin:
+    """Mixin for dataclasses created by YAML parsing.
+
+    It is necessary to implement __setstate__ in any dataclass instances that
+    have been parsed from YAML, because the YAML parser bypasses __init__. This
+    is needed because:
+
+    * Fields with defaults need to be set if not specified.
+    * Errors need to be raised for any fields missing a value that have no
+      default.
+    """
+
+    yaml_tag: ClassVar
+
+    def __setstate__(self, state):
+        try:
+            self.__init__(**state)
+        except Exception as e:
+            e.add_note(f"processing {self.yaml_tag} with {state=}")
+            raise
+
+
 class RowFolder(abc.ABC):
     """Abstract base marker for configuring row grouping."""
 
 
 @dataclasses.dataclass
 @_YAML.register_class
-class StaticRowCounts(RowFolder):
+class StaticRowCounts(RowFolder, YamlDataclassMixin):
     """Specifies explicit input row counts for output grouped rows."""
 
     yaml_tag: ClassVar = "!StaticRowCounts"
@@ -31,7 +53,7 @@ class StaticRowCounts(RowFolder):
 
 @dataclasses.dataclass
 @_YAML.register_class
-class EmptyColumn(RowFolder):
+class EmptyColumn(RowFolder, YamlDataclassMixin):
     """Specifies to group rows by when a given column is empty."""
 
     yaml_tag: ClassVar = "!EmptyColumn"
@@ -40,19 +62,12 @@ class EmptyColumn(RowFolder):
 
 @dataclasses.dataclass
 @_YAML.register_class
-class TableExtraction:
+class TableExtraction(YamlDataclassMixin):
     """Configures the specifics of extracting the CSV from the PDF."""
 
     yaml_tag: ClassVar = "!TableExtraction"
     add_header_row: Optional[list[str]] = None
     row_folding: list[RowFolder] = dataclasses.field(default_factory=list)
-
-    def __setstate__(self, state):
-        try:
-            self.__init__(**state)
-        except Exception as e:
-            e.add_note(f"processing !TableExtraction with {state=}")
-            raise
 
 
 @dataclasses.dataclass
@@ -94,17 +109,10 @@ class Group:
 
 @dataclasses.dataclass
 @_YAML.register_class
-class _YamlTable:
+class _YamlTable(YamlDataclassMixin):
     yaml_tag: ClassVar = "!Table"
     type: Optional[str] = None
     extraction: Optional[TableExtraction] = None
-
-    def __setstate__(self, state):
-        try:
-            self.__init__(**state)
-        except Exception as e:
-            e.add_note(f"processing !Table with {state=}")
-            raise
 
     def prepare(self, name: str, directory: pathlib.Path) -> Table:
         """Creates a ``Table`` from self.
@@ -119,18 +127,11 @@ class _YamlTable:
 
 @dataclasses.dataclass
 @_YAML.register_class
-class _YamlGroup:
+class _YamlGroup(YamlDataclassMixin):
     yaml_tag: ClassVar = "!Group"
     groups: dict[str, "_YamlGroup"] = dataclasses.field(default_factory=dict)
     tables: dict[str, _YamlTable] = dataclasses.field(default_factory=dict)
     extraction_templates: Optional[list[TableExtraction]] = None
-
-    def __setstate__(self, state):
-        try:
-            self.__init__(**state)
-        except Exception as e:
-            e.add_note(f"processing !Group with {state=}")
-            raise
 
     def prepare(self, directory: pathlib.Path) -> Group:
         """Creates a ``Group`` from self.
