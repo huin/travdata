@@ -22,6 +22,7 @@ import pathlib
 import textwrap
 from typing import Optional
 
+import travdata
 from travdata.cli.cmds import csvtoyaml, extractcsvtables, listbooks, tradetable
 
 
@@ -47,6 +48,13 @@ def main() -> Optional[int]:
         type=pathlib.Path,
         metavar="CONFIG_DIR",
         required=True,
+    )
+    argparser.add_argument(
+        "--version",
+        "-V",
+        help="Print the version of the program.",
+        action="version",
+        version=f"%(prog)s {travdata.__executable_version__}",
     )
 
     subparsers = argparser.add_subparsers(required=True)

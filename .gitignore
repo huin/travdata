@@ -3,8 +3,11 @@
 *.json
 *.yaml
 
-# Ignore any local scratch files.
+# Local scratch files.
 /scratch
+
+# Executable builds.
+/build
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -25,6 +25,23 @@ To run tests:
 poetry run pytest
 ----
 
+== Building executables
+
+Run the following:
+
+[source,shell]
+----
+poetry run devscripts/build_executables.py VERSION
+----
+
+Where `VERSION` is a published version number of `travdata` on PyPI. This will
+generate a file under `build` named `travdata_cli`, which is an executable for
+the platform that you ran it on.
+
+`VERSION` can instead be `localdev` to build from the local copy including local
+changes. Note that this will include development dependencies as well, so will
+be larger than an executable generated via a qualified version number.
+
 == Adding more table configurations for extraction
 
 Overall process:
