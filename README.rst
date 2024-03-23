@@ -45,7 +45,7 @@ The general form of the command is:
 
 .. code:: shell
 
-   travdata_cli extractcsvtables CONFIG_DIR INPUT.PDF OUT_DIR
+   travdata_cli -c CONFIG_DIR extractcsvtables BOOK_NAME INPUT.PDF OUT_DIR
 
 Where:
 
@@ -55,6 +55,12 @@ Where:
    information guiding the extraction, and is specific to the PDF being
    read from. These configurations are provided with the source code to
    this program in the directories under the ``config`` directory.
+
+``BOOK_NAME``
+   is the identifier for the book to extract tables from. This selects
+   the correct book’s configuration from the ``CONFIG_DIR``. Use
+   ``travdata_cli -c CONFIG_DIR listbooks`` to list accepted values for
+   this argument.
 
 ``INPUT.PDF``
    is the path to the PDF file to read tables from.
@@ -73,7 +79,9 @@ Example:
 
 .. code:: shell
 
-   travdata_cli extractcsvtables config/core_rulebook_2022 update_2022_core_rulebook.pdf core_rulebook
+   travdata_cli -c path/to/config extractcsvtables \
+       core_rulebook_2022 path/to/update_2022_core_rulebook.pdf \
+       path_to_output_dir
 
 .. _`_developing`:
 

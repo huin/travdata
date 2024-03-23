@@ -9,7 +9,7 @@ from travdata import config
 
 
 def test_load_config_from_str() -> None:
-    actual = config.load_config_from_str(
+    actual = config.load_book_config_from_str(
         textwrap.dedent(
             """
     !Group

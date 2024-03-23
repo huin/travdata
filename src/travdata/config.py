@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """Defines the configuration around data extraction and other metadata.
 
-Values of these types are read from ``config.yaml`` files, relating to a single
-input PDF. See development.adoc for more information in how this is used.
+Values of these types are read from two types of file:
+
+* ``config.yaml`` top-level configuration for multiple books.
+* ``book.yaml`` relating to a single input PDF.
+
+See development.adoc for more information in how this is used.
 """
 
 import abc
@@ -14,6 +18,10 @@ from ruamel import yaml
 from travdata import dataclassutil
 
 _YAML = yaml.YAML(typ="safe")
+
+
+class UserError(Exception):
+    """Exception raised for user errors."""
 
 
 class YamlDataclassMixin:
@@ -108,6 +116,15 @@ class Group:
 
 
 @dataclasses.dataclass
+class Config:
+    """Top-level configuration."""
+
+    directory: pathlib.Path
+    books: dict[str, Group] = dataclasses.field(default_factory=dict)
+    book_names: list[str] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
 @_YAML.register_class
 class _YamlTable(YamlDataclassMixin):
     yaml_tag: ClassVar = "!Table"
@@ -118,7 +135,8 @@ class _YamlTable(YamlDataclassMixin):
         """Creates a ``Table`` from self.
 
         :param name: Name of the table within its ``Group.groups``.
-        :param directory: Path to the directory of the parent ``Group``.
+        :param directory: Path to the directory of the parent ``Group``,
+        relative to the top-level config directory.
         :return: Prepared ``Table``.
         """
         kw = dataclassutil.shallow_asdict(self)
@@ -133,35 +151,79 @@ class _YamlGroup(YamlDataclassMixin):
     tables: dict[str, _YamlTable] = dataclasses.field(default_factory=dict)
     extraction_templates: Optional[list[TableExtraction]] = None
 
-    def prepare(self, directory: pathlib.Path) -> Group:
+    def prepare(self, rel_group_dir: pathlib.Path) -> Group:
         """Creates a ``Group`` from self.
 
-        :param directory: Path to the directory of the parent ``Group``.
+        :param rel_group_dir: Path to the directory of this group's directory,
+        relative to the top-level config directory.
         :return: Prepared ``Group``.
         """
         return Group(
-            directory=directory,
-            tables={name: table.prepare(name, directory) for name, table in self.tables.items()},
-            groups={name: group.prepare(directory / name) for name, group in self.groups.items()},
+            directory=rel_group_dir,
+            tables={
+                name: table.prepare(name, rel_group_dir) for name, table in self.tables.items()
+            },
+            groups={
+                name: group.prepare(rel_group_dir / name) for name, group in self.groups.items()
+            },
             # extraction_templates not included, as it is only for use in
             # anchoring and aliasing by the YAML file author at the time of YAML
             # parsing.
         )
 
 
-def _prepare_config(cfg: Any, cfg_dir: pathlib.Path) -> Group:
+@dataclasses.dataclass
+@_YAML.register_class
+class _YamlConfig(YamlDataclassMixin):
+    yaml_tag: ClassVar = "!Config"
+    books: list[str] = dataclasses.field(default_factory=list)
+
+    def prepare(self, cfg_dir: pathlib.Path, limit_books: list[str]) -> Config:
+        """Creates a ``Group`` from self.
+
+        :param cfg_dir: Path to the directory of the ``Config``.
+        :param limit_books: Allowlist of book names to load configuration for.
+        :return: Prepared ``Config``.
+        """
+        books: dict[str, Group] = {}
+        for book_name in limit_books:
+            if book_name not in self.books:
+                raise UserError(f"book {book_name!r} does not exist")
+            book_dir = pathlib.Path(book_name)
+            books[book_name] = _load_book_config(cfg_dir, book_dir)
+        return Config(
+            directory=cfg_dir,
+            books=books,
+            book_names=self.books,
+        )
+
+
+def _prepare_book_config(cfg: Any, rel_book_dir: pathlib.Path) -> Group:
     if not isinstance(cfg, _YamlGroup):
         raise TypeError(cfg)
-    return cfg.prepare(cfg_dir)
+    return cfg.prepare(rel_book_dir)
 
 
-def load_config_from_str(yaml_str: str) -> Group:
+def load_book_config_from_str(yaml_str: str) -> Group:
     """Loads the configuration from the given string containing YAML."""
     cfg = _YAML.load(yaml_str)
-    return _prepare_config(cfg, pathlib.Path("."))
+    return _prepare_book_config(cfg, pathlib.Path("."))
 
 
-def load_config(cfg_dir: pathlib.Path) -> Group:
+def _load_book_config(cfg_dir: pathlib.Path, rel_book_dir: pathlib.Path) -> Group:
+    """Loads the configuration from the directory."""
+    print(f"{cfg_dir=} {rel_book_dir=}")
+    cfg = _YAML.load(cfg_dir / rel_book_dir / "book.yaml")
+    return _prepare_book_config(cfg, rel_book_dir)
+
+
+def _prepare_config(cfg: Any, cfg_dir: pathlib.Path, limit_books: list[str]) -> Config:
+    if not isinstance(cfg, _YamlConfig):
+        raise TypeError(cfg)
+    return cfg.prepare(cfg_dir, limit_books)
+
+
+def load_config(cfg_dir: pathlib.Path, limit_books: list[str]) -> Config:
     """Loads the configuration from the directory."""
     cfg = _YAML.load(cfg_dir / "config.yaml")
-    return _prepare_config(cfg, pathlib.Path("."))
+    return _prepare_config(cfg=cfg, cfg_dir=cfg_dir, limit_books=limit_books)

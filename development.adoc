@@ -59,17 +59,16 @@ http://localhost:8080/[`localhost:8080`].
   . Export the template file from Tabula, and add it to an appropriate
   subdirrectory within the config directory corresponding to the PDF file.
 
-. For each table template, create a table entry within the `config.yaml` file.
+. For each table template, create a table entry within the `book.yaml` file.
 See the Extraction section for details of how this works.
 . Test the extraction by running the `tools/extractcsvtables.py` tool. Adjust
 the `config.yaml` and `.tabular-template.json` files. Remove 
 
-== Configuration
+== Per-book configuration
 
-A top-level configuration directory containing a `config.yaml` and
-subdirectories and files containing `.tabula-tempalte.yaml` files is the
-configuration to extract data from a PDF file, and metadata about the extracted
-data.
+A book-level configuration directory containing a `book.yaml` and subdirectories
+and files containing `.tabula-tempalte.yaml` files is the configuration to
+extract data from a PDF file, and metadata about the extracted data.
 
 The schema is a typed-YAML file, with types as follows:
 

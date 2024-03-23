@@ -26,17 +26,16 @@ def add_subparser(subparsers) -> None:
     argparser.set_defaults(run=run)
 
     argparser.add_argument(
-        "config_dir",
+        "book_name",
         help=textwrap.dedent(
             """
-            Path to the extraction configuration directory for the given PDF.
-            This must contain a config.yaml file, and its required Tabula
-            templates. Some configurations for this should be included with this
-            program's distribution.
+            Name identifier of the PDF file to extract.
+
+            Use `travdata_cli -c CONFIG_DIR listbooks` to list accepted values
+            for this argument.
             """
         ),
-        type=pathlib.Path,
-        metavar="CONFIG_DIR",
+        metavar="BOOK",
     )
     argparser.add_argument(
         "input_pdf",
@@ -84,17 +83,22 @@ def add_subparser(subparsers) -> None:
     )
 
 
-def run(args: argparse.Namespace) -> None:
+def run(args: argparse.Namespace) -> int:
     """CLI entry point."""
 
     tabula_client = tabulautil.TabulaClient(
         force_subprocess=args.tabula_force_subprocess,
     )
 
-    group = config.load_config(args.config_dir)
+    cfg = config.load_config(args.config_dir, [args.book_name])
+    try:
+        book_cfg = cfg.books[args.book_name]
+    except KeyError:
+        print(f"Book {args.book_name} is unknown.", file=sys.stderr)
+        return 1
 
     output_tables: list[tuple[pathlib.Path, config.Table]] = []
-    for table in group.all_tables():
+    for table in book_cfg.all_tables():
         if table.extraction is None:
             continue
         out_filepath = args.output_dir / table.file_stem.with_suffix(".csv")
@@ -139,4 +143,6 @@ def run(args: argparse.Namespace) -> None:
                 e.add_note(f"Error while processing table {table.file_stem}: {e}")
                 raise
         except pdfextract.ConfigurationError as e:
-            print(e, file=sys.stdout)
+            print(e, file=sys.stderr)
+
+    return 0
