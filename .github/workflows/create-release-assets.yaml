@@ -39,10 +39,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Build binary
+        shell: bash
         run: |
-          poetry run scripts/dev/build_executables.py \
-            -- ${{ inputs.github_ref_name }}
+          poetry run scripts/dev/build_executables.py -- \
+            ${{ inputs.github_ref_name }}
       - name: Package as ZIP
+        shell: bash
         run: |
           poetry run scripts/dev/build_release_zip.py -- \
             build/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
