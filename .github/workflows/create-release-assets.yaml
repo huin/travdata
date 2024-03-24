@@ -44,7 +44,7 @@ jobs:
         # Unlike other workflows, this one only needs shiv. Everything else is
         # downloaded by shiv itself. Save on installation cost/time.
         shell: bash
-        run: pipx install shiv
+        run: pip install shiv
       - name: Build binary
         shell: bash
         run: |
