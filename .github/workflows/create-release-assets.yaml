@@ -1,4 +1,4 @@
-name: Release ZIP
+name: Create Release Assets
 
 on:
   workflow_call:
@@ -35,18 +35,25 @@ jobs:
     runs-on: "${{ matrix.os }}"
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions/setup-python
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v3
+      - name: Install shiv
+        # Unlike other workflows, this one only needs shiv. Everything else is
+        # downloaded by shiv itself. Save on installation cost/time.
+        shell: bash
+        run: pipx install shiv
       - name: Build binary
         shell: bash
         run: |
-          poetry run ./scripts/dev/build_executables.py -- \
+          python3 ./scripts/dev/build_executables.py -- \
             ${{ inputs.github_ref_name }}
       - name: Package as ZIP
         shell: bash
         run: |
-          poetry run ./scripts/dev/build_release_zip.py -- \
+          python3 ./scripts/dev/build_release_zip.py -- \
             build/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
       - name: Upload as release asset
         uses: actions/upload-release-asset@v1
