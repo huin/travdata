@@ -25,7 +25,7 @@ jobs:
       - uses: ./.github/actions/python-publish
   create-assets:
     needs: release
-    uses: ./.github/workflows/create-release-assets.yml
+    uses: ./.github/workflows/create-release-assets.yaml
     with:
       github_ref_name: ${{ github.ref_name }}
       upload_url: ${{ needs.release.outputs.upload_url }}
