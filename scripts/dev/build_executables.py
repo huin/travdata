@@ -66,8 +66,10 @@ def _preamble_script(version: str) -> Iterator[pathlib.Path]:
                 f"""\
 # -*- coding: utf-8 -*-
 import travdata
+from travdata import config
 
 travdata.__executable_version__ = {version_literal}
+config.__executable_environment__ = "release"
 """
             )
             script.flush()

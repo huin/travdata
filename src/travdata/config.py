@@ -13,6 +13,8 @@ import abc
 import argparse
 import dataclasses
 import pathlib
+import shutil
+import sys
 import textwrap
 from typing import Any, ClassVar, Iterator, Optional
 
@@ -20,6 +22,8 @@ from ruamel import yaml
 from travdata import dataclassutil
 
 _YAML = yaml.YAML(typ="safe")
+
+__executable_environment__ = "development"
 
 
 class UserError(Exception):
@@ -214,7 +218,6 @@ def load_book_config_from_str(yaml_str: str) -> Group:
 
 def _load_book_config(cfg_dir: pathlib.Path, rel_book_dir: pathlib.Path) -> Group:
     """Loads the configuration from the directory."""
-    print(f"{cfg_dir=} {rel_book_dir=}")
     cfg = _YAML.load(cfg_dir / rel_book_dir / "book.yaml")
     return _prepare_book_config(cfg, rel_book_dir)
 
@@ -233,6 +236,9 @@ def load_config(cfg_dir: pathlib.Path, limit_books: list[str]) -> Config:
 
 def add_config_flag(argparser: argparse.ArgumentParser) -> None:
     """Adds the flag required to call ``load_config_from_flag`` on the parsed args."""
+
+    default_config_dir = _get_default_config_path()
+
     argparser.add_argument(
         "--config-dir",
         "-c",
@@ -245,8 +251,38 @@ def add_config_flag(argparser: argparse.ArgumentParser) -> None:
         ),
         type=pathlib.Path,
         metavar="CONFIG_DIR",
-        required=True,
+        required=default_config_dir is None,
+        default=default_config_dir,
     )
+
+
+def _get_default_config_path() -> Optional[pathlib.Path]:
+    install_dir: Optional[pathlib.Path]
+    if __executable_environment__ == "development":
+        install_dir = _installation_dir_for_development()
+    else:
+        install_dir = _installation_dir_for_release()
+
+    if install_dir is None:
+        return None
+
+    config_dir = install_dir / "config"
+    config_file = config_dir / "config.yaml"
+    if not config_file.is_file():
+        return None
+    return config_dir
+
+
+def _installation_dir_for_development() -> pathlib.Path:
+    return pathlib.Path.cwd()
+
+
+def _installation_dir_for_release() -> Optional[pathlib.Path]:
+    script_str = shutil.which(sys.argv[0])
+    if script_str is None:
+        return None
+    script_path = pathlib.Path(script_str)
+    return script_path.parent
 
 
 def load_config_from_flag(args: argparse.Namespace, limit_books: list[str]) -> Config:
