@@ -34,7 +34,7 @@ repos:
     hooks:
       - id: black
         name: black
-        entry: pre-commit-hooks/black
+        entry: scripts/pre-commit-hooks/black
         language: script
         files: "[.]py$"
       - id: check-xxx
@@ -44,16 +44,16 @@ repos:
         entry: "[X]XX"
       - id: mypy
         name: mypy
-        entry: pre-commit-hooks/mypy
+        entry: scripts/pre-commit-hooks/mypy
         language: script
         files: "[.]py$"
       - id: pylint
         name: pylint
-        entry: pre-commit-hooks/pylint
+        entry: scripts/pre-commit-hooks/pylint
         language: script
         files: "[.]py$"
       - id: pytest
         name: pytest
-        entry: pre-commit-hooks/pytest
+        entry: scripts/pre-commit-hooks/pytest
         language: script
         files: "[.]py$"

@@ -31,7 +31,7 @@ Run the following:
 
 [source,shell]
 ----
-poetry run devscripts/build_executables.py VERSION
+poetry run scripts/dev/build_executables.py VERSION
 ----
 
 Where `VERSION` is a published version number of `travdata` on PyPI. This will
@@ -201,7 +201,7 @@ run the following command to update the `.rst` and `.md` files:
 
 [source,shell]
 ----
-./devscripts/convertadoc.sh README.adoc
+./scripts/dev/convertadoc.sh README.adoc
 ----
 
 Explanation: Asciidoc is the preferred format for documentation in this project,

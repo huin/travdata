@@ -23,7 +23,7 @@ import textwrap
 from typing import Optional
 
 import travdata
-from travdata.cli.cmds import csvtoyaml, extractcsvtables, listbooks, tradetable
+from travdata.cli.cmds import csvtoyaml, extractcsvtables, licenses, listbooks, tradetable
 
 
 def main() -> Optional[int]:
@@ -60,6 +60,7 @@ def main() -> Optional[int]:
     subparsers = argparser.add_subparsers(required=True)
     csvtoyaml.add_subparser(subparsers)
     extractcsvtables.add_subparser(subparsers)
+    licenses.add_subparser(subparsers)
     listbooks.add_subparser(subparsers)
     tradetable.add_subparser(subparsers)
 
