@@ -33,12 +33,15 @@ def main() -> None:
             message="version number must be 'localdev' or in the form vX.Y.Z\n",
         )
 
+    build_dir = pathlib.Path("build")
+    build_dir.mkdir(parents=True, exist_ok=True)
+
     with _preamble_script(args.version) as preamble:
         ctx = shiv.cli.main.make_context(
             "build travdata_cli",
             [
                 "--entry-point=travdata.cli.cli:main",
-                "--output-file=build/travdata_cli",
+                f"--output-file={build_dir / 'travdata_cli'}",
                 f"--preamble={preamble}",
                 package_arg,
             ],
