@@ -1,7 +1,9 @@
 name: Setup Python
+description: Sets up Python environment with Poetry and dependencies.
 
 inputs:
   python-version:
+    description: The MAJOR.MINOR version of Python to use.
     required: true
 
 runs:
@@ -14,6 +16,8 @@ runs:
       python-version: ${{ inputs.python-version }}
   - uses: actions/checkout@v3
   - name: Install poetry
+    shell: bash
     run: pipx install poetry
   - name: Install dependencies
+    shell: bash
     run: poetry install
