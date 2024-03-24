@@ -41,12 +41,12 @@ jobs:
       - name: Build binary
         shell: bash
         run: |
-          poetry run scripts/dev/build_executables.py -- \
+          poetry run ./scripts/dev/build_executables.py -- \
             ${{ inputs.github_ref_name }}
       - name: Package as ZIP
         shell: bash
         run: |
-          poetry run scripts/dev/build_release_zip.py -- \
+          poetry run ./scripts/dev/build_release_zip.py -- \
             build/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
       - name: Upload as release asset
         uses: actions/upload-release-asset@v1
