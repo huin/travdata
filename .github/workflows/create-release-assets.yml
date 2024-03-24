@@ -1,0 +1,54 @@
+name: Release ZIP
+
+on:
+  workflow_call:
+    inputs:
+      github_ref_name:
+        required: true
+        type: string
+      upload_url:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      github_ref_name:
+        required: true
+        type: string
+      upload_url:
+        required: true
+        type: string
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        python-version: 
+          - "3.11"
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+
+    runs-on: "${{ matrix.os }}"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build binary
+        run: |
+          poetry run scripts/dev/build_executables.py \
+            -- ${{ inputs.github_ref_name }}
+      - name: Package as ZIP
+        run: |
+          poetry run scripts/dev/build_release_zip.py -- \
+            build/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
+      - name: Upload as release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ inputs.upload_url }}
+          asset_path: build/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
+          asset_name: travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
+          asset_content_type: application/zip
