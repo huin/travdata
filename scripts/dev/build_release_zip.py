@@ -11,13 +11,13 @@ import zipfile
 def main() -> None:
     """Builds zipfile for release."""
     argparser = argparse.ArgumentParser(description=__doc__)
-    argparser.add_argument("version")
+    argparser.add_argument("output_zip", type=pathlib.Path)
     args = argparser.parse_args()
     src_dir = pathlib.Path(".")
     build_dir = src_dir / "build"
 
     with zipfile.ZipFile(
-        build_dir / f"travdata-{args.version}.zip",
+        args.output_zip,
         mode="w",
         compression=zipfile.ZIP_DEFLATED,
     ) as zf:
