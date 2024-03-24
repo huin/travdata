@@ -28,9 +28,9 @@ jobs:
         python-version: 
           - "3.11"
         os:
-          # - macos-latest
+          - macos-latest
           - ubuntu-latest
-          # - windows-latest
+          - windows-latest
 
     runs-on: "${{ matrix.os }}"
     steps:
