@@ -21,11 +21,16 @@ owner of a copy of the original materal that it was extracted from.
 This package is primarily intended for the provided CLI tools, but API
 access is also possible.
 
-For any usage of the CLI or API that involves extracting CSV data from
-PDFs, the Java Runtime Environment (JRE) must be installed on the
-system.
+# Requirements
 
-## CLI `travdata_cli extractcsvtables`
+Python 3 must be installed (<https://python.org/>). On Windows, make
+sure that you specify to install the "py launcher" during the
+installation process.
+
+Java Runtime Environment (JRE) must be installed. This is required by
+the code that extracts tables from PDFs.
+
+## CLI `travdata_cli.pyz extractcsvtables`
 
 This tool extracts CSV files from tables in the given PDF, based on the
 given configuration files that specifies the specifics of how those
@@ -35,7 +40,7 @@ have been configured.
 
 The general form of the command is:
 
-    travdata_cli extractcsvtables -c CONFIG_DIR BOOK_NAME INPUT.PDF OUT_DIR
+    travdata_cli.pyz extractcsvtables -c CONFIG_DIR BOOK_NAME INPUT.PDF OUT_DIR
 
 Where:
 
@@ -67,7 +72,7 @@ extraction.
 
 Example:
 
-    travdata_cli extractcsvtables -c path/to/config \
+    travdata_cli.pyz extractcsvtables -c path/to/config \
         core_rulebook_2022 path/to/update_2022_core_rulebook.pdf \
         path_to_output_dir
 

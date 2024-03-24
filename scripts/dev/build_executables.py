@@ -41,7 +41,7 @@ def main() -> None:
             "build travdata_cli",
             [
                 "--entry-point=travdata.cli.cli:main",
-                f"--output-file={build_dir / 'travdata_cli'}",
+                f"--output-file={build_dir / 'travdata_cli.pyz'}",
                 f"--preamble={preamble}",
                 package_arg,
             ],

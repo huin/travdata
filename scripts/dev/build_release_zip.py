@@ -22,8 +22,8 @@ def main() -> None:
         compression=zipfile.ZIP_DEFLATED,
     ) as zf:
         zf.write(
-            build_dir / "travdata_cli",
-            arcname="travdata_cli",
+            build_dir / "travdata_cli.pyz",
+            arcname="travdata_cli.pyz",
             # The binary is itself a zipfile, so compression won't be
             # effective.
             compress_type=zipfile.ZIP_STORED,
