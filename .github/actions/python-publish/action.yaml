@@ -1,6 +1,11 @@
 name: Publish Python package
 description: Publish the Python package to PyPI.
 
+inputs:
+  pypi-token:
+    description: PyPI API token to use.
+    required: true
+
 runs:
   using: composite
   steps:

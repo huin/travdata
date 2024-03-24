@@ -29,6 +29,8 @@ jobs:
         with:
           python-version: "3.11"
       - uses: ./.github/actions/python-publish
+        with:
+          pypi-token: ${{ secrets.PYPI_TOKEN }}
   create-assets:
     needs: release
     uses: ./.github/workflows/create-release-assets.yaml
