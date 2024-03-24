@@ -15,5 +15,5 @@ runs:
     - name: Publish package
       shell: bash
       run: |
-        poetry config pypi-token.pypi "${{ secrets.PYPI_TOKEN }}"
+        poetry config pypi-token.pypi "${{ inputs.pypi-token }}"
         poetry publish
