@@ -10,8 +10,10 @@ See development.adoc for more information in how this is used.
 """
 
 import abc
+import argparse
 import dataclasses
 import pathlib
+import textwrap
 from typing import Any, ClassVar, Iterator, Optional
 
 from ruamel import yaml
@@ -227,3 +229,32 @@ def load_config(cfg_dir: pathlib.Path, limit_books: list[str]) -> Config:
     """Loads the configuration from the directory."""
     cfg = _YAML.load(cfg_dir / "config.yaml")
     return _prepare_config(cfg=cfg, cfg_dir=cfg_dir, limit_books=limit_books)
+
+
+def add_config_flag(argparser: argparse.ArgumentParser) -> None:
+    """Adds the flag required to call ``load_config_from_flag`` on the parsed args."""
+    argparser.add_argument(
+        "--config-dir",
+        "-c",
+        help=textwrap.dedent(
+            """
+            Path to the configuration directory. This must contain a config.yaml
+            file, and its required Tabula templates. Some configurations for
+            this should be included with this program's distribution.
+            """
+        ),
+        type=pathlib.Path,
+        metavar="CONFIG_DIR",
+        required=True,
+    )
+
+
+def load_config_from_flag(args: argparse.Namespace, limit_books: list[str]) -> Config:
+    """Returns a ``Config`` specified by the parsed arguments.
+
+    :param args: Parsed arguments. This must have been generated from a parser
+    that included the argument added by ``add_config_flag``.
+    :param limit_books: Name identifiers for the books to load configuration for.
+    :return: Loaded configuration.
+    """
+    return load_config(args.config_dir, limit_books)

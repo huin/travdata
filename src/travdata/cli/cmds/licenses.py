@@ -13,8 +13,6 @@ from typing import cast
 
 import piplicenses_lib
 
-from travdata import config
-
 
 def add_subparser(subparsers) -> None:
     """Adds a subcommand parser to ``subparsers``."""
@@ -28,10 +26,7 @@ def add_subparser(subparsers) -> None:
 
 def run(args: argparse.Namespace) -> None:
     """CLI entry point."""
-
-    cfg = config.load_config(args.config_dir, [])
-    for name in cfg.book_names:
-        print(name)
+    del args  # unused
 
     print("= Third-party licenses\n")
 

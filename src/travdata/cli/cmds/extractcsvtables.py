@@ -50,6 +50,8 @@ def add_subparser(subparsers) -> None:
         metavar="OUT_DIR",
         default=pathlib.Path("./csv-tables"),
     )
+
+    config.add_config_flag(argparser)
     argparser.add_argument(
         "--overwrite-existing",
         help=textwrap.dedent(
@@ -90,7 +92,7 @@ def run(args: argparse.Namespace) -> int:
         force_subprocess=args.tabula_force_subprocess,
     )
 
-    cfg = config.load_config(args.config_dir, [args.book_name])
+    cfg = config.load_config_from_flag(args, [args.book_name])
     try:
         book_cfg = cfg.books[args.book_name]
     except KeyError:

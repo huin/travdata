@@ -35,7 +35,7 @@ have been configured.
 
 The general form of the command is:
 
-    travdata_cli -c CONFIG_DIR extractcsvtables BOOK_NAME INPUT.PDF OUT_DIR
+    travdata_cli extractcsvtables -c CONFIG_DIR BOOK_NAME INPUT.PDF OUT_DIR
 
 Where:
 
@@ -67,7 +67,7 @@ extraction.
 
 Example:
 
-    travdata_cli -c path/to/config extractcsvtables \
+    travdata_cli extractcsvtables -c path/to/config \
         core_rulebook_2022 path/to/update_2022_core_rulebook.pdf \
         path_to_output_dir
 

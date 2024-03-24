@@ -18,8 +18,6 @@ data in a manner that respects the publisher's IP rights.
 
 
 import argparse
-import pathlib
-import textwrap
 from typing import Optional
 
 import travdata
@@ -34,21 +32,6 @@ def main() -> Optional[int]:
         formatter_class=argparse.RawTextHelpFormatter,
     )
     argparser.set_defaults(run=None)
-
-    argparser.add_argument(
-        "--config-dir",
-        "-c",
-        help=textwrap.dedent(
-            """
-            Path to the configuration directory. This must contain a config.yaml
-            file, and its required Tabula templates. Some configurations for
-            this should be included with this program's distribution.
-            """
-        ),
-        type=pathlib.Path,
-        metavar="CONFIG_DIR",
-        required=True,
-    )
     argparser.add_argument(
         "--version",
         "-V",

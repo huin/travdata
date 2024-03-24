@@ -15,12 +15,13 @@ def add_subparser(subparsers) -> None:
         description=__doc__,
         formatter_class=argparse.RawTextHelpFormatter,
     )
+    config.add_config_flag(argparser)
     argparser.set_defaults(run=run)
 
 
 def run(args: argparse.Namespace) -> None:
     """CLI entry point."""
 
-    cfg = config.load_config(args.config_dir, [])
+    cfg = config.load_config_from_flag(args, [])
     for name in cfg.book_names:
         print(name)
