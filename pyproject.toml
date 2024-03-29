@@ -22,9 +22,18 @@ black = "^24.3.0"
 mypy = "^1.9.0"
 pylint = "^3.1.0"
 pytest = "^8.0.2"
-shiv = "^1.0.5"
 testfixtures = "^8.0.0"
 trove-classifiers = "^2024.3.3"
+
+[tool.poetry.group.dev.dependencies.shiv]
+version = "^1.0.5"
+python = ">=3.11,<3.13"
+markers = "sys_platform != 'win32'"
+
+[tool.poetry.group.dev.dependencies.pyinstaller]
+version = "^6.5.0"
+python = ">=3.11,<3.13"
+markers = "sys_platform == 'win32'"
 
 [tool.black]
 line-length = 100

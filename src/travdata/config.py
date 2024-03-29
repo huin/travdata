@@ -258,10 +258,15 @@ def add_config_flag(argparser: argparse.ArgumentParser) -> None:
 
 def _get_default_config_path() -> Optional[pathlib.Path]:
     install_dir: Optional[pathlib.Path]
-    if __executable_environment__ == "development":
-        install_dir = _installation_dir_for_development()
-    else:
-        install_dir = _installation_dir_for_release()
+    match __executable_environment__:
+        case "development":
+            install_dir = _data_dir_for_development()
+        case "pyinstaller":
+            install_dir = _data_dir_for_pyinstaller()
+        case "pyz":
+            install_dir = _data_dir_for_pyz()
+        case unknown_env:
+            raise RuntimeError(f"unknown executable environment {unknown_env!r}")
 
     if install_dir is None:
         return None
@@ -273,11 +278,15 @@ def _get_default_config_path() -> Optional[pathlib.Path]:
     return config_dir
 
 
-def _installation_dir_for_development() -> pathlib.Path:
+def _data_dir_for_development() -> pathlib.Path:
     return pathlib.Path.cwd()
 
 
-def _installation_dir_for_release() -> Optional[pathlib.Path]:
+def _data_dir_for_pyinstaller() -> pathlib.Path:
+    return pathlib.Path(getattr(sys, "_MEIPASS"))
+
+
+def _data_dir_for_pyz() -> Optional[pathlib.Path]:
     script_str = shutil.which(sys.argv[0])
     if script_str is None:
         return None

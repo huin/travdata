@@ -72,7 +72,7 @@ import travdata
 from travdata import config
 
 travdata.__executable_version__ = {version_literal}
-config.__executable_environment__ = "release"
+config.__executable_environment__ = "pyz"
 """
             )
             script.flush()
