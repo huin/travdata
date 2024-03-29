@@ -1,3 +1,16 @@
-#!/usr/bin/env bash
-find devscripts src tests -type f -name \*.py -print0 \
-    | xargs -0 poetry run mypy
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import subprocess
+import sys
+
+
+def main() -> None:
+    try:
+        subprocess.check_call(["poetry", "run", "mypy", "scripts", "src", "tests"])
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
+
+
+if __name__ == "__main__":
+    main()

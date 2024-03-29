@@ -1,2 +1,16 @@
-#!/usr/bin/env bash
-poetry run pytest
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import sys
+import subprocess
+
+
+def main() -> None:
+    try:
+        subprocess.check_call(["poetry", "run", "pytest"])
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
+
+
+if __name__ == "__main__":
+    main()

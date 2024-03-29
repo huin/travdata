@@ -1,2 +1,16 @@
-#!/usr/bin/env bash
-poetry run black $*
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import subprocess
+import sys
+
+
+def main() -> None:
+    try:
+        subprocess.check_call(["poetry", "run", "black"] + sys.argv[1:])
+    except subprocess.CalledProcessError as e:
+        sys.exit(e.returncode)
+
+
+if __name__ == "__main__":
+    main()
