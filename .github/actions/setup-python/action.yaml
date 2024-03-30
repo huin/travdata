@@ -18,6 +18,10 @@ runs:
   - name: Install poetry
     shell: bash
     run: pipx install poetry
+  - name: Use in-workspace virtual environment
+    # This is required by the PyInstaller spec to find the Tabula jar.
+    shell: bash
+    run: poetry config virtualenvs.in-project true
   - name: Install dependencies
     shell: bash
     run: poetry install
