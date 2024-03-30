@@ -48,8 +48,9 @@ Prebuilt
 You can download an executable version of the application for your
 platform at
 `github.com/huin/travdata/releases <https://github.com/huin/travdata/releases>`__.
-Currently executables are only generated for Linux and Windows (as I do
-not have a MacOS device suitable for testing on).
+Currently executables are only generated for Linux and Windows, and seem
+to work on the author’s machines. A MacOS binary is also released, but
+it has not been tested.
 
 Once downloaded, extract the ``.zip`` file to a suitable location. You
 can most easily use the command line interface from the directory that
@@ -72,6 +73,18 @@ into a Python virtual environment:
    python -m venv venv
    source ./venv/bin/activate
 
+You will also need to download a copy of the source code, in order to
+get a copy of the configuration. Visit
+`releases <https://github.com/huin/travdata/releases>`__, pick a recent
+release, and download the "Source code" zip file. Extract the ``config``
+directory from it, and place it in the ``travdata`` directory you
+created earlier, such that the ``travdata`` directory contains two
+subdirectories:
+
+-  ``config``
+
+-  ``venv``
+
 At this point, you can run ``python -m travdata.cli.cli`` instead of
 running ``travdata_cli`` from other examples.
 
@@ -90,20 +103,13 @@ The general form of the command is:
 
 .. code:: shell
 
-   travdata_cli extractcsvtables -c CONFIG_DIR BOOK_NAME INPUT.PDF OUT_DIR
+   travdata_cli extractcsvtables BOOK_NAME INPUT.PDF OUT_DIR
 
 Where:
 
-``CONFIG_DIR``
-   is the path to the directory containing a ``config.yaml`` file, and
-   subdirectories and ``*.tabula-template.json`` files. This contains
-   information guiding the extraction, and is specific to the PDF being
-   read from. These configurations are provided with the source code to
-   this program in the directories under the ``config`` directory.
-
 ``BOOK_NAME``
    is the identifier for the book to extract tables from. This selects
-   the correct book’s configuration from the ``CONFIG_DIR``. Use
+   the correct book’s configuration from the files that . Use
    ``travdata_cli listbooks`` to list accepted values for this argument.
 
 ``INPUT.PDF``
@@ -123,7 +129,7 @@ Example:
 
 .. code:: shell
 
-   travdata_cli extractcsvtables -c path/to/config \
+   travdata_cli extractcsvtables \
        core_rulebook_2022 path/to/update_2022_core_rulebook.pdf \
        path_to_output_dir
 
