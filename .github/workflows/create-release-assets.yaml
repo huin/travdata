@@ -30,7 +30,6 @@ jobs:
         python-version: 
           - "3.11"
         os:
-          - macos-latest
           - ubuntu-latest
           - windows-latest
 
@@ -44,35 +43,15 @@ jobs:
             >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v3
 
-      - name: Set up Python ${{ matrix.python-version }}
-        if: ${{ runner.os != 'Windows' }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Build release asset with shiv
-        if: ${{ runner.os != 'Windows' }}
-        shell: bash
-        # Unlike other workflows, this one only needs shiv. Everything else is
-        # downloaded by shiv itself. Save on installation cost/time.
-        run: |
-          pip install shiv
-          python3 ./scripts/dev/build_shiv_release.py -- \
-            "${{ inputs.github_ref_name }}" \
-            "${{ steps.asset_filename.ZIP }}"
-
       - uses: ./.github/actions/setup-python.yml
-        # In contrast to the non-Windows steps, install dependencies, as they
-        # will be used by PyInstaller.
-        if: ${{ runner.os == 'Windows' }}
         with:
           python-version: ${{ matrix.python-version }}
       - name: Build release asset with shiv
-        if: ${{ runner.os == 'Windows' }}
         shell: bash
         run: |
-          python3 ./scripts/dev/build_pyinstaller_release.py -- \
+          poetry run ./scripts/dev/build_pyinstaller_release.py -- \
             "${{ inputs.github_ref_name }}" \
-            "${{ steps.asset_filename.ZIP }}"
+            "./${{ steps.asset_filename.ZIP }}"
 
       - name: Upload release asset
         uses: actions/upload-release-asset@v1

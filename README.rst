@@ -53,7 +53,7 @@ The general form of the command is:
 
 .. code:: shell
 
-   travdata_cli.pyz extractcsvtables -c CONFIG_DIR BOOK_NAME INPUT.PDF OUT_DIR
+   travdata_cli extractcsvtables -c CONFIG_DIR BOOK_NAME INPUT.PDF OUT_DIR
 
 Where:
 
@@ -87,7 +87,7 @@ Example:
 
 .. code:: shell
 
-   travdata_cli.pyz extractcsvtables -c path/to/config \
+   travdata_cli extractcsvtables -c path/to/config \
        core_rulebook_2022 path/to/update_2022_core_rulebook.pdf \
        path_to_output_dir
 

@@ -13,7 +13,6 @@ import abc
 import argparse
 import dataclasses
 import pathlib
-import shutil
 import sys
 import textwrap
 from typing import Any, ClassVar, Iterator, Optional
@@ -257,19 +256,13 @@ def add_config_flag(argparser: argparse.ArgumentParser) -> None:
 
 
 def _get_default_config_path() -> Optional[pathlib.Path]:
-    install_dir: Optional[pathlib.Path]
     match __executable_environment__:
         case "development":
             install_dir = _data_dir_for_development()
         case "pyinstaller":
             install_dir = _data_dir_for_pyinstaller()
-        case "pyz":
-            install_dir = _data_dir_for_pyz()
         case unknown_env:
             raise RuntimeError(f"unknown executable environment {unknown_env!r}")
-
-    if install_dir is None:
-        return None
 
     config_dir = install_dir / "config"
     config_file = config_dir / "config.yaml"
@@ -284,14 +277,6 @@ def _data_dir_for_development() -> pathlib.Path:
 
 def _data_dir_for_pyinstaller() -> pathlib.Path:
     return pathlib.Path(getattr(sys, "_MEIPASS"))
-
-
-def _data_dir_for_pyz() -> Optional[pathlib.Path]:
-    script_str = shutil.which(sys.argv[0])
-    if script_str is None:
-        return None
-    script_path = pathlib.Path(script_str)
-    return script_path.parent
 
 
 def load_config_from_flag(args: argparse.Namespace, limit_books: list[str]) -> Config:

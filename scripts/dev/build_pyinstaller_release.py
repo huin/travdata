@@ -8,9 +8,12 @@ import contextlib
 import os
 import pathlib
 import re
-import subprocess
+import sys
 from typing import Iterator
 import zipfile
+
+import tabula.backend
+import PyInstaller.__main__
 
 
 def main() -> None:
@@ -35,15 +38,14 @@ def main() -> None:
     build_dir.mkdir(parents=True, exist_ok=True)
 
     with _write_hook_script(args.version, src_dir):
-        subprocess.check_call(
+        PyInstaller.__main__.run(
             [
-                "poetry",
-                "run",
-                "pyinstaller",
                 "pyinstaller.spec",
                 # Do not ask for interactive confirmation to overwrite output
                 # directory.
                 "--noconfirm",
+                "--",
+                tabula.backend.jar_path(),
             ],
         )
 
@@ -82,14 +84,19 @@ def _build_zip(
     output_zip: pathlib.Path,
 ) -> None:
     """Builds zipfile for release."""
+    if sys.platform == "win32":
+        system_exec_suffix = ".exe"
+    else:
+        system_exec_suffix = ""
+
     with zipfile.ZipFile(
         output_zip,
         mode="w",
         compression=zipfile.ZIP_DEFLATED,
     ) as zf:
         zf.write(
-            build_dir / "travdata" / "travdata_cli.exe",
-            arcname="travdata_cli.exe",
+            build_dir / "travdata" / f"travdata_cli{system_exec_suffix}",
+            arcname=f"travdata_cli{system_exec_suffix}",
         )
         zf.write(src_dir / "LICENSE", "LICENSE")
         zf.write(src_dir / "README.adoc", "README.adoc")

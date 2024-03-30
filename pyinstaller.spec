@@ -1,12 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("tabula_jar")
+args = parser.parse_args()
+
 
 a = Analysis(
-    ['src\\travdata\\cli\\cli.py'],
+    ['src/travdata/cli/cli.py'],
     pathex=[],
     binaries=[],
     datas=[
-        ('.venv/Lib/site-packages/tabula/*.jar', 'tabula'),
+        (args.tabula_jar, 'tabula'),
         ('config', './config'),
     ],
     hiddenimports=[],
