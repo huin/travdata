@@ -12,9 +12,11 @@ on:
   workflow_dispatch:
     inputs:
       github_ref_name:
+        description: Github reference tag, acting as a version.
         required: true
         type: string
       upload_url:
+        description: Release endpoint to upload the assets to.
         required: true
         type: string
 
