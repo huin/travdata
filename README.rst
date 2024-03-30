@@ -31,17 +31,54 @@ access is also possible.
 Requirements
 ============
 
-Python 3 must be installed (https://python.org/). On Windows, make sure
-that you specify to install the "py launcher" during the installation
-process.
-
 Java Runtime Environment (JRE) must be installed. This is required by
-the code that extracts tables from PDFs.
+the code that extracts tables from PDFs. If not already installed, get
+it from `java.com <https://www.java.com/en/download/>`__.
 
-.. _`_cli_literal_travdata_cli_pyz_extractcsvtables_literal`:
+.. _`_installation`:
 
-CLI ``travdata_cli.pyz extractcsvtables``
------------------------------------------
+Installation
+------------
+
+.. _`_prebuilt`:
+
+Prebuilt
+~~~~~~~~
+
+You can download an executable version of the application for your
+platform at
+`github.com/huin/travdata/releases <https://github.com/huin/travdata/releases>`__.
+Currently executables are only generated for Linux and Windows (as I do
+not have a MacOS device suitable for testing on).
+
+Once downloaded, extract the ``.zip`` file to a suitable location. You
+can most easily use the command line interface from the directory that
+it was unpacked to.
+
+.. _`_pip_install`:
+
+Pip install
+~~~~~~~~~~~
+
+This may work on platforms that have no prebuilt executable. Assuming
+that you have Python 3.11 or later installed, and you are running
+something similar to Linux, perform the following commands to install
+into a Python virtual environment:
+
+.. code:: console
+
+   mkdir travdata
+   cd travdata
+   python -m venv venv
+   source ./venv/bin/activate
+
+At this point, you can run ``python -m travdata.cli.cli`` instead of
+running ``travdata_cli`` from other examples.
+
+.. _`_cli_literal_travdata_cli_extractcsvtables_literal`:
+
+CLI ``travdata_cli extractcsvtables``
+-------------------------------------
 
 This tool extracts CSV files from tables in the given PDF, based on the
 given configuration files that specifies the specifics of how those
@@ -67,8 +104,7 @@ Where:
 ``BOOK_NAME``
    is the identifier for the book to extract tables from. This selects
    the correct book’s configuration from the ``CONFIG_DIR``. Use
-   ``travdata_cli -c CONFIG_DIR listbooks`` to list accepted values for
-   this argument.
+   ``travdata_cli listbooks`` to list accepted values for this argument.
 
 ``INPUT.PDF``
    is the path to the PDF file to read tables from.
