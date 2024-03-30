@@ -56,13 +56,13 @@ jobs:
         shell: bash
         run: |
           python3 ./scripts/dev/build_release_zip.py -- \
-            build/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
+            dist/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
       - name: Upload as release asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ inputs.upload_url }}
-          asset_path: build/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
+          asset_path: dist/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
           asset_name: travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
           asset_content_type: application/zip

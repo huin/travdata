@@ -14,7 +14,7 @@ def main() -> None:
     argparser.add_argument("output_zip", type=pathlib.Path)
     args = argparser.parse_args()
     src_dir = pathlib.Path(".")
-    build_dir = src_dir / "build"
+    build_dir = src_dir / "dist"
 
     with zipfile.ZipFile(
         args.output_zip,

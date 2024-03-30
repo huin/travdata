@@ -35,7 +35,7 @@ poetry run scripts/dev/build_executables.py VERSION
 ----
 
 Where `VERSION` is a published version number of `travdata` on PyPI. This will
-generate a file under `build` named `travdata_cli`, which is an executable for
+generate a file under `dist` named `travdata_cli`, which is an executable for
 the platform that you ran it on.
 
 `VERSION` can instead be `localdev` to build from the local copy including local

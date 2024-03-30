@@ -33,7 +33,7 @@ def main() -> None:
             message="version number must be 'localdev' or in the form vX.Y.Z\n",
         )
 
-    build_dir = pathlib.Path("build")
+    build_dir = pathlib.Path("dist")
     build_dir.mkdir(parents=True, exist_ok=True)
 
     with _preamble_script(args.version) as preamble:
