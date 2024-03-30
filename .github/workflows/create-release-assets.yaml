@@ -42,27 +42,27 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - uses: actions/checkout@v3
-      - name: Install shiv
+      - name: Set asset filename
+        id: asset_filename
+        shell: bash
+        run: |
+          echo "ZIP=travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip" \
+            >> "$GITHUB_OUTPUT"
+      - name: Build release asset with shiv
+        shell: bash
         # Unlike other workflows, this one only needs shiv. Everything else is
         # downloaded by shiv itself. Save on installation cost/time.
-        shell: bash
-        run: pip install shiv
-      - name: Build binary
-        shell: bash
         run: |
-          python3 ./scripts/dev/build_executables.py -- \
-            ${{ inputs.github_ref_name }}
-      - name: Package as ZIP
-        shell: bash
-        run: |
-          python3 ./scripts/dev/build_release_zip.py -- \
-            dist/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
-      - name: Upload as release asset
+          pip install shiv
+          python3 ./scripts/dev/build_shiv_release.py -- \
+            "${{ inputs.github_ref_name }}" \
+            "${{ steps.asset_filename.ZIP }}"
+      - name: Upload release asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ inputs.upload_url }}
-          asset_path: dist/travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
-          asset_name: travdata-${{ runner.os }}-${{ runner.arch }}-${{ inputs.github_ref_name }}.zip
+          asset_path: ./${{ steps.asset_filename.ZIP }}
+          asset_name: ${{ steps.asset_filename.ZIP }}
           asset_content_type: application/zip
