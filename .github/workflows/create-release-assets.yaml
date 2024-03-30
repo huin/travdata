@@ -51,7 +51,8 @@ jobs:
       - name: Build release asset with PyInstaller
         shell: bash
         run: |
-          poetry run ./scripts/dev/build_pyinstaller_release.py -- \
+          poetry run python -- \
+            ./scripts/dev/build_pyinstaller_release.py \
             "${{ inputs.github_ref_name }}" \
             "./${{ steps.asset_filename.outputs.ZIP }}"
 
