@@ -30,6 +30,7 @@ jobs:
         python-version: 
           - "3.11"
         os:
+          - macos-latest
           - ubuntu-latest
           - windows-latest
 
