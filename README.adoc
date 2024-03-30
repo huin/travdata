@@ -34,8 +34,9 @@ https://www.java.com/en/download/[java.com].
 
 You can download an executable version of the application for your platform at
 https://github.com/huin/travdata/releases[github.com/huin/travdata/releases].
-Currently executables are only generated for Linux and Windows (as I do not have
-a MacOS device suitable for testing on).
+Currently executables are only generated for Linux and Windows, and seem to work
+on the author's machines. A MacOS binary is also released, but it has not been
+tested.
 
 Once downloaded, extract the `.zip` file to a suitable location. You can most
 easily use the command line interface from the directory that it was unpacked
