@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Pyinstaller hook to configure travdata when running via pyinstaller."""
+"""Pyinstaller hook to configure travdata.
 
-from travdata import config
-
-config.__executable_environment__ = "pyinstaller"
+This is intentionally left empty, as the real data will be added by
+build_pyinstaller_release. This file is present so that manual invocations of
+pyinstaller will work outside of that build script.
+"""
