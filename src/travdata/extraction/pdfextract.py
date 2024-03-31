@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """Extracts tables from a PDF."""
 
+import csv
+import dataclasses
 import itertools
 import pathlib
-from typing import Iterable, Iterator, Protocol, TypeAlias
+from typing import Callable, Iterable, Iterator, Protocol, TypeAlias, cast
 
 from travdata import config
 from travdata.extraction import parseutil, tabulautil
@@ -169,3 +171,105 @@ def _fold_rows(
 def _clean_rows(rows: Iterable[list[str]]) -> Iterator[list[str]]:
     for row in rows:
         yield [parseutil.clean_text(text) for text in row]
+
+
+@dataclasses.dataclass
+class Progress:
+    """Progress report from ``extract_book``."""
+
+    completed: int
+    total: int
+
+
+@dataclasses.dataclass
+class ExtractionConfig:
+    """Extraction configuration.
+
+    :field config_dir: Path to top level directory of configuration.
+    :field output_dir: Path to top level directory for output.
+    :field input_pdf: Path to PDF file to extract from.
+    :field book_cfg: Configuration for book to extract tables from.
+    :field overwrite_existing: If true, overwrite existing CSV files.
+    """
+
+    config_dir: pathlib.Path
+    output_dir: pathlib.Path
+    input_pdf: pathlib.Path
+    book_cfg: config.Book
+    overwrite_existing: bool
+
+
+@dataclasses.dataclass
+class ExtractEvents:
+    """Extraction event callbacks.
+
+    :field on_progress: Called at the start and after each extraction attempt.
+    :field on_error: Called on any errors.
+    :field do_continue: Called at intervals. If it returns False, then no
+    further processing is attempted.
+    """
+
+    on_progress: Callable[[Progress], None]
+    on_error: Callable[[str], None]
+    do_continue: Callable[[], bool]
+
+
+def extract_book(
+    *,
+    table_reader: TableReader,
+    cfg: ExtractionConfig,
+    events: ExtractEvents,
+) -> None:
+    """Extracts an entire book to CSV.
+
+    :param table_reader: Extractor for individual tables from a PDF.
+    :param cfg: Configuration for extraction.
+    :param events: Event hooks to feed back progress, etc.
+    :raises RuntimeError: If ``cfg.book_cfg.group`` was not set.
+    """
+
+    if cfg.book_cfg.group is None:
+        raise RuntimeError("Book.group was not set")
+
+    output_tables: list[tuple[pathlib.Path, config.Table]] = []
+    for table in cfg.book_cfg.group.all_tables():
+        if table.extraction is None:
+            continue
+        out_filepath = cfg.output_dir / table.file_stem.with_suffix(".csv")
+
+        if cfg.overwrite_existing or not out_filepath.exists():
+            output_tables.append((out_filepath, table))
+
+    events.on_progress(Progress(0, len(output_tables)))
+
+    created_directories: set[pathlib.Path] = set()
+    for i, (out_filepath, table) in enumerate(output_tables, start=1):
+        if not events.do_continue():
+            return
+
+        if table.extraction is None:
+            continue
+        extraction = table.extraction
+
+        out_filepath = cast(pathlib.Path, out_filepath)
+        table = cast(config.Table, table)
+
+        group_dir = out_filepath.parent
+        if group_dir not in created_directories:
+            group_dir.mkdir(parents=True, exist_ok=True)
+            created_directories.add(group_dir)
+
+        try:
+            rows = extract_table(
+                config_dir=cfg.config_dir,
+                pdf_path=cfg.input_pdf,
+                file_stem=table.file_stem,
+                extraction=extraction,
+                table_reader=table_reader,
+            )
+            with open(out_filepath, "wt", encoding="utf-8") as f:
+                csv.writer(f).writerows(rows)
+        except ConfigurationError as exc:
+            events.on_error(f"Configuration error while processing table {table.file_stem}: {exc}")
+        finally:
+            events.on_progress(Progress(i, len(output_tables)))

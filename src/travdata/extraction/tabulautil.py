@@ -5,6 +5,7 @@ import json
 import pathlib
 from typing import Iterable, Iterator, TypeAlias, TypedDict, cast
 
+import jpype  # type: ignore[import-untyped]
 import tabula
 
 
@@ -38,7 +39,14 @@ class _TemplateEntry(TypedDict):
 
 
 class TabulaClient:
-    """Client wrapper around Tabula."""
+    """Client wrapper around Tabula.
+
+    Note that:
+
+    * This should only be created and/or shutdown on the main thread.
+    * Only one instance can ever exist for the program lifetime, due to
+    limitations in JPype.
+    """
 
     _force_subprocess: bool
 
@@ -49,6 +57,24 @@ class TabulaClient:
         using the faster jpype.
         """
         self._force_subprocess = force_subprocess
+        self._needs_shutdown = False
+
+    def __enter__(self) -> "TabulaClient":
+        return self
+
+    def __exit__(self, *args) -> None:
+        del args  # unused
+        self.shutdown()
+
+    def shutdown(self) -> None:
+        """Shutdown any resources being used.
+
+        This must only be called from the main thread, this is also true for
+        using a TabulaClient as a context manager.
+        """
+        if self._needs_shutdown:
+            jpype.shutdownJVM()
+            self._needs_shutdown = False
 
     def read_pdf_with_template(
         self,
@@ -62,6 +88,8 @@ class TabulaClient:
         :param template_path: Path to the Tabula template JSON file.
         :return: Tables read from the PDF.
         """
+        self._needs_shutdown = not self._force_subprocess
+
         result: list[TabulaTable] = []
         with template_path.open() as tf:
             template = cast(list[_TemplateEntry], json.load(tf))

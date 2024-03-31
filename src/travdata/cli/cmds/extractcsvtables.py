@@ -5,11 +5,11 @@ CSV files.
 """
 
 import argparse
-import csv
+import contextlib
 import pathlib
 import sys
 import textwrap
-from typing import cast
+from typing import Callable, Iterator
 
 from progress import bar as progress  # type: ignore[import-untyped]
 from travdata import config
@@ -85,12 +85,32 @@ def add_subparser(subparsers) -> None:
     )
 
 
+@contextlib.contextmanager
+def _progress_reporter(no_progress: bool) -> Iterator[Callable[[pdfextract.Progress], None]]:
+    if no_progress:
+        progress_bar = None
+
+        def on_progress(p: pdfextract.Progress) -> None:
+            del p  # unused
+
+    else:
+        progress_bar = progress.Bar("Extracting tables")
+        progress_bar.start()
+
+        def on_progress(p: pdfextract.Progress) -> None:
+            progress_bar.index = p.completed
+            progress_bar.max = p.total
+            progress_bar.update()
+
+    try:
+        yield on_progress
+    finally:
+        if progress_bar is not None:
+            progress_bar.finish()
+
+
 def run(args: argparse.Namespace) -> int:
     """CLI entry point."""
-
-    tabula_client = tabulautil.TabulaClient(
-        force_subprocess=args.tabula_force_subprocess,
-    )
 
     cfg = config.load_config_from_flag(args, [args.book_name])
     try:
@@ -98,53 +118,30 @@ def run(args: argparse.Namespace) -> int:
     except KeyError:
         print(f"Book {args.book_name} is unknown.", file=sys.stderr)
         return 1
+    if book_cfg.group is None:
+        raise RuntimeError("book_cfg.group should have been loaded, but is None")
 
-    output_tables: list[tuple[pathlib.Path, config.Table]] = []
-    for table in book_cfg.all_tables():
-        if table.extraction is None:
-            continue
-        out_filepath = args.output_dir / table.file_stem.with_suffix(".csv")
+    def on_error(error: str) -> None:
+        print(error, file=sys.stderr)
 
-        if args.overwrite_existing or not out_filepath.exists():
-            output_tables.append((out_filepath, table))
-
-    if not args.no_progress:
-        monitored_output_tables = progress.Bar(
-            "Extracting tables",
-            max=len(output_tables),
-        ).iter(output_tables)
-    else:
-        monitored_output_tables = iter(output_tables)
-
-    created_directories: set[pathlib.Path] = set()
-    for out_filepath, table in monitored_output_tables:
-        if table.extraction is None:
-            continue
-        extraction = table.extraction
-
-        out_filepath = cast(pathlib.Path, out_filepath)
-        table = cast(config.Table, table)
-
-        group_dir = out_filepath.parent
-        if group_dir not in created_directories:
-            group_dir.mkdir(parents=True, exist_ok=True)
-            created_directories.add(group_dir)
-
-        try:
-            try:
-                rows = pdfextract.extract_table(
-                    config_dir=args.config_dir,
-                    pdf_path=args.input_pdf,
-                    file_stem=table.file_stem,
-                    extraction=extraction,
-                    table_reader=tabula_client,
-                )
-                with open(out_filepath, "wt", encoding="utf-8") as f:
-                    csv.writer(f).writerows(rows)
-            except Exception as e:
-                e.add_note(f"Error while processing table {table.file_stem}: {e}")
-                raise
-        except pdfextract.ConfigurationError as e:
-            print(e, file=sys.stderr)
+    with (
+        tabulautil.TabulaClient(force_subprocess=args.tabula_force_subprocess) as tabula_client,
+        _progress_reporter(args.no_progress) as on_progress,
+    ):
+        pdfextract.extract_book(
+            table_reader=tabula_client,
+            cfg=pdfextract.ExtractionConfig(
+                config_dir=args.config_dir,
+                output_dir=args.output_dir,
+                input_pdf=args.input_pdf,
+                book_cfg=book_cfg,
+                overwrite_existing=args.overwrite_existing,
+            ),
+            events=pdfextract.ExtractEvents(
+                on_progress=on_progress,
+                on_error=on_error,
+                do_continue=lambda: True,
+            ),
+        )
 
     return 0

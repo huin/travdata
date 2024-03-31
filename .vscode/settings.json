@@ -5,6 +5,7 @@
   "python.testing.pytestEnabled": true,
   "reflowMarkdown.preferredLineLength": 80,
   "yaml.customTags": [
+    "!Book mapping",
     "!Config mapping",
     "!EmptyColumn mapping",
     "!Group mapping",

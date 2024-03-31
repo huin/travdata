@@ -121,12 +121,20 @@ class Group:
 
 
 @dataclasses.dataclass
+class Book(YamlDataclassMixin):
+    """Top level information about a book."""
+
+    name: str
+    default_filename: str
+    group: Optional[Group] = None
+
+
+@dataclasses.dataclass
 class Config:
     """Top-level configuration."""
 
     directory: pathlib.Path
-    books: dict[str, Group] = dataclasses.field(default_factory=dict)
-    book_names: list[str] = dataclasses.field(default_factory=list)
+    books: dict[str, Book] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
@@ -179,9 +187,30 @@ class _YamlGroup(YamlDataclassMixin):
 
 @dataclasses.dataclass
 @_YAML.register_class
+class _YamlBook(YamlDataclassMixin):
+    yaml_tag: ClassVar = "!Book"
+    name: str
+    default_filename: str
+
+    def prepare(self, cfg_dir: pathlib.Path, book_id: str, limit_books: list[str]) -> Book:
+        """Creates a ``Book`` from self.
+
+        :param cfg_dir: Path to the directory of the ``Config``.
+        :param book_id: ID of the book within the parent _YamlConfig.
+        :param limit_books: Allowlist of book names to load configuration for.
+        :return: Prepared ``Book``.
+        """
+        book = Book(name=self.name, default_filename=self.default_filename)
+        if book_id in limit_books:
+            book.group = _load_book_config(cfg_dir, pathlib.Path(book_id))
+        return book
+
+
+@dataclasses.dataclass
+@_YAML.register_class
 class _YamlConfig(YamlDataclassMixin):
     yaml_tag: ClassVar = "!Config"
-    books: list[str] = dataclasses.field(default_factory=list)
+    books: dict[str, _YamlBook]
 
     def prepare(self, cfg_dir: pathlib.Path, limit_books: list[str]) -> Config:
         """Creates a ``Group`` from self.
@@ -190,16 +219,16 @@ class _YamlConfig(YamlDataclassMixin):
         :param limit_books: Allowlist of book names to load configuration for.
         :return: Prepared ``Config``.
         """
-        books: dict[str, Group] = {}
-        for book_name in limit_books:
-            if book_name not in self.books:
-                raise UserError(f"book {book_name!r} does not exist")
-            book_dir = pathlib.Path(book_name)
-            books[book_name] = _load_book_config(cfg_dir, book_dir)
+        books: dict[str, Book] = {}
+        for book_id, yaml_book in self.books.items():
+            books[book_id] = yaml_book.prepare(
+                cfg_dir=cfg_dir,
+                book_id=book_id,
+                limit_books=limit_books,
+            )
         return Config(
             directory=cfg_dir,
             books=books,
-            book_names=self.books,
         )
 
 
@@ -236,7 +265,7 @@ def load_config(cfg_dir: pathlib.Path, limit_books: list[str]) -> Config:
 def add_config_flag(argparser: argparse.ArgumentParser) -> None:
     """Adds the flag required to call ``load_config_from_flag`` on the parsed args."""
 
-    default_config_dir = _get_default_config_path()
+    default_config_dir = get_default_config_path()
 
     argparser.add_argument(
         "--config-dir",
@@ -255,7 +284,12 @@ def add_config_flag(argparser: argparse.ArgumentParser) -> None:
     )
 
 
-def _get_default_config_path() -> Optional[pathlib.Path]:
+def get_default_config_path() -> Optional[pathlib.Path]:
+    """Returns the default path to the config directory.
+
+    :raises RuntimeError: If the environment is not recognised.
+    :return: Default path to the config directory, if known.
+    """
     match __executable_environment__:
         case "development":
             install_dir = _data_dir_for_development()
