@@ -25,7 +25,6 @@ cli_a = Analysis(
     noarchive=False,
 )
 cli_pyz = PYZ(cli_a.pure)
-
 cli_exe = EXE(
     cli_pyz,
     cli_a.scripts,
@@ -61,7 +60,7 @@ gui_a = Analysis(
     excludes=[],
     noarchive=False,
 )
-gui_pyz = PYZ(cli_a.pure)
+gui_pyz = PYZ(gui_a.pure)
 gui_exe = EXE(
     gui_pyz,
     gui_a.scripts,
