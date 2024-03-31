@@ -98,6 +98,10 @@ def _build_zip(
             build_dir / "travdata" / f"travdata_cli{system_exec_suffix}",
             arcname=f"travdata_cli{system_exec_suffix}",
         )
+        zf.write(
+            build_dir / "travdata" / f"travdata_gui{system_exec_suffix}",
+            arcname=f"travdata_gui{system_exec_suffix}",
+        )
         zf.write(src_dir / "LICENSE", "LICENSE")
         zf.write(src_dir / "README.adoc", "README.adoc")
         _copy_internal(zf, build_dir / "travdata/_internal", pathlib.PurePath("_internal"))
