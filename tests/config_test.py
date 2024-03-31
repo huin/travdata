@@ -8,8 +8,8 @@ import testfixtures  # type: ignore[import-untyped]
 from travdata import config
 
 
-def test_load_config_from_str() -> None:
-    actual = config.load_book_config_from_str(
+def test_load_group_from_str() -> None:
+    actual = config.load_group_from_str(
         textwrap.dedent(
             """
     !Group

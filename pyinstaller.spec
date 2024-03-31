@@ -7,7 +7,7 @@ parser.add_argument("tabula_jar")
 args = parser.parse_args()
 
 
-a = Analysis(
+cli_a = Analysis(
     ['src/travdata/cli/cli.py'],
     pathex=[],
     binaries=[],
@@ -24,11 +24,11 @@ a = Analysis(
     excludes=[],
     noarchive=False,
 )
-pyz = PYZ(a.pure)
+cli_pyz = PYZ(cli_a.pure)
 
-exe = EXE(
-    pyz,
-    a.scripts,
+cli_exe = EXE(
+    cli_pyz,
+    cli_a.scripts,
     [],
     exclude_binaries=True,
     name='travdata_cli',
@@ -43,10 +43,49 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
+gui_a = Analysis(
+    ['src/travdata/gui/gui.py'],
+    pathex=[],
+    binaries=[],
+    datas=[
+        (args.tabula_jar, 'tabula'),
+        ('config', './config'),
+    ],
+    hiddenimports=[],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[
+        "scripts/pyinstaller/hook.py",
+    ],
+    excludes=[],
+    noarchive=False,
+)
+gui_pyz = PYZ(cli_a.pure)
+gui_exe = EXE(
+    gui_pyz,
+    gui_a.scripts,
+    [],
+    exclude_binaries=True,
+    name='travdata_gui',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
 coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
+    cli_exe,
+    cli_a.binaries,
+    cli_a.datas,
+    gui_exe,
+    gui_a.binaries,
+    gui_a.datas,
     strip=False,
     upx=True,
     upx_exclude=[],

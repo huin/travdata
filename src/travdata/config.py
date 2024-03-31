@@ -124,6 +124,7 @@ class Group:
 class Book(YamlDataclassMixin):
     """Top level information about a book."""
 
+    id_: str
     name: str
     default_filename: str
     group: Optional[Group] = None
@@ -192,7 +193,12 @@ class _YamlBook(YamlDataclassMixin):
     name: str
     default_filename: str
 
-    def prepare(self, cfg_dir: pathlib.Path, book_id: str, limit_books: list[str]) -> Book:
+    def prepare(
+        self,
+        cfg_dir: pathlib.Path,
+        book_id: str,
+        limit_books: list[str],
+    ) -> Book:
         """Creates a ``Book`` from self.
 
         :param cfg_dir: Path to the directory of the ``Config``.
@@ -200,9 +206,15 @@ class _YamlBook(YamlDataclassMixin):
         :param limit_books: Allowlist of book names to load configuration for.
         :return: Prepared ``Book``.
         """
-        book = Book(name=self.name, default_filename=self.default_filename)
+        book = Book(
+            id_=book_id,
+            name=self.name,
+            default_filename=self.default_filename,
+        )
         if book_id in limit_books:
-            book.group = _load_book_config(cfg_dir, pathlib.Path(book_id))
+            rel_book_dir = pathlib.Path(book_id)
+            cfg = _YAML.load(cfg_dir / rel_book_dir / "book.yaml")
+            book.group = _prepare_group(cfg, rel_book_dir)
         return book
 
 
@@ -232,22 +244,16 @@ class _YamlConfig(YamlDataclassMixin):
         )
 
 
-def _prepare_book_config(cfg: Any, rel_book_dir: pathlib.Path) -> Group:
+def _prepare_group(cfg: Any, rel_book_dir: pathlib.Path) -> Group:
     if not isinstance(cfg, _YamlGroup):
         raise TypeError(cfg)
     return cfg.prepare(rel_book_dir)
 
 
-def load_book_config_from_str(yaml_str: str) -> Group:
+def load_group_from_str(yaml_str: str) -> Group:
     """Loads the configuration from the given string containing YAML."""
     cfg = _YAML.load(yaml_str)
-    return _prepare_book_config(cfg, pathlib.Path("."))
-
-
-def _load_book_config(cfg_dir: pathlib.Path, rel_book_dir: pathlib.Path) -> Group:
-    """Loads the configuration from the directory."""
-    cfg = _YAML.load(cfg_dir / rel_book_dir / "book.yaml")
-    return _prepare_book_config(cfg, rel_book_dir)
+    return _prepare_group(cfg, pathlib.Path("."))
 
 
 def _prepare_config(cfg: Any, cfg_dir: pathlib.Path, limit_books: list[str]) -> Config:
