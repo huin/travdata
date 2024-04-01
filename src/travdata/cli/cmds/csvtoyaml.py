@@ -16,6 +16,7 @@ import argparse
 import csv
 import pathlib
 
+from travdata import csvutil
 from travdata.datatypes import yamlcodec
 from travdata.tableconverters.core import registry
 
@@ -55,10 +56,8 @@ def run(args: argparse.Namespace) -> None:
         if out_group_dir not in created_directories:
             out_group_dir.mkdir(parents=True, exist_ok=True)
         with (
-            open(
+            csvutil.open_read(
                 in_group_dir / f"{conv_key.table_name}.csv",
-                "rt",
-                encoding="utf-8",
             ) as csv_file_in,
             open(
                 out_group_dir / f"{conv_key.table_name}.yaml",
