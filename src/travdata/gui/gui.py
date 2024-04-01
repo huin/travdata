@@ -16,6 +16,7 @@ from travdata.gui.extraction import cfgwin
 def main() -> None:
     """Entry point for GUI program to extract data from a PDF."""
     app = QtWidgets.QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(True)
 
     with tabulautil.TabulaClient(
         force_subprocess=False,
@@ -26,7 +27,7 @@ def main() -> None:
             config_dir=config.get_default_config_path(),
         )
         window.show()
-    sys.exit(app.exec())
+        sys.exit(app.exec())
 
 
 if __name__ == "__main__":
