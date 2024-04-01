@@ -10,7 +10,7 @@ from typing import Callable, Optional
 
 from PySide6 import QtCore, QtWidgets, QtGui
 
-from travdata import config
+from travdata import commontext, config
 from travdata.extraction import pdfextract
 from travdata.gui import qtutil
 from travdata.gui.extraction import runnerwin
@@ -136,6 +136,8 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         super().__init__()
         self.setWindowTitle("Travdata Extraction Setup")
 
+        data_usage_text = QtWidgets.QLabel(commontext.DATA_USAGE)
+
         self._thread_pool = thread_pool
         self._table_reader = table_reader
 
@@ -194,6 +196,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         outer_box = qtutil.make_group_vbox(
             "Extract tables from PDF",
+            data_usage_text,
             config_box,
             input_pdf_box,
             output_dir_box,

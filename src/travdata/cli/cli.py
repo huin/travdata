@@ -6,14 +6,6 @@ This is a suite of tools that perform either or both of the following:
 
 * extract data from Mongoose Traveller PDF files,
 * produced data derived from said data.
-
-The extracted and produced data is *not* for redistribution, as it is almost
-certainly subject to copyright. This utility (and its output) is intended as an
-aid to those who legally own a copy of the Mongoose Traveller materials, and
-wish to make use of the data for their own purposes.
-
-It is the sole responsibility of the user of this program to use the extracted
-data in a manner that respects the publisher's IP rights.
 """
 
 
@@ -21,6 +13,7 @@ import argparse
 from typing import Optional
 
 import travdata
+from travdata import commontext
 from travdata.cli.cmds import csvtoyaml, extractcsvtables, licenses, listbooks, tradetable
 
 
@@ -28,7 +21,7 @@ def main() -> Optional[int]:
     """Entrypoint for the program."""
 
     argparser = argparse.ArgumentParser(
-        description=__doc__,
+        description=f"{__doc__}\n{commontext.DATA_USAGE}",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     argparser.set_defaults(run=None)
