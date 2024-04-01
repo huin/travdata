@@ -18,6 +18,29 @@ publisher’s IP rights.
 The purpose of this tool is to extract the data for usage by the legal
 owner of a copy of the original materal that it was extracted from.
 
+.. _`_reporting_issues`:
+
+Reporting issues
+================
+
+Report any problems you encounter or feature requests to
+https://github.com/huin/travdata/issues.
+
+Please include:
+
+-  information about which operating system you are using the program
+   on,
+
+-  steps to reproduce the problem,
+
+-  what you expected to happen,
+
+-  what actually happened.
+
+Ideally include text output of any error messages from the program,
+and/or screenshots to demonstrate the problem if text output is not
+relevant.
+
 .. _`_usage`:
 
 Usage
@@ -56,6 +79,9 @@ Once downloaded, extract the ``.zip`` file to a suitable location. You
 can most easily use the command line interface from the directory that
 it was unpacked to.
 
+You may also wish to make a shortcut to the ``travdata_gui`` executable,
+but it can also be run directly from the unzipped directory.
+
 .. _`_pip_install`:
 
 Pip install
@@ -87,6 +113,45 @@ subdirectories:
 
 At this point, you can run ``python -m travdata.cli.cli`` instead of
 running ``travdata_cli`` from other examples.
+
+.. _`_gui_literal_travdata_gui_literal`:
+
+GUI ``travdata_gui``
+--------------------
+
+The GUI binary provides a user interface to aid in extracting CSV files,
+similarly to ``travdata_cli extractcsvtables``.
+
+1. "Extraction configuration" selects the configuration for extraction
+   from PDFs. It should detect its own configuration automatically. If
+   it does not, click "Select configuration" and select the
+   ``_internal/config`` directory that should have come with the
+   download of the program.
+
+2. "Input PDF" selects the PDF to extract from, and the book that that
+   PDF corresponds to.
+
+   Note: only a very limited number of books are supported - at the time
+   of writing, only the Core Rulebook 2022 update.
+
+   Click "Select PDF" and choose the input PDF file.
+
+3. If selecting a PDF file did not automatically choose the correct book
+   (based on its filename), choose it from the drop-down box below
+   "Select PDF".
+
+4. "Output directory" selects a directory to write the extracted CSV
+   data into. Choose an empty directory.
+
+5. "Extract" should now be enabled. Click it to start extraction. It
+   will open a window to display progress and any errors.
+
+6. Close the extraction window once extraction is completed (and if you
+   no longer need the output).
+
+Note: the program will not extract the same table again if it sees that
+the CSV file is present in the output directory. If you wish to force
+re-extraction, delete some or all files from the output directory.
 
 .. _`_cli_literal_travdata_cli_extractcsvtables_literal`:
 
