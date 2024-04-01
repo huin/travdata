@@ -9,20 +9,30 @@ Values of these types are read from two types of file:
 See development.adoc for more information in how this is used.
 """
 
+from __future__ import annotations
+
 import abc
 import argparse
 import dataclasses
 import pathlib
 import sys
 import textwrap
-from typing import Any, ClassVar, Iterator, Optional
+from typing import Any, ClassVar, Iterator, Optional, cast, TYPE_CHECKING
 
 from ruamel import yaml
 from travdata import dataclassutil
 
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
+
 _YAML = yaml.YAML(typ="safe")
+# Retain the original ordering in mappings.
+_YAML.representer.sort_base_mapping_type_on_output = False
 
 __executable_environment__ = "development"
+
+
+_SET_METADATA = {"to_yaml": sorted, "from_yaml": set}
 
 
 class UserError(Exception):
@@ -49,6 +59,41 @@ class YamlDataclassMixin:
         except Exception as e:
             e.add_note(f"processing {self.yaml_tag} with {state=}")
             raise
+
+    @classmethod
+    def to_yaml(cls, representer, node):
+        """Implements serialising the node as basic YAML types."""
+        mapping = {}
+        for field in dataclasses.fields(cast(type["DataclassInstance"], cls)):
+            value = getattr(node, field.name)
+            if not value and dataclassutil.has_default(field):
+                continue
+            if fn := field.metadata.get("to_yaml"):
+                value = fn(value)
+            mapping[field.name] = value
+        return representer.represent_mapping(cls.yaml_tag, mapping)
+
+    @classmethod
+    def from_yaml(cls, constructor, node):
+        """Implements deserialising the node from basic YAML types."""
+        data = constructor.construct_mapping(node)
+        if not isinstance(data, dict):
+            raise TypeError(data)
+        kwargs = {}
+        for field in dataclasses.fields(cast(type["DataclassInstance"], cls)):
+            try:
+                value = data.pop(field.name)
+            except KeyError:
+                if dataclassutil.has_default(field):
+                    continue
+                raise
+            if fn := field.metadata.get("from_yaml"):
+                value = fn(value)
+            kwargs[field.name] = value
+        if data:
+            names = ", ".join(sorted(data))
+            raise TypeError(f"unexpected fields {names} in {cls.yaml_tag}")
+        return cls(**kwargs)
 
 
 class RowFolder(abc.ABC):
@@ -94,6 +139,7 @@ class Table:
 
     file_stem: pathlib.Path
     type: str
+    tags: set[str] = dataclasses.field(default_factory=set)
     extraction: Optional[TableExtraction] = dataclasses.field(default_factory=TableExtraction)
 
 
@@ -107,6 +153,7 @@ class Group:
     """
 
     directory: pathlib.Path
+    tags: set[str] = dataclasses.field(default_factory=set)
     tables: dict[str, Table] = dataclasses.field(default_factory=dict)
     groups: dict[str, "Group"] = dataclasses.field(default_factory=dict)
 
@@ -127,6 +174,7 @@ class Book(YamlDataclassMixin):
     id_: str
     name: str
     default_filename: str
+    tags: set[str] = dataclasses.field(default_factory=set)
     group: Optional[Group] = None
 
 
@@ -143,6 +191,7 @@ class Config:
 class _YamlTable(YamlDataclassMixin):
     yaml_tag: ClassVar = "!Table"
     type: Optional[str] = None
+    tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
     extraction: Optional[TableExtraction] = None
 
     def prepare(self, name: str, directory: pathlib.Path) -> Table:
@@ -161,6 +210,7 @@ class _YamlTable(YamlDataclassMixin):
 @_YAML.register_class
 class _YamlGroup(YamlDataclassMixin):
     yaml_tag: ClassVar = "!Group"
+    tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
     groups: dict[str, "_YamlGroup"] = dataclasses.field(default_factory=dict)
     tables: dict[str, _YamlTable] = dataclasses.field(default_factory=dict)
     extraction_templates: Optional[list[TableExtraction]] = None
@@ -174,6 +224,7 @@ class _YamlGroup(YamlDataclassMixin):
         """
         return Group(
             directory=rel_group_dir,
+            tags=self.tags,
             tables={
                 name: table.prepare(name, rel_group_dir) for name, table in self.tables.items()
             },
@@ -192,6 +243,7 @@ class _YamlBook(YamlDataclassMixin):
     yaml_tag: ClassVar = "!Book"
     name: str
     default_filename: str
+    tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
 
     def prepare(
         self,
@@ -210,6 +262,7 @@ class _YamlBook(YamlDataclassMixin):
             id_=book_id,
             name=self.name,
             default_filename=self.default_filename,
+            tags=self.tags,
         )
         if book_id in limit_books:
             rel_book_dir = pathlib.Path(book_id)
