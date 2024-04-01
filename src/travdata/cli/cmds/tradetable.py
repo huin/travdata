@@ -27,6 +27,7 @@ from typing import (
     cast,
 )
 
+from travdata import csvutil
 from travdata.datatypes import yamlcodec
 from travdata.datatypes.core import trade, worldcreation
 from travdata.extraction import parseutil
@@ -90,7 +91,7 @@ def _load_world_csv_data(path: str) -> Iterator[world.World]:
     :param fp: File to read CSV data from.
     :yield: World data.
     """
-    with open(path, "rt", encoding="utf-8") as fp:
+    with csvutil.open_read(pathlib.Path(path)) as fp:
         r = csv.DictReader(fp)
         for row in r:
             yield world.World(
@@ -150,17 +151,18 @@ def _pbool(s: str) -> bool:
     raise ValueError(v)
 
 
-def _load_world_trade_overrides(fp: io.TextIOBase) -> WorldTradeOverridesMap:
-    r = csv.DictReader(fp)
+def _load_world_trade_overrides(path: pathlib.Path) -> WorldTradeOverridesMap:
     result: WorldTradeOverridesMap = {}
-    for row in r:
-        key = row["Location"], row["D66"]
-        result[key] = WorldTradeOverrides(
-            available=parseutil.map_opt_dict_key(_pbool, row, "Available"),
-            purchase_dm=parseutil.map_opt_dict_key(int, row, "Purchase DM"),
-            sale_dm=parseutil.map_opt_dict_key(int, row, "Sale DM"),
-            illegal=parseutil.map_opt_dict_key(_pbool, row, "Illegal"),
-        )
+    with csvutil.open_read(path) as fp:
+        r = csv.DictReader(fp)
+        for row in r:
+            key = row["Location"], row["D66"]
+            result[key] = WorldTradeOverrides(
+                available=parseutil.map_opt_dict_key(_pbool, row, "Available"),
+                purchase_dm=parseutil.map_opt_dict_key(int, row, "Purchase DM"),
+                sale_dm=parseutil.map_opt_dict_key(int, row, "Sale DM"),
+                illegal=parseutil.map_opt_dict_key(_pbool, row, "Illegal"),
+            )
     return result
 
 
@@ -207,7 +209,7 @@ def add_subparser(subparsers) -> None:
             columns: Location,D66,Available,Purchase DM,Sale DM,Illegal
             """
         ),
-        type=argparse.FileType("rt"),
+        type=pathlib.Path,
         metavar="world-trade-overrides.csv",
     )
     data_inputs_grp.add_argument(
@@ -271,6 +273,13 @@ def add_subparser(subparsers) -> None:
         help="""Format of the output trading sheet.""",
         choices=_RESULT_WRITERS.keys(),
         metavar="FORMAT",
+    )
+
+    argparser.add_argument(
+        "output_path",
+        help="Path to the file to write.",
+        type=pathlib.Path,
+        metavar="FILE",
     )
 
     argparser.add_argument(
@@ -514,7 +523,7 @@ class _ResultWriter(Protocol):  # pylint: disable=too-few-public-methods
     def __call__(
         self,
         *,
-        fp: io.TextIOBase,
+        output_path: pathlib.Path,
         world_views: list[_WorldView],
         tgood_results: list[_ResultTradeGoodDMs],
         opts: _OutputOpts,
@@ -523,123 +532,125 @@ class _ResultWriter(Protocol):  # pylint: disable=too-few-public-methods
 
 def _write_results_asciidoc(
     *,
-    fp: io.TextIOBase,
+    output_path: pathlib.Path,
     world_views: list[_WorldView],
     tgood_results: list[_ResultTradeGoodDMs],
     opts: _OutputOpts,
 ) -> None:
-    def writeln(s: str = "") -> None:
-        print(s, file=fp)
+    with open(output_path, "wt", encoding="utf-8") as fp:
 
-    def writecell(s: str, duplication: int = 1, operators: str = "") -> None:
-        if duplication == 1:
-            print(f"{operators}|{s}", file=fp)
-        else:
-            print(f"{duplication}*{operators}|{s}", file=fp)
+        def writeln(s: str = "") -> None:
+            print(s, file=fp)
 
-    writeln("= Trading DM Table")
-    writeln()
+        def writecell(s: str, duplication: int = 1, operators: str = "") -> None:
+            if duplication == 1:
+                print(f"{operators}|{s}", file=fp)
+            else:
+                print(f"{duplication}*{operators}|{s}", file=fp)
 
-    col_specs = ["1", "4", "2", "3", f"{len(world_views)}*1"]
-    writeln(f"[cols=\"{','.join(col_specs)}\"]")
-    writeln("|===")  # Start of table content.
-    writeln(
-        "|"
-        + " |".join(
-            [
-                "D66",
-                "Goods",
-                "Tons",
-                "Base Price (cr)",
-            ]
-            + [world_view.subsector_loc for world_view in world_views]
+        writeln("= Trading DM Table")
+        writeln()
+
+        col_specs = ["1", "4", "2", "3", f"{len(world_views)}*1"]
+        writeln(f"[cols=\"{','.join(col_specs)}\"]")
+        writeln("|===")  # Start of table content.
+        writeln(
+            "|"
+            + " |".join(
+                [
+                    "D66",
+                    "Goods",
+                    "Tons",
+                    "Base Price (cr)",
+                ]
+                + [world_view.subsector_loc for world_view in world_views]
+            )
         )
-    )
 
-    for tgood_result in tgood_results:
-        writeln()  # Start of new row.
-        tgood = tgood_result.tgood
-        writecell(tgood.d66)
-        writecell(tgood.name)
+        for tgood_result in tgood_results:
+            writeln()  # Start of new row.
+            writecell(tgood_result.tgood.d66)
+            writecell(tgood_result.tgood.name)
 
-        if tprops := tgood_result.tgood.properties:
-            writecell(tprops.tons)
-            writecell(str(tprops.base_price))
-        else:
-            writecell("", duplication=2)
+            if tprops := tgood_result.tgood.properties:
+                writecell(tprops.tons)
+                writecell(str(tprops.base_price))
+            else:
+                writecell("", duplication=2)
 
-        if not tgood_result.dms:
-            writecell("", duplication=len(world_views))
-            continue
-
-        for world_view in world_views:
-            world_dm = tgood_result.dms.get(world_view.id)
-            if not world_dm:
-                writecell("")
+            if not tgood_result.dms:
+                writecell("", duplication=len(world_views))
                 continue
-            writecell(opts.formats.fmt_dm(world_dm), operators="m")
 
-    writeln("|===")  # End of table content.
+            for world_view in world_views:
+                world_dm = tgood_result.dms.get(world_view.id)
+                if not world_dm:
+                    writecell("")
+                    continue
+                writecell(opts.formats.fmt_dm(world_dm), operators="m")
 
-    if opts.include_key:
-        writeln()
-        writeln("== Key")
-        for key_item, explanation in opts.formats.key("+2"):
-            writeln(f"{explanation}:: `{key_item}`")
+        writeln("|===")  # End of table content.
 
-    if opts.include_explanation:
-        writeln()
-        writeln("== How to use")
-        for s in _DM_EXPLANATION_SENTENCES:
-            writeln(f"- {s}")
+        if opts.include_key:
+            writeln()
+            writeln("== Key")
+            for key_item, explanation in opts.formats.key("+2"):
+                writeln(f"{explanation}:: `{key_item}`")
+
+        if opts.include_explanation:
+            writeln()
+            writeln("== How to use")
+            for s in _DM_EXPLANATION_SENTENCES:
+                writeln(f"- {s}")
 
 
 def _write_results_csv(
     *,
-    fp: io.TextIOBase,
+    output_path: pathlib.Path,
     world_views: list[_WorldView],
     tgood_results: list[_ResultTradeGoodDMs],
     opts: _OutputOpts,
 ) -> None:
-    csv_writer = csv.writer(fp)
-    if opts.include_headers:
-        csv_writer.writerow(
-            ["D66", "Goods", "Tons", "Base Price (cr)"] + [w.subsector_loc for w in world_views]
-        )
+    with csvutil.open_write(output_path) as fp:
+        csv_writer = csv.writer(fp)
+        if opts.include_headers:
+            csv_writer.writerow(
+                ["D66", "Goods", "Tons", "Base Price (cr)"] + [w.subsector_loc for w in world_views]
+            )
 
-    for tgood_result in tgood_results:
-        tgood = tgood_result.tgood
-        row = [tgood.d66, tgood.name]
+        for tgood_result in tgood_results:
+            tgood = tgood_result.tgood
+            row = [tgood.d66, tgood.name]
 
-        if tprops := tgood_result.tgood.properties:
-            row.append(tprops.tons)
-            row.append(str(tprops.base_price))
-        else:
-            row.extend(["", ""])
+            if tprops := tgood_result.tgood.properties:
+                row.append(tprops.tons)
+                row.append(str(tprops.base_price))
+            else:
+                row.extend(["", ""])
 
-        if not tgood_result.dms:
-            csv_writer.writerow(row)
-            continue
-
-        for world_view in world_views:
-            world_dm = tgood_result.dms.get(world_view.id)
-            if not world_dm:
-                row.append("")
+            if not tgood_result.dms:
+                csv_writer.writerow(row)
                 continue
-            row.append(opts.formats.fmt_dm(world_dm))
 
-        csv_writer.writerow(row)
+            for world_view in world_views:
+                world_dm = tgood_result.dms.get(world_view.id)
+                if not world_dm:
+                    row.append("")
+                    continue
+                row.append(opts.formats.fmt_dm(world_dm))
 
-    if opts.include_key:
-        csv_writer.writerow([])
-        csv_writer.writerow(["Key:"])
-        for key_item, explanation in opts.formats.key("+2"):
-            csv_writer.writerow([key_item, explanation])
+            csv_writer.writerow(row)
 
-    if opts.include_explanation:
-        csv_writer.writerow([])
-        for s in _DM_EXPLANATION_SENTENCES:
-            csv_writer.writerow([s])
+        if opts.include_key:
+            csv_writer.writerow([])
+            csv_writer.writerow(["Key:"])
+            for key_item, explanation in opts.formats.key("+2"):
+                csv_writer.writerow([key_item, explanation])
+
+        if opts.include_explanation:
+            csv_writer.writerow([])
+            for s in _DM_EXPLANATION_SENTENCES:
+                csv_writer.writerow([s])
 
 
 _RESULT_WRITERS: dict[str, _ResultWriter] = {
@@ -686,7 +697,7 @@ def process(args: argparse.Namespace) -> None:
 
     result_writer = _RESULT_WRITERS[args.output_format]
     result_writer(
-        fp=cast(io.TextIOBase, sys.stdout),
+        output_path=args.output_path,
         tgood_results=tgood_results,
         world_views=world_views,
         opts=_OutputOpts(

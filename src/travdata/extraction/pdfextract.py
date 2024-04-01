@@ -7,7 +7,7 @@ import itertools
 import pathlib
 from typing import Callable, Iterable, Iterator, Protocol, TypeAlias, cast
 
-from travdata import config
+from travdata import config, csvutil
 from travdata.extraction import parseutil, tabulautil
 
 
@@ -267,7 +267,7 @@ def extract_book(
                 extraction=extraction,
                 table_reader=table_reader,
             )
-            with open(out_filepath, "wt", encoding="utf-8") as f:
+            with csvutil.open_write(out_filepath) as f:
                 csv.writer(f).writerows(rows)
         except ConfigurationError as exc:
             events.on_error(f"Configuration error while processing table {table.file_stem}: {exc}")
