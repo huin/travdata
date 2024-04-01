@@ -122,6 +122,10 @@ GUI ``travdata_gui``
 The GUI binary provides a user interface to aid in extracting CSV files,
 similarly to ``travdata_cli extractcsvtables``.
 
+.. figure::
+   https://raw.githubusercontent.com/huin/travdata/main/images/extraction_gui.png
+   :alt: Screenshot of extraction configuration GUI
+
 1. "Extraction configuration" selects the configuration for extraction
    from PDFs. It should detect its own configuration automatically. If
    it does not, click "Select configuration" and select the
