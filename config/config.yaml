@@ -3,6 +3,3 @@ books:
   core_rulebook_2022: !Book
     name: Core Rulebook Update 2022
     default_filename: update_2022_core_rulebook.pdf
-  dummy: !Book
-    name: Dummy Book
-    default_filename: dummy.pdf
