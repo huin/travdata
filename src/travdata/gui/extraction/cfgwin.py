@@ -200,6 +200,12 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             config_box,
             input_pdf_box,
             output_dir_box,
+            QtWidgets.QSpacerItem(
+                0,
+                0,
+                QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+                QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+            ),
             self._extract_button,
         )
 
