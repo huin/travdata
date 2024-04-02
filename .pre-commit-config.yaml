@@ -17,10 +17,11 @@ repos:
           - --branch=main
           - --branch=master
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.1.0
+    rev: 772d7ffaeee5d611a904cc564a3fe3c7ad927635  # v3.2.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
+        args: []
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
     hooks:
