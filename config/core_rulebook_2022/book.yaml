@@ -357,7 +357,18 @@ groups:
                 extraction: *one-row-header
               ranks-physician: !Table
                 tags: [rank/physician, type/career-rank]
-                extraction: *one-row-header
+                extraction: !TableExtraction
+                  # For some reason, header captures spurious data, so leave it
+                  # out of the Tabula template, and add it back manually.
+                  add_header_row:  
+                  - RANK
+                  - PHYSICIAN
+                  - SKILL OR BONUS
+                  row_folding:
+                  - !StaticRowCounts
+                    row_counts: [1]
+                  - !EmptyColumn
+                    column_index: 0
               mishap: !Table
                 tags: [type/career-mishap]
                 extraction: *one-row-header
@@ -384,7 +395,17 @@ groups:
                 extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                extraction: !TableExtraction
+                  # For some reason, header captures spurious data, so leave it
+                  # out of the Tabula template, and add it back manually.
+                  add_header_row:  
+                  - 1D
+                  - MISHAP
+                  row_folding:
+                  - !StaticRowCounts
+                    row_counts: [1]
+                  - !EmptyColumn
+                    column_index: 0
               event: !Table
                 tags: [type/career-event]
                 extraction: *one-row-header
