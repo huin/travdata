@@ -51,3 +51,6 @@ build-backend = "poetry.core.masonry.api"
 exclude = '''(?x)(
     travdata/gui/.*  # QtCore.pyi syntax error.
 )'''
+
+[tool.pylint.main]
+ignore-paths = ["oneoff"]

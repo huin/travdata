@@ -6,8 +6,11 @@ import sys
 
 
 def main() -> None:
+    files = [f for f in sys.argv[1:] if not f.startswith("scripts/oneoff/")]
+    if not files:
+        return
     try:
-        subprocess.check_call(["poetry", "run", "pylint"] + sys.argv[1:])
+        subprocess.check_call(["poetry", "run", "pylint"] + files)
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
 
