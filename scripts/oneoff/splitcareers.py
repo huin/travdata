@@ -107,14 +107,13 @@ def _ensure_template(t: Template) -> Any:
 
 
 def _approx_eq(a: float, b: float) -> bool:
-    diff = abs(a - b)
-    return diff < 50
+    return abs(a - b) < 50.0
 
 
 def _template_sort_cmp(a: Template, b: Template) -> int:
     if a["page"] != b["page"]:
         return a["page"] - b["page"]
-    elif _approx_eq(a["y1"], b["y1"]):
+    elif not _approx_eq(a["y1"], b["y1"]):
         return int(1000 * (a["y1"] - b["y1"]))
     else:
         return int(1000 * (a["x1"] - b["x1"]))
@@ -138,6 +137,7 @@ class InputTmpl:
                 _ensure_template(t)
         p_stem, _ = p.name.split(".", maxsplit=1)
         career_code, _, career_name = p_stem.partition("-")
+        _sort_templates(d)
         return InputTmpl(
             career_code=career_code,
             career_name=career_name,
@@ -170,8 +170,13 @@ def add_table(
 
 def main() -> None:
     argparser = argparse.ArgumentParser()
+    argparser.add_argument("output_dir", type=pathlib.Path)
     argparser.add_argument("inputs", type=pathlib.Path, nargs="+")
     args = argparser.parse_args()
+
+    output_dir = cast(pathlib.Path, args.output_dir)
+    if not output_dir.is_dir():
+        argparser.exit(1, f"{output_dir} is not a directory")
 
     input_tmpls: list[InputTmpl] = [InputTmpl.load(p) for p in args.inputs]
     input_tmpls.sort(key=InputTmpl.sort_key)
@@ -179,8 +184,6 @@ def main() -> None:
     career_grp = config._YamlGroup()
 
     for input_tmpl in input_tmpls:
-        _sort_templates(input_tmpl.tmpls)
-
         rank_table_names = _CAREER_RBS[input_tmpl.career_name]
         num_expected_tables = len(_FIRST_TABLES) + len(rank_table_names) + len(_LAST_TABLES)
         if num_expected_tables != len(input_tmpl.tmpls):
@@ -194,8 +197,14 @@ def main() -> None:
             continue
 
         first_tables = input_tmpl.tmpls[: len(_FIRST_TABLES)]
-        rank_tables = input_tmpl.tmpls[: len(_FIRST_TABLES) : -len(_LAST_TABLES)]
+        rank_tables = input_tmpl.tmpls[len(_FIRST_TABLES) : -len(_LAST_TABLES)]
         last_tables = input_tmpl.tmpls[-len(_LAST_TABLES) :]
+        if len(first_tables) != len(_FIRST_TABLES):
+            raise RuntimeError()
+        if len(rank_tables) != len(rank_table_names):
+            raise RuntimeError()
+        if len(last_tables) != len(_LAST_TABLES):
+            raise RuntimeError()
 
         grp = config._YamlGroup(
             tags={
@@ -205,7 +214,7 @@ def main() -> None:
             },
         )
         career_grp_name = f"{input_tmpl.sort_key()}-{input_tmpl.career_name}"
-        career_dir = pathlib.Path(".") / career_grp_name
+        career_dir = args.output_dir / career_grp_name
         career_dir.mkdir(parents=True, exist_ok=True)
         career_grp.groups[career_grp_name] = grp
 

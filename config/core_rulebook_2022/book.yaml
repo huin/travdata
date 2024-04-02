@@ -121,6 +121,9 @@ groups:
               ranks-worker: !Table
                 tags: [rank/worker, type/career-rank]
                 extraction: !TableExtraction {}
+              ranks-colonist: !Table
+                tags: [rank/colonist, type/career-rank]
+                extraction: !TableExtraction {}
               mishap: !Table
                 tags: [type/career-mishap]
                 extraction: !TableExtraction {}
@@ -148,6 +151,9 @@ groups:
               ranks-wanderer: !Table
                 tags: [rank/wanderer, type/career-rank]
                 extraction: !TableExtraction {}
+              ranks-scavenger: !Table
+                tags: [rank/scavenger, type/career-rank]
+                extraction: !TableExtraction {}
               mishap: !Table
                 tags: [type/career-mishap]
                 extraction: !TableExtraction {}
@@ -174,6 +180,9 @@ groups:
                 extraction: !TableExtraction {}
               ranks-journalist: !Table
                 tags: [rank/journalist, type/career-rank]
+                extraction: !TableExtraction {}
+              ranks-performer: !Table
+                tags: [rank/performer, type/career-rank]
                 extraction: !TableExtraction {}
               mishap: !Table
                 tags: [type/career-mishap]
@@ -229,6 +238,9 @@ groups:
               ranks-free-trader: !Table
                 tags: [rank/free-trader, type/career-rank]
                 extraction: !TableExtraction {}
+              ranks-broker: !Table
+                tags: [rank/broker, type/career-rank]
+                extraction: !TableExtraction {}
               mishap: !Table
                 tags: [type/career-mishap]
                 extraction: !TableExtraction {}
@@ -283,6 +295,9 @@ groups:
               ranks-diplomat: !Table
                 tags: [rank/diplomat, type/career-rank]
                 extraction: !TableExtraction {}
+              ranks-dilettante: !Table
+                tags: [rank/dilettante, type/career-rank]
+                extraction: !TableExtraction {}
               mishap: !Table
                 tags: [type/career-mishap]
                 extraction: !TableExtraction {}
@@ -310,6 +325,9 @@ groups:
               ranks-enforcer: !Table
                 tags: [rank/enforcer, type/career-rank]
                 extraction: !TableExtraction {}
+              ranks-pirate: !Table
+                tags: [rank/pirate, type/career-rank]
+                extraction: !TableExtraction {}
               mishap: !Table
                 tags: [type/career-mishap]
                 extraction: !TableExtraction {}
@@ -336,6 +354,9 @@ groups:
                 extraction: !TableExtraction {}
               ranks-scientist: !Table
                 tags: [rank/scientist, type/career-rank]
+                extraction: !TableExtraction {}
+              ranks-physician: !Table
+                tags: [rank/physician, type/career-rank]
                 extraction: !TableExtraction {}
               mishap: !Table
                 tags: [type/career-mishap]
@@ -411,6 +432,9 @@ groups:
                 extraction: !TableExtraction {}
               ranks-adept: !Table
                 tags: [rank/adept, type/career-rank]
+                extraction: !TableExtraction {}
+              ranks-psi-warrior: !Table
+                tags: [rank/psi-warrior, type/career-rank]
                 extraction: !TableExtraction {}
               mishap: !Table
                 tags: [type/career-mishap]
