@@ -84,7 +84,7 @@ groups:
                 extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                extraction: *two-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
                 extraction: *one-row-header
@@ -201,7 +201,7 @@ groups:
                 extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                extraction: *two-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
                 extraction: *one-row-header
@@ -258,7 +258,7 @@ groups:
                 extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                extraction: *two-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
                 extraction: *one-row-header
