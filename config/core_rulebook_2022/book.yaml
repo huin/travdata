@@ -423,25 +423,25 @@ groups:
                 extraction: !TableExtraction {}
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *two-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
                 extraction: !TableExtraction {}
               ranks-wild-talent: !Table
                 tags: [rank/wild-talent, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-adept: !Table
                 tags: [rank/adept, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-psi-warrior: !Table
                 tags: [rank/psi-warrior, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
   skills-and-tasks: !Group
     tables:
       effect-results: !Table
