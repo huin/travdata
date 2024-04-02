@@ -51,382 +51,382 @@ groups:
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-law-enforcement: !Table
                 tags: [rank/law-enforcement, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-intel-corp: !Table
                 tags: [rank/intel-corp, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           02-army: !Group
             tags: [career, career-code/2, career/army]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-enlisted: !Table
                 tags: [rank/enlisted, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-officer: !Table
                 tags: [rank/officer, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           03-citizen: !Group
             tags: [career, career-code/3, career/citizen]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-corporate: !Table
                 tags: [rank/corporate, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-worker: !Table
                 tags: [rank/worker, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-colonist: !Table
                 tags: [rank/colonist, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           04-drifter: !Group
             tags: [career, career-code/4, career/drifter]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-barbarian: !Table
                 tags: [rank/barbarian, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-wanderer: !Table
                 tags: [rank/wanderer, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-scavenger: !Table
                 tags: [rank/scavenger, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           05-entertainer: !Group
             tags: [career, career-code/5, career/entertainer]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-artist: !Table
                 tags: [rank/artist, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-journalist: !Table
                 tags: [rank/journalist, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-performer: !Table
                 tags: [rank/performer, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           06-marine: !Group
             tags: [career, career-code/6, career/marine]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-enlisted: !Table
                 tags: [rank/enlisted, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-officer: !Table
                 tags: [rank/officer, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           07-merchant: !Group
             tags: [career, career-code/7, career/merchant]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-merchant-marine: !Table
                 tags: [rank/merchant-marine, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-free-trader: !Table
                 tags: [rank/free-trader, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-broker: !Table
                 tags: [rank/broker, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           08-navy: !Group
             tags: [career, career-code/8, career/navy]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-enlisted: !Table
                 tags: [rank/enlisted, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-officer: !Table
                 tags: [rank/officer, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           09-noble: !Group
             tags: [career, career-code/9, career/noble]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-adminstrator: !Table
                 tags: [rank/adminstrator, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-diplomat: !Table
                 tags: [rank/diplomat, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-dilettante: !Table
                 tags: [rank/dilettante, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           10-rogue: !Group
             tags: [career, career-code/10, career/rogue]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-thief: !Table
                 tags: [rank/thief, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-enforcer: !Table
                 tags: [rank/enforcer, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-pirate: !Table
                 tags: [rank/pirate, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           11-scholar: !Group
             tags: [career, career-code/11, career/scholar]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-field-researcher: !Table
                 tags: [rank/field-researcher, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-scientist: !Table
                 tags: [rank/scientist, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-physician: !Table
                 tags: [rank/physician, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           12-scout: !Group
             tags: [career, career-code/12, career/scout]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks: !Table
                 tags: [rank/None, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           13-prisoner: !Group
             tags: [career, career-code/13, career/prisoner]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks: !Table
                 tags: [rank/None, type/career-rank]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
           x-psion: !Group
             tags: [career, career-code/x, career/psion]
             tables:
               career-progress: !Table
                 tags: [type/career-career-progress]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
                 extraction: *two-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: !TableExtraction {}
+                extraction: *one-row-header
               ranks-wild-talent: !Table
                 tags: [rank/wild-talent, type/career-rank]
                 extraction: *one-row-header
