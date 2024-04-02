@@ -50,7 +50,7 @@ groups:
             tags: [career, career-code/1, career/agent]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -77,7 +77,7 @@ groups:
             tags: [career, career-code/2, career/army]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -104,7 +104,7 @@ groups:
             tags: [career, career-code/3, career/citizen]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -134,7 +134,7 @@ groups:
             tags: [career, career-code/4, career/drifter]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -164,7 +164,7 @@ groups:
             tags: [career, career-code/5, career/entertainer]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -194,7 +194,7 @@ groups:
             tags: [career, career-code/6, career/marine]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -221,7 +221,7 @@ groups:
             tags: [career, career-code/7, career/merchant]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -251,7 +251,7 @@ groups:
             tags: [career, career-code/8, career/navy]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -278,7 +278,7 @@ groups:
             tags: [career, career-code/9, career/noble]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -308,7 +308,7 @@ groups:
             tags: [career, career-code/10, career/rogue]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -338,7 +338,7 @@ groups:
             tags: [career, career-code/11, career/scholar]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -379,7 +379,7 @@ groups:
             tags: [career, career-code/12, career/scout]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -413,7 +413,7 @@ groups:
             tags: [career, career-code/13, career/prisoner]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
@@ -437,7 +437,7 @@ groups:
             tags: [career, career-code/x, career/psion]
             tables:
               career-progress: !Table
-                tags: [type/career-career-progress]
+                tags: [type/career-progress]
                 extraction: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
