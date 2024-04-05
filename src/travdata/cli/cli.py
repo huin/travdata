@@ -14,7 +14,13 @@ from typing import Optional
 
 import travdata
 from travdata import commontext
-from travdata.cli.cmds import csvtoyaml, extractcsvtables, licenses, listbooks, tradetable
+from travdata.cli.cmds import (
+    csvtoyaml,
+    extractcsvtables,
+    licenses,
+    listbooks,
+    tradetable,
+)
 
 
 def main() -> Optional[int]:
