@@ -55,7 +55,7 @@ def extract_table(
     tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
         table_reader.read_pdf_with_template(
             pdf_path=pdf_path,
-            template_path=config_dir / file_stem.with_suffix(".tabula-template.json"),
+            template_path=config_dir / file_stem.with_suffix(config.TABULA_TEMPLATE_SUFFIX),
         )
     )
     text_rows = tabulautil.table_rows_text(tabula_rows)

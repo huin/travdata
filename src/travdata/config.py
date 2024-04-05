@@ -34,6 +34,8 @@ __executable_environment__ = "development"
 
 _SET_METADATA = {"to_yaml": sorted, "from_yaml": set}
 
+TABULA_TEMPLATE_SUFFIX = ".tabula-template.json"
+
 
 class UserError(Exception):
     """Exception raised for user errors."""
