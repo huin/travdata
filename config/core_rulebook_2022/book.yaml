@@ -1,5 +1,5 @@
 !Group
-extraction_templates:
+templates:
 - !TableExtraction &one-row-header
   row_folding:
   - !StaticRowCounts
@@ -547,6 +547,62 @@ groups:
             extraction: *one-row-header
           urban: !Table
             extraction: *one-row-header
+  vehicles: !Group
+    tables:
+      critical-hit-effects: !Table
+        extraction: *one-row-header
+      critical-hits-location: !Table
+        extraction: *one-row-header
+      speed-bands: !Table
+        extraction: *one-row-header
+      vehicle-equipment: !Table
+        extraction: *one-row-header
+      vehicle-weapons: !Table
+        extraction: *one-row-header
+    groups:
+      vehicles: !Group
+        templates:
+          - tables: &vehicle-tables
+              equipment: !Table
+                tags: [type/vehicle-equipment]
+                extraction: !TableExtraction {}
+              spec: !Table
+                tags: [type/vehicle-spec]
+                extraction: !TableExtraction {}
+              armour: !Table
+                tags: [type/vehicle-armour]
+                extraction: !TableExtraction {}
+        groups:
+          air-raft: !Group
+            tags: [vehicle, vehicle/air-raft]
+            tables: *vehicle-tables
+          atv: !Group
+            tags: [vehicle, vehicle/atv]
+            tables: *vehicle-tables
+          brutus-heavy-cargo-truck: !Group
+            tags: [vehicle, vehicle/brutus-heavy-cargo-truck]
+            tables: *vehicle-tables
+          cargo-lifter: !Group
+            tags: [vehicle, vehicle/cargo-lifter]
+            tables: *vehicle-tables
+          g-bike: !Group
+            tags: [vehicle, vehicle/g-bike]
+            tables: *vehicle-tables
+          g-carrier: !Group
+            tags: [vehicle, vehicle/g-carrier]
+            tables: *vehicle-tables
+          g-racer: !Group
+            tags: [vehicle, vehicle/g-racer]
+            tables: *vehicle-tables
+          gecko: !Group
+            tags: [vehicle, vehicle/gecko]
+            tables: *vehicle-tables
+          gunskiff: !Group
+            tags: [vehicle, vehicle/gunskiff]
+            tables: *vehicle-tables
+          personal-land-yacht: !Group
+            tags: [vehicle, vehicle/personal-land-yacht]
+            tables: *vehicle-tables
   trade: !Group
     tables:
       trade-goods: !Table

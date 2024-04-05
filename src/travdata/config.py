@@ -211,9 +211,9 @@ class _YamlTable(YamlDataclassMixin):
 class _YamlGroup(YamlDataclassMixin):
     yaml_tag: ClassVar = "!Group"
     tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
+    templates: Optional[list[TableExtraction]] = None
     groups: dict[str, "_YamlGroup"] = dataclasses.field(default_factory=dict)
     tables: dict[str, _YamlTable] = dataclasses.field(default_factory=dict)
-    extraction_templates: Optional[list[TableExtraction]] = None
 
     def prepare(self, rel_group_dir: pathlib.Path) -> Group:
         """Creates a ``Group`` from self.
@@ -231,9 +231,8 @@ class _YamlGroup(YamlDataclassMixin):
             groups={
                 name: group.prepare(rel_group_dir / name) for name, group in self.groups.items()
             },
-            # extraction_templates not included, as it is only for use in
-            # anchoring and aliasing by the YAML file author at the time of YAML
-            # parsing.
+            # templates not included, as it is only for use in anchoring and
+            # aliasing by the YAML file author at the time of YAML parsing.
         )
 
 
