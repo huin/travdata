@@ -20,15 +20,16 @@ def test_load_group_from_str() -> None:
                 foo: !Table
                     tags: [type/foo]
                     extraction: !TableExtraction
-                        row_folding:
-                            - !StaticRowCounts {row_counts: [2]}
-                            - !EmptyColumn {column_index: 0}
+                        - !FoldRows
+                            - !StaticRowCounts [2]
+                            - !EmptyColumn 0
+                        - !PrependRow [foo, bar]
                 bar: !Table
                     tags: [type/bar]
                     extraction: !TableExtraction
-                        row_folding:
-                            - !StaticRowCounts {row_counts: [1]}
-                            - !EmptyColumn {column_index: 3}
+                        - !FoldRows
+                            - !StaticRowCounts [1]
+                            - !EmptyColumn 3
                 defaults: !Table {}
     """
         ),
@@ -52,9 +53,14 @@ def test_load_group_from_str() -> None:
                             file_stem=pathlib.Path("./grp-a/foo"),
                             tags={"outer", "top", "type/foo"},
                             extraction=config.TableExtraction(
-                                row_folding=[
-                                    config.StaticRowCounts([2]),
-                                    config.EmptyColumn(0),
+                                transforms=[
+                                    config.FoldRows(
+                                        [
+                                            config.StaticRowCounts([2]),
+                                            config.EmptyColumn(0),
+                                        ]
+                                    ),
+                                    config.PrependRow(["foo", "bar"]),
                                 ],
                             ),
                         ),
@@ -63,9 +69,13 @@ def test_load_group_from_str() -> None:
                             file_stem=pathlib.Path("./grp-a/bar"),
                             tags={"outer", "top", "type/bar"},
                             extraction=config.TableExtraction(
-                                row_folding=[
-                                    config.StaticRowCounts([1]),
-                                    config.EmptyColumn(3),
+                                transforms=[
+                                    config.FoldRows(
+                                        [
+                                            config.StaticRowCounts([1]),
+                                            config.EmptyColumn(3),
+                                        ],
+                                    ),
                                 ],
                             ),
                         ),

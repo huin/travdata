@@ -41,26 +41,10 @@ class UserError(Exception):
     """Exception raised for user errors."""
 
 
-class YamlDataclassMixin:
-    """Mixin for dataclasses created by YAML parsing.
-
-    It is necessary to implement __setstate__ in any dataclass instances that
-    have been parsed from YAML, because the YAML parser bypasses __init__. This
-    is needed because:
-
-    * Fields with defaults need to be set if not specified.
-    * Errors need to be raised for any fields missing a value that have no
-      default.
-    """
+class YamlMappingMixin:
+    """Mixin for classes instantiated by parsing YAML mappings."""
 
     yaml_tag: ClassVar
-
-    def __setstate__(self, state):
-        try:
-            self.__init__(**state)
-        except Exception as e:
-            e.add_note(f"processing {self.yaml_tag} with {state=}")
-            raise
 
     @classmethod
     def yaml_create_empty(cls) -> Self:
@@ -111,13 +95,138 @@ class YamlDataclassMixin:
             raise TypeError(f"unexpected fields {names} in {cls.yaml_tag}")
 
 
-class RowFolder(abc.ABC):
+class YamlScalarMixin:
+    """Mixin for classes instantiated by parsing YAML scalars.
+
+    Does not support non-empty defaults in the sense that there is no indication
+    if the YAML value is an intended "falsy" scalar or intended to be a default.
+    """
+
+    yaml_tag: ClassVar
+
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        """Returns an "empty" instance of the class for YAML loading.
+
+        Must be implemented by subclasses that have required fields. The
+        returned value must have default values set on fields that have
+        defaults.
+        """
+        return cls()
+
+    @classmethod
+    def _yaml_field(cls) -> dataclasses.Field:
+        fields = dataclasses.fields(cast(type["DataclassInstance"], cls))
+        if len(fields) != 1:
+            raise TypeError(f"expected exactly one field in {cls.yaml_tag}, got {len(fields)}")
+        return fields[0]
+
+    @classmethod
+    def to_yaml(cls, representer, node):
+        """Implements serialising the node as basic YAML types."""
+
+        field = cls._yaml_field()
+
+        scalar = getattr(node, field.name)
+        if fn := field.metadata.get("to_yaml"):
+            scalar = fn(scalar)
+
+        return representer.represent_scalar(cls.yaml_tag, scalar)
+
+    @classmethod
+    def from_yaml(cls, constructor, node: yaml.ScalarNode) -> Self:
+        """Implements deserialising the node from basic YAML types."""
+        del constructor  # unused
+        value = node.value
+        field = cls._yaml_field()
+        if fn := field.metadata.get("from_yaml"):
+            value = fn(value)
+        obj = cls.yaml_create_empty()
+        setattr(obj, field.name, value)
+        return obj
+
+
+class YamlSequenceMixin:
+    """Mixin for classes instantiated by parsing YAML sequences.
+
+    Does not support non-empty defaults in the sense that there is no indication
+    if the YAML value is an intended empty sequence or intended to be a default.
+    """
+
+    yaml_tag: ClassVar
+
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        """Returns an "empty" instance of the class for YAML loading.
+
+        Must be implemented by subclasses that have required fields. The
+        returned value must have default values set on fields that have
+        defaults.
+        """
+        return cls()
+
+    @classmethod
+    def _yaml_field(cls) -> dataclasses.Field:
+        fields = dataclasses.fields(cast(type["DataclassInstance"], cls))
+        if len(fields) != 1:
+            raise TypeError(f"expected exactly one field in {cls.yaml_tag}, got {len(fields)}")
+        return fields[0]
+
+    @classmethod
+    def to_yaml(cls, representer, node):
+        """Implements serialising the node as basic YAML types."""
+
+        field = cls._yaml_field()
+
+        sequence = getattr(node, field.name)
+        if fn := field.metadata.get("to_yaml"):
+            sequence = fn(sequence)
+
+        return representer.represent_sequence(cls.yaml_tag, sequence)
+
+    @classmethod
+    def from_yaml(cls, constructor, node: yaml.SequenceNode) -> Iterator[Self]:
+        """Implements deserialising the node from basic YAML types."""
+        obj = cls.yaml_create_empty()
+        yield obj
+        sequence = constructor.construct_rt_sequence(
+            node,
+            seqtyp=yaml.CommentedSeq(),
+            deep=True,
+        )
+        if not isinstance(sequence, list):
+            raise TypeError(sequence)
+
+        field = cls._yaml_field()
+        if fn := field.metadata.get("from_yaml"):
+            sequence = fn(sequence)
+        setattr(obj, field.name, sequence)
+
+
+class TableTransform(abc.ABC):
+    """Marker base class for configuration of table transformations."""
+
+
+@dataclasses.dataclass
+@_YAML.register_class
+class PrependRow(TableTransform, YamlSequenceMixin):
+    """Appends given literal row values to the start of a table."""
+
+    yaml_tag: ClassVar = "!PrependRow"
+    row: list[str]
+
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        return cls(row=[])
+
+
+class RowGrouper(abc.ABC):
     """Abstract base marker for configuring row grouping."""
 
 
 @dataclasses.dataclass
 @_YAML.register_class
-class StaticRowCounts(RowFolder, YamlDataclassMixin):
+class StaticRowCounts(RowGrouper, YamlSequenceMixin):
     """Specifies explicit input row counts for output grouped rows."""
 
     yaml_tag: ClassVar = "!StaticRowCounts"
@@ -130,11 +239,11 @@ class StaticRowCounts(RowFolder, YamlDataclassMixin):
 
 @dataclasses.dataclass
 @_YAML.register_class
-class EmptyColumn(RowFolder, YamlDataclassMixin):
+class EmptyColumn(RowGrouper, YamlScalarMixin):
     """Specifies to group rows by when a given column is empty."""
 
     yaml_tag: ClassVar = "!EmptyColumn"
-    column_index: int
+    column_index: int = dataclasses.field(metadata={"from_yaml": int})
 
     @classmethod
     def yaml_create_empty(cls) -> Self:
@@ -143,12 +252,20 @@ class EmptyColumn(RowFolder, YamlDataclassMixin):
 
 @dataclasses.dataclass
 @_YAML.register_class
-class TableExtraction(YamlDataclassMixin):
+class FoldRows(TableTransform, YamlSequenceMixin):
+    """Folds rows, according to the given sequence of groupings."""
+
+    yaml_tag: ClassVar = "!FoldRows"
+    group_by: list[RowGrouper] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
+@_YAML.register_class
+class TableExtraction(YamlSequenceMixin):
     """Configures the specifics of extracting the CSV from the PDF."""
 
     yaml_tag: ClassVar = "!TableExtraction"
-    add_header_row: Optional[list[str]] = None
-    row_folding: list[RowFolder] = dataclasses.field(default_factory=list)
+    transforms: list[TableTransform] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass
@@ -231,7 +348,7 @@ class Config:
 
 @dataclasses.dataclass
 @_YAML.register_class
-class _YamlTable(YamlDataclassMixin):
+class _YamlTable(YamlMappingMixin):
     yaml_tag: ClassVar = "!Table"
     tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
     extraction: Optional[TableExtraction] = None
@@ -263,7 +380,7 @@ class _YamlTable(YamlDataclassMixin):
 
 @dataclasses.dataclass
 @_YAML.register_class
-class _YamlGroup(YamlDataclassMixin):
+class _YamlGroup(YamlMappingMixin):
     yaml_tag: ClassVar = "!Group"
     tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
     templates: Optional[list[TableExtraction]] = None
@@ -304,7 +421,7 @@ class _YamlGroup(YamlDataclassMixin):
 
 @dataclasses.dataclass
 @_YAML.register_class
-class _YamlBook(YamlDataclassMixin):
+class _YamlBook(YamlMappingMixin):
     yaml_tag: ClassVar = "!Book"
     name: str
     default_filename: str
@@ -337,7 +454,7 @@ class _YamlBook(YamlDataclassMixin):
 
 @dataclasses.dataclass
 @_YAML.register_class
-class _YamlConfig(YamlDataclassMixin):
+class _YamlConfig(YamlMappingMixin):
     yaml_tag: ClassVar = "!Config"
     books: dict[str, _YamlBook]
 

@@ -59,32 +59,38 @@ def extract_table(
             template_path=table.tabula_template_path,
         )
     )
-    text_rows = tabulautil.table_rows_text(tabula_rows)
+    rows = tabulautil.table_rows_text(tabula_rows)
 
-    if table.extraction.row_folding:
-        text_rows = _fold_rows(
-            lines=text_rows,
-            grouper=_MultiGrouper(
-                [_make_line_grouper(folder) for folder in table.extraction.row_folding]
-            ),
-        )
+    for transform_cfg in table.extraction.transforms:
+        rows = _transform(transform_cfg, rows)
 
-    text_rows = _clean_rows(text_rows)
-
-    if table.extraction.add_header_row is not None:
-        text_rows = itertools.chain([table.extraction.add_header_row], text_rows)
-
-    return text_rows
+    return _clean_rows(rows)
 
 
-_Line: TypeAlias = list[str]
-_LineGroup: TypeAlias = list[_Line]
 _Row: TypeAlias = list[str]
+_RowGroup: TypeAlias = list[_Row]
+
+
+def _transform(cfg: config.TableTransform, rows: Iterable[_Row]) -> Iterator[_Row]:
+    match cfg:
+        case config.PrependRow():
+            return _prepend_row(cfg, rows)
+        case config.FoldRows():
+            return _fold_rows(cfg, rows)
+        case _:
+            raise ConfigurationError(
+                f"{type(cfg).__name__} is an unknown type of TableTransform",
+            )
+
+
+def _prepend_row(cfg: config.PrependRow, rows: Iterable[_Row]) -> Iterator[_Row]:
+    """Implements the config.PrependRow transformation."""
+    return itertools.chain([cfg.row], rows)
 
 
 class _LineGrouper(Protocol):
 
-    def group_lines(self, lines: Iterable[_Line]) -> Iterator[_LineGroup]:
+    def group_lines(self, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
         """Group input rows into groups, according to the implementation.
 
         :param lines: Input rows.
@@ -99,7 +105,7 @@ class _StaticRowLengths(_LineGrouper):
     def __init__(self, cfg: config.StaticRowCounts) -> None:
         self._line_counts = list(cfg.row_counts)
 
-    def group_lines(self, lines: Iterable[_Line]) -> Iterator[_LineGroup]:
+    def group_lines(self, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
         for num_lines in self._line_counts:
             yield list(itertools.islice(lines, num_lines))
 
@@ -110,8 +116,8 @@ class _EmptyColumn(_LineGrouper):
     def __init__(self, cfg: config.EmptyColumn) -> None:
         self._column_index = cfg.column_index
 
-    def group_lines(self, lines: Iterable[_Line]) -> Iterator[_LineGroup]:
-        group: _LineGroup = []
+    def group_lines(self, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+        group: _RowGroup = []
         for line in lines:
             if line[self._column_index] == "":
                 group.append(line)
@@ -123,14 +129,16 @@ class _EmptyColumn(_LineGrouper):
             yield group
 
 
-def _make_line_grouper(cfg: config.RowFolder) -> _LineGrouper:
+def _make_line_grouper(cfg: config.RowGrouper) -> _LineGrouper:
     match cfg:
         case config.StaticRowCounts():
             return _StaticRowLengths(cfg)
         case config.EmptyColumn():
             return _EmptyColumn(cfg)
         case _:
-            raise ConfigurationError(f"{type(cfg).__name__} is an unknown type of row folder")
+            raise ConfigurationError(
+                f"{type(cfg).__name__} is an unknown type of row folder",
+            )
 
 
 class _MultiGrouper(_LineGrouper):
@@ -139,7 +147,7 @@ class _MultiGrouper(_LineGrouper):
     def __init__(self, groupers: list[_LineGrouper]) -> None:
         self._groupers = groupers
 
-    def group_lines(self, lines: Iterable[_Line]) -> Iterator[_LineGroup]:
+    def group_lines(self, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
         for grouper in self._groupers:
             yield from grouper.group_lines(lines)
         # Everything remaining is in individual groups.
@@ -148,10 +156,14 @@ class _MultiGrouper(_LineGrouper):
 
 
 def _fold_rows(
-    lines: Iterable[_Line],
-    grouper: _LineGrouper,
+    cfg: config.FoldRows,
+    rows: Iterable[_Row],
 ) -> Iterator[_Row]:
-    for line_group in grouper.group_lines(lines):
+    """Implements the config.FoldRows transformation."""
+
+    grouper = _MultiGrouper([_make_line_grouper(folder) for folder in cfg.group_by])
+
+    for line_group in grouper.group_lines(rows):
         # List of cell texts, each of which contain the sequence of strings that
         # make up the resulting row's cells. The following is essentially a
         # transpose operation.

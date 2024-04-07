@@ -1,17 +1,13 @@
 !Group
 templates:
 - !TableExtraction &one-row-header
-  row_folding:
-  - !StaticRowCounts
-    row_counts: [1]
-  - !EmptyColumn
-    column_index: 0
+  - !FoldRows
+    - !StaticRowCounts [1]
+    - !EmptyColumn 0
 - !TableExtraction &two-row-header
-  row_folding:
-  - !StaticRowCounts
-    row_counts: [2]
-  - !EmptyColumn
-    column_index: 0
+  - !FoldRows
+    - !StaticRowCounts [2]
+    - !EmptyColumn 0
 groups:
   02-traveller-creation: !Group
     tables:
@@ -19,12 +15,11 @@ groups:
         extraction: *one-row-header
       background-skills: !Table
         extraction: !TableExtraction
-          add_header_row:
-          - Skill and level
+          - !PrependRow [Skill and level]
       benefits-of-rank: !Table
         extraction: *one-row-header
       career-summary: !Table
-        extraction: !TableExtraction {}
+        extraction: !TableExtraction []
       characteristic-modifiers: !Table
         extraction: *one-row-header
       draft-selection: !Table
@@ -358,17 +353,15 @@ groups:
               ranks-physician: !Table
                 tags: [rank/physician, type/career-rank]
                 extraction: !TableExtraction
+                  - !FoldRows 
+                    - !StaticRowCounts [1]
+                    - !EmptyColumn 0
                   # For some reason, header captures spurious data, so leave it
                   # out of the Tabula template, and add it back manually.
-                  add_header_row:  
-                  - RANK
-                  - PHYSICIAN
-                  - SKILL OR BONUS
-                  row_folding:
-                  - !StaticRowCounts
-                    row_counts: [1]
-                  - !EmptyColumn
-                    column_index: 0
+                  - !PrependRow
+                    - RANK
+                    - PHYSICIAN
+                    - SKILL OR BONUS
               mishap: !Table
                 tags: [type/career-mishap]
                 extraction: *one-row-header
@@ -396,16 +389,14 @@ groups:
               mishap: !Table
                 tags: [type/career-mishap]
                 extraction: !TableExtraction
+                  - !FoldRows 
+                    - !StaticRowCounts [1]
+                    - !EmptyColumn 0
                   # For some reason, header captures spurious data, so leave it
                   # out of the Tabula template, and add it back manually.
-                  add_header_row:  
-                  - 1D
-                  - MISHAP
-                  row_folding:
-                  - !StaticRowCounts
-                    row_counts: [1]
-                  - !EmptyColumn
-                    column_index: 0
+                  - !PrependRow 
+                    - 1D
+                    - MISHAP
               event: !Table
                 tags: [type/career-event]
                 extraction: *one-row-header
@@ -467,23 +458,19 @@ groups:
     tables:
       effect-results: !Table
         extraction: !TableExtraction
-          row_folding:
-          - !StaticRowCounts
-            row_counts: [1, 3, 1, 5, 3, 1, 2]
-          - !EmptyColumn
-            column_index: 0
+          - !FoldRows 
+            - !StaticRowCounts [1, 3, 1, 5, 3, 1, 2]
+            - !EmptyColumn 0
       task-chain: !Table
         extraction: !TableExtraction
-          row_folding:
-          - !StaticRowCounts
-            row_counts: [3, 2, 2, 2, 2, 2, 2]
+          - !FoldRows 
+            - !StaticRowCounts [3, 2, 2, 2, 2, 2, 2]
       task-difficulty: !Table
-        extraction: !TableExtraction {}
+        extraction: !TableExtraction []
       timeframes: !Table
         extraction: !TableExtraction
-          row_folding:
-          - !StaticRowCounts 
-            row_counts: [1, 2, 2, 3, 2, 4, 3, 2, 2, 2, 2]
+          - !FoldRows
+            - !StaticRowCounts [1, 2, 2, 3, 2, 4, 3, 2, 2, 2, 2]
   04-combat: !Group
     tables:
       common-modifiers: !Table
@@ -502,12 +489,11 @@ groups:
         extraction: *one-row-header
       encounter-modifiers: !Table
         extraction: !TableExtraction
-          row_folding:
-          - !StaticRowCounts
-            row_counts: [1, 1, 1, 1, 2, 2]
-          add_header_row:
-          - Circumstance
-          - Modifier
+          - !FoldRows
+            - !StaticRowCounts [1, 1, 1, 1, 2, 2]
+          - !PrependRow
+            - Circumstance
+            - Modifier
       experience-levels: !Table
         extraction: *one-row-header
       range-bands: !Table
@@ -565,13 +551,13 @@ groups:
           - tables: &vehicle-tables
               equipment: !Table
                 tags: [type/vehicle-equipment]
-                extraction: !TableExtraction {}
+                extraction: !TableExtraction []
               spec: !Table
                 tags: [type/vehicle-spec]
-                extraction: !TableExtraction {}
+                extraction: !TableExtraction []
               armour: !Table
                 tags: [type/vehicle-armour]
-                extraction: !TableExtraction {}
+                extraction: !TableExtraction []
         groups:
           air-raft: !Group
             tags: [vehicle, vehicle/air-raft]

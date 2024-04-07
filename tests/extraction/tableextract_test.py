@@ -82,8 +82,10 @@ class FakeTableReader:
             ],
         ),
         (
-            "Adds specified leading rows.",
-            config.TableExtraction(add_header_row=["added header 1", "added header 2"]),
+            "Adds specified leading row.",
+            config.TableExtraction(
+                transforms=[config.PrependRow(["added header 1", "added header 2"])]
+            ),
             [
                 [
                     ["r1c1", "r1c2"],
@@ -98,7 +100,15 @@ class FakeTableReader:
         ),
         (
             "Merges specified header rows, and keeps individual rows thereafter.",
-            config.TableExtraction(row_folding=[config.StaticRowCounts([2])]),
+            config.TableExtraction(
+                transforms=[
+                    config.FoldRows(
+                        [
+                            config.StaticRowCounts([2]),
+                        ]
+                    ),
+                ],
+            ),
             [
                 [
                     ["header 1-1", "header 2-1"],
@@ -115,7 +125,15 @@ class FakeTableReader:
         ),
         (
             "Merges rows based on configured StaticRowLengths.",
-            config.TableExtraction(row_folding=[config.StaticRowCounts([2, 2, 2])]),
+            config.TableExtraction(
+                transforms=[
+                    config.FoldRows(
+                        [
+                            config.StaticRowCounts([2, 2, 2]),
+                        ]
+                    ),
+                ],
+            ),
             [
                 [
                     ["", "header 2-1"],
@@ -137,10 +155,14 @@ class FakeTableReader:
         (
             "Merges rows based on configured leading StaticRowLengths and EmptyColumn thereafter.",
             config.TableExtraction(
-                row_folding=[
-                    config.StaticRowCounts([2]),
-                    config.EmptyColumn(0),
-                ]
+                transforms=[
+                    config.FoldRows(
+                        [
+                            config.StaticRowCounts([2]),
+                            config.EmptyColumn(0),
+                        ]
+                    ),
+                ],
             ),
             [
                 [
