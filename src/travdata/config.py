@@ -17,7 +17,7 @@ import dataclasses
 import pathlib
 import sys
 import textwrap
-from typing import Any, ClassVar, Iterator, Optional, cast, TYPE_CHECKING
+from typing import Any, ClassVar, Iterator, Optional, Self, cast, TYPE_CHECKING
 
 from ruamel import yaml
 from travdata import dataclassutil
@@ -25,7 +25,7 @@ from travdata import dataclassutil
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
-_YAML = yaml.YAML(typ="safe")
+_YAML = yaml.YAML()
 # Retain the original ordering in mappings.
 _YAML.representer.sort_base_mapping_type_on_output = False
 
@@ -63,6 +63,16 @@ class YamlDataclassMixin:
             raise
 
     @classmethod
+    def yaml_create_empty(cls) -> Self:
+        """Returns an "empty" instance of the class for YAML loading.
+
+        Must be implemented by subclasses that have required fields. The
+        returned value must have default values set on fields that have
+        defaults.
+        """
+        return cls()
+
+    @classmethod
     def to_yaml(cls, representer, node):
         """Implements serialising the node as basic YAML types."""
         mapping = {}
@@ -76,26 +86,29 @@ class YamlDataclassMixin:
         return representer.represent_mapping(cls.yaml_tag, mapping)
 
     @classmethod
-    def from_yaml(cls, constructor, node):
+    def from_yaml(cls, constructor, node: yaml.MappingNode) -> Iterator[Self]:
         """Implements deserialising the node from basic YAML types."""
-        data = constructor.construct_mapping(node)
+        obj = cls.yaml_create_empty()
+        yield obj
+        data = yaml.CommentedMap()
+        constructor.construct_mapping(node, maptyp=data, deep=True)
         if not isinstance(data, dict):
             raise TypeError(data)
-        kwargs = {}
         for field in dataclasses.fields(cast(type["DataclassInstance"], cls)):
             try:
                 value = data.pop(field.name)
-            except KeyError:
+            except KeyError as exc:
                 if dataclassutil.has_default(field):
                     continue
-                raise
+                raise TypeError(
+                    f"required field {field.name} not specified in {cls.yaml_tag}",
+                ) from exc
             if fn := field.metadata.get("from_yaml"):
                 value = fn(value)
-            kwargs[field.name] = value
+            setattr(obj, field.name, value)
         if data:
             names = ", ".join(sorted(data))
             raise TypeError(f"unexpected fields {names} in {cls.yaml_tag}")
-        return cls(**kwargs)
 
 
 class RowFolder(abc.ABC):
@@ -110,6 +123,10 @@ class StaticRowCounts(RowFolder, YamlDataclassMixin):
     yaml_tag: ClassVar = "!StaticRowCounts"
     row_counts: list[int]
 
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        return cls(row_counts=[])
+
 
 @dataclasses.dataclass
 @_YAML.register_class
@@ -118,6 +135,10 @@ class EmptyColumn(RowFolder, YamlDataclassMixin):
 
     yaml_tag: ClassVar = "!EmptyColumn"
     column_index: int
+
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        return cls(column_index=0)
 
 
 @dataclasses.dataclass
@@ -140,7 +161,7 @@ class Table:
     """
 
     file_stem: pathlib.Path
-    type: str
+    type: Optional[str] = None
     tags: set[str] = dataclasses.field(default_factory=set)
     extraction: Optional[TableExtraction] = dataclasses.field(default_factory=TableExtraction)
 
@@ -170,7 +191,7 @@ class Group:
 
 
 @dataclasses.dataclass
-class Book(YamlDataclassMixin):
+class Book:
     """Top level information about a book."""
 
     id_: str
@@ -196,16 +217,27 @@ class _YamlTable(YamlDataclassMixin):
     tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
     extraction: Optional[TableExtraction] = None
 
-    def prepare(self, name: str, directory: pathlib.Path) -> Table:
+    def prepare(
+        self,
+        name: str,
+        directory: pathlib.Path,
+        parent_tags: set[str],
+    ) -> Table:
         """Creates a ``Table`` from self.
 
         :param name: Name of the table within its ``Group.groups``.
         :param directory: Path to the directory of the parent ``Group``,
         relative to the top-level config directory.
+        :param parent_tags: Tags to inherit from parent ``Group``.
         :return: Prepared ``Table``.
         """
-        kw = dataclassutil.shallow_asdict(self)
-        return Table(file_stem=directory / name, **kw)
+        tags = self.tags | parent_tags
+        return Table(
+            file_stem=directory / name,
+            type=self.type,
+            tags=tags,
+            extraction=self.extraction,
+        )
 
 
 @dataclasses.dataclass
@@ -217,21 +249,29 @@ class _YamlGroup(YamlDataclassMixin):
     groups: dict[str, "_YamlGroup"] = dataclasses.field(default_factory=dict)
     tables: dict[str, _YamlTable] = dataclasses.field(default_factory=dict)
 
-    def prepare(self, rel_group_dir: pathlib.Path) -> Group:
+    def prepare(
+        self,
+        rel_group_dir: pathlib.Path,
+        parent_tags: set[str],
+    ) -> Group:
         """Creates a ``Group`` from self.
 
         :param rel_group_dir: Path to the directory of this group's directory,
         relative to the top-level config directory.
+        :param parent_tags: Tags to inherit from parent ``Group``.
         :return: Prepared ``Group``.
         """
+        tags = self.tags | parent_tags
         return Group(
             directory=rel_group_dir,
-            tags=self.tags,
+            tags=tags,
             tables={
-                name: table.prepare(name, rel_group_dir) for name, table in self.tables.items()
+                name: table.prepare(name, rel_group_dir, parent_tags=tags)
+                for name, table in self.tables.items()
             },
             groups={
-                name: group.prepare(rel_group_dir / name) for name, group in self.groups.items()
+                name: group.prepare(rel_group_dir / name, parent_tags=tags)
+                for name, group in self.groups.items()
             },
             # templates not included, as it is only for use in anchoring and
             # aliasing by the YAML file author at the time of YAML parsing.
@@ -246,6 +286,10 @@ class _YamlBook(YamlDataclassMixin):
     default_filename: str
     tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
 
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        return cls(name="", default_filename="")
+
     def prepare(
         self,
         cfg_dir: pathlib.Path,
@@ -259,16 +303,17 @@ class _YamlBook(YamlDataclassMixin):
         :param limit_books: Allowlist of book names to load configuration for.
         :return: Prepared ``Book``.
         """
+        tags = self.tags | {f"book/{self.name}"}
         book = Book(
             id_=book_id,
             name=self.name,
             default_filename=self.default_filename,
-            tags=self.tags,
+            tags=tags,
         )
         if book_id in limit_books:
             rel_book_dir = pathlib.Path(book_id)
             cfg = _YAML.load(cfg_dir / rel_book_dir / "book.yaml")
-            book.group = _prepare_group(cfg, rel_book_dir)
+            book.group = _prepare_group(cfg, rel_book_dir, tags)
         return book
 
 
@@ -277,6 +322,10 @@ class _YamlBook(YamlDataclassMixin):
 class _YamlConfig(YamlDataclassMixin):
     yaml_tag: ClassVar = "!Config"
     books: dict[str, _YamlBook]
+
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        return cls(books={})
 
     def prepare(self, cfg_dir: pathlib.Path, limit_books: list[str]) -> Config:
         """Creates a ``Group`` from self.
@@ -298,16 +347,20 @@ class _YamlConfig(YamlDataclassMixin):
         )
 
 
-def _prepare_group(cfg: Any, rel_book_dir: pathlib.Path) -> Group:
+def _prepare_group(
+    cfg: Any,
+    rel_book_dir: pathlib.Path,
+    parent_tags: set[str],
+) -> Group:
     if not isinstance(cfg, _YamlGroup):
         raise TypeError(cfg)
-    return cfg.prepare(rel_book_dir)
+    return cfg.prepare(rel_book_dir, parent_tags)
 
 
-def load_group_from_str(yaml_str: str) -> Group:
+def load_group_from_str(yaml_str: str, parent_tags: set[str]) -> Group:
     """Loads the configuration from the given string containing YAML."""
     cfg = _YAML.load(yaml_str)
-    return _prepare_group(cfg, pathlib.Path("."))
+    return _prepare_group(cfg, pathlib.Path("."), parent_tags)
 
 
 def _prepare_config(cfg: Any, cfg_dir: pathlib.Path, limit_books: list[str]) -> Config:
