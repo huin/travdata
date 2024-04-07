@@ -4,6 +4,7 @@
 # Pylint doesn't like QT much.
 # pylint: disable=I1101
 
+import traceback
 from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
@@ -54,8 +55,8 @@ class _Worker(QtCore.QRunnable):
                     do_continue=lambda: self._continue,
                 ),
             )
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            self.signals.error.emit(str(exc))
+        except Exception:  # pylint: disable=broad-exception-caught
+            self.signals.error.emit(traceback.format_exc())
             self.signals.stopped.emit()
         else:
             self.signals.finished.emit()
