@@ -7,7 +7,7 @@ import pathlib
 import pytest
 import testfixtures  # type: ignore[import-untyped]
 from travdata import config
-from travdata.extraction import pdfextract, tabulautil
+from travdata.extraction import tableextract, tabulautil
 
 
 @dataclasses.dataclass(frozen=True)
@@ -175,7 +175,7 @@ def test_extract_table(
     file_stem = pathlib.Path("foo/bar")
     expected_template_path = pathlib.Path("cfg_dir/foo/bar.tabula-template.json")
     table_reader = FakeTableReader(tables_in=tables_in)
-    actual = pdfextract.extract_table(
+    actual = tableextract.extract_table(
         table=config.Table(
             cfg_dir=config_dir,
             file_stem=file_stem,

@@ -11,7 +11,7 @@ from typing import Callable, Optional
 from PySide6 import QtCore, QtWidgets, QtGui
 
 from travdata import commontext, config
-from travdata.extraction import pdfextract
+from travdata.extraction import bookextract, tableextract
 from travdata.gui import qtutil
 from travdata.gui.extraction import runnerwin
 
@@ -95,7 +95,7 @@ class _ExtractionConfigBuilder:
 
         return errors
 
-    def build(self) -> Optional[pdfextract.ExtractionConfig]:
+    def build(self) -> Optional[bookextract.ExtractionConfig]:
         """Builds the extraction configuration, if complete."""
         if self.cfg is None:
             return None
@@ -108,7 +108,7 @@ class _ExtractionConfigBuilder:
         if self.output_dir is None:
             return None
 
-        return pdfextract.ExtractionConfig(
+        return bookextract.ExtractionConfig(
             output_dir=self.output_dir,
             input_pdf=self.input_pdf,
             group=self.cfg.books[self.book_id].load_group(),
@@ -124,14 +124,14 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
     # _extract_builder and _extract contain the data model, separately from any
     # widgets.
     _extract_builder: _ExtractionConfigBuilder
-    _extract: Optional[pdfextract.ExtractionConfig]
+    _extract: Optional[bookextract.ExtractionConfig]
 
     _runner: Optional[runnerwin.ExtractionRunnerWindow]
 
     def __init__(
         self,
         thread_pool: QtCore.QThreadPool,
-        table_reader: pdfextract.TableReader,
+        table_reader: tableextract.TableReader,
         config_dir: Optional[pathlib.Path],
     ) -> None:
         super().__init__()

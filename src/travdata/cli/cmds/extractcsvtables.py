@@ -13,7 +13,7 @@ from typing import Callable, Iterator
 
 from progress import bar as progress  # type: ignore[import-untyped]
 from travdata import config
-from travdata.extraction import pdfextract, tabulautil
+from travdata.extraction import bookextract, tabulautil
 
 
 def add_subparser(subparsers) -> None:
@@ -120,18 +120,18 @@ def add_subparser(subparsers) -> None:
 
 
 @contextlib.contextmanager
-def _progress_reporter(no_progress: bool) -> Iterator[Callable[[pdfextract.Progress], None]]:
+def _progress_reporter(no_progress: bool) -> Iterator[Callable[[bookextract.Progress], None]]:
     if no_progress:
         progress_bar = None
 
-        def on_progress(p: pdfextract.Progress) -> None:
+        def on_progress(p: bookextract.Progress) -> None:
             del p  # unused
 
     else:
         progress_bar = progress.Bar("Extracting tables")
         progress_bar.start()
 
-        def on_progress(p: pdfextract.Progress) -> None:
+        def on_progress(p: bookextract.Progress) -> None:
             progress_bar.index = p.completed
             progress_bar.max = p.total
             progress_bar.update()
@@ -163,7 +163,7 @@ def run(args: argparse.Namespace) -> int:
         )
         return 1
 
-    extract_cfg = pdfextract.ExtractionConfig(
+    extract_cfg = bookextract.ExtractionConfig(
         output_dir=args.output_dir,
         input_pdf=args.input_pdf,
         group=book_cfg.load_group(),
@@ -179,10 +179,10 @@ def run(args: argparse.Namespace) -> int:
         tabulautil.TabulaClient(force_subprocess=args.tabula_force_subprocess) as tabula_client,
         _progress_reporter(args.no_progress) as on_progress,
     ):
-        pdfextract.extract_book(
+        bookextract.extract_book(
             table_reader=tabula_client,
             cfg=extract_cfg,
-            events=pdfextract.ExtractEvents(
+            events=bookextract.ExtractEvents(
                 on_progress=on_progress,
                 on_error=on_error,
                 do_continue=lambda: True,

@@ -9,12 +9,12 @@ from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
 
-from travdata.extraction import pdfextract
+from travdata.extraction import bookextract, tableextract
 from travdata.gui import qtutil
 
 
 class _WorkerSignals(QtCore.QObject):
-    progress = QtCore.Signal(pdfextract.Progress)
+    progress = QtCore.Signal(bookextract.Progress)
     error = QtCore.Signal(str)
     stopped = QtCore.Signal()
     finished = QtCore.Signal()
@@ -24,8 +24,8 @@ class _Worker(QtCore.QRunnable):
 
     def __init__(
         self,
-        cfg: pdfextract.ExtractionConfig,
-        table_reader: pdfextract.TableReader,
+        cfg: bookextract.ExtractionConfig,
+        table_reader: tableextract.TableReader,
     ) -> None:
         super().__init__()
         self.signals = _WorkerSignals()
@@ -41,10 +41,10 @@ class _Worker(QtCore.QRunnable):
     def run(self) -> None:
         """Runs the extraction."""
         try:
-            pdfextract.extract_book(
+            bookextract.extract_book(
                 table_reader=self._table_reader,
                 cfg=self._cfg,
-                events=pdfextract.ExtractEvents(
+                events=bookextract.ExtractEvents(
                     on_error=self.signals.error.emit,
                     on_progress=self.signals.progress.emit,
                     do_continue=lambda: self._continue,
@@ -66,9 +66,9 @@ class ExtractionRunnerWindow(QtWidgets.QWidget):
 
     def __init__(
         self,
-        cfg: pdfextract.ExtractionConfig,
+        cfg: bookextract.ExtractionConfig,
         thread_pool: QtCore.QThreadPool,
-        table_reader: pdfextract.TableReader,
+        table_reader: tableextract.TableReader,
         *args,
         **kwargs,
     ) -> None:
@@ -130,7 +130,7 @@ class ExtractionRunnerWindow(QtWidgets.QWidget):
         self.stop_extraction()
 
     @QtCore.Slot()
-    def _progress(self, progress: pdfextract.Progress) -> None:
+    def _progress(self, progress: bookextract.Progress) -> None:
         if progress.total != self._progress_bar.maximum():
             self._progress_bar.setMaximum(progress.total)
         self._progress_bar.setValue(progress.completed)
