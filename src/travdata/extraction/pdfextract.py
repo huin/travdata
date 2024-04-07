@@ -5,7 +5,7 @@ import csv
 import dataclasses
 import itertools
 import pathlib
-from typing import Callable, Iterable, Iterator, Protocol, TypeAlias, cast
+from typing import Callable, Iterable, Iterator, Protocol, TypeAlias
 
 from travdata import config, csvutil
 from travdata.extraction import parseutil, tabulautil
@@ -199,6 +199,54 @@ class ExtractionConfig:
     overwrite_existing: bool
 
 
+@dataclasses.dataclass(frozen=True)
+class _OutputTable:
+    out_filepath: pathlib.Path
+    table: config.Table
+    extraction: config.TableExtraction
+
+
+def _filter_tables(
+    cfg: ExtractionConfig,
+) -> Iterator[_OutputTable]:
+    if cfg.book_cfg.group is None:
+        raise RuntimeError("Book.group was not set")
+
+    for table in cfg.book_cfg.group.all_tables():
+        if table.extraction is None:
+            continue
+        out_filepath = cfg.output_dir / table.file_stem.with_suffix(".csv")
+
+        if not cfg.overwrite_existing and out_filepath.exists():
+            continue
+
+        yield _OutputTable(out_filepath, table, table.extraction)
+
+
+def _extract_single_table(
+    *,
+    table_reader: TableReader,
+    cfg: ExtractionConfig,
+    created_directories: set[pathlib.Path],
+    output_table: _OutputTable,
+) -> None:
+    """Helper wrapper of `extract_table` for `extract_book`."""
+    group_dir = output_table.out_filepath.parent
+    if group_dir not in created_directories:
+        group_dir.mkdir(parents=True, exist_ok=True)
+        created_directories.add(group_dir)
+
+    rows = extract_table(
+        config_dir=cfg.config_dir,
+        pdf_path=cfg.input_pdf,
+        file_stem=output_table.table.file_stem,
+        extraction=output_table.extraction,
+        table_reader=table_reader,
+    )
+    with csvutil.open_write(output_table.out_filepath) as f:
+        csv.writer(f).writerows(rows)
+
+
 @dataclasses.dataclass
 class ExtractEvents:
     """Extraction event callbacks.
@@ -228,48 +276,26 @@ def extract_book(
     :raises RuntimeError: If ``cfg.book_cfg.group`` was not set.
     """
 
-    if cfg.book_cfg.group is None:
-        raise RuntimeError("Book.group was not set")
-
-    output_tables: list[tuple[pathlib.Path, config.Table]] = []
-    for table in cfg.book_cfg.group.all_tables():
-        if table.extraction is None:
-            continue
-        out_filepath = cfg.output_dir / table.file_stem.with_suffix(".csv")
-
-        if cfg.overwrite_existing or not out_filepath.exists():
-            output_tables.append((out_filepath, table))
+    output_tables = list(_filter_tables(cfg))
 
     events.on_progress(Progress(0, len(output_tables)))
 
     created_directories: set[pathlib.Path] = set()
-    for i, (out_filepath, table) in enumerate(output_tables, start=1):
+    for i, output_table in enumerate(output_tables, start=1):
         if not events.do_continue():
             return
 
-        if table.extraction is None:
-            continue
-        extraction = table.extraction
-
-        out_filepath = cast(pathlib.Path, out_filepath)
-        table = cast(config.Table, table)
-
-        group_dir = out_filepath.parent
-        if group_dir not in created_directories:
-            group_dir.mkdir(parents=True, exist_ok=True)
-            created_directories.add(group_dir)
-
         try:
-            rows = extract_table(
-                config_dir=cfg.config_dir,
-                pdf_path=cfg.input_pdf,
-                file_stem=table.file_stem,
-                extraction=extraction,
+            _extract_single_table(
                 table_reader=table_reader,
+                cfg=cfg,
+                created_directories=created_directories,
+                output_table=output_table,
             )
-            with csvutil.open_write(out_filepath) as f:
-                csv.writer(f).writerows(rows)
         except ConfigurationError as exc:
-            events.on_error(f"Configuration error while processing table {table.file_stem}: {exc}")
+            events.on_error(
+                f"Configuration error while processing table "
+                f"{output_table.table.file_stem}: {exc}"
+            )
         finally:
             events.on_progress(Progress(i, len(output_tables)))
