@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Extracts a single table from a PDF."""
 
+import functools
 import itertools
 import pathlib
 import re
@@ -127,7 +128,7 @@ def _prepend_row(cfg: config.PrependRow, rows: Iterable[_Row]) -> Iterator[_Row]
 
 class _LineGrouper(Protocol):
 
-    def group_lines(self, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+    def __call__(self, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
         """Group input rows into groups, according to the implementation.
 
         :param lines: Input rows.
@@ -136,60 +137,42 @@ class _LineGrouper(Protocol):
         raise NotImplementedError
 
 
-class _StaticRowLengths(_LineGrouper):
-    _line_counts: list[int]
-
-    def __init__(self, cfg: config.StaticRowCounts) -> None:
-        self._line_counts = list(cfg.row_counts)
-
-    def group_lines(self, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
-        for num_lines in self._line_counts:
-            yield list(itertools.islice(lines, num_lines))
+def _static_row_lengths(cfg: config.StaticRowCounts, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+    for num_lines in cfg.row_counts:
+        yield list(itertools.islice(lines, num_lines))
 
 
-class _EmptyColumn(_LineGrouper):
-    _column_index: int
-
-    def __init__(self, cfg: config.EmptyColumn) -> None:
-        self._column_index = cfg.column_index
-
-    def group_lines(self, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
-        group: _RowGroup = []
-        for line in lines:
-            if line[self._column_index] == "":
-                group.append(line)
-            else:
-                if group:
-                    yield group
-                group = [line]
-        if group:
-            yield group
+def _empty_column(cfg: config.EmptyColumn, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+    group: _RowGroup = []
+    for line in lines:
+        if line[cfg.column_index] == "":
+            group.append(line)
+        else:
+            if group:
+                yield group
+            group = [line]
+    if group:
+        yield group
 
 
 def _make_line_grouper(cfg: config.RowGrouper) -> _LineGrouper:
     match cfg:
         case config.StaticRowCounts():
-            return _StaticRowLengths(cfg)
+            return functools.partial(_static_row_lengths, cfg)
         case config.EmptyColumn():
-            return _EmptyColumn(cfg)
+            return functools.partial(_empty_column, cfg)
         case _:
             raise ConfigurationError(
                 f"{type(cfg).__name__} is an unknown type of row folder",
             )
 
 
-class _MultiGrouper(_LineGrouper):
-    _groupers: list[_LineGrouper]
-
-    def __init__(self, groupers: list[_LineGrouper]) -> None:
-        self._groupers = groupers
-
-    def group_lines(self, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
-        for grouper in self._groupers:
-            yield from grouper.group_lines(lines)
-        # Everything remaining is in individual groups.
-        for line in lines:
-            yield [line]
+def _multi_grouper(groupers: list[_LineGrouper], lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+    for grouper in groupers:
+        yield from grouper(lines)
+    # Everything remaining is in individual groups.
+    for line in lines:
+        yield [line]
 
 
 def _fold_rows(
@@ -198,9 +181,9 @@ def _fold_rows(
 ) -> Iterator[_Row]:
     """Implements the config.FoldRows transformation."""
 
-    grouper = _MultiGrouper([_make_line_grouper(folder) for folder in cfg.group_by])
+    grouper = _multi_grouper([_make_line_grouper(folder) for folder in cfg.group_by], rows)
 
-    for line_group in grouper.group_lines(rows):
+    for line_group in grouper:
         # List of cell texts, each of which contain the sequence of strings that
         # make up the resulting row's cells. The following is essentially a
         # transpose operation.
