@@ -146,14 +146,12 @@ def _progress_reporter(no_progress: bool) -> Iterator[Callable[[pdfextract.Progr
 def run(args: argparse.Namespace) -> int:
     """CLI entry point."""
 
-    cfg = config.load_config_from_flag(args, [args.book_name])
+    cfg = config.load_config_from_flag(args)
     try:
         book_cfg = cfg.books[args.book_name]
     except KeyError:
         print(f"Book {args.book_name} is unknown.", file=sys.stderr)
         return 1
-    if book_cfg.group is None:
-        raise RuntimeError("book_cfg.group should have been loaded, but is None")
 
     with_tags = frozenset(args.with_tag)
     without_tags = frozenset(args.without_tag)
@@ -166,10 +164,9 @@ def run(args: argparse.Namespace) -> int:
         return 1
 
     extract_cfg = pdfextract.ExtractionConfig(
-        config_dir=args.config_dir,
         output_dir=args.output_dir,
         input_pdf=args.input_pdf,
-        book_cfg=book_cfg,
+        group=book_cfg.load_group(),
         overwrite_existing=args.overwrite_existing,
         with_tags=with_tags,
         without_tags=without_tags,

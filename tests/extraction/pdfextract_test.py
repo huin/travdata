@@ -176,10 +176,12 @@ def test_extract_table(
     expected_template_path = pathlib.Path("cfg_dir/foo/bar.tabula-template.json")
     table_reader = FakeTableReader(tables_in=tables_in)
     actual = pdfextract.extract_table(
-        config_dir=config_dir,
+        table=config.Table(
+            cfg_dir=config_dir,
+            file_stem=file_stem,
+            extraction=extraction,
+        ),
         pdf_path=pdf_path,
-        extraction=extraction,
-        file_stem=file_stem,
         table_reader=table_reader,
     )
     # Check read_pdf_with_template calls.

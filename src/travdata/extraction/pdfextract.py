@@ -37,41 +37,44 @@ class ConfigurationError(Exception):
 
 
 def extract_table(
-    config_dir: pathlib.Path,
+    table: config.Table,
     pdf_path: pathlib.Path,
-    extraction: config.TableExtraction,
-    file_stem: pathlib.Path,
     table_reader: TableReader,
 ) -> Iterator[list[str]]:
     """Extracts a table from the PDF.
 
-    :param config_dir: Config directory containing the config.yaml file.
+    :param table: Configuration of the table to extract. ``table.extraction``
+    must not be None.
     :param pdf_path: Path to the PDF to extract from.
-    :param file_stem: Path of the Tabula table template configuration.
-    :param extraction: Table configuration configuration.
-    :param tabula_cfg: Configuration for Tabula extractor.
+    :param tabula_reader: Used to read the table from the PDF.
     :returns: Iterator over rows from the table.
+    :raises ValueError: ``table.extraction`` is None.
     """
+    if table.extraction is None:
+        raise ValueError(
+            f"extract_table called with table with `None` extraction: {table=}",
+        )
+
     tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
         table_reader.read_pdf_with_template(
             pdf_path=pdf_path,
-            template_path=config_dir / file_stem.with_suffix(config.TABULA_TEMPLATE_SUFFIX),
+            template_path=table.tabula_template_path,
         )
     )
     text_rows = tabulautil.table_rows_text(tabula_rows)
 
-    if extraction.row_folding:
+    if table.extraction.row_folding:
         text_rows = _fold_rows(
             lines=text_rows,
             grouper=_MultiGrouper(
-                [_make_line_grouper(folder) for folder in extraction.row_folding]
+                [_make_line_grouper(folder) for folder in table.extraction.row_folding]
             ),
         )
 
     text_rows = _clean_rows(text_rows)
 
-    if extraction.add_header_row is not None:
-        text_rows = itertools.chain([extraction.add_header_row], text_rows)
+    if table.extraction.add_header_row is not None:
+        text_rows = itertools.chain([table.extraction.add_header_row], text_rows)
 
     return text_rows
 
@@ -185,20 +188,18 @@ class Progress:
 class ExtractionConfig:
     """Extraction configuration.
 
-    :field config_dir: Path to top level directory of configuration.
     :field output_dir: Path to top level directory for output.
     :field input_pdf: Path to PDF file to extract from.
-    :field book_cfg: Configuration for book to extract tables from.
+    :field group: Configuration ``Group`` of tables to extract.
     :field overwrite_existing: If true, overwrite existing CSV files.
     :field with_tags: Only extracts tables that have any of these these tags.
     :field without_tags: Only extracts tables that do not include any of these
     tags (takes precedence over with_tags).
     """
 
-    config_dir: pathlib.Path
     output_dir: pathlib.Path
     input_pdf: pathlib.Path
-    book_cfg: config.Book
+    group: config.Group
     overwrite_existing: bool
     with_tags: frozenset[str]
     without_tags: frozenset[str]
@@ -208,16 +209,15 @@ class ExtractionConfig:
 class _OutputTable:
     out_filepath: pathlib.Path
     table: config.Table
-    extraction: config.TableExtraction
 
 
 def _filter_tables(
     cfg: ExtractionConfig,
 ) -> Iterator[_OutputTable]:
-    if cfg.book_cfg.group is None:
+    if cfg.group is None:
         raise RuntimeError("Book.group was not set")
 
-    for table in cfg.book_cfg.group.all_tables():
+    for table in cfg.group.all_tables():
         if table.extraction is None:
             continue
         out_filepath = cfg.output_dir / table.file_stem.with_suffix(".csv")
@@ -231,7 +231,7 @@ def _filter_tables(
         if not cfg.overwrite_existing and out_filepath.exists():
             continue
 
-        yield _OutputTable(out_filepath, table, table.extraction)
+        yield _OutputTable(out_filepath, table)
 
 
 def _extract_single_table(
@@ -248,10 +248,8 @@ def _extract_single_table(
         created_directories.add(group_dir)
 
     rows = extract_table(
-        config_dir=cfg.config_dir,
+        table=output_table.table,
         pdf_path=cfg.input_pdf,
-        file_stem=output_table.table.file_stem,
-        extraction=output_table.extraction,
         table_reader=table_reader,
     )
     with csvutil.open_write(output_table.out_filepath) as f:

@@ -41,14 +41,17 @@ def test_load_group_from_str() -> None:
     testfixtures.compare(
         actual=actual,
         expected=config.Group(
-            directory=pathlib.Path("."),
+            cfg_dir=pathlib.Path("."),
+            rel_dir=pathlib.Path("."),
             tags={"outer", "top"},
             groups={
                 "grp-a": config.Group(
-                    directory=pathlib.Path("./grp-a"),
+                    cfg_dir=pathlib.Path("."),
+                    rel_dir=pathlib.Path("./grp-a"),
                     tags={"outer", "top"},
                     tables={
                         "foo": config.Table(
+                            cfg_dir=pathlib.Path("."),
                             file_stem=pathlib.Path("./grp-a/foo"),
                             type="Foo",
                             tags={"outer", "top", "type/foo"},
@@ -60,6 +63,7 @@ def test_load_group_from_str() -> None:
                             ),
                         ),
                         "bar": config.Table(
+                            cfg_dir=pathlib.Path("."),
                             file_stem=pathlib.Path("./grp-a/bar"),
                             type="Bar",
                             tags={"outer", "top", "type/bar"},
@@ -71,6 +75,7 @@ def test_load_group_from_str() -> None:
                             ),
                         ),
                         "defaults": config.Table(
+                            cfg_dir=pathlib.Path("."),
                             file_stem=pathlib.Path("./grp-a/defaults"),
                             type="Defaults",
                             tags={"outer", "top"},

@@ -29,7 +29,7 @@ class _ExtractionConfigBuilder:
     cfg: Optional[config.Config] = None
     cfg_error: Optional[str] = None
 
-    # Remaining fields are Optional variations of those in ExtractionConfig.
+    # Remaining fields enable building a config.ExtractionConfig.
     config_dir: Optional[pathlib.Path] = None
     input_pdf: Optional[pathlib.Path] = None
     book_id: Optional[str] = None
@@ -59,7 +59,7 @@ class _ExtractionConfigBuilder:
             self.cfg = None
         else:
             try:
-                cfg = config.load_config(self.config_dir, limit_books=[])
+                cfg = config.load_config(self.config_dir)
             except OSError as exc:
                 self.cfg = None
                 self.cfg_error = str(exc)
@@ -109,10 +109,9 @@ class _ExtractionConfigBuilder:
             return None
 
         return pdfextract.ExtractionConfig(
-            config_dir=self.config_dir,
             output_dir=self.output_dir,
             input_pdf=self.input_pdf,
-            book_cfg=self.cfg.books[self.book_id],
+            group=self.cfg.books[self.book_id].load_group(),
             overwrite_existing=False,
             with_tags=frozenset(),
             without_tags=frozenset(),

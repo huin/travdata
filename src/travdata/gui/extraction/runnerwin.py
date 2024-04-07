@@ -9,7 +9,6 @@ from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
 
-from travdata import config
 from travdata.extraction import pdfextract
 from travdata.gui import qtutil
 
@@ -42,10 +41,6 @@ class _Worker(QtCore.QRunnable):
     def run(self) -> None:
         """Runs the extraction."""
         try:
-            if self._cfg.book_cfg.group is None:
-                cfg = config.load_config(self._cfg.config_dir, [self._cfg.book_cfg.id_])
-                self._cfg.book_cfg = cfg.books[self._cfg.book_cfg.id_]
-
             pdfextract.extract_book(
                 table_reader=self._table_reader,
                 cfg=self._cfg,
