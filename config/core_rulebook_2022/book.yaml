@@ -13,7 +13,7 @@ templates:
   - !EmptyColumn
     column_index: 0
 groups:
-  traveller-creation: !Group
+  02-traveller-creation: !Group
     tables:
       ageing: !Table
         extraction: *one-row-header
@@ -463,7 +463,7 @@ groups:
               event: !Table
                 tags: [type/career-event]
                 extraction: *one-row-header
-  skills-and-tasks: !Group
+  03-skills-and-tasks: !Group
     tables:
       effect-results: !Table
         extraction: !TableExtraction
@@ -484,13 +484,13 @@ groups:
           row_folding:
           - !StaticRowCounts 
             row_counts: [1, 2, 2, 3, 2, 4, 3, 2, 2, 2, 2]
-  combat: !Group
+  04-combat: !Group
     tables:
       common-modifiers: !Table
         extraction: *one-row-header
       cover: !Table
         extraction: *one-row-header
-  encounters-and-dangers: !Group
+  05-encounters-and-dangers: !Group
     tables:
       allies-and-enemies: !Table
         extraction: *one-row-header
@@ -547,7 +547,7 @@ groups:
             extraction: *one-row-header
           urban: !Table
             extraction: *one-row-header
-  vehicles: !Group
+  07-vehicles: !Group
     tables:
       critical-hit-effects: !Table
         extraction: *one-row-header
@@ -603,12 +603,12 @@ groups:
           personal-land-yacht: !Group
             tags: [vehicle, vehicle/personal-land-yacht]
             tables: *vehicle-tables
-  trade: !Group
+  13-trade: !Group
     tables:
       trade-goods: !Table
         tags: [type/trade-good]
         extraction: *one-row-header
-  worldcreation: !Group
+  14-worldcreation: !Group
     tables:
       governments: !Table
         tags: [type/government-type]
