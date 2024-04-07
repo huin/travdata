@@ -181,7 +181,7 @@ class Progress:
     total: int
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class ExtractionConfig:
     """Extraction configuration.
 
@@ -190,6 +190,9 @@ class ExtractionConfig:
     :field input_pdf: Path to PDF file to extract from.
     :field book_cfg: Configuration for book to extract tables from.
     :field overwrite_existing: If true, overwrite existing CSV files.
+    :field with_tags: Only extracts tables that have any of these these tags.
+    :field without_tags: Only extracts tables that do not include any of these
+    tags (takes precedence over with_tags).
     """
 
     config_dir: pathlib.Path
@@ -197,6 +200,8 @@ class ExtractionConfig:
     input_pdf: pathlib.Path
     book_cfg: config.Book
     overwrite_existing: bool
+    with_tags: frozenset[str]
+    without_tags: frozenset[str]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -216,6 +221,12 @@ def _filter_tables(
         if table.extraction is None:
             continue
         out_filepath = cfg.output_dir / table.file_stem.with_suffix(".csv")
+
+        if cfg.with_tags and not table.tags & cfg.with_tags:
+            continue
+
+        if cfg.without_tags and table.tags & cfg.without_tags:
+            continue
 
         if not cfg.overwrite_existing and out_filepath.exists():
             continue

@@ -114,6 +114,8 @@ class _ExtractionConfigBuilder:
             input_pdf=self.input_pdf,
             book_cfg=self.cfg.books[self.book_id],
             overwrite_existing=False,
+            with_tags=frozenset(),
+            without_tags=frozenset(),
         )
 
 

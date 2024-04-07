@@ -22,6 +22,7 @@ def add_subparser(subparsers) -> None:
         "extractcsvtables",
         description=__doc__,
         formatter_class=argparse.RawTextHelpFormatter,
+        prefix_chars="-+",
     )
     argparser.set_defaults(run=run)
 
@@ -52,23 +53,56 @@ def add_subparser(subparsers) -> None:
     )
 
     config.add_config_flag(argparser)
-    argparser.add_argument(
-        "--overwrite-existing",
-        help=textwrap.dedent(
-            """
-            Extract CSV tables that already exist in the
-            output. This is useful when testing larger scale changes to the
-            configuration or code.
-            """
-        ),
-        action="store_true",
-        default=False,
-    )
+
     argparser.add_argument(
         "--no-progress",
         help="""Disable progress bar.""",
         action="store_true",
         default=False,
+    )
+
+    outsel_grp = argparser.add_argument_group(
+        "Output selection",
+        description="Controls which data is extracted from the book.",
+    )
+    outsel_grp.add_argument(
+        "--overwrite-existing",
+        help=textwrap.dedent(
+            """
+            Extract CSV tables that already exist in the output. This is useful
+            when testing larger scale changes to the configuration or code.
+            """
+        ),
+        action="store_true",
+        default=False,
+    )
+    outsel_grp.add_argument(
+        "+t",
+        "--with-tag",
+        dest="with_tag",
+        nargs="*",
+        metavar="TAG",
+        default=[],
+        help=textwrap.dedent(
+            """
+            Only extract tables that have any of these tags. --without-tag takes
+            precedence over this.
+            """
+        ),
+    )
+    outsel_grp.add_argument(
+        "-t",
+        "--without-tag",
+        dest="without_tag",
+        nargs="*",
+        metavar="TAG",
+        default=[],
+        help=textwrap.dedent(
+            """
+            Only extract tables that do not have any of these tags. This takes
+            precedence over --with-tag.
+            """
+        ),
     )
 
     tab_grp = argparser.add_argument_group("Tabula")
@@ -121,6 +155,26 @@ def run(args: argparse.Namespace) -> int:
     if book_cfg.group is None:
         raise RuntimeError("book_cfg.group should have been loaded, but is None")
 
+    with_tags = frozenset(args.with_tag)
+    without_tags = frozenset(args.without_tag)
+    if intersection := with_tags & without_tags:
+        fmt_inter = ", ".join(sorted(intersection))
+        print(
+            f"Tags have been specified for both inclusion and exclusion: {fmt_inter}.",
+            file=sys.stderr,
+        )
+        return 1
+
+    extract_cfg = pdfextract.ExtractionConfig(
+        config_dir=args.config_dir,
+        output_dir=args.output_dir,
+        input_pdf=args.input_pdf,
+        book_cfg=book_cfg,
+        overwrite_existing=args.overwrite_existing,
+        with_tags=with_tags,
+        without_tags=without_tags,
+    )
+
     def on_error(error: str) -> None:
         print(error, file=sys.stderr)
 
@@ -130,13 +184,7 @@ def run(args: argparse.Namespace) -> int:
     ):
         pdfextract.extract_book(
             table_reader=tabula_client,
-            cfg=pdfextract.ExtractionConfig(
-                config_dir=args.config_dir,
-                output_dir=args.output_dir,
-                input_pdf=args.input_pdf,
-                book_cfg=book_cfg,
-                overwrite_existing=args.overwrite_existing,
-            ),
+            cfg=extract_cfg,
             events=pdfextract.ExtractEvents(
                 on_progress=on_progress,
                 on_error=on_error,
