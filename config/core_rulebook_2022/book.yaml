@@ -606,16 +606,16 @@ groups:
   trade: !Group
     tables:
       trade-goods: !Table
-        type: TradeGood
+        tags: [type/trade-good]
         extraction: *one-row-header
   worldcreation: !Group
     tables:
       governments: !Table
-        type: Government
+        tags: [type/government-type]
         extraction: *two-row-header
       law-levels: !Table
-        type: LawLevel
+        tags: [type/law-level]
         extraction: *two-row-header
       trade-codes: !Table
-        type: TradeCode
+        tags: [type/trade-code]
         extraction: *one-row-header

@@ -162,7 +162,6 @@ class Table:
 
     cfg_dir: pathlib.Path
     file_stem: pathlib.Path
-    type: Optional[str] = None
     tags: set[str] = dataclasses.field(default_factory=set)
     extraction: Optional[TableExtraction] = dataclasses.field(default_factory=TableExtraction)
 
@@ -234,7 +233,6 @@ class Config:
 @_YAML.register_class
 class _YamlTable(YamlDataclassMixin):
     yaml_tag: ClassVar = "!Table"
-    type: Optional[str] = None
     tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
     extraction: Optional[TableExtraction] = None
 
@@ -258,7 +256,6 @@ class _YamlTable(YamlDataclassMixin):
         return Table(
             cfg_dir=cfg_dir,
             file_stem=directory / name,
-            type=self.type,
             tags=tags,
             extraction=self.extraction,
         )

@@ -18,21 +18,18 @@ def test_load_group_from_str() -> None:
         grp-a: !Group
             tables:
                 foo: !Table
-                    type: Foo
                     tags: [type/foo]
                     extraction: !TableExtraction
                         row_folding:
                             - !StaticRowCounts {row_counts: [2]}
                             - !EmptyColumn {column_index: 0}
                 bar: !Table
-                    type: Bar
                     tags: [type/bar]
                     extraction: !TableExtraction
                         row_folding:
                             - !StaticRowCounts {row_counts: [1]}
                             - !EmptyColumn {column_index: 3}
-                defaults: !Table
-                    type: Defaults
+                defaults: !Table {}
     """
         ),
         parent_tags={"outer"},
@@ -53,7 +50,6 @@ def test_load_group_from_str() -> None:
                         "foo": config.Table(
                             cfg_dir=pathlib.Path("."),
                             file_stem=pathlib.Path("./grp-a/foo"),
-                            type="Foo",
                             tags={"outer", "top", "type/foo"},
                             extraction=config.TableExtraction(
                                 row_folding=[
@@ -65,7 +61,6 @@ def test_load_group_from_str() -> None:
                         "bar": config.Table(
                             cfg_dir=pathlib.Path("."),
                             file_stem=pathlib.Path("./grp-a/bar"),
-                            type="Bar",
                             tags={"outer", "top", "type/bar"},
                             extraction=config.TableExtraction(
                                 row_folding=[
@@ -77,7 +72,6 @@ def test_load_group_from_str() -> None:
                         "defaults": config.Table(
                             cfg_dir=pathlib.Path("."),
                             file_stem=pathlib.Path("./grp-a/defaults"),
-                            type="Defaults",
                             tags={"outer", "top"},
                             extraction=None,
                         ),
