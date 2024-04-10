@@ -20,6 +20,11 @@ def test_load_group_from_str() -> None:
                 foo: !Table
                     tags: [type/foo]
                     extraction: !TableExtraction
+                        - !ExpandColumnOnRegex
+                            column: 1    
+                            pattern: "([^:]+): (.+)"
+                            on_match: ["\\\\1", "\\\\2"]
+                            default: ["", "\\\\g<0>"]
                         - !FoldRows
                             - !StaticRowCounts [2]
                             - !EmptyColumn 0
@@ -54,6 +59,12 @@ def test_load_group_from_str() -> None:
                             tags={"outer", "top", "type/foo"},
                             extraction=config.TableExtraction(
                                 transforms=[
+                                    config.ExpandColumnOnRegex(
+                                        column=1,
+                                        pattern=r"([^:]+): (.+)",
+                                        on_match=[r"\1", r"\2"],
+                                        default=[r"", r"\g<0>"],
+                                    ),
                                     config.FoldRows(
                                         [
                                             config.StaticRowCounts([2]),

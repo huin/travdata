@@ -183,6 +183,37 @@ class FakeTableReader:
                 ["r5c1", "r5c2"],
             ],
         ),
+        (
+            "Splits a column by the matches of a regex.",
+            config.TableExtraction(
+                transforms=[
+                    config.ExpandColumnOnRegex(
+                        column=1,
+                        pattern=r"[*] +([^:]+): +(.+)",
+                        on_match=[r"\1", r"\2"],
+                        default=[r"", r"\g<0>"],
+                    ),
+                ],
+            ),
+            [
+                [
+                    ["r1c1", "* label 1: text 1", "last col"],
+                    ["r2c1", "* label 2: text 2", "last col"],
+                    ["r3c1", "continuation text", "last col"],
+                    ["r4c1", "* text 4: without last col"],
+                    ["r5c1"],  # Row without split column.
+                    [],  # empty row
+                ],
+            ],
+            [
+                ["r1c1", "label 1", "text 1", "last col"],
+                ["r2c1", "label 2", "text 2", "last col"],
+                ["r3c1", "", "continuation text", "last col"],
+                ["r4c1", "text 4", "without last col"],
+                ["r5c1"],
+                [],  # empty row
+            ],
+        ),
     ],
 )
 def test_extract_table(

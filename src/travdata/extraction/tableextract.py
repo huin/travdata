@@ -3,10 +3,14 @@
 
 import itertools
 import pathlib
+import re
 from typing import Iterable, Iterator, Protocol, TypeAlias
 
 from travdata import config
 from travdata.extraction import parseutil, tabulautil
+
+
+_RX_ANYTHING = re.compile(".*")
 
 
 class TableReader(Protocol):
@@ -73,6 +77,8 @@ _RowGroup: TypeAlias = list[_Row]
 
 def _transform(cfg: config.TableTransform, rows: Iterable[_Row]) -> Iterator[_Row]:
     match cfg:
+        case config.ExpandColumnOnRegex():
+            return _expand_column_on_regex(cfg, rows)
         case config.PrependRow():
             return _prepend_row(cfg, rows)
         case config.FoldRows():
@@ -81,6 +87,35 @@ def _transform(cfg: config.TableTransform, rows: Iterable[_Row]) -> Iterator[_Ro
             raise ConfigurationError(
                 f"{type(cfg).__name__} is an unknown type of TableTransform",
             )
+
+
+def _expand_column_on_regex(
+    cfg: config.ExpandColumnOnRegex,
+    rows: Iterable[_Row],
+) -> Iterator[_Row]:
+    rx = re.compile(cfg.pattern)
+    for row in rows:
+        try:
+            prior, to_match, following = row[: cfg.column], row[cfg.column], row[cfg.column + 1 :]
+        except IndexError:
+            # Specified column not present. Pass-through as-is.
+            yield row
+            continue
+
+        new_row = prior
+
+        if rx_match := rx.fullmatch(to_match):
+            for cell_tmpl in cfg.on_match:
+                new_row.append(rx_match.expand(cell_tmpl))
+        elif rx_match := _RX_ANYTHING.fullmatch(to_match):
+            for cell_tmpl in cfg.default:
+                new_row.append(rx_match.expand(cell_tmpl))
+        else:
+            # Should never happen.
+            raise RuntimeError(f"{_RX_ANYTHING} failed to match {to_match!r}")
+
+        new_row.extend(following)
+        yield new_row
 
 
 def _prepend_row(cfg: config.PrependRow, rows: Iterable[_Row]) -> Iterator[_Row]:

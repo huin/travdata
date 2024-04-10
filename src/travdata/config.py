@@ -40,6 +40,35 @@ class TableTransform(abc.ABC):
 
 @dataclasses.dataclass
 @_YAML.register_class
+class ExpandColumnOnRegex(TableTransform, yamlutil.YamlMappingMixin):
+    """Splits a column by the matches of a regex."""
+
+    yaml_tag: ClassVar = "!ExpandColumnOnRegex"
+    column: int
+    pattern: str
+    # When `pattern` matches (using `Pattern.fullmatch`), `on_match` produces
+    # the resulting cells, using groups from the match to the pattern. Each
+    # string is expanded using `Match.expand`, see
+    # https://docs.python.org/3/library/re.html#match-objects.
+    on_match: list[str]
+    # When `pattern` does not match, default produces cells as if matching on a
+    # regex ".*" when `pattern` does not match. Similarly, each string is
+    # expanded using `Match.expand` (using \g<0> makes sense here to extract the
+    # entire original text into a cell).
+    default: list[str]
+
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        return cls(
+            column=0,
+            pattern="",
+            on_match=[],
+            default=[],
+        )
+
+
+@dataclasses.dataclass
+@_YAML.register_class
 class PrependRow(TableTransform, yamlutil.YamlSequenceMixin):
     """Appends given literal row values to the start of a table."""
 
