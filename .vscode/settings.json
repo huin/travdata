@@ -8,6 +8,7 @@
     "!Book mapping",
     "!Config mapping",
     "!EmptyColumn scalar",
+    "!ExpandColumnOnRegex mapping",
     "!FoldRows sequence",
     "!Group mapping",
     "!Government mapping",
@@ -20,6 +21,7 @@
     "!TableExtraction sequence",
     "!TradeCode mapping",
     "!TradeGood mapping",
-    "!TradeGoodProperties mapping"
+    "!TradeGoodProperties mapping",
+    "!WrapRowEveryN scalar"
   ]
 }
