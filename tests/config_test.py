@@ -25,6 +25,7 @@ def test_load_group_from_str() -> None:
                             pattern: '([^:]+): (.+)'
                             on_match: ['\\1', '\\2']
                             default: ['', '\\g<0>']
+                        - !WrapRowEveryN 2
                         - !FoldRows
                             - !StaticRowCounts [2]
                             - !EmptyColumn 0
@@ -65,6 +66,7 @@ def test_load_group_from_str() -> None:
                                         on_match=[r"\1", r"\2"],
                                         default=[r"", r"\g<0>"],
                                     ),
+                                    config.WrapRowEveryN(2),
                                     config.FoldRows(
                                         [
                                             config.StaticRowCounts([2]),

@@ -29,6 +29,7 @@ _YAML.representer.sort_base_mapping_type_on_output = False
 __executable_environment__ = "development"
 
 
+_INT_METADATA = {"to_yaml": int, "from_yaml": int}
 _SET_METADATA = {"to_yaml": sorted, "from_yaml": set}
 
 TABULA_TEMPLATE_SUFFIX = ".tabula-template.json"
@@ -125,7 +126,11 @@ class WrapRowEveryN(TableTransform, yamlutil.YamlScalarMixin):
     """Wraps a row every N columns."""
 
     yaml_tag: ClassVar = "!WrapRowEveryN"
-    columns: int
+    columns: int = dataclasses.field(metadata=_INT_METADATA)
+
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        return cls(columns=0)
 
 
 @dataclasses.dataclass
