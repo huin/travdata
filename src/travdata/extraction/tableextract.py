@@ -83,6 +83,8 @@ def _transform(cfg: config.TableTransform, rows: Iterable[_Row]) -> Iterator[_Ro
             return _prepend_row(cfg, rows)
         case config.FoldRows():
             return _fold_rows(cfg, rows)
+        case config.WrapRowEveryN():
+            return _wrap_row_every_n(cfg, rows)
         case _:
             raise ConfigurationError(
                 f"{type(cfg).__name__} is an unknown type of TableTransform",
@@ -214,6 +216,30 @@ def _fold_rows(
 
         row: _Row = [" ".join(cell) for cell in row_accum]
         yield row
+
+
+def _wrap_row_every_n(
+    cfg: config.WrapRowEveryN,
+    rows: Iterable[_Row],
+) -> Iterator[_Row]:
+    if cfg.columns < 1:
+        raise ConfigurationError(f"{cfg.yaml_tag}.columns must be at least 1, but is {cfg.columns}")
+    accum: _Row = []
+    for row in rows:
+        for cell in row:
+            accum.append(cell)
+            l = len(accum)
+            if l == cfg.columns:
+                yield accum
+                accum = []
+            elif l < cfg.columns:
+                continue
+            else:
+                raise RuntimeError(
+                    f"too many items {l} in accumulated row versus maximum" f" of {cfg.columns}"
+                )
+    if accum:
+        yield accum
 
 
 def _clean_rows(rows: Iterable[list[str]]) -> Iterator[list[str]]:

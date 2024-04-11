@@ -214,6 +214,32 @@ class FakeTableReader:
                 [],  # empty row
             ],
         ),
+        (
+            "Wraps a row every N columns.",
+            config.TableExtraction(
+                transforms=[
+                    config.WrapRowEveryN(columns=2),
+                ],
+            ),
+            [
+                [
+                    ["r1c1", "r1c2", "r1c3", "r1c4"],
+                    ["r2c1", "r2c2", "r2c3", "r2c4", "r2c5"],
+                    ["r3c1", "r3c2", "r3c3"],
+                    [],
+                    ["r5c1"],
+                ],
+            ],
+            [
+                ["r1c1", "r1c2"],
+                ["r1c3", "r1c4"],
+                ["r2c1", "r2c2"],
+                ["r2c3", "r2c4"],
+                ["r2c5", "r3c1"],
+                ["r3c2", "r3c3"],
+                ["r5c1"],
+            ],
+        ),
     ],
 )
 def test_extract_table(

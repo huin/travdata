@@ -121,6 +121,15 @@ class FoldRows(TableTransform, yamlutil.YamlSequenceMixin):
 
 @dataclasses.dataclass
 @_YAML.register_class
+class WrapRowEveryN(TableTransform, yamlutil.YamlScalarMixin):
+    """Wraps a row every N columns."""
+
+    yaml_tag: ClassVar = "!WrapRowEveryN"
+    columns: int
+
+
+@dataclasses.dataclass
+@_YAML.register_class
 class TableExtraction(yamlutil.YamlSequenceMixin):
     """Configures the specifics of extracting the CSV from the PDF."""
 
