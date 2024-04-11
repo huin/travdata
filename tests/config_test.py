@@ -22,9 +22,9 @@ def test_load_group_from_str() -> None:
                     extraction: !TableExtraction
                         - !ExpandColumnOnRegex
                             column: 1    
-                            pattern: "([^:]+): (.+)"
-                            on_match: ["\\\\1", "\\\\2"]
-                            default: ["", "\\\\g<0>"]
+                            pattern: '([^:]+): (.+)'
+                            on_match: ['\\1', '\\2']
+                            default: ['', '\\g<0>']
                         - !FoldRows
                             - !StaticRowCounts [2]
                             - !EmptyColumn 0
