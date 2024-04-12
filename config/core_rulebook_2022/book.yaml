@@ -505,6 +505,20 @@ groups:
         tables:
           behaviours: !Table
             tags: [type/animal-behaviour]
+            extraction: !TableExtraction
+              - !JoinColumns
+                delim: " "
+              - !ExpandColumnOnRegex
+                column: 0
+                pattern: '• ([^(]+) \(([^)]+)\): (.+)'
+                on_match: ['\1', '\2', '\3']
+                default: ['', '', '\g<0>']
+              - !FoldRows
+                - !EmptyColumn 0
+              - !PrependRow
+                - Animal type
+                - Examples
+                - Behaviour
           flight-or-fight: !Table
             tags: [type/animal-flight-or-fight]
             extraction: *one-row-header
