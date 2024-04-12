@@ -29,8 +29,8 @@ _YAML.representer.sort_base_mapping_type_on_output = False
 __executable_environment__ = "development"
 
 
-_INT_METADATA = {"to_yaml": int, "from_yaml": int}
-_SET_METADATA = {"to_yaml": sorted, "from_yaml": set}
+_INT_METADATA = {yamlutil.TO_YAML: int, yamlutil.FROM_YAML: int}
+_SET_METADATA = {yamlutil.TO_YAML: sorted, yamlutil.FROM_YAML: set}
 
 TABULA_TEMPLATE_SUFFIX = ".tabula-template.json"
 
@@ -118,6 +118,17 @@ class FoldRows(TableTransform, yamlutil.YamlSequenceMixin):
 
     yaml_tag: ClassVar = "!FoldRows"
     group_by: list[RowGrouper] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
+@_YAML.register_class
+class JoinColumns(TableTransform, yamlutil.YamlMappingMixin):
+    """Joins a range of columns."""
+
+    yaml_tag: ClassVar = "!JoinColumns"
+    from_: Optional[int] = dataclasses.field(default=None, metadata={yamlutil.YAML_NAME: "from"})
+    to: Optional[int] = None
+    delim: str = ""
 
 
 @dataclasses.dataclass

@@ -215,6 +215,102 @@ class FakeTableReader:
             ],
         ),
         (
+            "Joins a range of columns - from+to set.",
+            config.TableExtraction(
+                transforms=[config.JoinColumns(from_=1, to=3, delim=" ")],
+            ),
+            [
+                [
+                    ["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
+                    ["r2c1", "r2c2", "r2c3", "r2c4"],
+                    ["r3c1", "r3c2", "r3c3"],
+                    ["r4c1", "r4c2"],
+                    ["r5c1"],
+                    [],
+                ],
+            ],
+            [
+                ["r1c1", "r1c2 r1c3", "r1c4", "r1c5"],
+                ["r2c1", "r2c2 r2c3", "r2c4"],
+                ["r3c1", "r3c2 r3c3"],
+                ["r4c1", "r4c2"],
+                ["r5c1"],
+                [],
+            ],
+        ),
+        (
+            "Joins a range of columns - from set.",
+            config.TableExtraction(
+                transforms=[config.JoinColumns(from_=1, delim=" ")],
+            ),
+            [
+                [
+                    ["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
+                    ["r2c1", "r2c2", "r2c3", "r2c4"],
+                    ["r3c1", "r3c2", "r3c3"],
+                    ["r4c1", "r4c2"],
+                    ["r5c1"],
+                    [],
+                ],
+            ],
+            [
+                ["r1c1", "r1c2 r1c3 r1c4 r1c5"],
+                ["r2c1", "r2c2 r2c3 r2c4"],
+                ["r3c1", "r3c2 r3c3"],
+                ["r4c1", "r4c2"],
+                ["r5c1"],
+                [],
+            ],
+        ),
+        (
+            "Joins a range of columns - to set.",
+            config.TableExtraction(
+                transforms=[config.JoinColumns(to=3, delim=" ")],
+            ),
+            [
+                [
+                    ["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
+                    ["r2c1", "r2c2", "r2c3", "r2c4"],
+                    ["r3c1", "r3c2", "r3c3"],
+                    ["r4c1", "r4c2"],
+                    ["r5c1"],
+                    [],
+                ],
+            ],
+            [
+                ["r1c1 r1c2 r1c3", "r1c4", "r1c5"],
+                ["r2c1 r2c2 r2c3", "r2c4"],
+                ["r3c1 r3c2 r3c3"],
+                ["r4c1 r4c2"],
+                ["r5c1"],
+                [],
+            ],
+        ),
+        (
+            "Joins a range of columns - neither from/to set set.",
+            config.TableExtraction(
+                transforms=[config.JoinColumns(delim=" ")],
+            ),
+            [
+                [
+                    ["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
+                    ["r2c1", "r2c2", "r2c3", "r2c4"],
+                    ["r3c1", "r3c2", "r3c3"],
+                    ["r4c1", "r4c2"],
+                    ["r5c1"],
+                    [],
+                ],
+            ],
+            [
+                ["r1c1 r1c2 r1c3 r1c4 r1c5"],
+                ["r2c1 r2c2 r2c3 r2c4"],
+                ["r3c1 r3c2 r3c3"],
+                ["r4c1 r4c2"],
+                ["r5c1"],
+                [],
+            ],
+        ),
+        (
             "Wraps a row every N columns.",
             config.TableExtraction(
                 transforms=[

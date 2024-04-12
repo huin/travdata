@@ -80,6 +80,8 @@ def _transform(cfg: config.TableTransform, rows: Iterable[_Row]) -> Iterator[_Ro
     match cfg:
         case config.ExpandColumnOnRegex():
             return _expand_column_on_regex(cfg, rows)
+        case config.JoinColumns():
+            return _join_columns(cfg, rows)
         case config.PrependRow():
             return _prepend_row(cfg, rows)
         case config.FoldRows():
@@ -119,6 +121,27 @@ def _expand_column_on_regex(
 
         new_row.extend(following)
         yield new_row
+
+
+def _join_columns(
+    cfg: config.JoinColumns,
+    rows: Iterable[_Row],
+) -> Iterator[_Row]:
+    delim = cfg.delim
+    from_, to = cfg.from_, cfg.to
+    for row in rows:
+        out_row = []
+
+        if from_ is not None:
+            out_row.extend(row[:from_])
+
+        if to_join := row[from_:to]:
+            out_row.append(delim.join(to_join))
+
+        if to is not None:
+            out_row.extend(row[to:])
+
+        yield out_row
 
 
 def _prepend_row(cfg: config.PrependRow, rows: Iterable[_Row]) -> Iterator[_Row]:

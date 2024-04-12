@@ -9,6 +9,12 @@ from typing import ClassVar, Iterator, Self, cast, TYPE_CHECKING
 from ruamel import yaml
 from travdata import dataclassutil
 
+# Keys in dataclasses.field metadata used by this module:
+YAML_NAME = "yaml"  # Override the name of the field in a YAML mapping.
+TO_YAML = "to_yaml"  # Callable to convert to YAML value.
+FROM_YAML = "from_yaml"  # Callable to convert from YAML value.
+
+
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
@@ -43,9 +49,10 @@ class YamlMappingMixin:
             value = getattr(node, field.name)
             if not value and dataclassutil.has_default(field):
                 continue
-            if fn := field.metadata.get("to_yaml"):
+            if fn := field.metadata.get(TO_YAML):
                 value = fn(value)
-            mapping[field.name] = value
+            key = field.metadata.get(YAML_NAME, field.name)
+            mapping[key] = value
         return representer.represent_mapping(cls.yaml_tag, mapping)
 
     @classmethod
@@ -58,15 +65,16 @@ class YamlMappingMixin:
         if not isinstance(data, dict):
             raise TypeError(data)
         for field in dataclasses.fields(cast(type["DataclassInstance"], cls)):
+            key = field.metadata.get("yaml", field.name)
             try:
-                value = data.pop(field.name)
+                value = data.pop(key)
             except KeyError as exc:
                 if dataclassutil.has_default(field):
                     continue
                 raise TypeError(
                     f"required field {field.name} not specified in {cls.yaml_tag}",
                 ) from exc
-            if fn := field.metadata.get("from_yaml"):
+            if fn := field.metadata.get(FROM_YAML):
                 value = fn(value)
             setattr(obj, field.name, value)
         if data:

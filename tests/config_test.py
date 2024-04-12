@@ -20,6 +20,10 @@ def test_load_group_from_str() -> None:
                 foo: !Table
                     tags: [type/foo]
                     extraction: !TableExtraction
+                        - !JoinColumns
+                            from: 1
+                            to: 2
+                            delim: " "
                         - !ExpandColumnOnRegex
                             column: 1    
                             pattern: '([^:]+): (.+)'
@@ -60,6 +64,11 @@ def test_load_group_from_str() -> None:
                             tags={"outer", "top", "type/foo"},
                             extraction=config.TableExtraction(
                                 transforms=[
+                                    config.JoinColumns(
+                                        from_=1,
+                                        to=2,
+                                        delim=" ",
+                                    ),
                                     config.ExpandColumnOnRegex(
                                         column=1,
                                         pattern=r"([^:]+): (.+)",
