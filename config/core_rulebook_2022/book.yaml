@@ -549,6 +549,96 @@ groups:
             extraction: *one-row-header
           urban: !Table
             extraction: *one-row-header
+  06-equipment: !Group
+    tags: [equipment]
+    tables:
+      augments: !Table
+        tags: [equipment/augment]
+        extraction: *one-row-header
+      bugs: !Table
+        tags: [equipment/bug]
+        extraction: *one-row-header
+      science-kits: !Table
+        tags: [equipment/science-kit]
+        extraction: !TableExtraction
+          - !FoldRows
+            - !EmptyColumn 1
+      sensors: !Table
+        tags: [equipment/sensor]
+        extraction: *one-row-header
+      standards-of-living: !Table
+        tags: [standard-of-living]
+        extraction: *one-row-header
+      survival-gear: !Table
+        tags: [equipment/survival-gear]
+        extraction: *one-row-header
+      toolkits: !Table
+        tags: [equipment/toolkit]
+        extraction: *one-row-header
+    groups:
+      combat: !Group
+        tags: [equipment/combat]
+        templates:
+          - !TableExtraction &weapon-table
+            - !FoldRows
+              - !EmptyColumn 1
+        tables:
+          armour: !Table
+            tags: [equipment/armour]
+            extraction: *one-row-header
+          melee-weapons: !Table
+            tags: [equipment/weapon, weapon/melee]
+            extraction: *weapon-table
+          slug-throwers: !Table
+            tags: [equipment/weapon, weapon/slug]
+            extraction: *weapon-table
+          energy-weapons: !Table
+            tags: [equipment/weapon, weapon/energy]
+            extraction: !TableExtraction &weapon-table
+              - !FoldRows
+                - !StaticRowCounts [2]
+                - !EmptyColumn 1
+          grenade-weapons: !Table
+            tags: [equipment/weapon, weapon/grenade]
+            extraction: *weapon-table
+          heavy-weapons: !Table
+            tags: [equipment/weapon, weapon/heavy]
+            extraction: *weapon-table
+          explosives: !Table
+            tags: [equipment/weapon, weapon/explosive]
+            extraction: *weapon-table
+      communication: !Group
+        tags: [equipment/communication]
+        tables:
+          commdot: !Table
+            tags: [communication/commdot]
+            extraction: *one-row-header
+          laser-transceivers: !Table
+            tags: [communication/transceiver, transceiver/laser]
+            extraction: *one-row-header
+          mobile-comms: !Table
+            tags: [communication/mobile]
+            extraction: *one-row-header
+          radio-transceivers: !Table
+            tags: [communication/transceiver, transceiver/radio]
+            extraction: *one-row-header
+      computing: !Group
+        tags: [equipment/computing]
+        tables:
+          computer-terminal: !Table
+            tags: [computing/computer, computer/terminal]
+            extraction: *one-row-header
+          portable-computer: !Table
+            tags: [computing/processing, computer/portable]
+            extraction: *one-row-header
+          software-package: !Table
+            tags: [computing/software-package]
+            extraction: *one-row-header
+          software: !Table
+            tags: [computing/software]
+            extraction: !TableExtraction
+            - !FoldRows
+              - !EmptyColumn 2
   07-vehicles: !Group
     tables:
       critical-hit-effects: !Table
