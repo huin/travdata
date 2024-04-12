@@ -504,10 +504,12 @@ groups:
       animal: !Group
         tables:
           behaviours: !Table
-            extraction: !!null
+            tags: [type/animal-behaviour]
           flight-or-fight: !Table
+            tags: [type/animal-flight-or-fight]
             extraction: *one-row-header
           sizes: !Table
+            tags: [type/animal-size]
             extraction: *one-row-header
       dangers: !Group
         tables:
