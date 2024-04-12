@@ -14,6 +14,7 @@
     "!Government mapping",
     "!IntRange mapping",
     "!IntRangeSet sequence",
+    "!JoinColumns mapping",
     "!LawLevel mapping",
     "!PrependRow sequence",
     "!StaticRowCounts sequence",
