@@ -594,7 +594,7 @@ groups:
             extraction: *weapon-table
           energy-weapons: !Table
             tags: [equipment/weapon, weapon/energy]
-            extraction: !TableExtraction &weapon-table
+            extraction: !TableExtraction
               - !FoldRows
                 - !StaticRowCounts [2]
                 - !EmptyColumn 1
