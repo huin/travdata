@@ -10,7 +10,7 @@ import sys
 from typing import Any, TypedDict, cast
 
 from travdata import config
-from travdata.config import yamlreg
+from travdata.config import cfgextract, yamlreg
 
 _TABLES = [
     "equipment",
@@ -83,7 +83,7 @@ def add_table(
 ) -> None:
     grp.tables[table_name] = config._YamlTable(
         tags=tags,
-        extraction=config.TableExtraction(),
+        extraction=cfgextract.TableExtraction(),
     )
     tmpl_filename = (grp_dir / table_name).with_suffix(".tabula-template.json")
     with tmpl_filename.open("wt") as f:

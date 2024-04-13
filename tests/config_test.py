@@ -8,6 +8,7 @@ from typing import Any
 import testfixtures  # type: ignore[import-untyped]
 import pytest
 from travdata import config
+from travdata.config import cfgextract
 
 
 def test_load_group_from_str() -> None:
@@ -51,9 +52,9 @@ def test_load_group_from_str() -> None:
                             cfg_dir=pathlib.Path("."),
                             file_stem=pathlib.Path("./grp-a/foo"),
                             tags={"outer", "top", "type/foo"},
-                            extraction=config.TableExtraction(
+                            extraction=cfgextract.TableExtraction(
                                 transforms=[
-                                    config.WrapRowEveryN(2),
+                                    cfgextract.WrapRowEveryN(2),
                                 ],
                             ),
                         ),
@@ -61,12 +62,12 @@ def test_load_group_from_str() -> None:
                             cfg_dir=pathlib.Path("."),
                             file_stem=pathlib.Path("./grp-a/bar"),
                             tags={"outer", "top", "type/bar"},
-                            extraction=config.TableExtraction(
+                            extraction=cfgextract.TableExtraction(
                                 transforms=[
-                                    config.FoldRows(
+                                    cfgextract.FoldRows(
                                         [
-                                            config.StaticRowCounts([1]),
-                                            config.EmptyColumn(3),
+                                            cfgextract.StaticRowCounts([1]),
+                                            cfgextract.EmptyColumn(3),
                                         ],
                                     ),
                                 ],
@@ -96,7 +97,7 @@ def test_load_group_from_str() -> None:
               to: 2
               delim: " "
             """,
-            config.JoinColumns(
+            cfgextract.JoinColumns(
                 from_=1,
                 to=2,
                 delim=" ",
@@ -111,7 +112,7 @@ def test_load_group_from_str() -> None:
               on_match: ['\\1', '\\2']
               default: ['', '\\g<0>']
             """,
-            config.ExpandColumnOnRegex(
+            cfgextract.ExpandColumnOnRegex(
                 column=1,
                 pattern=r"([^:]+): (.+)",
                 on_match=[r"\1", r"\2"],
@@ -123,7 +124,7 @@ def test_load_group_from_str() -> None:
             """
             !WrapRowEveryN 2
             """,
-            config.WrapRowEveryN(2),
+            cfgextract.WrapRowEveryN(2),
         ),
         (
             "FoldRows",
@@ -132,10 +133,10 @@ def test_load_group_from_str() -> None:
               - !StaticRowCounts [2]
               - !EmptyColumn 0
             """,
-            config.FoldRows(
+            cfgextract.FoldRows(
                 [
-                    config.StaticRowCounts([2]),
-                    config.EmptyColumn(0),
+                    cfgextract.StaticRowCounts([2]),
+                    cfgextract.EmptyColumn(0),
                 ]
             ),
         ),
@@ -144,7 +145,7 @@ def test_load_group_from_str() -> None:
             """
             !PrependRow [foo, bar]
             """,
-            config.PrependRow(["foo", "bar"]),
+            cfgextract.PrependRow(["foo", "bar"]),
         ),
     ],
 )

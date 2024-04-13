@@ -8,6 +8,7 @@ import re
 from typing import Iterable, Iterator, Protocol, TypeAlias
 
 from travdata import config
+from travdata.config import cfgextract
 from travdata.extraction import parseutil, tabulautil
 
 
@@ -76,17 +77,17 @@ _Row: TypeAlias = list[str]
 _RowGroup: TypeAlias = list[_Row]
 
 
-def _transform(cfg: config.TableTransform, rows: Iterable[_Row]) -> Iterator[_Row]:
+def _transform(cfg: cfgextract.TableTransform, rows: Iterable[_Row]) -> Iterator[_Row]:
     match cfg:
-        case config.ExpandColumnOnRegex():
+        case cfgextract.ExpandColumnOnRegex():
             return _expand_column_on_regex(cfg, rows)
-        case config.JoinColumns():
+        case cfgextract.JoinColumns():
             return _join_columns(cfg, rows)
-        case config.PrependRow():
+        case cfgextract.PrependRow():
             return _prepend_row(cfg, rows)
-        case config.FoldRows():
+        case cfgextract.FoldRows():
             return _fold_rows(cfg, rows)
-        case config.WrapRowEveryN():
+        case cfgextract.WrapRowEveryN():
             return _wrap_row_every_n(cfg, rows)
         case _:
             raise ConfigurationError(
@@ -95,7 +96,7 @@ def _transform(cfg: config.TableTransform, rows: Iterable[_Row]) -> Iterator[_Ro
 
 
 def _expand_column_on_regex(
-    cfg: config.ExpandColumnOnRegex,
+    cfg: cfgextract.ExpandColumnOnRegex,
     rows: Iterable[_Row],
 ) -> Iterator[_Row]:
     rx = re.compile(cfg.pattern)
@@ -124,7 +125,7 @@ def _expand_column_on_regex(
 
 
 def _join_columns(
-    cfg: config.JoinColumns,
+    cfg: cfgextract.JoinColumns,
     rows: Iterable[_Row],
 ) -> Iterator[_Row]:
     delim = cfg.delim
@@ -144,7 +145,7 @@ def _join_columns(
         yield out_row
 
 
-def _prepend_row(cfg: config.PrependRow, rows: Iterable[_Row]) -> Iterator[_Row]:
+def _prepend_row(cfg: cfgextract.PrependRow, rows: Iterable[_Row]) -> Iterator[_Row]:
     """Implements the config.PrependRow transformation."""
     return itertools.chain([cfg.row], rows)
 
@@ -160,12 +161,14 @@ class _LineGrouper(Protocol):
         raise NotImplementedError
 
 
-def _static_row_lengths(cfg: config.StaticRowCounts, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+def _static_row_lengths(
+    cfg: cfgextract.StaticRowCounts, lines: Iterable[_Row]
+) -> Iterator[_RowGroup]:
     for num_lines in cfg.row_counts:
         yield list(itertools.islice(lines, num_lines))
 
 
-def _empty_column(cfg: config.EmptyColumn, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+def _empty_column(cfg: cfgextract.EmptyColumn, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
     group: _RowGroup = []
     for line in lines:
         if line[cfg.column_index] == "":
@@ -178,11 +181,11 @@ def _empty_column(cfg: config.EmptyColumn, lines: Iterable[_Row]) -> Iterator[_R
         yield group
 
 
-def _make_line_grouper(cfg: config.RowGrouper) -> _LineGrouper:
+def _make_line_grouper(cfg: cfgextract.RowGrouper) -> _LineGrouper:
     match cfg:
-        case config.StaticRowCounts():
+        case cfgextract.StaticRowCounts():
             return functools.partial(_static_row_lengths, cfg)
-        case config.EmptyColumn():
+        case cfgextract.EmptyColumn():
             return functools.partial(_empty_column, cfg)
         case _:
             raise ConfigurationError(
@@ -199,7 +202,7 @@ def _multi_grouper(groupers: list[_LineGrouper], lines: Iterable[_Row]) -> Itera
 
 
 def _fold_rows(
-    cfg: config.FoldRows,
+    cfg: cfgextract.FoldRows,
     rows: Iterable[_Row],
 ) -> Iterator[_Row]:
     """Implements the config.FoldRows transformation."""
@@ -225,7 +228,7 @@ def _fold_rows(
 
 
 def _wrap_row_every_n(
-    cfg: config.WrapRowEveryN,
+    cfg: cfgextract.WrapRowEveryN,
     rows: Iterable[_Row],
 ) -> Iterator[_Row]:
     if cfg.columns < 1:

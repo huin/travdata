@@ -7,6 +7,7 @@ import pathlib
 import pytest
 import testfixtures  # type: ignore[import-untyped]
 from travdata import config
+from travdata.config import cfgextract
 from travdata.extraction import tableextract, tabulautil
 
 
@@ -45,11 +46,11 @@ class FakeTableReader:
 
 
 @pytest.mark.parametrize(
-    "name,extraction,tables_in,expected",
+    "name,extract_cfg,tables_in,expected",
     [
         (
             "Base behaviour with default config.",
-            config.TableExtraction(),
+            cfgextract.TableExtraction(),
             [
                 [
                     ["header 1", "header 2"],
@@ -63,7 +64,7 @@ class FakeTableReader:
         ),
         (
             "Concatenates input tables.",
-            config.TableExtraction(),
+            cfgextract.TableExtraction(),
             [
                 [
                     ["header 1", "header 2"],
@@ -83,8 +84,8 @@ class FakeTableReader:
         ),
         (
             "Adds specified leading row.",
-            config.TableExtraction(
-                transforms=[config.PrependRow(["added header 1", "added header 2"])]
+            cfgextract.TableExtraction(
+                transforms=[cfgextract.PrependRow(["added header 1", "added header 2"])]
             ),
             [
                 [
@@ -100,11 +101,11 @@ class FakeTableReader:
         ),
         (
             "Merges specified header rows, and keeps individual rows thereafter.",
-            config.TableExtraction(
+            cfgextract.TableExtraction(
                 transforms=[
-                    config.FoldRows(
+                    cfgextract.FoldRows(
                         [
-                            config.StaticRowCounts([2]),
+                            cfgextract.StaticRowCounts([2]),
                         ]
                     ),
                 ],
@@ -125,11 +126,11 @@ class FakeTableReader:
         ),
         (
             "Merges rows based on configured StaticRowLengths.",
-            config.TableExtraction(
+            cfgextract.TableExtraction(
                 transforms=[
-                    config.FoldRows(
+                    cfgextract.FoldRows(
                         [
-                            config.StaticRowCounts([2, 2, 2]),
+                            cfgextract.StaticRowCounts([2, 2, 2]),
                         ]
                     ),
                 ],
@@ -154,12 +155,12 @@ class FakeTableReader:
         ),
         (
             "Merges rows based on configured leading StaticRowLengths and EmptyColumn thereafter.",
-            config.TableExtraction(
+            cfgextract.TableExtraction(
                 transforms=[
-                    config.FoldRows(
+                    cfgextract.FoldRows(
                         [
-                            config.StaticRowCounts([2]),
-                            config.EmptyColumn(0),
+                            cfgextract.StaticRowCounts([2]),
+                            cfgextract.EmptyColumn(0),
                         ]
                     ),
                 ],
@@ -185,9 +186,9 @@ class FakeTableReader:
         ),
         (
             "Splits a column by the matches of a regex.",
-            config.TableExtraction(
+            cfgextract.TableExtraction(
                 transforms=[
-                    config.ExpandColumnOnRegex(
+                    cfgextract.ExpandColumnOnRegex(
                         column=1,
                         pattern=r"[*] +([^:]+): +(.+)",
                         on_match=[r"\1", r"\2"],
@@ -216,8 +217,8 @@ class FakeTableReader:
         ),
         (
             "Joins a range of columns - from+to set.",
-            config.TableExtraction(
-                transforms=[config.JoinColumns(from_=1, to=3, delim=" ")],
+            cfgextract.TableExtraction(
+                transforms=[cfgextract.JoinColumns(from_=1, to=3, delim=" ")],
             ),
             [
                 [
@@ -240,8 +241,8 @@ class FakeTableReader:
         ),
         (
             "Joins a range of columns - from set.",
-            config.TableExtraction(
-                transforms=[config.JoinColumns(from_=1, delim=" ")],
+            cfgextract.TableExtraction(
+                transforms=[cfgextract.JoinColumns(from_=1, delim=" ")],
             ),
             [
                 [
@@ -264,8 +265,8 @@ class FakeTableReader:
         ),
         (
             "Joins a range of columns - to set.",
-            config.TableExtraction(
-                transforms=[config.JoinColumns(to=3, delim=" ")],
+            cfgextract.TableExtraction(
+                transforms=[cfgextract.JoinColumns(to=3, delim=" ")],
             ),
             [
                 [
@@ -288,8 +289,8 @@ class FakeTableReader:
         ),
         (
             "Joins a range of columns - neither from/to set set.",
-            config.TableExtraction(
-                transforms=[config.JoinColumns(delim=" ")],
+            cfgextract.TableExtraction(
+                transforms=[cfgextract.JoinColumns(delim=" ")],
             ),
             [
                 [
@@ -312,9 +313,9 @@ class FakeTableReader:
         ),
         (
             "Wraps a row every N columns.",
-            config.TableExtraction(
+            cfgextract.TableExtraction(
                 transforms=[
-                    config.WrapRowEveryN(columns=2),
+                    cfgextract.WrapRowEveryN(columns=2),
                 ],
             ),
             [
@@ -340,7 +341,7 @@ class FakeTableReader:
 )
 def test_extract_table(
     name: str,
-    extraction: config.TableExtraction,
+    extract_cfg: cfgextract.TableExtraction,
     tables_in,
     expected: list[list[str]],
 ):
@@ -354,7 +355,7 @@ def test_extract_table(
         table=config.Table(
             cfg_dir=config_dir,
             file_stem=file_stem,
-            extraction=extraction,
+            extraction=extract_cfg,
         ),
         pdf_path=pdf_path,
         table_reader=table_reader,

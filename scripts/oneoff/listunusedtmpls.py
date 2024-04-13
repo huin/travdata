@@ -8,7 +8,7 @@ import pathlib
 import sys
 
 from travdata import config
-from travdata.config import yamlreg
+from travdata.config import cfgextract, yamlreg
 
 
 def main() -> None:
@@ -99,7 +99,7 @@ def _create_basic_group_yaml(grp_dir: pathlib.Path) -> config._YamlGroup:
             dir_entry_path = pathlib.Path(dir_entry)
             if dir_entry.is_file():
                 grp.tables[dir_entry.name.removesuffix(config.TABULA_TEMPLATE_SUFFIX)] = (
-                    config._YamlTable(extraction=config.TableExtraction())
+                    config._YamlTable(extraction=cfgextract.TableExtraction())
                 )
             elif dir_entry.is_dir():
                 grp.groups[dir_entry.name] = _create_basic_group_yaml(dir_entry_path)
