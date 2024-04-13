@@ -615,7 +615,15 @@ groups:
             extraction: *one-row-header
           laser-transceivers: !Table
             tags: [communication/transceiver, transceiver/laser]
-            extraction: *one-row-header
+            extraction: !TableExtraction 
+            - !FoldRows
+              - !StaticRowCounts [1]
+              - !EmptyColumn 0
+            - !PrependRow
+              - LASER TRANSCEIVERS
+              - MASS
+              - RANGE
+              - COST
           mobile-comms: !Table
             tags: [communication/mobile]
             extraction: *one-row-header
