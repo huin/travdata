@@ -391,6 +391,17 @@ def load_group_from_str(yaml_str: str, parent_tags: set[str]) -> Group:
     )
 
 
+def parse_yaml_for_testing(yaml_str: str) -> Any:
+    """Parses the given YAML, without preparing it.
+
+    This is only exposed for testing purposes.
+
+    :param yaml_str: YAML to parse.
+    :return: Parsed objects.
+    """
+    return _YAML.load(yaml_str)
+
+
 def _prepare_config(
     cfg: Any | _YamlConfig,
     cfg_dir: pathlib.Path,

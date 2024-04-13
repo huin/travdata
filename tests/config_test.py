@@ -3,8 +3,10 @@
 
 import pathlib
 import textwrap
+from typing import Any
 
 import testfixtures  # type: ignore[import-untyped]
+import pytest
 from travdata import config
 
 
@@ -20,20 +22,7 @@ def test_load_group_from_str() -> None:
                 foo: !Table
                     tags: [type/foo]
                     extraction: !TableExtraction
-                        - !JoinColumns
-                            from: 1
-                            to: 2
-                            delim: " "
-                        - !ExpandColumnOnRegex
-                            column: 1    
-                            pattern: '([^:]+): (.+)'
-                            on_match: ['\\1', '\\2']
-                            default: ['', '\\g<0>']
                         - !WrapRowEveryN 2
-                        - !FoldRows
-                            - !StaticRowCounts [2]
-                            - !EmptyColumn 0
-                        - !PrependRow [foo, bar]
                 bar: !Table
                     tags: [type/bar]
                     extraction: !TableExtraction
@@ -64,25 +53,7 @@ def test_load_group_from_str() -> None:
                             tags={"outer", "top", "type/foo"},
                             extraction=config.TableExtraction(
                                 transforms=[
-                                    config.JoinColumns(
-                                        from_=1,
-                                        to=2,
-                                        delim=" ",
-                                    ),
-                                    config.ExpandColumnOnRegex(
-                                        column=1,
-                                        pattern=r"([^:]+): (.+)",
-                                        on_match=[r"\1", r"\2"],
-                                        default=[r"", r"\g<0>"],
-                                    ),
                                     config.WrapRowEveryN(2),
-                                    config.FoldRows(
-                                        [
-                                            config.StaticRowCounts([2]),
-                                            config.EmptyColumn(0),
-                                        ]
-                                    ),
-                                    config.PrependRow(["foo", "bar"]),
                                 ],
                             ),
                         ),
@@ -112,3 +83,72 @@ def test_load_group_from_str() -> None:
             },
         ),
     )
+
+
+@pytest.mark.parametrize(
+    "name,yaml,expected",
+    [
+        (
+            "JoinColumns",
+            """
+            !JoinColumns
+              from: 1
+              to: 2
+              delim: " "
+            """,
+            config.JoinColumns(
+                from_=1,
+                to=2,
+                delim=" ",
+            ),
+        ),
+        (
+            "ExpandColumnOnRegex",
+            """
+            !ExpandColumnOnRegex
+              column: 1    
+              pattern: '([^:]+): (.+)'
+              on_match: ['\\1', '\\2']
+              default: ['', '\\g<0>']
+            """,
+            config.ExpandColumnOnRegex(
+                column=1,
+                pattern=r"([^:]+): (.+)",
+                on_match=[r"\1", r"\2"],
+                default=[r"", r"\g<0>"],
+            ),
+        ),
+        (
+            "WrapRowEveryN",
+            """
+            !WrapRowEveryN 2
+            """,
+            config.WrapRowEveryN(2),
+        ),
+        (
+            "FoldRows",
+            """
+            !FoldRows
+              - !StaticRowCounts [2]
+              - !EmptyColumn 0
+            """,
+            config.FoldRows(
+                [
+                    config.StaticRowCounts([2]),
+                    config.EmptyColumn(0),
+                ]
+            ),
+        ),
+        (
+            "PrependRow",
+            """
+            !PrependRow [foo, bar]
+            """,
+            config.PrependRow(["foo", "bar"]),
+        ),
+    ],
+)
+def test_parse(name: str, yaml: str, expected: Any) -> None:
+    print(name)
+    actual = config.parse_yaml_for_testing(yaml)
+    testfixtures.compare(expected=expected, actual=actual)
