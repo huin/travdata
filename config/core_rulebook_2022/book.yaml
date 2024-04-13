@@ -498,8 +498,6 @@ groups:
         extraction: *one-row-header
       range-bands: !Table
         extraction: *one-row-header
-      temperatures: !Table
-        extraction: *one-row-header
     groups:
       animal: !Group
         tables:
@@ -526,23 +524,35 @@ groups:
             tags: [type/animal-size]
             extraction: *one-row-header
       dangers: !Group
+        tags: [danger]
         tables:
           disease: !Table
+            tags: [danger/disease]
             extraction: *one-row-header
           poisons: !Table
+            tags: [danger/poison]
             extraction: *two-row-header
         groups:
           radiation: !Group
-            tags: [radiation]
+            tags: [danger/radiation]
             tables:
               effect-cumulative: !Table
-                tags: [radiation-effect/cumulative]
+                tags: [danger/radiation/cumulative-effect]
                 extraction: *two-row-header
               effect-immediate: !Table
-                tags: [radiation-effect/immediate]
+                tags: [danger/radiation/immediate-effect]
                 extraction: *two-row-header
               sources: !Table
-                tags: [radiation-source]
+                tags: [danger/radiation/source]
+                extraction: *one-row-header
+          temperatures: !Group
+            tags: [danger/temperature]
+            tables:
+              temperatures-cold: !Table
+                tags: [danger/temperature/cold]
+                extraction: *one-row-header
+              temperatures-hot: !Table
+                tags: [danger/temperature/hot]
                 extraction: *one-row-header
       patrons-and-missions: !Group
         tables:
