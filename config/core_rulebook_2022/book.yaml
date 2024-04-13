@@ -479,12 +479,6 @@ groups:
         extraction: *one-row-header
   05-encounters-and-dangers: !Group
     tables:
-      allies-and-enemies: !Table
-        extraction: *one-row-header
-      character-experience: !Table
-        extraction: *one-row-header
-      character-quirks: !Table
-        extraction: *one-row-header
       encounter-distance: !Table
         extraction: *one-row-header
       encounter-modifiers: !Table
@@ -494,8 +488,6 @@ groups:
           - !PrependRow
             - Circumstance
             - Modifier
-      experience-levels: !Table
-        extraction: *one-row-header
       range-bands: !Table
         extraction: *one-row-header
     groups:
@@ -554,6 +546,18 @@ groups:
               temperatures-hot: !Table
                 tags: [danger/temperature/hot]
                 extraction: *one-row-header
+      other-characters: !Group
+        tags: [encounters/other-characters]
+        tables:
+          allies-and-enemies: !Table
+            tags: [encounters/other-characters/role]
+            extraction: *one-row-header
+          character-quirks: !Table
+            tags: [encounters/other-characters/quirk]
+            extraction: *one-row-header
+          experience-levels: !Table
+            tags: [encounters/other-characters/experience-level]
+            extraction: *one-row-header
       patrons-and-missions: !Group
         tables:
           random-mission: !Table
