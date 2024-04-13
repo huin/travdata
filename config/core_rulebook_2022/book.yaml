@@ -531,6 +531,19 @@ groups:
             extraction: *one-row-header
           poisons: !Table
             extraction: *two-row-header
+        groups:
+          radiation: !Group
+            tags: [radiation]
+            tables:
+              effect-cumulative: !Table
+                tags: [radiation-effect/cumulative]
+                extraction: *two-row-header
+              effect-immediate: !Table
+                tags: [radiation-effect/immediate]
+                extraction: *two-row-header
+              sources: !Table
+                tags: [radiation-source]
+                extraction: *one-row-header
       patrons-and-missions: !Group
         tables:
           random-mission: !Table
