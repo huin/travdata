@@ -571,10 +571,13 @@ groups:
       random-encounters: !Group
         tables:
           rural: !Table
+            tags: [encounter/rural]
             extraction: *one-row-header
           starport: !Table
+            tags: [encounter/starport]
             extraction: *one-row-header
           urban: !Table
+            tags: [encounter/urban]
             extraction: *one-row-header
   06-equipment: !Group
     tags: [equipment]
@@ -730,6 +733,64 @@ groups:
           personal-land-yacht: !Group
             tags: [vehicle, vehicle/personal-land-yacht]
             tables: *vehicle-tables
+  08-spacecraft-operations: !Group
+    tags: [spacecraft-operation]
+    tables:
+      common-trader-distances: !Table
+        tags: [spacecraft-trading/common-distances]
+        extraction: *one-row-header
+      critical-hit-repair: !Table
+        tags: [spacecraft-operation/critical-hit-repair]
+        extraction: *one-row-header
+      encounter-dm: !Table
+        tags: [encounter/space-travel/dm]
+        extraction: !TableExtraction
+        - !ExpandColumnOnRegex
+          column: 0
+          pattern: '([A-Z][^()]+)\(([^)]+)\): (.+)'
+          on_match: ['\1', '\2', '\3']
+          default: ['', '', '\g<0>']
+        - !FoldRows
+          - !EmptyColumn 0
+        - !PrependRow
+          - REGION
+          - DM
+          - DESCRIPTION
+      poor-maintenance: !Table
+        tags: [spacecraft-operation/poor-maintenance-effect]
+        extraction: *one-row-header
+      running-cost-summary: !Table
+        tags: [spacecraft-operation/running-cost]
+        extraction: *one-row-header
+      salvage: !Table
+        tags: [encounter/space-travel/salvage]
+        extraction: *one-row-header
+      ship-software: !Table
+        tags: [spacecraft-software]
+        extraction: *one-row-header
+      space-encounters: !Table
+        tags: [encounter/space-travel]
+        extraction: *one-row-header
+      transit-times: !Table
+        tags: [space-travel/travel-time]
+        extraction: !TableExtraction
+        - !FoldRows
+          - !EmptyColumn 1
+      weapon-power: !Table
+        tags: [spacecraft-power/require/weapon]
+        extraction: *one-row-header
+    groups:
+      sensors: !Group
+        tables:
+          range-bands: !Table
+            tags: [spacecraft-sensor/range-band]
+            extraction: *one-row-header
+          range-effect: !Table
+            tags: [spacecraft-sensor/range-effect]
+            extraction: *one-row-header
+          detail: !Table
+            tags: [spacecraft-sensor/detail]
+            extraction: *one-row-header
   13-trade: !Group
     tables:
       trade-goods: !Table
