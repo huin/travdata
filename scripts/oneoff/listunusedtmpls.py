@@ -48,6 +48,7 @@ def _list_unused_templates(grp: config.Group, top_level: bool) -> None:
                     _print_error(
                         f"Directory {dir_entry_path.relative_to(grp.cfg_dir)} is not in configuration. Missing Group?"
                     )
+                    _print_basic_group_yaml(dir_entry_path)
                     continue
                 _list_unused_templates(sub_grp, top_level=False)
 
@@ -83,6 +84,25 @@ def _list_unused_templates(grp: config.Group, top_level: bool) -> None:
     missing_tmpls = set(grp.tables.keys()) - seen_tmpl_names
     if missing_tmpls:
         _print_error(f"Missing Tabula templates in {grp.rel_dir}: {sorted(missing_tmpls)}")
+
+
+def _print_basic_group_yaml(grp_dir: pathlib.Path) -> None:
+    top_level = {grp_dir.name: _create_basic_group_yaml(grp_dir)}
+    config._YAML.dump(top_level, sys.stdout)
+
+
+def _create_basic_group_yaml(grp_dir: pathlib.Path) -> config._YamlGroup:
+    grp = config._YamlGroup()
+    with os.scandir(grp_dir) as dir_iter:
+        for dir_entry in dir_iter:
+            dir_entry_path = pathlib.Path(dir_entry)
+            if dir_entry.is_file():
+                grp.tables[dir_entry.name.removesuffix(config.TABULA_TEMPLATE_SUFFIX)] = (
+                    config._YamlTable(extraction=config.TableExtraction())
+                )
+            elif dir_entry.is_dir():
+                grp.groups[dir_entry.name] = _create_basic_group_yaml(dir_entry_path)
+    return grp
 
 
 if __name__ == "__main__":
