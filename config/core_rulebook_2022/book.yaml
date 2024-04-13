@@ -791,6 +791,66 @@ groups:
           detail: !Table
             tags: [spacecraft-sensor/detail]
             extraction: *one-row-header
+  09-space-combat: !Group
+    tags: [space-combat]
+    tables:
+      missile-flight: !Table
+        extraction: *one-row-header
+      range-bands: !Table
+        extraction: *one-row-header
+      ship-movement: !Table
+        extraction: *one-row-header
+      turrets: !Table
+        extraction: *one-row-header
+    groups:
+      spacecraft-attack: !Group
+        tags: [spacecraft-attack]
+        tables:
+          damage-scale: !Table
+            tags: [spacecraft-attack/damage-scale]
+            extraction: !TableExtraction
+            - !FoldRows
+              - !StaticRowCounts [2, 2, 2, 2]
+          dogfighting-modifiers: !Table
+            tags: [spacecraft-attack/dm, spacecraft-attack/dm/dogfight]
+            extraction: !TableExtraction
+            - !FoldRows
+              - !StaticRowCounts [1, 1, 1, 2, 3, 2]
+          spacecraft-attack-bonuses: !Table
+            tags: [spacecraft-attack/dm, spacecraft-attack/dm/bonus]
+            extraction: !TableExtraction
+            - !PrependRow ['', "DM"]
+            - !FoldRows
+              - !StaticRowCounts [2, 1, 2, 2, 2]
+          spacecraft-attack-penalties: !Table
+            tags: [spacecraft-attack/dm, spacecraft-attack/dm/penalty]
+            extraction: !TableExtraction
+            - !PrependRow ['', "DM"]
+            - !FoldRows
+              - !EmptyColumn 1
+          spacecraft-scale-weapons: !Table
+            tags: [spacecraft-attack/weapon]
+            extraction: *one-row-header
+      boarding-actions: !Group
+        tags: [boarding-actions]
+        tables:
+          boarding-actions-dm: !Table
+            tags: [boarding-actions/dm]
+            extraction: *one-row-header
+          boarding-actions-outcome: !Table
+            tags: [boarding-actions/outcome]
+            extraction: *one-row-header
+      critical-hit: !Group
+        tags: [spacecraft-critical-hit]
+        tables:
+          critical-hit-effects: !Table
+            tags: [spacecraft-critical-hit/effect]
+            extraction: !TableExtraction
+            - !FoldRows
+              - !StaticRowCounts [1, 4, 4, 4, 5, 4, 3, 6, 4, 4, 4, 6]
+          critical-hit-location: !Table
+            tags: [spacecraft-critical-hit/location]
+            extraction: *one-row-header
   13-trade: !Group
     tables:
       trade-goods: !Table
