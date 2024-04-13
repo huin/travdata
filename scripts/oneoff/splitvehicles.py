@@ -10,6 +10,7 @@ import sys
 from typing import Any, TypedDict, cast
 
 from travdata import config
+from travdata.config import yamlreg
 
 _TABLES = [
     "equipment",
@@ -136,7 +137,7 @@ def main() -> None:
                 },
             )
 
-    config._YAML.dump(top_grp, sys.stdout)
+    yamlreg.YAML.dump(top_grp, sys.stdout)
 
 
 if __name__ == "__main__":

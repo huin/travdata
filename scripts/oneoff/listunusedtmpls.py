@@ -8,6 +8,7 @@ import pathlib
 import sys
 
 from travdata import config
+from travdata.config import yamlreg
 
 
 def main() -> None:
@@ -88,7 +89,7 @@ def _list_unused_templates(grp: config.Group, top_level: bool) -> None:
 
 def _print_basic_group_yaml(grp_dir: pathlib.Path) -> None:
     top_level = {grp_dir.name: _create_basic_group_yaml(grp_dir)}
-    config._YAML.dump(top_level, sys.stdout)
+    yamlreg.YAML.dump(top_level, sys.stdout)
 
 
 def _create_basic_group_yaml(grp_dir: pathlib.Path) -> config._YamlGroup:

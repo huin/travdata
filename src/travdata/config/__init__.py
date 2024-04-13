@@ -19,18 +19,11 @@ import sys
 import textwrap
 from typing import Any, ClassVar, Iterator, Optional, Self
 
-from ruamel import yaml
 from travdata import yamlutil
-
-_YAML = yaml.YAML()
-# Retain the original ordering in mappings.
-_YAML.representer.sort_base_mapping_type_on_output = False
+from travdata.config import yamlreg
 
 __executable_environment__ = "development"
 
-
-_INT_METADATA = {yamlutil.TO_YAML: int, yamlutil.FROM_YAML: int}
-_SET_METADATA = {yamlutil.TO_YAML: sorted, yamlutil.FROM_YAML: set}
 
 TABULA_TEMPLATE_SUFFIX = ".tabula-template.json"
 
@@ -40,7 +33,7 @@ class TableTransform(abc.ABC):
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class ExpandColumnOnRegex(TableTransform, yamlutil.YamlMappingMixin):
     """Splits a column by the matches of a regex."""
 
@@ -69,7 +62,7 @@ class ExpandColumnOnRegex(TableTransform, yamlutil.YamlMappingMixin):
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class PrependRow(TableTransform, yamlutil.YamlSequenceMixin):
     """Appends given literal row values to the start of a table."""
 
@@ -86,7 +79,7 @@ class RowGrouper(abc.ABC):
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class StaticRowCounts(RowGrouper, yamlutil.YamlSequenceMixin):
     """Specifies explicit input row counts for output grouped rows."""
 
@@ -99,7 +92,7 @@ class StaticRowCounts(RowGrouper, yamlutil.YamlSequenceMixin):
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class EmptyColumn(RowGrouper, yamlutil.YamlScalarMixin):
     """Specifies to group rows by when a given column is empty."""
 
@@ -112,7 +105,7 @@ class EmptyColumn(RowGrouper, yamlutil.YamlScalarMixin):
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class FoldRows(TableTransform, yamlutil.YamlSequenceMixin):
     """Folds rows, according to the given sequence of groupings."""
 
@@ -121,7 +114,7 @@ class FoldRows(TableTransform, yamlutil.YamlSequenceMixin):
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class JoinColumns(TableTransform, yamlutil.YamlMappingMixin):
     """Joins a range of columns."""
 
@@ -132,12 +125,12 @@ class JoinColumns(TableTransform, yamlutil.YamlMappingMixin):
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class WrapRowEveryN(TableTransform, yamlutil.YamlScalarMixin):
     """Wraps a row every N columns."""
 
     yaml_tag: ClassVar = "!WrapRowEveryN"
-    columns: int = dataclasses.field(metadata=_INT_METADATA)
+    columns: int = dataclasses.field(metadata=yamlutil.INT_METADATA)
 
     @classmethod
     def yaml_create_empty(cls) -> Self:
@@ -145,7 +138,7 @@ class WrapRowEveryN(TableTransform, yamlutil.YamlScalarMixin):
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class TableExtraction(yamlutil.YamlSequenceMixin):
     """Configures the specifics of extracting the CSV from the PDF."""
 
@@ -213,7 +206,7 @@ class Book:
         """Loads and returns the top-level group in the `Book`."""
         if self._group is None:
             rel_book_dir = pathlib.Path(self.id_)
-            yaml_group = _YAML.load(self.cfg_dir / rel_book_dir / "book.yaml")
+            yaml_group = yamlreg.YAML.load(self.cfg_dir / rel_book_dir / "book.yaml")
             self._group = _prepare_group(
                 yaml_group=yaml_group,
                 cfg_dir=self.cfg_dir,
@@ -232,10 +225,10 @@ class Config:
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class _YamlTable(yamlutil.YamlMappingMixin):
     yaml_tag: ClassVar = "!Table"
-    tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
+    tags: set[str] = dataclasses.field(default_factory=set, metadata=yamlutil.SET_METADATA)
     extraction: Optional[TableExtraction] = None
 
     def prepare(
@@ -264,10 +257,10 @@ class _YamlTable(yamlutil.YamlMappingMixin):
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class _YamlGroup(yamlutil.YamlMappingMixin):
     yaml_tag: ClassVar = "!Group"
-    tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
+    tags: set[str] = dataclasses.field(default_factory=set, metadata=yamlutil.SET_METADATA)
     templates: Optional[list[TableExtraction]] = None
     groups: dict[str, "_YamlGroup"] = dataclasses.field(default_factory=dict)
     tables: dict[str, _YamlTable] = dataclasses.field(default_factory=dict)
@@ -300,17 +293,17 @@ class _YamlGroup(yamlutil.YamlMappingMixin):
                 for name, group in self.groups.items()
             },
             # templates not included, as it is only for use in anchoring and
-            # aliasing by the YAML file author at the time of YAML parsing.
+            # aliasing by the cfgyaml.YAML.file author at the time of YAML parsing.
         )
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class _YamlBook(yamlutil.YamlMappingMixin):
     yaml_tag: ClassVar = "!Book"
     name: str
     default_filename: str
-    tags: set[str] = dataclasses.field(default_factory=set, metadata=_SET_METADATA)
+    tags: set[str] = dataclasses.field(default_factory=set, metadata=yamlutil.SET_METADATA)
 
     @classmethod
     def yaml_create_empty(cls) -> Self:
@@ -338,7 +331,7 @@ class _YamlBook(yamlutil.YamlMappingMixin):
 
 
 @dataclasses.dataclass
-@_YAML.register_class
+@yamlreg.YAML.register_class
 class _YamlConfig(yamlutil.YamlMappingMixin):
     yaml_tag: ClassVar = "!Config"
     books: dict[str, _YamlBook]
@@ -381,8 +374,8 @@ def _prepare_group(
 
 
 def load_group_from_str(yaml_str: str, parent_tags: set[str]) -> Group:
-    """Loads the configuration from the given string containing YAML."""
-    cfg = _YAML.load(yaml_str)
+    """Loads the configuration from the given string containing cfgyaml.YAML."""
+    cfg = yamlreg.YAML.load(yaml_str)
     return _prepare_group(
         yaml_group=cfg,
         cfg_dir=pathlib.Path("."),
@@ -392,14 +385,14 @@ def load_group_from_str(yaml_str: str, parent_tags: set[str]) -> Group:
 
 
 def parse_yaml_for_testing(yaml_str: str) -> Any:
-    """Parses the given YAML, without preparing it.
+    """Parses the given cfgyaml.YAML. without preparing it.
 
     This is only exposed for testing purposes.
 
-    :param yaml_str: YAML to parse.
+    :param yaml_str: cfgyaml.YAML.to parse.
     :return: Parsed objects.
     """
-    return _YAML.load(yaml_str)
+    return yamlreg.YAML.load(yaml_str)
 
 
 def _prepare_config(
@@ -413,7 +406,7 @@ def _prepare_config(
 
 def load_config(cfg_dir: pathlib.Path) -> Config:
     """Loads the configuration from the directory."""
-    cfg = _YAML.load(cfg_dir / "config.yaml")
+    cfg = yamlreg.YAML.load(cfg_dir / "config.yaml")
     return _prepare_config(
         cfg=cfg,
         cfg_dir=cfg_dir,

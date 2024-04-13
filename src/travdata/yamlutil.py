@@ -15,6 +15,10 @@ TO_YAML = "to_yaml"  # Callable to convert to YAML value.
 FROM_YAML = "from_yaml"  # Callable to convert from YAML value.
 
 
+INT_METADATA = {TO_YAML: int, FROM_YAML: int}
+SET_METADATA = {TO_YAML: sorted, FROM_YAML: set}
+
+
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
