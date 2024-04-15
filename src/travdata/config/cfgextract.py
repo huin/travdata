@@ -78,7 +78,7 @@ class EmptyColumn(RowGrouper, yamlutil.YamlScalarMixin):
     """Specifies to group rows by when a given column is empty."""
 
     yaml_tag: ClassVar = "!EmptyColumn"
-    column_index: int = dataclasses.field(metadata={"from_yaml": int})
+    column_index: int = dataclasses.field(metadata=yamlutil.INT_METADATA)
 
     @classmethod
     def yaml_create_empty(cls) -> Self:
