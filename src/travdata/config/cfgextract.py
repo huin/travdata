@@ -55,6 +55,14 @@ class PrependRow(TableTransform, yamlutil.YamlSequenceMixin):
         return cls(row=[])
 
 
+@dataclasses.dataclass
+@yamlreg.YAML.register_class
+class Transpose(TableTransform, yamlutil.YamlMappingMixin):
+    """Transposes the table (rows become columns and vice versa)."""
+
+    yaml_tag: ClassVar = "!Transpose"
+
+
 class RowGrouper(abc.ABC):
     """Abstract base marker for configuring row grouping."""
 

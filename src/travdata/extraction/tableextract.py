@@ -87,6 +87,8 @@ def _transform(cfg: cfgextract.TableTransform, rows: Iterable[_Row]) -> Iterator
             return _prepend_row(cfg, rows)
         case cfgextract.FoldRows():
             return _fold_rows(cfg, rows)
+        case cfgextract.Transpose():
+            return _transpose(rows)
         case cfgextract.WrapRowEveryN():
             return _wrap_row_every_n(cfg, rows)
         case _:
@@ -224,6 +226,24 @@ def _fold_rows(
                     acc.append(text)
 
         row: _Row = [" ".join(cell) for cell in row_accum]
+        yield row
+
+
+def _transpose(
+    rows: Iterable[_Row],
+) -> Iterator[_Row]:
+    orig_rows = list(rows)
+    orig_num_cols = max(len(row) for row in orig_rows)
+    orig_num_rows = len(orig_rows)
+
+    for i in range(orig_num_cols):
+        row: _Row = []
+        for j in range(orig_num_rows):
+            try:
+                cell = orig_rows[j][i]
+            except IndexError:
+                cell = ""
+            row.append(cell)
         yield row
 
 

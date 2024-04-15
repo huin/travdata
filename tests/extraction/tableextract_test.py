@@ -337,6 +337,24 @@ class FakeTableReader:
                 ["r5c1"],
             ],
         ),
+        (
+            "Transposes a table.",
+            cfgextract.TableExtraction(
+                transforms=[cfgextract.Transpose()],
+            ),
+            [
+                [
+                    ["r1c1", "r1c2", "r1c3"],
+                    ["r2c1", "r2c2"],
+                    ["r3c1", "r3c2", "r3c3"],
+                ],
+            ],
+            [
+                ["r1c1", "r2c1", "r3c1"],
+                ["r1c2", "r2c2", "r3c2"],
+                ["r1c3", "", "r3c3"],
+            ],
+        ),
     ],
 )
 def test_extract_table(

@@ -23,6 +23,7 @@
     "!TradeCode mapping",
     "!TradeGood mapping",
     "!TradeGoodProperties mapping",
+    "!Transpose mapping",
     "!WrapRowEveryN scalar"
   ]
 }

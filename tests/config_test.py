@@ -147,6 +147,13 @@ def test_load_group_from_str() -> None:
             """,
             cfgextract.PrependRow(["foo", "bar"]),
         ),
+        (
+            "Transpose",
+            """
+            !Transpose {}
+            """,
+            cfgextract.Transpose(),
+        ),
     ],
 )
 def test_parse(name: str, yaml: str, expected: Any) -> None:
