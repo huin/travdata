@@ -691,47 +691,55 @@ groups:
         extraction: *one-row-header
     groups:
       vehicles: !Group
+        tags: [vehicle]
         templates:
           - tables: &vehicle-tables
               equipment: !Table
                 tags: [type/vehicle-equipment]
-                extraction: !TableExtraction []
+                extraction: !TableExtraction
+                  - !FoldRows
+                    - !AllRows {}
+                  - !PrependRow
+                    - EQUIPMENT
               spec: !Table
                 tags: [type/vehicle-spec]
-                extraction: !TableExtraction []
+                extraction: !TableExtraction
+                  - !Transpose {}
               armour: !Table
                 tags: [type/vehicle-armour]
-                extraction: !TableExtraction []
+                extraction: !TableExtraction
+                  - !WrapRowEveryN 2
+                  - !Transpose {}
         groups:
           air-raft: !Group
-            tags: [vehicle, vehicle/air-raft]
+            tags: [vehicle/air-raft]
             tables: *vehicle-tables
           atv: !Group
-            tags: [vehicle, vehicle/atv]
+            tags: [vehicle/atv]
             tables: *vehicle-tables
           brutus-heavy-cargo-truck: !Group
-            tags: [vehicle, vehicle/brutus-heavy-cargo-truck]
+            tags: [vehicle/brutus-heavy-cargo-truck]
             tables: *vehicle-tables
           cargo-lifter: !Group
-            tags: [vehicle, vehicle/cargo-lifter]
+            tags: [vehicle/cargo-lifter]
             tables: *vehicle-tables
           g-bike: !Group
-            tags: [vehicle, vehicle/g-bike]
+            tags: [vehicle/g-bike]
             tables: *vehicle-tables
           g-carrier: !Group
-            tags: [vehicle, vehicle/g-carrier]
+            tags: [vehicle/g-carrier]
             tables: *vehicle-tables
           g-racer: !Group
-            tags: [vehicle, vehicle/g-racer]
+            tags: [vehicle/g-racer]
             tables: *vehicle-tables
           gecko: !Group
-            tags: [vehicle, vehicle/gecko]
+            tags: [vehicle/gecko]
             tables: *vehicle-tables
           gunskiff: !Group
-            tags: [vehicle, vehicle/gunskiff]
+            tags: [vehicle/gunskiff]
             tables: *vehicle-tables
           personal-land-yacht: !Group
-            tags: [vehicle, vehicle/personal-land-yacht]
+            tags: [vehicle/personal-land-yacht]
             tables: *vehicle-tables
   08-spacecraft-operations: !Group
     tags: [spacecraft-operation]
