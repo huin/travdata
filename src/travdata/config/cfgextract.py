@@ -69,6 +69,14 @@ class RowGrouper(abc.ABC):
 
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
+class AllRows(RowGrouper, yamlutil.YamlMappingMixin):
+    """Specifies to group all remaining rows."""
+
+    yaml_tag: ClassVar = "!AllRows"
+
+
+@dataclasses.dataclass
+@yamlreg.YAML.register_class
 class StaticRowCounts(RowGrouper, yamlutil.YamlSequenceMixin):
     """Specifies explicit input row counts for output grouped rows."""
 

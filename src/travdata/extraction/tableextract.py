@@ -163,6 +163,10 @@ class _LineGrouper(Protocol):
         raise NotImplementedError
 
 
+def _all_rows(lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+    yield list(lines)
+
+
 def _static_row_lengths(
     cfg: cfgextract.StaticRowCounts, lines: Iterable[_Row]
 ) -> Iterator[_RowGroup]:
@@ -185,6 +189,8 @@ def _empty_column(cfg: cfgextract.EmptyColumn, lines: Iterable[_Row]) -> Iterato
 
 def _make_line_grouper(cfg: cfgextract.RowGrouper) -> _LineGrouper:
     match cfg:
+        case cfgextract.AllRows():
+            return _all_rows
         case cfgextract.StaticRowCounts():
             return functools.partial(_static_row_lengths, cfg)
         case cfgextract.EmptyColumn():

@@ -132,11 +132,13 @@ def test_load_group_from_str() -> None:
             !FoldRows
               - !StaticRowCounts [2]
               - !EmptyColumn 0
+              - !AllRows {}
             """,
             cfgextract.FoldRows(
                 [
                     cfgextract.StaticRowCounts([2]),
                     cfgextract.EmptyColumn(0),
+                    cfgextract.AllRows(),
                 ]
             ),
         ),
