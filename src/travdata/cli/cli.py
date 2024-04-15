@@ -12,8 +12,8 @@ This is a suite of tools that perform either or both of the following:
 import argparse
 from typing import Optional
 
-import travdata
 from travdata import commontext
+from travdata import travdatarelease
 from travdata.cli.cmds import (
     csvtoyaml,
     extractcsvtables,
@@ -36,7 +36,7 @@ def main() -> Optional[int]:
         "-V",
         help="Print the version of the program.",
         action="version",
-        version=f"%(prog)s {travdata.__executable_version__}",
+        version=f"%(prog)s {travdatarelease.EXECUTABLE_VERSION}",
     )
 
     subparsers = argparser.add_subparsers(required=True)

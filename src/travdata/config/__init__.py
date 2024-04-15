@@ -18,11 +18,9 @@ import sys
 import textwrap
 from typing import Any, ClassVar, Iterator, Optional, Self
 
-from travdata import yamlutil
+from travdata import travdatarelease, yamlutil
 from travdata.config import yamlreg
 from travdata.config import cfgextract
-
-__executable_environment__ = "development"
 
 
 TABULA_TEMPLATE_SUFFIX = ".tabula-template.json"
@@ -325,7 +323,7 @@ def get_default_config_path() -> Optional[pathlib.Path]:
     :raises RuntimeError: If the environment is not recognised.
     :return: Default path to the config directory, if known.
     """
-    match __executable_environment__:
+    match travdatarelease.EXECUTABLE_ENVIRONMENT:
         case "development":
             install_dir = _data_dir_for_development()
         case "pyinstaller":

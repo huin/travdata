@@ -66,10 +66,10 @@ def _write_hook_script(version: str, src_dir: pathlib.Path) -> Iterator[None]:
                 f"""\
 # -*- coding: utf-8 -*-
 import travdata
-from travdata import config
+from travdata import travdatarelease
 
-travdata.__executable_version__ = {version_literal}
-config.__executable_environment__ = {exec_literal}
+travdatarelease.EXECUTABLE_ENVIRONMENT = {exec_literal}
+travdatarelease.EXECUTABLE_VERSION = {version_literal}
 """
             )
 
