@@ -680,10 +680,12 @@ groups:
   07-vehicles: !Group
     tables:
       critical-hit-effects: !Table
+        tags: [vehicle-critical-hit, critical-hit/effect]
         extraction: !TableExtraction
           - !FoldRows
               - !StaticRowCounts [1, 3, 4, 5, 5, 6, 4, 4, 7, 7]
       critical-hits-location: !Table
+        tags: [vehicle-critical-hit, critical-hit/location]
         extraction: *one-row-header
       speed-bands: !Table
         extraction: *one-row-header
@@ -854,12 +856,12 @@ groups:
         tags: [spacecraft-critical-hit]
         tables:
           critical-hit-effects: !Table
-            tags: [spacecraft-critical-hit/effect]
+            tags: [critical-hit/effect]
             extraction: !TableExtraction
             - !FoldRows
               - !StaticRowCounts [1, 4, 4, 4, 5, 4, 3, 6, 4, 4, 4, 6]
           critical-hit-location: !Table
-            tags: [spacecraft-critical-hit/location]
+            tags: [critical-hit/location]
             extraction: *one-row-header
   13-trade: !Group
     tables:
