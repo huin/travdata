@@ -29,7 +29,9 @@ groups:
       life-events: !Table
         extraction: *one-row-header
       medical-bills: !Table
-        extraction: *one-row-header
+        extraction: !TableExtraction
+          - !FoldRows
+            - !EmptyColumn 1
       noble-titles: !Table
         extraction: *one-row-header
       pension: !Table
