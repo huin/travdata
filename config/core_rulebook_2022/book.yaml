@@ -520,7 +520,9 @@ groups:
         tables:
           disease: !Table
             tags: [danger/disease]
-            extraction: *one-row-header
+            extraction: !TableExtraction
+              - !FoldRows
+                - !EmptyColumn 1
           poisons: !Table
             tags: [danger/poison]
             extraction: *two-row-header
