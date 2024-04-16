@@ -514,7 +514,9 @@ groups:
             extraction: *one-row-header
           sizes: !Table
             tags: [type/animal-size]
-            extraction: *one-row-header
+            extraction: !TableExtraction
+              - !FoldRows
+                - !EmptyColumn 1
       dangers: !Group
         tags: [danger]
         tables:
