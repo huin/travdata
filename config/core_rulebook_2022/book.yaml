@@ -876,6 +876,57 @@ groups:
           critical-hit-location: !Table
             tags: [critical-hit/location]
             extraction: *one-row-header
+  10-spacecraft-construction: !Group
+    tags: [spacecraft/construction]
+    groups:
+      hull: !Group
+        tags: [spacecraft-hull]
+        tables:
+          hull-armour: !Table
+            tags: [spacecraft-hull/armor]
+            extraction: !TableExtraction
+              - !FoldRows
+                - !EmptyColumn 1
+          hull-configuraiton: !Table
+            tags: [spacecraft-hull/configuration]
+            extraction: !TableExtraction
+              - !FoldRows
+                - !EmptyColumn 1
+      drive: !Group
+        tags: [spacecraft-drive]
+        tables:
+          thrust-potential: !Table
+            tags: [spacecraft-drive/thrust]
+            extraction: !TableExtraction
+              - !Transpose {}
+          jump-potential: !Table
+            tags: [spacecraft-drive/jump]
+            extraction: !TableExtraction
+              - !Transpose {}
+    tables:
+      bridge-types: !Table
+        tags: [spacecraft-bridge]
+        extraction: *one-row-header
+      computers: !Table
+        tags: [spacecraft-computer]
+        extraction: *one-row-header
+      crew-requirements: !Table
+        tags: [spacecraft-crew-requirement]
+        extraction: *one-row-header
+      power-plant-type: !Table
+        tags: [spacecraft-power-plant]
+        extraction: *one-row-header
+      sensors: !Table
+        tags: [spacecraft-sensor]
+        extraction: !TableExtraction
+          - !FoldRows
+            - !EmptyColumn 1
+      turret-weapons: !Table
+        tags: [spacecraft-turret-weapon]
+        extraction: *one-row-header
+      turrets-and-fixed-mounts: !Table
+        tags: [spacecraft-turret-and-fixed-mount]
+        extraction: *one-row-header
   13-trade: !Group
     tables:
       trade-goods: !Table
