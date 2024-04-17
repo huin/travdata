@@ -57,6 +57,7 @@ ignore-paths = ["oneoff"]
 
 [tool.pylint."messages control"]
 disable = [
+    "too-few-public-methods",
     # mypy expects the ellipsis in Protocol methods.
     "unnecessary-ellipsis",
 ]

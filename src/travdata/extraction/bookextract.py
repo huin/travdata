@@ -6,7 +6,7 @@ import dataclasses
 import pathlib
 from typing import Callable, Iterator
 
-from travdata import config, csvutil
+from travdata import config, csvutil, filesio
 from travdata.extraction import tableextract
 
 
@@ -70,6 +70,7 @@ def _filter_tables(
 
 def _extract_single_table(
     *,
+    cfg_reader: filesio.Reader,
     table_reader: tableextract.TableReader,
     cfg: ExtractionConfig,
     created_directories: set[pathlib.Path],
@@ -82,6 +83,7 @@ def _extract_single_table(
         created_directories.add(group_dir)
 
     rows = tableextract.extract_table(
+        cfg_reader=cfg_reader,
         table=output_table.table,
         pdf_path=cfg.input_pdf,
         table_reader=table_reader,
@@ -107,12 +109,14 @@ class ExtractEvents:
 
 def extract_book(
     *,
+    cfg_reader: filesio.Reader,
     table_reader: tableextract.TableReader,
     cfg: ExtractionConfig,
     events: ExtractEvents,
 ) -> None:
     """Extracts an entire book to CSV.
 
+    :param cfg_reader: Configuration reader.
     :param table_reader: Extractor for individual tables from a PDF.
     :param cfg: Configuration for extraction.
     :param events: Event hooks to feed back progress, etc.
@@ -130,6 +134,7 @@ def extract_book(
 
         try:
             _extract_single_table(
+                cfg_reader=cfg_reader,
                 table_reader=table_reader,
                 cfg=cfg,
                 created_directories=created_directories,

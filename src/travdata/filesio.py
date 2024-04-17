@@ -55,6 +55,11 @@ class DirReader(Reader):
         """Create a DirReader to read from the given directory."""
         yield cls(dir_path)
 
+    @property
+    def dir_path(self) -> pathlib.Path:
+        """Returns the directory path."""
+        return self._dir_path
+
     def open_read(
         self,
         path: pathlib.PurePath,

@@ -3,7 +3,7 @@
 
 import json
 import pathlib
-from typing import Iterable, Iterator, TypeAlias, TypedDict, cast
+from typing import IO, Iterable, Iterator, TypeAlias, TypedDict, cast
 
 import jpype  # type: ignore[import-untyped]
 import tabula
@@ -80,19 +80,19 @@ class TabulaClient:
         self,
         *,
         pdf_path: pathlib.Path,
-        template_path: pathlib.Path,
+        template_file: IO[bytes],
     ) -> list[TabulaTable]:
         """Reads table(s) from a PDF, based on the Tabula template.
 
         :param pdf_path: Path to PDF to read from.
-        :param template_path: Path to the Tabula template JSON file.
+        :param template_file: File-like reader for the Tabula template JSON
+        file.
         :return: Tables read from the PDF.
         """
         self._needs_shutdown = not self._force_subprocess
 
         result: list[TabulaTable] = []
-        with template_path.open() as tf:
-            template = cast(list[_TemplateEntry], json.load(tf))
+        template = cast(list[_TemplateEntry], json.load(template_file))
 
         for entry in template:
             method = entry["extraction_method"]

@@ -22,6 +22,7 @@ def add_subparser(subparsers) -> None:
 def run(args: argparse.Namespace) -> None:
     """CLI entry point."""
 
-    cfg = config.load_config_from_flag(args)
+    with config.config_reader(args) as cfg_reader:
+        cfg = config.load_config(cfg_reader)
     for name in sorted(cfg.books):
         print(name)

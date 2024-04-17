@@ -5,9 +5,9 @@ import functools
 import itertools
 import pathlib
 import re
-from typing import Iterable, Iterator, Protocol, TypeAlias
+from typing import IO, Iterable, Iterator, Protocol, TypeAlias
 
-from travdata import config
+from travdata import config, filesio
 from travdata.config import cfgextract
 from travdata.extraction import parseutil, tabulautil
 
@@ -25,12 +25,13 @@ class TableReader(Protocol):
         self,
         *,
         pdf_path: pathlib.Path,
-        template_path: pathlib.Path,
+        template_file: IO[bytes],
     ) -> list[tabulautil.TabulaTable]:
         """Reads tables from a PDF file, using the named template file.
 
         :param pdf_path: Path to the PDF file.
-        :param template_path: Path to the tabula-template.json file.
+        :param template_file: File-like reader for the Tabula template JSON
+        file.
         :return: List of extracted tables.
         """
         raise NotImplementedError
@@ -41,12 +42,14 @@ class ConfigurationError(Exception):
 
 
 def extract_table(
+    cfg_reader: filesio.Reader,
     table: config.Table,
     pdf_path: pathlib.Path,
     table_reader: TableReader,
 ) -> Iterator[list[str]]:
     """Extracts a table from the PDF.
 
+    :cfg_reader: Configuration file reader.
     :param table: Configuration of the table to extract. ``table.extraction``
     must not be None.
     :param pdf_path: Path to the PDF to extract from.
@@ -59,18 +62,19 @@ def extract_table(
             f"extract_table called with table with `None` extraction: {table=}",
         )
 
-    tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
-        table_reader.read_pdf_with_template(
-            pdf_path=pdf_path,
-            template_path=table.tabula_template_path,
+    with cfg_reader.open_read(table.tabula_template_path) as tmpl_file:
+        tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
+            table_reader.read_pdf_with_template(
+                pdf_path=pdf_path,
+                template_file=tmpl_file,
+            )
         )
-    )
-    rows = tabulautil.table_rows_text(tabula_rows)
+        rows = tabulautil.table_rows_text(tabula_rows)
 
-    for transform_cfg in table.extraction.transforms:
-        rows = _transform(transform_cfg, rows)
+        for transform_cfg in table.extraction.transforms:
+            rows = _transform(transform_cfg, rows)
 
-    return _clean_rows(rows)
+        return _clean_rows(rows)
 
 
 _Row: TypeAlias = list[str]

@@ -12,13 +12,14 @@ See development.adoc for more information in how this is used.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import dataclasses
 import pathlib
 import sys
 import textwrap
 from typing import Any, ClassVar, Iterator, Optional, Self
 
-from travdata import travdatarelease, yamlutil
+from travdata import filesio, travdatarelease, yamlutil
 from travdata.config import yamlreg
 from travdata.config import cfgextract
 
@@ -35,17 +36,16 @@ class Table:
     output ``.csv`` file in the output directory.
     """
 
-    cfg_dir: pathlib.Path
-    file_stem: pathlib.Path
+    file_stem: pathlib.PurePath
     tags: set[str] = dataclasses.field(default_factory=set)
     extraction: Optional[cfgextract.TableExtraction] = dataclasses.field(
         default_factory=cfgextract.TableExtraction
     )
 
     @property
-    def tabula_template_path(self) -> pathlib.Path:
-        """Path to the Tabula template, if it exists."""
-        return self.cfg_dir / self.file_stem.with_suffix(TABULA_TEMPLATE_SUFFIX)
+    def tabula_template_path(self) -> pathlib.PurePath:
+        """Path to the Tabula template, assuming that it exists."""
+        return self.file_stem.with_suffix(TABULA_TEMPLATE_SUFFIX)
 
 
 @dataclasses.dataclass
@@ -57,8 +57,7 @@ class Group:
     The table items have Tabula templates in ``.directory``.
     """
 
-    cfg_dir: pathlib.Path
-    rel_dir: pathlib.Path
+    rel_dir: pathlib.PurePath
     tags: set[str] = dataclasses.field(default_factory=set)
     tables: dict[str, Table] = dataclasses.field(default_factory=dict)
     groups: dict[str, "Group"] = dataclasses.field(default_factory=dict)
@@ -77,24 +76,16 @@ class Group:
 class Book:
     """Top level information about a book."""
 
-    cfg_dir: pathlib.Path
     id_: str
     name: str
     default_filename: str
     tags: set[str] = dataclasses.field(default_factory=set)
     _group: Optional[Group] = None
 
-    def load_group(self) -> Group:
+    def load_group(self, cfg_reader: filesio.Reader) -> Group:
         """Loads and returns the top-level group in the `Book`."""
         if self._group is None:
-            rel_book_dir = pathlib.Path(self.id_)
-            yaml_group = yamlreg.YAML.load(self.cfg_dir / rel_book_dir / "book.yaml")
-            self._group = _prepare_group(
-                yaml_group=yaml_group,
-                cfg_dir=self.cfg_dir,
-                rel_book_dir=rel_book_dir,
-                parent_tags=self.tags,
-            )
+            self._group = load_book(cfg_reader, self.id_, self.tags)
         return self._group
 
 
@@ -102,7 +93,6 @@ class Book:
 class Config:
     """Top-level configuration."""
 
-    cfg_dir: pathlib.Path
     books: dict[str, Book] = dataclasses.field(default_factory=dict)
 
 
@@ -115,24 +105,21 @@ class _YamlTable(yamlutil.YamlMappingMixin):
 
     def prepare(
         self,
-        cfg_dir: pathlib.Path,
         name: str,
-        directory: pathlib.Path,
+        rel_group_dir: pathlib.PurePath,
         parent_tags: set[str],
     ) -> Table:
         """Creates a ``Table`` from self.
 
-        :param cfg_dir: Path to the directory of the top-level ``Config``.
         :param name: Name of the table within its ``Group.groups``.
-        :param directory: Path to the directory of the parent ``Group``,
-        relative to the top-level config directory.
+        :param rel_group_dir: Path to the directory of the table's parent
+        group's directory, relative to the top-level config directory.
         :param parent_tags: Tags to inherit from parent ``Group``.
         :return: Prepared ``Table``.
         """
         tags = self.tags | parent_tags
         return Table(
-            cfg_dir=cfg_dir,
-            file_stem=directory / name,
+            file_stem=rel_group_dir / name,
             tags=tags,
             extraction=self.extraction,
         )
@@ -149,13 +136,11 @@ class _YamlGroup(yamlutil.YamlMappingMixin):
 
     def prepare(
         self,
-        cfg_dir: pathlib.Path,
-        rel_group_dir: pathlib.Path,
+        rel_group_dir: pathlib.PurePath,
         parent_tags: set[str],
     ) -> Group:
         """Creates a ``Group`` from self.
 
-        :param cfg_dir: Path to the directory of the top-level ``Config``.
         :param rel_group_dir: Path to the directory of this group's directory,
         relative to the top-level config directory.
         :param parent_tags: Tags to inherit from parent ``Group``.
@@ -163,15 +148,14 @@ class _YamlGroup(yamlutil.YamlMappingMixin):
         """
         tags = self.tags | parent_tags
         return Group(
-            cfg_dir=cfg_dir,
             rel_dir=rel_group_dir,
             tags=tags,
             tables={
-                name: table.prepare(cfg_dir, name, rel_group_dir, parent_tags=tags)
+                name: table.prepare(name, rel_group_dir, parent_tags=tags)
                 for name, table in self.tables.items()
             },
             groups={
-                name: group.prepare(cfg_dir, rel_group_dir / name, parent_tags=tags)
+                name: group.prepare(rel_group_dir / name, parent_tags=tags)
                 for name, group in self.groups.items()
             },
             # templates not included, as it is only for use in anchoring and
@@ -193,18 +177,16 @@ class _YamlBook(yamlutil.YamlMappingMixin):
 
     def prepare(
         self,
-        cfg_dir: pathlib.Path,
         book_id: str,
     ) -> Book:
         """Creates a ``Book`` from self.
 
-        :param cfg_dir: Path to the directory of the top-level ``Config``.
+        :param cfg_reader: Reader for the configuration files.
         :param book_id: ID of the book within the parent _YamlConfig.
         :return: Prepared ``Book``.
         """
         tags = self.tags | {f"book/{self.name}"}
         return Book(
-            cfg_dir=cfg_dir,
             id_=book_id,
             name=self.name,
             default_filename=self.default_filename,
@@ -222,7 +204,7 @@ class _YamlConfig(yamlutil.YamlMappingMixin):
     def yaml_create_empty(cls) -> Self:
         return cls(books={})
 
-    def prepare(self, cfg_dir: pathlib.Path) -> Config:
+    def prepare(self) -> Config:
         """Creates a ``Group`` from self.
 
         :param cfg_dir: Path to the directory of the top-level ``Config``.
@@ -230,38 +212,36 @@ class _YamlConfig(yamlutil.YamlMappingMixin):
         """
         books: dict[str, Book] = {}
         for book_id, yaml_book in self.books.items():
-            books[book_id] = yaml_book.prepare(
-                cfg_dir=cfg_dir,
-                book_id=book_id,
-            )
-        return Config(
-            cfg_dir=cfg_dir,
-            books=books,
-        )
+            books[book_id] = yaml_book.prepare(book_id=book_id)
+        return Config(books=books)
 
 
 def _prepare_group(
     yaml_group: Any | _YamlGroup,
-    cfg_dir: pathlib.Path,
-    rel_book_dir: pathlib.Path,
+    rel_book_dir: pathlib.PurePath,
     parent_tags: set[str],
 ) -> Group:
     if not isinstance(yaml_group, _YamlGroup):
         raise TypeError(yaml_group)
     return yaml_group.prepare(
-        cfg_dir=cfg_dir,
         rel_group_dir=rel_book_dir,
         parent_tags=parent_tags,
     )
 
 
-def load_group_from_str(yaml_str: str, parent_tags: set[str]) -> Group:
-    """Loads the configuration from the given string containing cfgyaml.YAML."""
-    cfg = yamlreg.YAML.load(yaml_str)
+def load_book(
+    cfg_reader: filesio.Reader,
+    book_id: str,
+    parent_tags: set[str],
+) -> Group:
+    """Loads the book configuration from the given reader."""
+    rel_book_dir = pathlib.PurePath(book_id)
+    config_path = rel_book_dir / "book.yaml"
+    with cfg_reader.open_read(config_path) as f:
+        cfg = yamlreg.YAML.load(f)
     return _prepare_group(
         yaml_group=cfg,
-        cfg_dir=pathlib.Path("."),
-        rel_book_dir=pathlib.Path("."),
+        rel_book_dir=rel_book_dir,
         parent_tags=parent_tags,
     )
 
@@ -277,22 +257,17 @@ def parse_yaml_for_testing(yaml_str: str) -> Any:
     return yamlreg.YAML.load(yaml_str)
 
 
-def _prepare_config(
-    cfg: Any | _YamlConfig,
-    cfg_dir: pathlib.Path,
-) -> Config:
+def _prepare_config(cfg: Any | _YamlConfig) -> Config:
     if not isinstance(cfg, _YamlConfig):
         raise TypeError(cfg)
-    return cfg.prepare(cfg_dir)
+    return cfg.prepare()
 
 
-def load_config(cfg_dir: pathlib.Path) -> Config:
+def load_config(cfg_reader: filesio.Reader) -> Config:
     """Loads the configuration from the directory."""
-    cfg = yamlreg.YAML.load(cfg_dir / "config.yaml")
-    return _prepare_config(
-        cfg=cfg,
-        cfg_dir=cfg_dir,
-    )
+    with cfg_reader.open_read(pathlib.PurePath("config.yaml")) as f:
+        cfg = yamlreg.YAML.load(f)
+    return _prepare_config(cfg=cfg)
 
 
 def add_config_flag(argparser: argparse.ArgumentParser) -> None:
@@ -346,11 +321,13 @@ def _data_dir_for_pyinstaller() -> pathlib.Path:
     return pathlib.Path(getattr(sys, "_MEIPASS"))
 
 
-def load_config_from_flag(args: argparse.Namespace) -> Config:
-    """Returns a ``Config`` specified by the parsed arguments.
+def config_reader(
+    args: argparse.Namespace,
+) -> contextlib.AbstractContextManager[filesio.Reader]:
+    """Returns a Reader for the configuration.
 
     :param args: Parsed arguments. This must have been generated from a parser
     that included the argument added by ``add_config_flag``.
-    :return: Loaded configuration.
+    :return: Context manager for a configuration reader.
     """
-    return load_config(args.config_dir)
+    return filesio.DirReader.open(args.config_dir)

@@ -2,55 +2,51 @@
 # pylint: disable=missing-class-docstring,missing-function-docstring,missing-module-docstring
 
 import pathlib
-import textwrap
 from typing import Any
 
 import testfixtures  # type: ignore[import-untyped]
 import pytest
-from travdata import config
+from travdata import config, filesio
 from travdata.config import cfgextract
 
 
 def test_load_group_from_str() -> None:
-    actual = config.load_group_from_str(
-        textwrap.dedent(
-            """
-    !Group
-    tags: [top]
-    groups:
-        grp-a: !Group
-            tables:
-                foo: !Table
-                    tags: [type/foo]
-                    extraction: !TableExtraction
-                        - !WrapRowEveryN 2
-                bar: !Table
-                    tags: [type/bar]
-                    extraction: !TableExtraction
-                        - !FoldRows
-                            - !StaticRowCounts [1]
-                            - !EmptyColumn 3
-                defaults: !Table {}
-    """
-        ),
-        parent_tags={"outer"},
-    )
+    book_name = "book-name"
+    book_yaml_path = pathlib.PurePath(book_name) / "book.yaml"
+    book_yaml = b"""
+!Group
+tags: [top]
+groups:
+    grp-a: !Group
+        tables:
+            foo: !Table
+                tags: [type/foo]
+                extraction: !TableExtraction
+                    - !WrapRowEveryN 2
+            bar: !Table
+                tags: [type/bar]
+                extraction: !TableExtraction
+                    - !FoldRows
+                        - !StaticRowCounts [1]
+                        - !EmptyColumn 3
+            defaults: !Table {}
+"""
+    files = {book_yaml_path: book_yaml}
+    with filesio.MemReader.open(files) as cfg_reader:
+        actual = config.load_book(cfg_reader, book_name, {"outer"})
 
     testfixtures.compare(
         actual=actual,
         expected=config.Group(
-            cfg_dir=pathlib.Path("."),
-            rel_dir=pathlib.Path("."),
+            rel_dir=pathlib.Path(book_name),
             tags={"outer", "top"},
             groups={
                 "grp-a": config.Group(
-                    cfg_dir=pathlib.Path("."),
-                    rel_dir=pathlib.Path("./grp-a"),
+                    rel_dir=pathlib.Path(f"{book_name}/grp-a"),
                     tags={"outer", "top"},
                     tables={
                         "foo": config.Table(
-                            cfg_dir=pathlib.Path("."),
-                            file_stem=pathlib.Path("./grp-a/foo"),
+                            file_stem=pathlib.Path(f"{book_name}/grp-a/foo"),
                             tags={"outer", "top", "type/foo"},
                             extraction=cfgextract.TableExtraction(
                                 transforms=[
@@ -59,8 +55,7 @@ def test_load_group_from_str() -> None:
                             ),
                         ),
                         "bar": config.Table(
-                            cfg_dir=pathlib.Path("."),
-                            file_stem=pathlib.Path("./grp-a/bar"),
+                            file_stem=pathlib.Path(f"{book_name}/grp-a/bar"),
                             tags={"outer", "top", "type/bar"},
                             extraction=cfgextract.TableExtraction(
                                 transforms=[
@@ -74,8 +69,7 @@ def test_load_group_from_str() -> None:
                             ),
                         ),
                         "defaults": config.Table(
-                            cfg_dir=pathlib.Path("."),
-                            file_stem=pathlib.Path("./grp-a/defaults"),
+                            file_stem=pathlib.Path(f"{book_name}/grp-a/defaults"),
                             tags={"outer", "top"},
                             extraction=None,
                         ),

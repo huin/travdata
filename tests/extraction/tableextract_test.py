@@ -3,10 +3,11 @@
 
 import dataclasses
 import pathlib
+from typing import IO
 
 import pytest
 import testfixtures  # type: ignore[import-untyped]
-from travdata import config
+from travdata import config, filesio
 from travdata.config import cfgextract
 from travdata.extraction import tableextract, tabulautil
 
@@ -14,7 +15,7 @@ from travdata.extraction import tableextract, tabulautil
 @dataclasses.dataclass(frozen=True)
 class Call:
     pdf_path: pathlib.Path
-    template_path: pathlib.Path
+    template_content: bytes
 
 
 class FakeTableReader:
@@ -39,9 +40,9 @@ class FakeTableReader:
         self,
         *,
         pdf_path: pathlib.Path,
-        template_path: pathlib.Path,
+        template_file: IO[bytes],
     ) -> list[tabulautil.TabulaTable]:
-        self.calls.append(Call(pdf_path, template_path))
+        self.calls.append(Call(pdf_path, template_file.read()))
         return self.return_tables
 
 
@@ -378,25 +379,25 @@ def test_extract_table(
     extract_cfg: cfgextract.TableExtraction,
     tables_in,
     expected: list[list[str]],
-):
+) -> None:
     print(name)
-    config_dir = pathlib.Path("cfg_dir")
+    tmpl_path = pathlib.PurePath("foo/bar.tabula-template.json")
+    tmpl_content = b'{"fake": "json"}'
+    files = {tmpl_path: tmpl_content}
     pdf_path = pathlib.Path("some.pdf")
     file_stem = pathlib.Path("foo/bar")
-    expected_template_path = pathlib.Path("cfg_dir/foo/bar.tabula-template.json")
-    table_reader = FakeTableReader(tables_in=tables_in)
-    actual = tableextract.extract_table(
-        table=config.Table(
-            cfg_dir=config_dir,
-            file_stem=file_stem,
-            extraction=extract_cfg,
-        ),
-        pdf_path=pdf_path,
-        table_reader=table_reader,
-    )
+    with filesio.MemReader.open(files) as cfg_reader:
+        table_reader = FakeTableReader(tables_in=tables_in)
+        actual = tableextract.extract_table(
+            cfg_reader=cfg_reader,
+            table=config.Table(
+                file_stem=file_stem,
+                extraction=extract_cfg,
+            ),
+            pdf_path=pdf_path,
+            table_reader=table_reader,
+        )
     # Check read_pdf_with_template calls.
-    testfixtures.compare(
-        expected=[Call(pdf_path, expected_template_path)], actual=table_reader.calls
-    )
+    testfixtures.compare(expected=[Call(pdf_path, tmpl_content)], actual=table_reader.calls)
     # Check output.
     testfixtures.compare(expected=expected, actual=actual)

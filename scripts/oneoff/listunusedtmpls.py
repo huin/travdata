@@ -7,7 +7,7 @@ import os
 import pathlib
 import sys
 
-from travdata import config
+from travdata import config, filesio
 from travdata.config import cfgextract, yamlreg
 
 
@@ -24,19 +24,28 @@ def main() -> None:
     )
     args = argparser.parse_args()
 
-    cfg = config.load_config_from_flag(args)
+    with config.config_reader(args) as cfg_reader:
+        if not isinstance(cfg_reader, filesio.DirReader):
+            raise RuntimeError("Only supports configuration in a local directory.")
+        cfg_dir = cfg_reader.dir_path
 
-    for book in args.books:
-        grp = cfg.books[book].load_group()
-        _list_unused_templates(grp, True)
+        cfg = config.load_config(cfg_reader)
+
+        for book in args.books:
+            grp = cfg.books[book].load_group(cfg_reader)
+            _list_unused_templates(cfg_dir, grp, True)
 
 
 def _print_error(msg: str) -> None:
     print(msg, file=sys.stderr)
 
 
-def _list_unused_templates(grp: config.Group, top_level: bool) -> None:
-    with os.scandir(grp.cfg_dir / grp.rel_dir) as dir_iter:
+def _list_unused_templates(
+    cfg_dir: pathlib.Path,
+    grp: config.Group,
+    top_level: bool,
+) -> None:
+    with os.scandir(cfg_dir / grp.rel_dir) as dir_iter:
         seen_dirs: set[str] = set()
         seen_tmpl_names: set[str] = set()
         for dir_entry in dir_iter:
@@ -47,11 +56,11 @@ def _list_unused_templates(grp: config.Group, top_level: bool) -> None:
                     sub_grp = grp.groups[dir_entry.name]
                 except KeyError:
                     _print_error(
-                        f"Directory {dir_entry_path.relative_to(grp.cfg_dir)} is not in configuration. Missing Group?"
+                        f"Directory {dir_entry_path.relative_to(cfg_dir)} is not in configuration. Missing Group?"
                     )
                     _print_basic_group_yaml(dir_entry_path)
                     continue
-                _list_unused_templates(sub_grp, top_level=False)
+                _list_unused_templates(cfg_dir, sub_grp, top_level=False)
 
             elif dir_entry.is_file():
                 if dir_entry.name.endswith(config.TABULA_TEMPLATE_SUFFIX):
