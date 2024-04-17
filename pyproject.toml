@@ -54,3 +54,9 @@ exclude = '''(?x)(
 
 [tool.pylint.main]
 ignore-paths = ["oneoff"]
+
+[tool.pylint."messages control"]
+disable = [
+    # mypy expects the ellipsis in Protocol methods.
+    "unnecessary-ellipsis",
+]

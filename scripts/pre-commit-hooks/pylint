@@ -10,7 +10,15 @@ def main() -> None:
     if not files:
         return
     try:
-        subprocess.check_call(["poetry", "run", "pylint"] + files)
+        subprocess.check_call(
+            [
+                "poetry",
+                "run",
+                "pylint",
+                "--rcfile=pyproject.toml",
+            ]
+            + files
+        )
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
 
