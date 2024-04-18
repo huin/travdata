@@ -276,17 +276,18 @@ def add_config_flag(argparser: argparse.ArgumentParser) -> None:
     default_config_dir = get_default_config_path()
 
     argparser.add_argument(
-        "--config-dir",
+        "--config",
         "-c",
         help=textwrap.dedent(
             """
-            Path to the configuration directory. This must contain a config.yaml
-            file, and its required Tabula templates. Some configurations for
-            this should be included with this program's distribution.
+            Path to the configuration. This must be either a directory or ZIP
+            file, directly containing a config.yaml file, book.yaml files in
+            directories, and its required Tabula templates. Some configurations
+            for this should be included with this program's distribution.
             """
         ),
         type=pathlib.Path,
-        metavar="CONFIG_DIR",
+        metavar="CONFIG_PATH",
         required=default_config_dir is None,
         default=default_config_dir,
     )
@@ -330,4 +331,9 @@ def config_reader(
     that included the argument added by ``add_config_flag``.
     :return: Context manager for a configuration reader.
     """
-    return filesio.DirReader.open(args.config_dir)
+    path = args.config
+    if path.is_dir():
+        return filesio.DirReader.open(path)
+    if path.is_file():
+        return filesio.ZipReader.open(path)
+    raise ValueError(f"config path {path} is neither file nor directory")
