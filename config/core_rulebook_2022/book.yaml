@@ -1,13 +1,13 @@
 !Group
 templates:
-- !TableExtraction &one-row-header
-  - !FoldRows
-    - !StaticRowCounts [1]
-    - !EmptyColumn 0
-- !TableExtraction &two-row-header
-  - !FoldRows
-    - !StaticRowCounts [2]
-    - !EmptyColumn 0
+  - !TableExtraction &one-row-header
+    - !FoldRows
+      - !StaticRowCounts [1]
+      - !EmptyColumn 0
+  - !TableExtraction &two-row-header
+    - !FoldRows
+      - !StaticRowCounts [2]
+      - !EmptyColumn 0
 groups:
   02-traveller-creation: !Group
     tables:
@@ -17,7 +17,7 @@ groups:
         extraction: !TableExtraction
           - !ExpandColumnOnRegex
             column: 0
-            pattern: '([^0-9]+)(.+)'
+            pattern: "([^0-9]+)(.+)"
             on_match: ['\1', '\2']
             default: []
           - !PrependRow
@@ -362,7 +362,7 @@ groups:
               ranks-physician: !Table
                 tags: [rank/physician, type/career-rank]
                 extraction: !TableExtraction
-                  - !FoldRows 
+                  - !FoldRows
                     - !StaticRowCounts [1]
                     - !EmptyColumn 0
                   # For some reason, header captures spurious data, so leave it
@@ -398,12 +398,12 @@ groups:
               mishap: !Table
                 tags: [type/career-mishap]
                 extraction: !TableExtraction
-                  - !FoldRows 
+                  - !FoldRows
                     - !StaticRowCounts [1]
                     - !EmptyColumn 0
                   # For some reason, header captures spurious data, so leave it
                   # out of the Tabula template, and add it back manually.
-                  - !PrependRow 
+                  - !PrependRow
                     - 1D
                     - MISHAP
               event: !Table
@@ -467,12 +467,12 @@ groups:
     tables:
       effect-results: !Table
         extraction: !TableExtraction
-          - !FoldRows 
+          - !FoldRows
             - !StaticRowCounts [1, 3, 1, 5, 3, 1, 2]
             - !EmptyColumn 0
       task-chain: !Table
         extraction: !TableExtraction
-          - !FoldRows 
+          - !FoldRows
             - !StaticRowCounts [3, 2, 2, 2, 2, 2, 2]
       task-difficulty: !Table
         extraction: !TableExtraction []
@@ -511,7 +511,7 @@ groups:
                 column: 0
                 pattern: '• ([^(]+) \(([^)]+)\): (.+)'
                 on_match: ['\1', '\2', '\3']
-                default: ['', '', '\g<0>']
+                default: ["", "", '\g<0>']
               - !FoldRows
                 - !EmptyColumn 0
               - !PrependRow
@@ -658,15 +658,15 @@ groups:
             extraction: *one-row-header
           laser-transceivers: !Table
             tags: [communication/transceiver, transceiver/laser]
-            extraction: !TableExtraction 
-            - !FoldRows
-              - !StaticRowCounts [1]
-              - !EmptyColumn 0
-            - !PrependRow
-              - LASER TRANSCEIVERS
-              - MASS
-              - RANGE
-              - COST
+            extraction: !TableExtraction
+              - !FoldRows
+                - !StaticRowCounts [1]
+                - !EmptyColumn 0
+              - !PrependRow
+                - LASER TRANSCEIVERS
+                - MASS
+                - RANGE
+                - COST
           mobile-comms: !Table
             tags: [communication/mobile]
             extraction: *one-row-header
@@ -688,15 +688,15 @@ groups:
           software: !Table
             tags: [computing/software]
             extraction: !TableExtraction
-            - !FoldRows
-              - !EmptyColumn 2
+              - !FoldRows
+                - !EmptyColumn 2
   07-vehicles: !Group
     tables:
       critical-hit-effects: !Table
         tags: [vehicle-critical-hit, critical-hit/effect]
         extraction: !TableExtraction
           - !FoldRows
-              - !StaticRowCounts [1, 3, 4, 5, 5, 6, 4, 4, 7, 7]
+            - !StaticRowCounts [1, 3, 4, 5, 5, 6, 4, 4, 7, 7]
       critical-hits-location: !Table
         tags: [vehicle-critical-hit, critical-hit/location]
         extraction: *one-row-header
@@ -770,17 +770,17 @@ groups:
       encounter-dm: !Table
         tags: [encounter/space-travel/dm]
         extraction: !TableExtraction
-        - !ExpandColumnOnRegex
-          column: 0
-          pattern: '([A-Z][^()]+)\(([^)]+)\): (.+)'
-          on_match: ['\1', '\2', '\3']
-          default: ['', '', '\g<0>']
-        - !FoldRows
-          - !EmptyColumn 0
-        - !PrependRow
-          - REGION
-          - DM
-          - DESCRIPTION
+          - !ExpandColumnOnRegex
+            column: 0
+            pattern: '([A-Z][^()]+)\(([^)]+)\): (.+)'
+            on_match: ['\1', '\2', '\3']
+            default: ["", "", '\g<0>']
+          - !FoldRows
+            - !EmptyColumn 0
+          - !PrependRow
+            - REGION
+            - DM
+            - DESCRIPTION
       poor-maintenance: !Table
         tags: [spacecraft-operation/poor-maintenance-effect]
         extraction: *one-row-header
@@ -799,8 +799,8 @@ groups:
       transit-times: !Table
         tags: [space-travel/travel-time]
         extraction: !TableExtraction
-        - !FoldRows
-          - !EmptyColumn 1
+          - !FoldRows
+            - !EmptyColumn 1
       weapon-power: !Table
         tags: [spacecraft-power/require/weapon]
         extraction: *one-row-header
@@ -834,25 +834,25 @@ groups:
           damage-scale: !Table
             tags: [spacecraft-attack/damage-scale]
             extraction: !TableExtraction
-            - !FoldRows
-              - !StaticRowCounts [2, 2, 2, 2]
+              - !FoldRows
+                - !StaticRowCounts [2, 2, 2, 2]
           dogfighting-modifiers: !Table
             tags: [spacecraft-attack/dm, spacecraft-attack/dm/dogfight]
             extraction: !TableExtraction
-            - !FoldRows
-              - !StaticRowCounts [1, 1, 1, 2, 3, 2]
+              - !FoldRows
+                - !StaticRowCounts [1, 1, 1, 2, 3, 2]
           spacecraft-attack-bonuses: !Table
             tags: [spacecraft-attack/dm, spacecraft-attack/dm/bonus]
             extraction: !TableExtraction
-            - !PrependRow ['', "DM"]
-            - !FoldRows
-              - !StaticRowCounts [2, 1, 2, 2, 2]
+              - !PrependRow ["", "DM"]
+              - !FoldRows
+                - !StaticRowCounts [2, 1, 2, 2, 2]
           spacecraft-attack-penalties: !Table
             tags: [spacecraft-attack/dm, spacecraft-attack/dm/penalty]
             extraction: !TableExtraction
-            - !PrependRow ['', "DM"]
-            - !FoldRows
-              - !EmptyColumn 1
+              - !PrependRow ["", "DM"]
+              - !FoldRows
+                - !EmptyColumn 1
           spacecraft-scale-weapons: !Table
             tags: [spacecraft-attack/weapon]
             extraction: *one-row-header
@@ -871,8 +871,8 @@ groups:
           critical-hit-effects: !Table
             tags: [critical-hit/effect]
             extraction: !TableExtraction
-            - !FoldRows
-              - !StaticRowCounts [1, 4, 4, 4, 5, 4, 3, 6, 4, 4, 4, 6]
+              - !FoldRows
+                - !StaticRowCounts [1, 4, 4, 4, 5, 4, 3, 6, 4, 4, 4, 6]
           critical-hit-location: !Table
             tags: [critical-hit/location]
             extraction: *one-row-header
