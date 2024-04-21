@@ -2,12 +2,13 @@
 # pylint: disable=missing-class-docstring,missing-function-docstring,missing-module-docstring
 
 import pathlib
+import textwrap
 from typing import Any
 
 import testfixtures  # type: ignore[import-untyped]
 import pytest
 from travdata import config, filesio
-from travdata.config import cfgextract
+from travdata.config import cfgerror, cfgextract
 
 
 def test_load_group_from_str() -> None:
@@ -78,6 +79,38 @@ groups:
             },
         ),
     )
+
+
+@pytest.mark.parametrize(
+    "name,yaml",
+    [
+        (
+            "ExpectMappingGotString",
+            """
+            !Table "not a mapping"
+            """,
+        ),
+        (
+            "ExpectSequenceGotString",
+            """
+            !TableExtraction "not a sequence"
+            """,
+        ),
+        (
+            "ExpectScalarGotMapping",
+            """
+            !EmptyColumn {}
+            """,
+        ),
+    ],
+)
+def test_config_parse_errors(
+    name: str,
+    yaml: str,
+) -> None:
+    print(name)
+    with pytest.raises(cfgerror.ConfigurationError):
+        config.parse_yaml_for_testing(textwrap.dedent(yaml))
 
 
 @pytest.mark.parametrize(

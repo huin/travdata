@@ -4,10 +4,14 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import ClassVar, Iterator, Self, cast, TYPE_CHECKING
+from typing import Any, ClassVar, Iterator, Self, TypeVar, cast, TYPE_CHECKING
 
 from ruamel import yaml
 from travdata import dataclassutil
+from travdata.config import cfgerror
+
+_T = TypeVar("_T")
+
 
 # Keys in dataclasses.field metadata used by this module:
 YAML_NAME = "yaml"  # Override the name of the field in a YAML mapping.
@@ -21,6 +25,19 @@ SET_METADATA = {TO_YAML: sorted, FROM_YAML: set}
 
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
+
+
+def _check_node_type(
+    yaml_tag: str,
+    node: Any,
+    want_type: type[_T],
+) -> _T:
+    if not isinstance(node, want_type):
+        raise cfgerror.ConfigurationError(
+            f"{node.start_mark.name}:{node.start_mark.line+1}:{node.start_mark.column+1}: "
+            f"{yaml_tag} should be a {want_type.__name__}, but is {type(node).__name__}"
+        )
+    return node
 
 
 def _yaml_field(cls: type) -> dataclasses.Field:
@@ -60,8 +77,10 @@ class YamlMappingMixin:
         return representer.represent_mapping(cls.yaml_tag, mapping)
 
     @classmethod
-    def from_yaml(cls, constructor, node: yaml.MappingNode) -> Iterator[Self]:
+    def from_yaml(cls, constructor, node) -> Iterator[Self]:
         """Implements deserialising the node from basic YAML types."""
+        node = _check_node_type(cls.yaml_tag, node, yaml.MappingNode)
+
         obj = cls.yaml_create_empty()
         yield obj
         data = yaml.CommentedMap()
@@ -118,9 +137,10 @@ class YamlScalarMixin:
         return representer.represent_scalar(cls.yaml_tag, scalar)
 
     @classmethod
-    def from_yaml(cls, constructor, node: yaml.ScalarNode) -> Self:
+    def from_yaml(cls, constructor, node) -> Self:
         """Implements deserialising the node from basic YAML types."""
         del constructor  # unused
+        node = _check_node_type(cls.yaml_tag, node, yaml.ScalarNode)
         value = node.value
         field = _yaml_field(cls)
         if fn := field.metadata.get("from_yaml"):
@@ -162,8 +182,9 @@ class YamlSequenceMixin:
         return representer.represent_sequence(cls.yaml_tag, sequence)
 
     @classmethod
-    def from_yaml(cls, constructor, node: yaml.SequenceNode) -> Iterator[Self]:
+    def from_yaml(cls, constructor, node) -> Iterator[Self]:
         """Implements deserialising the node from basic YAML types."""
+        node = _check_node_type(cls.yaml_tag, node, yaml.SequenceNode)
         obj = cls.yaml_create_empty()
         yield obj
         sequence = constructor.construct_rt_sequence(

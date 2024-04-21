@@ -23,6 +23,7 @@ from travdata.cli.cmds import (
     listbooks,
     tradetable,
 )
+from travdata.config import cfgerror
 
 
 def main() -> None:
@@ -51,10 +52,16 @@ def main() -> None:
     args = argparser.parse_args()
     try:
         sys.exit(args.run(args))
+    except cfgerror.ConfigurationError as exc:
+        print(exc, file=sys.stderr)
+        sys.exit(os.EX_CONFIG)
     except cliutil.UsageError as exc:
         argparser.print_usage(sys.stderr)
         print(exc, file=sys.stderr)
-        sys.exit(os.EX_USAGE)
+        sys.exit(exc.exit_code)
+    except cliutil.CLIError as exc:
+        print(exc, file=sys.stderr)
+        sys.exit(exc.exit_code)
 
 
 if __name__ == "__main__":
