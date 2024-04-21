@@ -4,6 +4,7 @@
 # Pylint doesn't like QT much.
 # pylint: disable=I1101
 
+import contextlib
 import dataclasses
 import pathlib
 from typing import Callable, Optional
@@ -18,10 +19,18 @@ from travdata.gui.extraction import runnerwin
 
 @dataclasses.dataclass
 class _ExtractionConfigErrors:
-    config_dir: Optional[str] = None
+    config_path: Optional[str] = None
     input_pdf: Optional[str] = None
     book_id: Optional[str] = None
     output_dir: Optional[str] = None
+
+
+def _open_config_reader(
+    config_path: pathlib.Path,
+) -> contextlib.AbstractContextManager[filesio.Reader]:
+    if config_path.is_file():
+        return filesio.ZipReader.open(config_path)
+    return filesio.DirReader.open(config_path)
 
 
 @dataclasses.dataclass
@@ -30,15 +39,15 @@ class _ExtractionConfigBuilder:
     cfg_error: Optional[str] = None
 
     # Remaining fields enable building a config.ExtractionConfig.
-    config_dir: Optional[pathlib.Path] = None
+    config_path: Optional[pathlib.Path] = None
     input_pdf: Optional[pathlib.Path] = None
     book_id: Optional[str] = None
     output_dir: Optional[pathlib.Path] = None
 
     def __post_init__(self) -> None:
-        self.set_config_dir(self.config_dir, force_update=True)
+        self.set_config_path(self.config_path, force_update=True)
 
-    def set_config_dir(
+    def set_config_path(
         self,
         path: Optional[pathlib.Path],
         *,
@@ -51,15 +60,15 @@ class _ExtractionConfigBuilder:
         would be no change.
         :return: True if changed.
         """
-        if not force_update and self.config_dir == path:
+        if not force_update and self.config_path == path:
             return False
 
-        self.config_dir = path
-        if self.config_dir is None:
+        self.config_path = path
+        if self.config_path is None:
             self.cfg = None
         else:
             try:
-                with filesio.DirReader.open(self.config_dir) as cfg_reader:
+                with _open_config_reader(self.config_path) as cfg_reader:
                     cfg = config.load_config(cfg_reader)
             except OSError as exc:
                 self.cfg = None
@@ -77,10 +86,10 @@ class _ExtractionConfigBuilder:
         """Returns any errors in the builder (other than unspecified values)."""
         errors = _ExtractionConfigErrors()
         if self.cfg is None:
-            errors.config_dir = "Configuration must be selected."
+            errors.config_path = "Configuration must be selected."
 
         if self.cfg_error is not None:
-            errors.config_dir = self.cfg_error
+            errors.config_path = self.cfg_error
 
         if self.input_pdf is not None:
             if not self.input_pdf.exists():
@@ -100,7 +109,7 @@ class _ExtractionConfigBuilder:
         """Builds the extraction configuration, if complete."""
         if self.cfg is None:
             return None
-        if self.config_dir is None:
+        if self.config_path is None:
             return None
         if self.input_pdf is None:
             return None
@@ -110,7 +119,7 @@ class _ExtractionConfigBuilder:
             return None
 
         with (
-            filesio.DirReader.open(self.config_dir) as cfg_reader,
+            _open_config_reader(self.config_path) as cfg_reader,
             filesio.DirWriter.create(self.output_dir) as out_writer,
         ):
             return bookextract.ExtractionConfig(
@@ -138,7 +147,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self,
         thread_pool: QtCore.QThreadPool,
         table_reader: tableextract.TableReader,
-        config_dir: Optional[pathlib.Path],
+        config_path: Optional[pathlib.Path],
     ) -> None:
         super().__init__()
         self.setWindowTitle("Travdata Extraction Setup")
@@ -151,14 +160,14 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._runner = None
 
         self._extract_builder = _ExtractionConfigBuilder(
-            config_dir=config_dir,
+            config_path=config_path,
         )
         self._extract = None
 
-        self._config_dir_label = QtWidgets.QLabel("")
-        self._config_dir_error = QtWidgets.QLabel("")
-        self._config_dir_button = QtWidgets.QPushButton("Select configuration")
-        self._config_dir_button.clicked.connect(self._select_config_dir)
+        self._config_path_label = QtWidgets.QLabel("")
+        self._config_path_error = QtWidgets.QLabel("")
+        self._config_path_button = QtWidgets.QPushButton("Select configuration")
+        self._config_path_button.clicked.connect(self._select_config_path)
 
         self._input_pdf_label = QtWidgets.QLabel("")
         self._input_pdf_error = QtWidgets.QLabel("")
@@ -177,9 +186,9 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         config_box = qtutil.make_group_vbox(
             "Extraction configuration",
-            self._config_dir_label,
-            self._config_dir_error,
-            self._config_dir_button,
+            self._config_path_label,
+            self._config_path_error,
+            self._config_path_button,
         )
 
         input_pdf_box = qtutil.make_group_vbox(
@@ -231,7 +240,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             self._book_combo,
             self._output_dir_button,
         )
-        _update_path_label(self._config_dir_label, self._extract_builder.config_dir)
+        _update_path_label(self._config_path_label, self._extract_builder.config_path)
         _update_path_label(self._input_pdf_label, self._extract_builder.input_pdf)
         if self._book_combo_dirty:
             _repopulate_book_combo(self._book_combo, self._extract_builder.cfg)
@@ -240,7 +249,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         _update_path_label(self._output_dir_label, self._extract_builder.output_dir)
 
         errors = self._extract_builder.build_errors()
-        _update_error_label(self._config_dir_error, errors.config_dir)
+        _update_error_label(self._config_path_error, errors.config_path)
         _update_error_label(self._input_pdf_error, errors.input_pdf)
         _update_error_label(self._book_error, errors.book_id)
         _update_error_label(self._output_dir_error, errors.output_dir)
@@ -249,13 +258,18 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._extract_button.setEnabled(self._extract is not None and self._runner is None)
 
     @QtCore.Slot()
-    def _select_config_dir(self) -> None:
+    def _select_config_path(self) -> None:
         def selected(path: pathlib.Path) -> None:
-            self._book_combo_dirty = self._extract_builder.set_config_dir(path)
+            self._book_combo_dirty = self._extract_builder.set_config_path(path)
             self._guess_book_combo()
             self._refresh_from_state()
 
-        _do_file_selection(self, QtWidgets.QFileDialog.FileMode.Directory, selected)
+        _do_file_selection(
+            parent=self,
+            file_mode=QtWidgets.QFileDialog.FileMode.ExistingFile,
+            selected_callback=selected,
+            filter_="*.zip",
+        )
 
     @QtCore.Slot()
     def _select_input_pdf(self) -> None:
@@ -264,7 +278,12 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             self._guess_book_combo()
             self._refresh_from_state()
 
-        _do_file_selection(self, QtWidgets.QFileDialog.FileMode.ExistingFile, selected)
+        _do_file_selection(
+            parent=self,
+            file_mode=QtWidgets.QFileDialog.FileMode.ExistingFile,
+            selected_callback=selected,
+            filter_="*.pdf",
+        )
 
     def _guess_book_combo(self) -> None:
         cfg = self._extract_builder.cfg
@@ -292,7 +311,12 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             self._extract_builder.output_dir = path
             self._refresh_from_state()
 
-        _do_file_selection(self, QtWidgets.QFileDialog.FileMode.Directory, selected)
+        _do_file_selection(
+            parent=self,
+            file_mode=QtWidgets.QFileDialog.FileMode.Directory,
+            selected_callback=selected,
+            filter_="",
+        )
 
     @QtCore.Slot()
     def _run_extraction(self) -> None:
@@ -321,12 +345,13 @@ def _do_file_selection(
     parent: QtWidgets.QWidget,
     file_mode: QtWidgets.QFileDialog.FileMode,
     selected_callback: Callable[[pathlib.Path], None],
+    filter_: str,
 ) -> None:
     @QtCore.Slot()
     def selected(path: str) -> None:
         selected_callback(pathlib.Path(path))
 
-    dialog = QtWidgets.QFileDialog(parent=parent)
+    dialog = QtWidgets.QFileDialog(parent=parent, filter=filter_)
     dialog.setFileMode(file_mode)
     dialog.fileSelected.connect(selected)
     dialog.show()
