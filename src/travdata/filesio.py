@@ -10,16 +10,22 @@ from typing import IO, Iterator, Protocol, Self
 import zipfile
 
 
+_ENCODING = "utf-8"
+_NEWLINE = "\n"
+
+
 class Reader(Protocol):
     """Protocol for reading files from the collection."""
 
     def open_read(
         self,
         path: pathlib.PurePath,
-    ) -> contextlib.AbstractContextManager[IO[bytes]]:
-        """Open a file for reading.
+        newline: str = _NEWLINE,
+    ) -> contextlib.AbstractContextManager[IO[str]]:
+        """Open a text file for reading.
 
         :param path: Path of the file to read.
+        :param newline: Newline sequence to use.
         :return: Context-managed readable file-like object.
         """
         ...
@@ -31,11 +37,24 @@ class Writer(Protocol):
     def open_write(
         self,
         path: pathlib.PurePath,
-    ) -> contextlib.AbstractContextManager[IO[bytes]]:
-        """Open a file for writing.
+        newline: str = _NEWLINE,
+    ) -> contextlib.AbstractContextManager[IO[str]]:
+        """Open a text file for writing.
 
         :param path: Path of the file to write.
+        :param newline: Newline sequence to use.
         :return: Context-managed writable file-like object.
+        """
+        ...
+
+    def exists(
+        self,
+        path: pathlib.PurePath,
+    ) -> bool:
+        """Return ``True`` if the file exists.
+
+        :param path: Path to the file.
+        :return: ``True`` if the file exists, otherwise ``False``.
         """
         ...
 
@@ -63,10 +82,11 @@ class DirReader(Reader):
     def open_read(
         self,
         path: pathlib.PurePath,
-    ) -> contextlib.AbstractContextManager[IO[bytes]]:
+        newline: str = _NEWLINE,
+    ) -> contextlib.AbstractContextManager[IO[str]]:
         """Implements Reader.open_read."""
         full_path = self._dir_path / path
-        return full_path.open("rb")
+        return full_path.open("rt", encoding=_ENCODING, newline=newline)
 
 
 class DirWriter(Writer):
@@ -89,28 +109,36 @@ class DirWriter(Writer):
     def open_write(
         self,
         path: pathlib.PurePath,
-    ) -> contextlib.AbstractContextManager[IO[bytes]]:
+        newline: str = _NEWLINE,
+    ) -> contextlib.AbstractContextManager[IO[str]]:
         """Implements Writer.open_write."""
         full_path = self._dir_path / path
         parent_dir = full_path.parent
         if parent_dir not in self._created_dirs:
             parent_dir.mkdir(parents=True, exist_ok=True)
             self._created_dirs.add(parent_dir)
-        return full_path.open("wb")
+        return full_path.open("wt", encoding=_ENCODING, newline=newline)
+
+    def exists(
+        self,
+        path: pathlib.PurePath,
+    ) -> bool:
+        """Implements Writer.exists."""
+        return (self._dir_path / path).exists()
 
 
 class MemReader(Reader):
     """Reads files from in-memory files."""
 
-    _files: dict[pathlib.PurePath, bytes]
+    _files: dict[pathlib.PurePath, str]
 
-    def __init__(self, files: dict[pathlib.PurePath, bytes]) -> None:
+    def __init__(self, files: dict[pathlib.PurePath, str]) -> None:
         """Initialise the MemReader to read from the given files."""
         self._files = files
 
     @classmethod
     @contextlib.contextmanager
-    def open(cls, files: dict[pathlib.PurePath, bytes]) -> Iterator[Self]:
+    def open(cls, files: dict[pathlib.PurePath, str]) -> Iterator[Self]:
         """Create a MemReader to read from the given files."""
         yield cls(files)
 
@@ -118,24 +146,25 @@ class MemReader(Reader):
     def open_read(
         self,
         path: pathlib.PurePath,
-    ) -> Iterator[IO[bytes]]:
+        newline: str = _NEWLINE,
+    ) -> Iterator[IO[str]]:
         """Implements Reader.open_read."""
         contents = self._files[path]
-        yield io.BytesIO(contents)
+        yield io.StringIO(contents, newline=newline)
 
 
 class MemWriter(Writer):
     """Writes files to in-memory files."""
 
-    _files: dict[pathlib.PurePath, bytes]
+    _files: dict[pathlib.PurePath, str]
 
-    def __init__(self, files: dict[pathlib.PurePath, bytes]) -> None:
+    def __init__(self, files: dict[pathlib.PurePath, str]) -> None:
         """Initialise the MemWriter to write to the given files."""
         self._files = files
 
     @classmethod
     @contextlib.contextmanager
-    def create(cls, files: dict[pathlib.PurePath, bytes]) -> Iterator[Self]:
+    def create(cls, files: dict[pathlib.PurePath, str]) -> Iterator[Self]:
         """Create a MemReader to write to the given files."""
         yield cls(files)
 
@@ -143,12 +172,22 @@ class MemWriter(Writer):
     def open_write(
         self,
         path: pathlib.PurePath,
-    ) -> Iterator[IO[bytes]]:
+        newline: str = _NEWLINE,
+    ) -> Iterator[IO[str]]:
         """Implements Writer.open_write."""
-        f = io.BytesIO()
-        yield f
-        f.seek(0, io.SEEK_SET)
-        self._files[path] = f.read()
+        f = io.StringIO(newline=newline)
+        try:
+            yield f
+        finally:
+            f.seek(0, io.SEEK_SET)
+            self._files[path] = f.read()
+
+    def exists(
+        self,
+        path: pathlib.PurePath,
+    ) -> bool:
+        """Implements Writer.exists."""
+        return path in self._files
 
 
 class ZipReader(Reader):
@@ -165,15 +204,20 @@ class ZipReader(Reader):
     def open(cls, zip_path: pathlib.Path) -> Iterator[Self]:
         """Create a ZipReader to write to the ZIP file at the path."""
         zip_file = zipfile.ZipFile(zip_path, "r")
-        yield cls(zip_file)
-        zip_file.close()
+        try:
+            yield cls(zip_file)
+        finally:
+            zip_file.close()
 
+    @contextlib.contextmanager
     def open_read(
         self,
         path: pathlib.PurePath,
-    ) -> contextlib.AbstractContextManager[IO[bytes]]:
+        newline: str = _NEWLINE,
+    ) -> Iterator[IO[str]]:
         """Implements Reader.open_read."""
-        return self._zip_file.open(str(path), "r")
+        with self._zip_file.open(str(path), "r") as f:
+            yield io.TextIOWrapper(f, encoding=_ENCODING, newline=newline)
 
 
 class ZipWriter(Writer):
@@ -189,13 +233,33 @@ class ZipWriter(Writer):
     @contextlib.contextmanager
     def create(cls, zip_path: pathlib.Path) -> Iterator[Self]:
         """Create a ZipWriter to write to a new ZIP file at the path."""
-        zip_file = zipfile.ZipFile(zip_path, "w")
-        yield cls(zip_file)
-        zip_file.close()
+        zip_file = zipfile.ZipFile(zip_path, "a")
+        try:
+            yield cls(zip_file)
+        finally:
+            zip_file.close()
 
+    @contextlib.contextmanager
     def open_write(
         self,
         path: pathlib.PurePath,
-    ) -> contextlib.AbstractContextManager[IO[bytes]]:
+        newline: str = _NEWLINE,
+    ) -> Iterator[IO[str]]:
         """Implements Writer.open_write."""
-        return self._zip_file.open(str(path), "w")
+        with self._zip_file.open(str(path), "w") as f:
+            fw = io.TextIOWrapper(f, encoding=_ENCODING, newline=newline)
+            try:
+                yield fw
+            finally:
+                fw.flush()
+
+    def exists(
+        self,
+        path: pathlib.PurePath,
+    ) -> bool:
+        """Implements Writer.exists."""
+        try:
+            self._zip_file.getinfo(str(path))
+        except KeyError:
+            return False
+        return True

@@ -10,10 +10,12 @@ This is a suite of tools that perform either or both of the following:
 
 
 import argparse
-from typing import Optional
+import os
+import sys
 
 from travdata import commontext
 from travdata import travdatarelease
+from travdata.cli import cliutil
 from travdata.cli.cmds import (
     csvtoyaml,
     extractcsvtables,
@@ -23,7 +25,7 @@ from travdata.cli.cmds import (
 )
 
 
-def main() -> Optional[int]:
+def main() -> None:
     """Entrypoint for the program."""
 
     argparser = argparse.ArgumentParser(
@@ -47,7 +49,12 @@ def main() -> Optional[int]:
     tradetable.add_subparser(subparsers)
 
     args = argparser.parse_args()
-    return args.run(args)
+    try:
+        sys.exit(args.run(args))
+    except cliutil.UsageError as exc:
+        argparser.print_usage(sys.stderr)
+        print(exc, file=sys.stderr)
+        sys.exit(os.EX_USAGE)
 
 
 if __name__ == "__main__":

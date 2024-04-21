@@ -25,7 +25,7 @@ class TableReader(Protocol):
         self,
         *,
         pdf_path: pathlib.Path,
-        template_file: IO[bytes],
+        template_file: IO[str],
     ) -> list[tabulautil.TabulaTable]:
         """Reads tables from a PDF file, using the named template file.
 

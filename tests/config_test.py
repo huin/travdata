@@ -13,7 +13,7 @@ from travdata.config import cfgextract
 def test_load_group_from_str() -> None:
     book_name = "book-name"
     book_yaml_path = pathlib.PurePath(book_name) / "book.yaml"
-    book_yaml = b"""
+    book_yaml = """
 !Group
 tags: [top]
 groups:

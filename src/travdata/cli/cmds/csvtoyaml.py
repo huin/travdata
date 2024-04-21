@@ -8,7 +8,7 @@ import argparse
 import csv
 import pathlib
 
-from travdata import csvutil
+from travdata import csvutil, filesio
 from travdata.datatypes import yamlcodec
 from travdata.tableconverters.core import registry
 
@@ -41,25 +41,25 @@ def run(args: argparse.Namespace) -> None:
     """CLI entry point."""
     registry.load_all_converters()
 
-    created_directories: set[pathlib.Path] = set()
-    for conv_key, conv_fn in registry.CONVERTERS.converters.items():
-        in_group_dir = args.input_dir / conv_key.group_name
-        out_group_dir = args.output_dir / conv_key.group_name
-        if out_group_dir not in created_directories:
-            out_group_dir.mkdir(parents=True, exist_ok=True)
-        with (
-            csvutil.open_read(
-                in_group_dir / f"{conv_key.table_name}.csv",
-            ) as csv_file_in,
-            open(
-                out_group_dir / f"{conv_key.table_name}.yaml",
-                "wt",
-                encoding="utf-8",
-            ) as yaml_file_out,
-        ):
-            r = csv.DictReader(csv_file_in)
-            data = conv_fn(iter(r))
-            yamlcodec.DATATYPES_YAML.dump(
-                data=list(data),
-                stream=yaml_file_out,
-            )
+    with (
+        filesio.DirReader.open(args.input_dir) as csv_reader,
+        filesio.DirWriter.create(args.output_dir) as yaml_writer,
+    ):
+        for conv_key, conv_fn in registry.CONVERTERS.converters.items():
+            in_group_dir = pathlib.PurePath(conv_key.group_name)
+            out_group_dir = pathlib.PurePath(conv_key.group_name)
+            with (
+                csvutil.open_by_reader(
+                    csv_reader,
+                    in_group_dir / f"{conv_key.table_name}.csv",
+                ) as csv_file_in,
+                yaml_writer.open_write(
+                    out_group_dir / f"{conv_key.table_name}.yaml",
+                ) as yaml_file_out,
+            ):
+                r = csv.DictReader(csv_file_in)
+                data = conv_fn(iter(r))
+                yamlcodec.DATATYPES_YAML.dump(
+                    data=list(data),
+                    stream=yaml_file_out,
+                )

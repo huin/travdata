@@ -19,7 +19,7 @@ def test_dir_roundtrip() -> None:
 
 
 def test_mem_roundtrip() -> None:
-    files: dict[pathlib.PurePath, bytes] = {}
+    files: dict[pathlib.PurePath, str] = {}
     _roundtrip_test(
         reader_ctx=filesio.MemReader.open(files),
         writer_ctx=filesio.MemWriter.create(files),
@@ -48,11 +48,15 @@ def _roundtrip_test(
         for path_str, contents in files:
             path = pathlib.PurePath(path_str)
             with writer.open_write(path) as fw:
-                fw.write(contents.encode("utf-8"))
+                fw.write(contents)
+            assert writer.exists(path)
+
+        assert not writer.exists(pathlib.PurePath("not-exist.txt"))
+        assert not writer.exists(pathlib.PurePath("no-dir/not-exist.txt"))
 
     with reader_ctx as reader:
         for path_str, want_contents in files:
             path = pathlib.PurePath(path_str)
             with reader.open_read(path) as fr:
-                got_contents = fr.read().decode("utf-8")
+                got_contents = fr.read()
                 assert want_contents == got_contents

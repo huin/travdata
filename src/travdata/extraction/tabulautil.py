@@ -80,7 +80,7 @@ class TabulaClient:
         self,
         *,
         pdf_path: pathlib.Path,
-        template_file: IO[bytes],
+        template_file: IO[str],
     ) -> list[TabulaTable]:
         """Reads table(s) from a PDF, based on the Tabula template.
 

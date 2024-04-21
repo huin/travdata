@@ -15,7 +15,7 @@ from travdata.extraction import tableextract, tabulautil
 @dataclasses.dataclass(frozen=True)
 class Call:
     pdf_path: pathlib.Path
-    template_content: bytes
+    template_content: str
 
 
 class FakeTableReader:
@@ -40,7 +40,7 @@ class FakeTableReader:
         self,
         *,
         pdf_path: pathlib.Path,
-        template_file: IO[bytes],
+        template_file: IO[str],
     ) -> list[tabulautil.TabulaTable]:
         self.calls.append(Call(pdf_path, template_file.read()))
         return self.return_tables
@@ -382,7 +382,7 @@ def test_extract_table(
 ) -> None:
     print(name)
     tmpl_path = pathlib.PurePath("foo/bar.tabula-template.json")
-    tmpl_content = b'{"fake": "json"}'
+    tmpl_content = '{"fake": "json"}'
     files = {tmpl_path: tmpl_content}
     pdf_path = pathlib.Path("some.pdf")
     file_stem = pathlib.Path("foo/bar")

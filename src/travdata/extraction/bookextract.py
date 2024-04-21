@@ -31,7 +31,8 @@ class ExtractionConfig:
     tags (takes precedence over with_tags).
     """
 
-    output_dir: pathlib.Path
+    cfg_reader: filesio.Reader
+    out_writer: filesio.Writer
     input_pdf: pathlib.Path
     group: config.Group
     overwrite_existing: bool
@@ -41,7 +42,7 @@ class ExtractionConfig:
 
 @dataclasses.dataclass(frozen=True)
 class _OutputTable:
-    out_filepath: pathlib.Path
+    out_filepath: pathlib.PurePath
     table: config.Table
 
 
@@ -54,7 +55,7 @@ def _filter_tables(
     for table in cfg.group.all_tables():
         if table.extraction is None:
             continue
-        out_filepath = cfg.output_dir / table.file_stem.with_suffix(".csv")
+        out_filepath = table.file_stem.with_suffix(".csv")
 
         if cfg.with_tags and not table.tags & cfg.with_tags:
             continue
@@ -62,7 +63,7 @@ def _filter_tables(
         if cfg.without_tags and table.tags & cfg.without_tags:
             continue
 
-        if not cfg.overwrite_existing and out_filepath.exists():
+        if not cfg.overwrite_existing and cfg.out_writer.exists(out_filepath):
             continue
 
         yield _OutputTable(out_filepath, table)
@@ -70,25 +71,18 @@ def _filter_tables(
 
 def _extract_single_table(
     *,
-    cfg_reader: filesio.Reader,
     table_reader: tableextract.TableReader,
     cfg: ExtractionConfig,
-    created_directories: set[pathlib.Path],
     output_table: _OutputTable,
 ) -> None:
     """Helper wrapper of `extract_table` for `extract_book`."""
-    group_dir = output_table.out_filepath.parent
-    if group_dir not in created_directories:
-        group_dir.mkdir(parents=True, exist_ok=True)
-        created_directories.add(group_dir)
-
     rows = tableextract.extract_table(
-        cfg_reader=cfg_reader,
+        cfg_reader=cfg.cfg_reader,
         table=output_table.table,
         pdf_path=cfg.input_pdf,
         table_reader=table_reader,
     )
-    with csvutil.open_write(output_table.out_filepath) as f:
+    with csvutil.open_by_writer(cfg.out_writer, output_table.out_filepath) as f:
         csv.writer(f).writerows(rows)
 
 
@@ -109,14 +103,12 @@ class ExtractEvents:
 
 def extract_book(
     *,
-    cfg_reader: filesio.Reader,
     table_reader: tableextract.TableReader,
     cfg: ExtractionConfig,
     events: ExtractEvents,
 ) -> None:
     """Extracts an entire book to CSV.
 
-    :param cfg_reader: Configuration reader.
     :param table_reader: Extractor for individual tables from a PDF.
     :param cfg: Configuration for extraction.
     :param events: Event hooks to feed back progress, etc.
@@ -127,17 +119,14 @@ def extract_book(
 
     events.on_progress(Progress(0, len(output_tables)))
 
-    created_directories: set[pathlib.Path] = set()
     for i, output_table in enumerate(output_tables, start=1):
         if not events.do_continue():
             return
 
         try:
             _extract_single_table(
-                cfg_reader=cfg_reader,
                 table_reader=table_reader,
                 cfg=cfg,
-                created_directories=created_directories,
                 output_table=output_table,
             )
         except tableextract.ConfigurationError as exc:
