@@ -15,6 +15,14 @@ _ENCODING = "utf-8"
 _NEWLINE = "\n"
 
 
+class Error(Exception):
+    """Base exception emitted by filesio."""
+
+
+class NotFoundError(Error):
+    """Attempted to read a file that does not exist."""
+
+
 class Reader(Protocol):
     """Protocol for reading files from the collection."""
 
@@ -28,6 +36,7 @@ class Reader(Protocol):
         :param path: Path of the file to read.
         :param newline: Newline sequence to use.
         :return: Context-managed readable file-like object.
+        :raises NotFoundError: If the ``path`` does not exist.
         """
         ...
 
@@ -94,7 +103,11 @@ class DirReader(Reader):
     ) -> contextlib.AbstractContextManager[IO[str]]:
         """Implements Reader.open_read."""
         full_path = self._dir_path / path
-        return full_path.open("rt", encoding=_ENCODING, newline=newline)
+        try:
+            f = full_path.open("rt", encoding=_ENCODING, newline=newline)
+        except FileNotFoundError as exc:
+            raise NotFoundError(path) from exc
+        return f
 
     def iter_files(self) -> Iterator[pathlib.PurePath]:
         """Implements Reader.iter_files."""
@@ -164,7 +177,10 @@ class MemReader(Reader):
         newline: str = _NEWLINE,
     ) -> Iterator[IO[str]]:
         """Implements Reader.open_read."""
-        contents = self._files[path]
+        try:
+            contents = self._files[path]
+        except KeyError as exc:
+            raise NotFoundError(path) from exc
         yield io.StringIO(contents, newline=newline)
 
     def iter_files(self) -> Iterator[pathlib.PurePath]:
@@ -235,7 +251,11 @@ class ZipReader(Reader):
         newline: str = _NEWLINE,
     ) -> Iterator[IO[str]]:
         """Implements Reader.open_read."""
-        with self._zip_file.open(str(path), "r") as f:
+        try:
+            f = self._zip_file.open(str(path), "r")
+        except KeyError as exc:
+            raise NotFoundError(path) from exc
+        with f:
             yield io.TextIOWrapper(f, encoding=_ENCODING, newline=newline)
 
     def iter_files(self) -> Iterator[pathlib.PurePath]:

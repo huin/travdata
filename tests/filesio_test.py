@@ -6,6 +6,7 @@ from contextlib import AbstractContextManager
 import pathlib
 import tempfile
 
+import pytest
 import testfixtures  # type: ignore[import-untyped]
 
 from travdata import filesio
@@ -42,21 +43,24 @@ def _roundtrip_test(
     writer_ctx: AbstractContextManager[filesio.Writer],
 ) -> None:
     files = [
-        ("foo.txt", "foo contents"),
-        ("bar/baz.txt", "baz contents"),
+        (pathlib.PurePath("foo.txt"), "foo contents"),
+        (pathlib.PurePath("bar/baz.txt"), "baz contents"),
+    ]
+    not_exist_files = [
+        pathlib.PurePath("not-exist.txt"),
+        pathlib.PurePath("no-dir/not-exist.txt"),
     ]
 
     expected_paths: list[pathlib.PurePath] = []
     with writer_ctx as writer:
-        for path_str, contents in files:
-            path = pathlib.PurePath(path_str)
+        for path, contents in files:
             expected_paths.append(path)
             with writer.open_write(path) as fw:
                 fw.write(contents)
             assert writer.exists(path)
 
-        assert not writer.exists(pathlib.PurePath("not-exist.txt"))
-        assert not writer.exists(pathlib.PurePath("no-dir/not-exist.txt"))
+        for path in not_exist_files:
+            assert not writer.exists(pathlib.PurePath(path))
 
     expected_paths.sort()
 
@@ -66,6 +70,11 @@ def _roundtrip_test(
             with reader.open_read(path) as fr:
                 got_contents = fr.read()
                 assert want_contents == got_contents
+
+        for path in not_exist_files:
+            with pytest.raises(filesio.NotFoundError):
+                with reader.open_read(path):
+                    pass
 
         actual_paths = sorted(reader.iter_files())
 
