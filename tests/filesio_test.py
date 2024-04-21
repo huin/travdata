@@ -6,6 +6,8 @@ from contextlib import AbstractContextManager
 import pathlib
 import tempfile
 
+import testfixtures  # type: ignore[import-untyped]
+
 from travdata import filesio
 
 
@@ -44,9 +46,11 @@ def _roundtrip_test(
         ("bar/baz.txt", "baz contents"),
     ]
 
+    expected_paths: list[pathlib.PurePath] = []
     with writer_ctx as writer:
         for path_str, contents in files:
             path = pathlib.PurePath(path_str)
+            expected_paths.append(path)
             with writer.open_write(path) as fw:
                 fw.write(contents)
             assert writer.exists(path)
@@ -54,9 +58,15 @@ def _roundtrip_test(
         assert not writer.exists(pathlib.PurePath("not-exist.txt"))
         assert not writer.exists(pathlib.PurePath("no-dir/not-exist.txt"))
 
+    expected_paths.sort()
+
     with reader_ctx as reader:
         for path_str, want_contents in files:
             path = pathlib.PurePath(path_str)
             with reader.open_read(path) as fr:
                 got_contents = fr.read()
                 assert want_contents == got_contents
+
+        actual_paths = sorted(reader.iter_files())
+
+    testfixtures.compare(expected=expected_paths, actual=actual_paths)

@@ -5,6 +5,7 @@
 
 import contextlib
 import io
+import os
 import pathlib
 from typing import IO, Iterator, Protocol, Self
 import zipfile
@@ -27,6 +28,13 @@ class Reader(Protocol):
         :param path: Path of the file to read.
         :param newline: Newline sequence to use.
         :return: Context-managed readable file-like object.
+        """
+        ...
+
+    def iter_files(self) -> Iterator[pathlib.PurePath]:
+        """Iterates over all files that the reader has.
+
+        :yield: Paths of individual files. The order is undefined.
         """
         ...
 
@@ -87,6 +95,13 @@ class DirReader(Reader):
         """Implements Reader.open_read."""
         full_path = self._dir_path / path
         return full_path.open("rt", encoding=_ENCODING, newline=newline)
+
+    def iter_files(self) -> Iterator[pathlib.PurePath]:
+        """Implements Reader.iter_files."""
+        for root, _, files in os.walk(self._dir_path):
+            for filename in files:
+                full_path = pathlib.PurePath(root) / filename
+                yield full_path.relative_to(self._dir_path)
 
 
 class DirWriter(Writer):
@@ -151,6 +166,10 @@ class MemReader(Reader):
         """Implements Reader.open_read."""
         contents = self._files[path]
         yield io.StringIO(contents, newline=newline)
+
+    def iter_files(self) -> Iterator[pathlib.PurePath]:
+        """Implements Reader.iter_files."""
+        return iter(self._files.keys())
 
 
 class MemWriter(Writer):
@@ -219,6 +238,11 @@ class ZipReader(Reader):
         with self._zip_file.open(str(path), "r") as f:
             yield io.TextIOWrapper(f, encoding=_ENCODING, newline=newline)
 
+    def iter_files(self) -> Iterator[pathlib.PurePath]:
+        """Implements Reader.iter_files."""
+        for info in self._zip_file.infolist():
+            yield pathlib.PurePath(info.filename)
+
 
 class ZipWriter(Writer):
     """Writes files to a ZIP file."""
@@ -233,7 +257,7 @@ class ZipWriter(Writer):
     @contextlib.contextmanager
     def create(cls, zip_path: pathlib.Path) -> Iterator[Self]:
         """Create a ZipWriter to write to a new ZIP file at the path."""
-        zip_file = zipfile.ZipFile(zip_path, "a")
+        zip_file = zipfile.ZipFile(zip_path, "w")
         try:
             yield cls(zip_file)
         finally:
