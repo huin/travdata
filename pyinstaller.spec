@@ -13,7 +13,6 @@ cli_a = Analysis(
     binaries=[],
     datas=[
         (args.tabula_jar, 'tabula'),
-        ('config', './config'),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -50,7 +49,6 @@ gui_a = Analysis(
     binaries=[],
     datas=[
         (args.tabula_jar, 'tabula'),
-        ('config', './config'),
     ],
     hiddenimports=[],
     hookspath=[],

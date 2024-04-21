@@ -25,6 +25,7 @@ from travdata.config import cfgextract
 
 
 TABULA_TEMPLATE_SUFFIX = ".tabula-template.json"
+_VERSION_FILE = pathlib.PurePath("version.txt")
 
 
 @dataclasses.dataclass
@@ -263,8 +264,23 @@ def _prepare_config(cfg: Any | _YamlConfig) -> Config:
     return cfg.prepare()
 
 
+def load_config_version(cfg_reader: filesio.Reader) -> Optional[str]:
+    """Loads the configuration version from the ``cfg_reader``."""
+    try:
+        with cfg_reader.open_read(_VERSION_FILE) as f:
+            return f.read().rstrip()
+    except filesio.NotFoundError:
+        return None
+
+
+def save_config_version(cfg_writer: filesio.Writer, version: str) -> None:
+    """Writes the configuration version to the ``cfg_writer``."""
+    with cfg_writer.open_write(_VERSION_FILE) as f:
+        f.write(version)
+
+
 def load_config(cfg_reader: filesio.Reader) -> Config:
-    """Loads the configuration from the directory."""
+    """Loads the configuration from the ``cfg_reader``."""
     with cfg_reader.open_read(pathlib.PurePath("config.yaml")) as f:
         cfg = yamlreg.YAML.load(f)
     return _prepare_config(cfg=cfg)
@@ -297,7 +313,7 @@ def get_default_config_path() -> Optional[pathlib.Path]:
     """Returns the default path to the config directory.
 
     :raises RuntimeError: If the environment is not recognised.
-    :return: Default path to the config directory, if known.
+    :return: Default path to the config, if known.
     """
     match travdatarelease.EXECUTABLE_ENVIRONMENT:
         case "development":
@@ -307,11 +323,15 @@ def get_default_config_path() -> Optional[pathlib.Path]:
         case unknown_env:
             raise RuntimeError(f"unknown executable environment {unknown_env!r}")
 
+    config_zip = install_dir / "config.zip"
+    if config_zip.is_file():
+        return config_zip
+
     config_dir = install_dir / "config"
-    config_file = config_dir / "config.yaml"
-    if not config_file.is_file():
-        return None
-    return config_dir
+    if config_dir.is_dir():
+        return config_dir
+
+    return None
 
 
 def _data_dir_for_development() -> pathlib.Path:
@@ -337,3 +357,28 @@ def config_reader(
     if path.is_file():
         return filesio.ZipReader.open(path)
     raise ValueError(f"config path {path} is neither file nor directory")
+
+
+def create_config_zip(
+    version: str,
+    config_dir: pathlib.Path,
+    config_zip: pathlib.Path,
+) -> None:
+    """Generates a config ZIP file.
+
+    :param version: Version to write into the configuration.
+    :param config_dir: Config directory to copy from.
+    :param config_zip: Config ZIP file to create.
+    """
+    with (
+        filesio.DirReader.open(config_dir) as cfg_reader,
+        filesio.ZipWriter.create(config_zip) as cfg_writer,
+    ):
+        save_config_version(cfg_writer, version)
+
+        for path in sorted(cfg_reader.iter_files()):
+            with (
+                cfg_reader.open_read(path) as fr,
+                cfg_writer.open_write(path) as fw,
+            ):
+                fw.write(fr.read())

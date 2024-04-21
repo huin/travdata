@@ -15,6 +15,8 @@ import zipfile
 import tabula.backend
 import PyInstaller.__main__
 
+from travdata import config
+
 
 def main() -> None:
     """Builds standalone executables."""
@@ -34,7 +36,7 @@ def main() -> None:
         )
 
     src_dir = pathlib.Path(".")
-    build_dir = src_dir / "dist"
+    build_dir = src_dir / "dist/travdata"
     build_dir.mkdir(parents=True, exist_ok=True)
 
     with _write_hook_script(args.version, src_dir):
@@ -49,7 +51,17 @@ def main() -> None:
             ],
         )
 
-    _build_zip(src_dir=src_dir, build_dir=build_dir, output_zip=args.output_zip)
+    config.create_config_zip(
+        args.version,
+        pathlib.Path.cwd() / "config",
+        build_dir / "_internal/config.zip",
+    )
+
+    _build_zip(
+        src_dir=src_dir,
+        build_dir=build_dir,
+        output_zip=args.output_zip,
+    )
 
 
 @contextlib.contextmanager
@@ -95,16 +107,16 @@ def _build_zip(
         compression=zipfile.ZIP_DEFLATED,
     ) as zf:
         zf.write(
-            build_dir / "travdata" / f"travdata_cli{system_exec_suffix}",
+            build_dir / f"travdata_cli{system_exec_suffix}",
             arcname=f"travdata_cli{system_exec_suffix}",
         )
         zf.write(
-            build_dir / "travdata" / f"travdata_gui{system_exec_suffix}",
+            build_dir / f"travdata_gui{system_exec_suffix}",
             arcname=f"travdata_gui{system_exec_suffix}",
         )
         zf.write(src_dir / "LICENSE", "LICENSE")
         zf.write(src_dir / "README.adoc", "README.adoc")
-        _copy_internal(zf, build_dir / "travdata/_internal", pathlib.PurePath("_internal"))
+        _copy_internal(zf, build_dir / "_internal", pathlib.PurePath("_internal"))
 
 
 def _copy_internal(zf: zipfile.ZipFile, from_dir: pathlib.Path, to_dir: pathlib.PurePath) -> None:
