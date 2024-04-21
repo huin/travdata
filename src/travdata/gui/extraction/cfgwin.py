@@ -10,7 +10,7 @@ from typing import Callable, Optional
 
 from PySide6 import QtCore, QtWidgets, QtGui
 
-from travdata import commontext, config
+from travdata import commontext, config, filesio
 from travdata.extraction import bookextract, tableextract
 from travdata.gui import qtutil
 from travdata.gui.extraction import runnerwin
@@ -59,7 +59,8 @@ class _ExtractionConfigBuilder:
             self.cfg = None
         else:
             try:
-                cfg = config.load_config(self.config_dir)
+                with filesio.DirReader.open(self.config_dir) as cfg_reader:
+                    cfg = config.load_config(cfg_reader)
             except OSError as exc:
                 self.cfg = None
                 self.cfg_error = str(exc)
@@ -108,14 +109,19 @@ class _ExtractionConfigBuilder:
         if self.output_dir is None:
             return None
 
-        return bookextract.ExtractionConfig(
-            output_dir=self.output_dir,
-            input_pdf=self.input_pdf,
-            group=self.cfg.books[self.book_id].load_group(),
-            overwrite_existing=False,
-            with_tags=frozenset(),
-            without_tags=frozenset(),
-        )
+        with (
+            filesio.DirReader.open(self.config_dir) as cfg_reader,
+            filesio.DirWriter.create(self.output_dir) as out_writer,
+        ):
+            return bookextract.ExtractionConfig(
+                cfg_reader=cfg_reader,
+                out_writer=out_writer,
+                input_pdf=self.input_pdf,
+                group=self.cfg.books[self.book_id].load_group(cfg_reader),
+                overwrite_existing=False,
+                with_tags=frozenset(),
+                without_tags=frozenset(),
+            )
 
 
 class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many-instance-attributes
