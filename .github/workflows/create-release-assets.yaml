@@ -24,7 +24,44 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-config:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set asset filename
+        id: asset_filename
+        shell: bash
+        run: |
+          echo "CONFIG_ZIP=config-${{ inputs.github_ref_name }}.zip" \
+            >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.github_ref_name }}
+
+      - uses: ./.github/actions/setup-python
+        with:
+          python-version: 3.11
+
+      - name: Build config ZIP release asset
+        shell: bash
+        run: |
+          poetry run python -- \
+            ./scripts/dev/build_config_zip.py \
+            "${{ inputs.github_ref_name }}" \
+            "./config" \
+            "./dist/${{ steps.asset_filename.outputs.CONFIG_ZIP }}"
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ inputs.upload_url }}
+          asset_path: ./dist/${{ steps.asset_filename.outputs.CONFIG_ZIP }}
+          asset_name: ${{ steps.asset_filename.outputs.CONFIG_ZIP }}
+          asset_content_type: application/zip
+
+  build-program:
     strategy:
       matrix:
         python-version: 
