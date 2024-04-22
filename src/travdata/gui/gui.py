@@ -24,7 +24,7 @@ def main() -> None:
         window = cfgwin.ExtractionConfigWindow(
             thread_pool=QtCore.QThreadPool(),
             table_reader=tabula_client,
-            config_path=config.get_default_config_path(),
+            default_config_path=config.get_default_config_path(),
         )
         window.show()
         sys.exit(app.exec())

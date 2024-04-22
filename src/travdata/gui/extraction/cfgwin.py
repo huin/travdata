@@ -136,6 +136,8 @@ class _ExtractionConfigBuilder:
 class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many-instance-attributes
     """QT window to configure and start PDF extraction."""
 
+    _default_config_path: Optional[pathlib.Path] = None
+
     # _extract_builder and _extract contain the data model, separately from any
     # widgets.
     _extract_builder: _ExtractionConfigBuilder
@@ -147,7 +149,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self,
         thread_pool: QtCore.QThreadPool,
         table_reader: tableextract.TableReader,
-        config_path: Optional[pathlib.Path],
+        default_config_path: Optional[pathlib.Path],
     ) -> None:
         super().__init__()
         self.setWindowTitle("Travdata Extraction Setup")
@@ -156,11 +158,12 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         self._thread_pool = thread_pool
         self._table_reader = table_reader
+        self._default_config_path = default_config_path
 
         self._runner = None
 
         self._extract_builder = _ExtractionConfigBuilder(
-            config_path=config_path,
+            config_path=default_config_path,
         )
         self._extract = None
 
@@ -168,6 +171,8 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._config_path_error = QtWidgets.QLabel("")
         self._config_path_button = QtWidgets.QPushButton("Select configuration")
         self._config_path_button.clicked.connect(self._select_config_path)
+        self._default_config_path_button = QtWidgets.QPushButton("Use default configuration")
+        self._default_config_path_button.clicked.connect(self._select_default_config_path)
 
         self._input_pdf_label = QtWidgets.QLabel("")
         self._input_pdf_error = QtWidgets.QLabel("")
@@ -184,11 +189,17 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._output_dir_button = QtWidgets.QPushButton("Select output directory")
         self._output_dir_button.clicked.connect(self._select_output_dir)
 
+        select_config_box = qtutil.make_group_hbox(
+            None,
+            self._config_path_button,
+            self._default_config_path_button,
+        )
+
         config_box = qtutil.make_group_vbox(
             "Extraction configuration",
             self._config_path_label,
             self._config_path_error,
-            self._config_path_button,
+            select_config_box,
         )
 
         input_pdf_box = qtutil.make_group_vbox(
@@ -270,6 +281,11 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             selected_callback=selected,
             filter_="*.zip",
         )
+
+    @QtCore.Slot()
+    def _select_default_config_path(self) -> None:
+        self._extract_builder.set_config_path(self._default_config_path)
+        self._refresh_from_state()
 
     @QtCore.Slot()
     def _select_input_pdf(self) -> None:
