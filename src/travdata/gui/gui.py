@@ -26,6 +26,7 @@ def main() -> None:
             table_reader=tabula_client,
             default_config_path=config.get_default_config_path(),
         )
+
         window.show()
         sys.exit(app.exec())
 

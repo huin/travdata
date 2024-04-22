@@ -3,6 +3,7 @@
 
 import json
 import pathlib
+import tempfile
 from typing import IO, Iterable, Iterator, TypeAlias, TypedDict, cast
 
 import jpype  # type: ignore[import-untyped]
@@ -60,6 +61,17 @@ class TabulaClient:
         self._needs_shutdown = False
 
     def __enter__(self) -> "TabulaClient":
+        # Hack to get tabula initialised from the main thread, otherwise the
+        # application may not quit when multi-threaded (such as in a GUI).
+        with tempfile.NamedTemporaryFile() as tmpfile:
+            tmpfile.write(b"dummy data")
+            tmpfile.flush()
+            try:
+                _ = self._read_pdf(input_path=tmpfile.name, pages=[1])
+            except Exception:  # pylint: disable=broad-exception-caught
+                # Expected failure due to dummy file not being a real PDF.
+                pass
+
         return self
 
     def __exit__(self, *args) -> None:
@@ -99,12 +111,10 @@ class TabulaClient:
             result.extend(
                 cast(
                     list[TabulaTable],
-                    tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
-                        pdf_path,
+                    self._read_pdf(
+                        input_path=pdf_path,
                         pages=[entry["page"]],
-                        java_options=["-Djava.awt.headless=true"],
                         multiple_tables=True,
-                        output_format="json",
                         area=[entry["y1"], entry["x1"], entry["y2"], entry["x2"]],
                         force_subprocess=self._force_subprocess,
                         stream=method == "stream",
@@ -115,6 +125,14 @@ class TabulaClient:
             )
 
         return result
+
+    def _read_pdf(self, **kwargs) -> list[TabulaTable]:
+        return cast(
+            list[TabulaTable],
+            tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
+                java_options=["-Djava.awt.headless=true"], output_format="json", **kwargs
+            ),
+        )
 
 
 def table_rows_concat(tables: Iterable[TabulaTable]) -> Iterator[TabulaRow]:
