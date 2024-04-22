@@ -24,12 +24,12 @@ class _Worker(QtCore.QRunnable):
 
     def __init__(
         self,
-        cfg: bookextract.ExtractionConfig,
+        ext_cfg: bookextract.ExtractionConfig,
         table_reader: tableextract.TableReader,
     ) -> None:
         super().__init__()
         self.signals = _WorkerSignals()
-        self._cfg = cfg
+        self._ext_cfg = ext_cfg
         self._table_reader = table_reader
         self._continue = True
 
@@ -43,7 +43,7 @@ class _Worker(QtCore.QRunnable):
         try:
             bookextract.extract_book(
                 table_reader=self._table_reader,
-                cfg=self._cfg,
+                ext_cfg=self._ext_cfg,
                 events=bookextract.ExtractEvents(
                     on_error=self.signals.error.emit,
                     on_progress=self.signals.progress.emit,

@@ -118,19 +118,15 @@ class _ExtractionConfigBuilder:
         if self.output_dir is None:
             return None
 
-        with (
-            _open_config_reader(self.config_path) as cfg_reader,
-            filesio.DirWriter.create(self.output_dir) as out_writer,
-        ):
-            return bookextract.ExtractionConfig(
-                cfg_reader=cfg_reader,
-                out_writer=out_writer,
-                input_pdf=self.input_pdf,
-                group=self.cfg.books[self.book_id].load_group(cfg_reader),
-                overwrite_existing=False,
-                with_tags=frozenset(),
-                without_tags=frozenset(),
-            )
+        return bookextract.ExtractionConfig(
+            cfg_reader_ctx=_open_config_reader(self.config_path),
+            out_writer_ctx=filesio.DirWriter.create(self.output_dir),
+            input_pdf=self.input_pdf,
+            book_id=self.book_id,
+            overwrite_existing=False,
+            with_tags=frozenset(),
+            without_tags=frozenset(),
+        )
 
 
 class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many-instance-attributes

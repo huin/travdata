@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Extracts multiple tables from a PDF."""
 
+import contextlib
 import csv
 import dataclasses
 import pathlib
@@ -31,10 +32,10 @@ class ExtractionConfig:
     tags (takes precedence over with_tags).
     """
 
-    cfg_reader: filesio.Reader
-    out_writer: filesio.Writer
+    cfg_reader_ctx: contextlib.AbstractContextManager[filesio.Reader]
+    out_writer_ctx: contextlib.AbstractContextManager[filesio.Writer]
     input_pdf: pathlib.Path
-    group: config.Group
+    book_id: str
     overwrite_existing: bool
     with_tags: frozenset[str]
     without_tags: frozenset[str]
@@ -47,23 +48,22 @@ class _OutputTable:
 
 
 def _filter_tables(
-    cfg: ExtractionConfig,
+    ext_cfg: ExtractionConfig,
+    book_group: config.Group,
+    out_writer: filesio.Writer,
 ) -> Iterator[_OutputTable]:
-    if cfg.group is None:
-        raise RuntimeError("Book.group was not set")
-
-    for table in cfg.group.all_tables():
+    for table in book_group.all_tables():
         if table.extraction is None:
             continue
         out_filepath = table.file_stem.with_suffix(".csv")
 
-        if cfg.with_tags and not table.tags & cfg.with_tags:
+        if ext_cfg.with_tags and not table.tags & ext_cfg.with_tags:
             continue
 
-        if cfg.without_tags and table.tags & cfg.without_tags:
+        if ext_cfg.without_tags and table.tags & ext_cfg.without_tags:
             continue
 
-        if not cfg.overwrite_existing and cfg.out_writer.exists(out_filepath):
+        if not ext_cfg.overwrite_existing and out_writer.exists(out_filepath):
             continue
 
         yield _OutputTable(out_filepath, table)
@@ -71,18 +71,20 @@ def _filter_tables(
 
 def _extract_single_table(
     *,
+    cfg_reader: filesio.Reader,
+    out_writer: filesio.Writer,
     table_reader: tableextract.TableReader,
-    cfg: ExtractionConfig,
+    input_pdf: pathlib.Path,
     output_table: _OutputTable,
 ) -> None:
     """Helper wrapper of `extract_table` for `extract_book`."""
     rows = tableextract.extract_table(
-        cfg_reader=cfg.cfg_reader,
+        cfg_reader=cfg_reader,
         table=output_table.table,
-        pdf_path=cfg.input_pdf,
+        pdf_path=input_pdf,
         table_reader=table_reader,
     )
-    with csvutil.open_by_writer(cfg.out_writer, output_table.out_filepath) as f:
+    with csvutil.open_by_writer(out_writer, output_table.out_filepath) as f:
         csv.writer(f).writerows(rows)
 
 
@@ -104,7 +106,7 @@ class ExtractEvents:
 def extract_book(
     *,
     table_reader: tableextract.TableReader,
-    cfg: ExtractionConfig,
+    ext_cfg: ExtractionConfig,
     events: ExtractEvents,
 ) -> None:
     """Extracts an entire book to CSV.
@@ -115,24 +117,41 @@ def extract_book(
     :raises RuntimeError: If ``cfg.book_cfg.group`` was not set.
     """
 
-    output_tables = list(_filter_tables(cfg))
-
-    events.on_progress(Progress(0, len(output_tables)))
-
-    for i, output_table in enumerate(output_tables, start=1):
-        if not events.do_continue():
+    with (
+        ext_cfg.cfg_reader_ctx as cfg_reader,
+        ext_cfg.out_writer_ctx as out_writer,
+    ):
+        cfg = config.load_config(cfg_reader)
+        try:
+            book_cfg = cfg.books[ext_cfg.book_id]
+        except KeyError:
+            events.on_error(
+                f"Book {ext_cfg.book_id} not found in configuration.",
+            )
             return
 
-        try:
-            _extract_single_table(
-                table_reader=table_reader,
-                cfg=cfg,
-                output_table=output_table,
-            )
-        except tableextract.ConfigurationError as exc:
-            events.on_error(
-                f"Configuration error while processing table "
-                f"{output_table.table.file_stem}: {exc}"
-            )
-        finally:
-            events.on_progress(Progress(i, len(output_tables)))
+        book_group = book_cfg.load_group(cfg_reader)
+
+        output_tables = list(_filter_tables(ext_cfg, book_group, out_writer))
+
+        events.on_progress(Progress(0, len(output_tables)))
+
+        for i, output_table in enumerate(output_tables, start=1):
+            if not events.do_continue():
+                return
+
+            try:
+                _extract_single_table(
+                    cfg_reader=cfg_reader,
+                    out_writer=out_writer,
+                    table_reader=table_reader,
+                    input_pdf=ext_cfg.input_pdf,
+                    output_table=output_table,
+                )
+            except tableextract.ConfigurationError as exc:
+                events.on_error(
+                    f"Configuration error while processing table "
+                    f"{output_table.table.file_stem}: {exc}"
+                )
+            finally:
+                events.on_progress(Progress(i, len(output_tables)))

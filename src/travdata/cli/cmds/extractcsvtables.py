@@ -216,52 +216,41 @@ def _pick_writer(args: argparse.Namespace) -> _OutputType:
 def run(args: argparse.Namespace) -> int:
     """CLI entry point."""
 
+    with_tags = frozenset(args.with_tag)
+    without_tags = frozenset(args.without_tag)
+    if intersection := with_tags & without_tags:
+        fmt_inter = ", ".join(sorted(intersection))
+        print(
+            f"Tags have been specified for both inclusion and exclusion: {fmt_inter}.",
+            file=sys.stderr,
+        )
+        return 1
+
+    ext_cfg = bookextract.ExtractionConfig(
+        cfg_reader_ctx=config.config_reader(args),
+        out_writer_ctx=_create_writer(args),
+        input_pdf=args.input_pdf,
+        book_id=args.book_name,
+        overwrite_existing=args.overwrite_existing,
+        with_tags=with_tags,
+        without_tags=without_tags,
+    )
+
+    def on_error(error: str) -> None:
+        print(error, file=sys.stderr)
+
     with (
-        config.config_reader(args) as cfg_reader,
-        _create_writer(args) as out_writer,
+        tabulautil.TabulaClient(force_subprocess=args.tabula_force_subprocess) as tabula_client,
+        _progress_reporter(args.no_progress) as on_progress,
     ):
-        cfg = config.load_config(cfg_reader)
-        try:
-            book_cfg = cfg.books[args.book_name]
-        except KeyError:
-            print(f"Book {args.book_name} is unknown.", file=sys.stderr)
-            return 1
-
-        with_tags = frozenset(args.with_tag)
-        without_tags = frozenset(args.without_tag)
-        if intersection := with_tags & without_tags:
-            fmt_inter = ", ".join(sorted(intersection))
-            print(
-                f"Tags have been specified for both inclusion and exclusion: {fmt_inter}.",
-                file=sys.stderr,
-            )
-            return 1
-
-        extract_cfg = bookextract.ExtractionConfig(
-            cfg_reader=cfg_reader,
-            out_writer=out_writer,
-            input_pdf=args.input_pdf,
-            group=book_cfg.load_group(cfg_reader),
-            overwrite_existing=args.overwrite_existing,
-            with_tags=with_tags,
-            without_tags=without_tags,
+        bookextract.extract_book(
+            table_reader=tabula_client,
+            ext_cfg=ext_cfg,
+            events=bookextract.ExtractEvents(
+                on_progress=on_progress,
+                on_error=on_error,
+                do_continue=lambda: True,
+            ),
         )
 
-        def on_error(error: str) -> None:
-            print(error, file=sys.stderr)
-
-        with (
-            tabulautil.TabulaClient(force_subprocess=args.tabula_force_subprocess) as tabula_client,
-            _progress_reporter(args.no_progress) as on_progress,
-        ):
-            bookextract.extract_book(
-                table_reader=tabula_client,
-                cfg=extract_cfg,
-                events=bookextract.ExtractEvents(
-                    on_progress=on_progress,
-                    on_error=on_error,
-                    do_continue=lambda: True,
-                ),
-            )
-
-        return 0
+    return 0
