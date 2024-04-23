@@ -35,19 +35,40 @@ def _open_config_reader(
 
 
 @dataclasses.dataclass
-class _ExtractionConfigBuilder:
-    cfg: Optional[config.Config] = None
-    cfg_error: Optional[str] = None
+class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
+    _cfg: Optional[config.Config] = None
+    _cfg_error: Optional[str] = None
+    _cfg_version: Optional[str] = None
 
     # Remaining fields enable building a config.ExtractionConfig.
-    config_type: filesio.IOType = filesio.IOType.AUTO
-    config_path: Optional[pathlib.Path] = None
+    _config_type: filesio.IOType = filesio.IOType.AUTO
+    _config_path: Optional[pathlib.Path] = None
     input_pdf: Optional[pathlib.Path] = None
     book_id: Optional[str] = None
     output_dir: Optional[pathlib.Path] = None
 
     def __post_init__(self) -> None:
-        self.set_config_path(self.config_path, force_update=True)
+        self.set_config_path(self._config_path, force_update=True)
+
+    @property
+    def cfg(self) -> Optional[config.Config]:
+        """Returns the current configuration."""
+        return self._cfg
+
+    @property
+    def config_path(self) -> Optional[pathlib.Path]:
+        """Returns the current configuration path."""
+        return self._config_path
+
+    @property
+    def config_type(self) -> Optional[filesio.IOType]:
+        """Returns the current configuration type."""
+        return self._config_type
+
+    @property
+    def config_error(self) -> Optional[str]:
+        """Returns the current configuration error."""
+        return self._cfg_error
 
     def set_config_path(
         self,
@@ -62,44 +83,57 @@ class _ExtractionConfigBuilder:
         would be no change.
         :return: True if changed.
         """
-        if not force_update and self.config_path == path:
+        if not force_update and self._config_path == path:
             return False
 
-        self.config_path = path
+        self._config_path = path
 
-        if self.config_path is None:
-            self.config_type = filesio.IOType.AUTO
-            self.cfg = None
+        if self._config_path is None:
+            self._config_type = filesio.IOType.AUTO
+            self._cfg = None
         else:
-            self.config_type = filesio.IOType.AUTO.resolve_auto(
-                self.config_path,
+            self._config_type = filesio.IOType.AUTO.resolve_auto(
+                self._config_path,
             )
-            with _open_config_reader(self.config_type, self.config_path) as cfg_reader:
+            with _open_config_reader(self._config_type, self._config_path) as cfg_reader:
                 try:
                     cfg = config.load_config(cfg_reader)
                 except filesio.NotFoundError as exc:
-                    self.cfg = None
-                    self.cfg_error = f"File not found in configuration: {exc}"
+                    self._cfg = None
+                    self._cfg_error = f"File not found in configuration: {exc}"
                 except cfgerror.ConfigurationError as exc:
-                    self.cfg = None
-                    self.cfg_error = f"Configuration error: {exc}"
+                    self._cfg = None
+                    self._cfg_error = f"Configuration error: {exc}"
                 else:
-                    self.cfg = cfg
-                    self.cfg_error = None
+                    self._cfg = cfg
+                    self._cfg_error = None
 
-        if self.cfg is None or self.book_id not in self.cfg.books:
+        if self._cfg is None or self.book_id not in self._cfg.books:
             self.book_id = None
 
+        return True
+
+    def set_config_type(self, config_type: filesio.IOType) -> bool:
+        """Sets the config type.
+
+        :param config_type: New config type.
+        :return: True if changed.
+        """
+        if self._config_type == config_type:
+            return False
+
+        self.set_config_path(None)
+        self._config_type = config_type
         return True
 
     def build_errors(self) -> _ExtractionConfigErrors:
         """Returns any errors in the builder (other than unspecified values)."""
         errors = _ExtractionConfigErrors()
-        if self.cfg is None:
+        if self._cfg is None:
             errors.config_path = "Configuration must be selected."
 
-        if self.cfg_error is not None:
-            errors.config_path = self.cfg_error
+        if self._cfg_error is not None:
+            errors.config_path = self._cfg_error
 
         if self.input_pdf is not None:
             if not self.input_pdf.exists():
@@ -117,9 +151,9 @@ class _ExtractionConfigBuilder:
 
     def build(self) -> Optional[bookextract.ExtractionConfig]:
         """Builds the extraction configuration, if complete."""
-        if self.cfg is None:
+        if self._cfg is None:
             return None
-        if self.config_path is None:
+        if self._config_path is None:
             return None
         if self.input_pdf is None:
             return None
@@ -129,7 +163,7 @@ class _ExtractionConfigBuilder:
             return None
 
         return bookextract.ExtractionConfig(
-            cfg_reader_ctx=_open_config_reader(self.config_type, self.config_path),
+            cfg_reader_ctx=_open_config_reader(self._config_type, self._config_path),
             out_writer_ctx=filesio.DirWriter.create(self.output_dir),
             input_pdf=self.input_pdf,
             book_id=self.book_id,
@@ -329,11 +363,8 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         if not state:
             return
         new_type = filesio.IOType.from_int_id(id_)
-        if self._extract_builder.config_type == new_type:
-            return
-        self._extract_builder.config_type = new_type
-        self._extract_builder.set_config_path(None)
-        self._refresh_from_state()
+        if self._extract_builder.set_config_type(new_type):
+            self._refresh_from_state()
 
     @QtCore.Slot()
     def _select_input_pdf(self) -> None:
