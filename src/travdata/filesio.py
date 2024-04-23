@@ -36,6 +36,31 @@ class IOType(enum.StrEnum):
     DIR = "DIR"
     ZIP = "ZIP"
 
+    @classmethod
+    def from_int_id(cls, id_: int) -> "IOType":
+        """Converts from an integer ID to IOType."""
+        match id_:
+            case 1:
+                return IOType.AUTO
+            case 2:
+                return IOType.DIR
+            case 3:
+                return IOType.ZIP
+            case _:
+                raise ValueError(id_)
+
+    def to_int_id(self) -> int:
+        """Converts from an IOType to integer ID."""
+        match self:
+            case IOType.AUTO:
+                return 1
+            case IOType.DIR:
+                return 2
+            case IOType.ZIP:
+                return 3
+            case _:
+                raise ValueError(self)
+
     def open(
         self,
         path: pathlib.Path,

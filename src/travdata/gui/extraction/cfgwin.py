@@ -39,6 +39,7 @@ class _ExtractionConfigBuilder:
     cfg_error: Optional[str] = None
 
     # Remaining fields enable building a config.ExtractionConfig.
+    config_type: Optional[filesio.IOType] = filesio.IOType.AUTO
     config_path: Optional[pathlib.Path] = None
     input_pdf: Optional[pathlib.Path] = None
     book_id: Optional[str] = None
@@ -64,9 +65,14 @@ class _ExtractionConfigBuilder:
             return False
 
         self.config_path = path
+
         if self.config_path is None:
+            self.config_type = None
             self.cfg = None
         else:
+            self.config_type = filesio.IOType.AUTO.resolve_auto(
+                self.config_path,
+            )
             try:
                 with _open_config_reader(self.config_path) as cfg_reader:
                     cfg = config.load_config(cfg_reader)
@@ -99,9 +105,9 @@ class _ExtractionConfigBuilder:
 
         if self.output_dir is not None:
             if not self.output_dir.exists():
-                errors.input_pdf = f"{self.output_dir} does not exist."
+                errors.output_dir = f"{self.output_dir} does not exist."
             elif not self.output_dir.is_dir():
-                errors.input_pdf = f"{self.output_dir} is not a directory."
+                errors.output_dir = f"{self.output_dir} is not a directory."
 
         return errors
 
@@ -158,15 +164,28 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         self._runner = None
 
-        self._extract_builder = _ExtractionConfigBuilder(
-            config_path=default_config_path,
-        )
+        self._extract_builder = _ExtractionConfigBuilder()
+        self._extract_builder.set_config_path(default_config_path)
         self._extract = None
 
         self._config_path_label = QtWidgets.QLabel("")
         self._config_path_error = QtWidgets.QLabel("")
         self._config_path_button = QtWidgets.QPushButton("Select configuration")
         self._config_path_button.clicked.connect(self._select_config_path)
+
+        self._config_type_dir = QtWidgets.QRadioButton("Config directory")
+        self._config_type_zip = QtWidgets.QRadioButton("Config ZIP")
+        self._config_type_group = QtWidgets.QButtonGroup(self)
+        self._config_type_group.addButton(
+            self._config_type_dir,
+            id=filesio.IOType.DIR.to_int_id(),
+        )
+        self._config_type_group.addButton(
+            self._config_type_zip,
+            id=filesio.IOType.ZIP.to_int_id(),
+        )
+        self._config_type_group.idToggled.connect(self._toggle_config_type)
+
         self._default_config_path_button = QtWidgets.QPushButton("Use default configuration")
         self._default_config_path_button.clicked.connect(self._select_default_config_path)
 
@@ -195,6 +214,8 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             "Extraction configuration",
             self._config_path_label,
             self._config_path_error,
+            self._config_type_dir,
+            self._config_type_zip,
             select_config_box,
         )
 
@@ -241,6 +262,10 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
     def _refresh_from_state(self) -> None:
         """Update widgets from current self.state."""
+        output_type = self._extract_builder.config_type
+        _update_checked(self._config_type_dir, output_type == filesio.IOType.DIR)
+        _update_checked(self._config_type_zip, output_type == filesio.IOType.ZIP)
+
         _bulk_enable(
             self._extract_builder.cfg is not None,
             self._input_pdf_button,
@@ -271,17 +296,39 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             self._guess_book_combo()
             self._refresh_from_state()
 
+        match self._extract_builder.config_type:
+            case filesio.IOType.DIR:
+                file_mode = QtWidgets.QFileDialog.FileMode.Directory
+                filter_ = "*"
+            case filesio.IOType.ZIP:
+                file_mode = QtWidgets.QFileDialog.FileMode.ExistingFile
+                filter_ = "*.zip"
+            case _:
+                file_mode = QtWidgets.QFileDialog.FileMode.AnyFile
+                filter_ = "*"
+
         _do_file_selection(
             parent=self,
             accept_mode=QtWidgets.QFileDialog.AcceptMode.AcceptOpen,
-            file_mode=QtWidgets.QFileDialog.FileMode.ExistingFile,
+            file_mode=file_mode,
             selected_callback=selected,
-            filter_="*.zip",
+            filter_=filter_,
         )
 
     @QtCore.Slot()
     def _select_default_config_path(self) -> None:
         self._extract_builder.set_config_path(self._default_config_path)
+        self._refresh_from_state()
+
+    @QtCore.Slot()
+    def _toggle_config_type(self, id_: int, state: bool) -> None:
+        if not state:
+            return
+        new_type = filesio.IOType.from_int_id(id_)
+        if self._extract_builder.config_type == new_type:
+            return
+        self._extract_builder.config_type = new_type
+        self._extract_builder.config_path = None
         self._refresh_from_state()
 
     @QtCore.Slot()
@@ -372,6 +419,11 @@ def _do_file_selection(
     dialog.setFileMode(file_mode)
     dialog.fileSelected.connect(selected)
     dialog.show()
+
+
+def _update_checked(radio: QtWidgets.QRadioButton, state: bool) -> None:
+    if radio.isChecked() != state:
+        radio.setChecked(state)
 
 
 def _bulk_enable(
