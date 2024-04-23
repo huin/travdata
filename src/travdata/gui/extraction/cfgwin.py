@@ -22,7 +22,6 @@ from travdata.gui.extraction import runnerwin
 class _ExtractionConfigErrors:
     config_path: Optional[str] = None
     input_pdf: Optional[str] = None
-    book_id: Optional[str] = None
     output_dir: Optional[str] = None
 
 
@@ -197,6 +196,10 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         super().__init__()
         self.setWindowTitle("Travdata Extraction Setup")
 
+        icon_provider = QtWidgets.QFileIconProvider()
+        self._file_icon = icon_provider.icon(icon_provider.IconType.File)
+        self._folder_icon = icon_provider.icon(icon_provider.IconType.Folder)
+
         data_usage_text = QtWidgets.QLabel(commontext.DATA_USAGE)
 
         self._thread_pool = thread_pool
@@ -205,80 +208,11 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         self._runner = None
 
+        self._book_combo_dirty = True
+
         self._extract_builder = _ExtractionConfigBuilder()
         self._extract_builder.set_config_path(default_config_path)
         self._extract = None
-
-        self._config_path_label = QtWidgets.QLabel("")
-        self._config_version_label = QtWidgets.QLabel("")
-        self._config_version_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignTrailing)
-        self._config_path_error = QtWidgets.QLabel("")
-        self._config_path_button = QtWidgets.QPushButton("Select configuration")
-        self._config_path_button.clicked.connect(self._select_config_path)
-
-        self._config_type_combo = QtWidgets.QComboBox()
-        _repopulate_io_type_combo(self._config_type_combo)
-        self._config_type_combo.currentIndexChanged.connect(self._select_config_type)
-
-        self._default_config_path_button = QtWidgets.QPushButton("Use default configuration")
-        self._default_config_path_button.clicked.connect(self._select_default_config_path)
-
-        self._input_pdf_label = QtWidgets.QLabel("")
-        self._input_pdf_error = QtWidgets.QLabel("")
-        self._input_pdf_button = QtWidgets.QPushButton("Select PDF")
-        self._input_pdf_button.clicked.connect(self._select_input_pdf)
-
-        self._book_combo_dirty = True
-        self._book_combo = QtWidgets.QComboBox()
-        self._book_combo.currentIndexChanged.connect(self._select_book)
-        self._book_error = QtWidgets.QLabel("")
-
-        self._output_dir_label = QtWidgets.QLabel("")
-        self._output_dir_error = QtWidgets.QLabel("")
-        self._output_dir_button = QtWidgets.QPushButton("Select output directory")
-        self._output_dir_button.clicked.connect(self._select_output_dir)
-
-        qtutil.set_error_style(
-            self._config_path_error,
-            self._input_pdf_error,
-            self._book_error,
-            self._output_dir_error,
-        )
-
-        select_config_box = qtutil.make_group_hbox(
-            None,
-            self._config_path_button,
-            self._default_config_path_button,
-        )
-        config_label_box = qtutil.make_group_hbox(
-            None,
-            self._config_path_label,
-            self._config_version_label,
-        )
-
-        config_box = qtutil.make_group_vbox(
-            "Extraction configuration",
-            self._config_type_combo,
-            config_label_box,
-            self._config_path_error,
-            select_config_box,
-        )
-
-        input_pdf_box = qtutil.make_group_vbox(
-            "Input PDF",
-            self._input_pdf_label,
-            self._input_pdf_error,
-            self._input_pdf_button,
-            self._book_combo,
-            self._book_error,
-        )
-
-        output_dir_box = qtutil.make_group_vbox(
-            "Output directory",
-            self._output_dir_label,
-            self._output_dir_error,
-            self._output_dir_button,
-        )
 
         self._extract_button = QtWidgets.QPushButton("Extract")
         self._extract_button.clicked.connect(self._run_extraction)
@@ -286,9 +220,9 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         outer_box = qtutil.make_group_vbox(
             "Extract tables from PDF",
             data_usage_text,
-            config_box,
-            input_pdf_box,
-            output_dir_box,
+            self._init_select_config(),
+            self._init_select_input_pdf(),
+            self._init_select_output_dir(),
             QtWidgets.QSpacerItem(
                 0,
                 0,
@@ -300,6 +234,80 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         self.setCentralWidget(outer_box)
 
+    def _init_select_config(self) -> QtWidgets.QWidget:
+        self._config_path_label = QtWidgets.QLabel("")
+        self._config_type_combo = QtWidgets.QComboBox()
+        _repopulate_io_type_combo(self._config_type_combo)
+        self._config_type_combo.currentIndexChanged.connect(self._select_config_type)
+        self._config_version_label = QtWidgets.QLabel("")
+        self._config_path_error = QtWidgets.QLabel("")
+        qtutil.set_error_style(self._config_path_error)
+        self._config_path_button = QtWidgets.QPushButton(self._file_icon, "Select")
+        self._config_path_button.clicked.connect(self._select_config_path)
+        self._default_config_path_button = QtWidgets.QPushButton("Default")
+        self._default_config_path_button.clicked.connect(self._select_default_config_path)
+
+        select_config_box = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout(select_config_box)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._config_path_button)
+        layout.addWidget(self._default_config_path_button)
+        layout.addSpacerItem(
+            QtWidgets.QSpacerItem(
+                0,
+                0,
+                QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+                QtWidgets.QSizePolicy.Policy.Minimum,
+            )
+        )
+
+        config_box = QtWidgets.QGroupBox("Extraction configuration")
+        layout = QtWidgets.QFormLayout(config_box)
+        layout.addRow("Config path:", self._config_path_label)
+        layout.addRow("Config type:", self._config_type_combo)
+        layout.addRow("Select config:", select_config_box)
+        layout.addRow("Config version:", self._config_version_label)
+        layout.addRow(self._config_path_error)
+
+        return config_box
+
+    def _init_select_input_pdf(self) -> QtWidgets.QWidget:
+        self._input_pdf_label = QtWidgets.QLabel("")
+        self._input_pdf_error = QtWidgets.QLabel("")
+        self._input_pdf_button = QtWidgets.QPushButton(self._file_icon, "Select PDF")
+        self._input_pdf_button.clicked.connect(self._select_input_pdf)
+
+        self._book_combo = QtWidgets.QComboBox()
+        self._book_combo.currentIndexChanged.connect(self._select_book)
+
+        input_pdf_box = QtWidgets.QGroupBox("Input PDF")
+        layout = QtWidgets.QFormLayout(input_pdf_box)
+        layout.addRow("Input PDF:", self._input_pdf_label)
+        layout.addRow(self._input_pdf_error)
+        qtutil.set_error_style(self._input_pdf_error)
+        layout.addRow("Select PDF:", self._input_pdf_button)
+        layout.addRow("Select book:", self._book_combo)
+
+        return input_pdf_box
+
+    def _init_select_output_dir(self) -> QtWidgets.QWidget:
+        self._output_dir_label = QtWidgets.QLabel("")
+        self._output_dir_error = QtWidgets.QLabel("")
+        qtutil.set_error_style(self._output_dir_error)
+        self._output_dir_button = QtWidgets.QPushButton(
+            self._folder_icon,
+            "Select output directory",
+        )
+        self._output_dir_button.clicked.connect(self._select_output_dir)
+
+        output_dir_box = QtWidgets.QGroupBox("Output directory")
+        layout = QtWidgets.QFormLayout(output_dir_box)
+        layout.addRow("Output directory:", self._output_dir_label)
+        layout.addRow(self._output_dir_error)
+        layout.addRow("Select directory:", self._output_dir_button)
+
+        return output_dir_box
+
     def showEvent(self, event: QtGui.QShowEvent) -> None:  # pylint: disable=invalid-name
         """Intercepts the window being shown."""
         self._refresh_from_state()
@@ -308,6 +316,11 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
     def _refresh_from_state(self) -> None:
         """Update widgets from current self.state."""
         _update_io_type_combo(self._config_type_combo, self._extract_builder.config_type)
+        match self._extract_builder.config_type:
+            case filesio.IOType.DIR:
+                self._config_path_button.setIcon(self._folder_icon)
+            case filesio.IOType.ZIP:
+                self._config_path_button.setIcon(self._file_icon)
 
         _bulk_enable(
             self._extract_builder.cfg is not None,
@@ -331,7 +344,6 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         errors = self._extract_builder.build_errors()
         _update_error_label(self._config_path_error, errors.config_path)
         _update_error_label(self._input_pdf_error, errors.input_pdf)
-        _update_error_label(self._book_error, errors.book_id)
         _update_error_label(self._output_dir_error, errors.output_dir)
 
         self._extract = self._extract_builder.build()
@@ -365,7 +377,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
     @QtCore.Slot()
     def _select_default_config_path(self) -> None:
-        self._extract_builder.set_config_path(self._default_config_path)
+        self._book_combo_dirty = self._extract_builder.set_config_path(self._default_config_path)
         self._refresh_from_state()
 
     @QtCore.Slot()
