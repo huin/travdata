@@ -328,7 +328,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         if self._extract_builder.config_type == new_type:
             return
         self._extract_builder.config_type = new_type
-        self._extract_builder.config_path = None
+        self._extract_builder.set_config_path(None)
         self._refresh_from_state()
 
     @QtCore.Slot()
