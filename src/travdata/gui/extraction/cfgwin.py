@@ -12,6 +12,7 @@ from typing import Callable, Optional
 from PySide6 import QtCore, QtWidgets, QtGui
 
 from travdata import commontext, config, filesio
+from travdata.config import cfgerror
 from travdata.extraction import bookextract, tableextract
 from travdata.gui import qtutil
 from travdata.gui.extraction import runnerwin
@@ -73,15 +74,18 @@ class _ExtractionConfigBuilder:
             self.config_type = filesio.IOType.AUTO.resolve_auto(
                 self.config_path,
             )
-            try:
-                with _open_config_reader(self.config_path) as cfg_reader:
+            with _open_config_reader(self.config_path) as cfg_reader:
+                try:
                     cfg = config.load_config(cfg_reader)
-            except OSError as exc:
-                self.cfg = None
-                self.cfg_error = str(exc)
-            else:
-                self.cfg = cfg
-                self.cfg_error = None
+                except filesio.NotFoundError as exc:
+                    self.cfg = None
+                    self.cfg_error = f"File not found in configuration: {exc}"
+                except cfgerror.ConfigurationError as exc:
+                    self.cfg = None
+                    self.cfg_error = f"Configuration error: {exc}"
+                else:
+                    self.cfg = cfg
+                    self.cfg_error = None
 
         if self.cfg is None or self.book_id not in self.cfg.books:
             self.book_id = None
@@ -212,10 +216,10 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         config_box = qtutil.make_group_vbox(
             "Extraction configuration",
-            self._config_path_label,
-            self._config_path_error,
             self._config_type_dir,
             self._config_type_zip,
+            self._config_path_label,
+            self._config_path_error,
             select_config_box,
         )
 
