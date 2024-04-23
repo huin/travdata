@@ -247,6 +247,13 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._output_dir_button = QtWidgets.QPushButton("Select output directory")
         self._output_dir_button.clicked.connect(self._select_output_dir)
 
+        qtutil.set_error_style(
+            self._config_path_error,
+            self._input_pdf_error,
+            self._book_error,
+            self._output_dir_error,
+        )
+
         select_config_box = qtutil.make_group_hbox(
             None,
             self._config_path_button,

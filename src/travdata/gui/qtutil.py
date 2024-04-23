@@ -12,6 +12,17 @@ from PySide6 import QtWidgets
 LayoutItem: TypeAlias = QtWidgets.QWidget | QtWidgets.QSpacerItem
 
 
+_ERROR_STYLE = """
+QLabel { color: red; }
+"""
+
+
+def set_error_style(*items: QtWidgets.QWidget) -> None:
+    """Sets an error indicator style to the given widgets."""
+    for item in items:
+        item.setStyleSheet(_ERROR_STYLE)
+
+
 def make_group_hbox(
     title: Optional[str],
     *items: LayoutItem,
