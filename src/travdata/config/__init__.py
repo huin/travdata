@@ -351,12 +351,9 @@ def config_reader(
     that included the argument added by ``add_config_flag``.
     :return: Context manager for a configuration reader.
     """
-    path = args.config
-    if path.is_dir():
-        return filesio.DirReader.open(path)
-    if path.is_file():
-        return filesio.ZipReader.open(path)
-    raise ValueError(f"config path {path} is neither file nor directory")
+    path: pathlib.Path = args.config
+    output_type = filesio.IOType.AUTO.resolve_auto(path)
+    return output_type.open(path)
 
 
 def create_config_zip(

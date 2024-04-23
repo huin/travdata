@@ -4,6 +4,7 @@
 # pylint: disable=too-few-public-methods
 
 import contextlib
+import enum
 import io
 import os
 import pathlib
@@ -21,6 +22,76 @@ class Error(Exception):
 
 class NotFoundError(Error):
     """Attempted to read a file that does not exist."""
+
+
+class IOType(enum.StrEnum):
+    """
+    Enumeration of readers/writer types that can be constructed with a
+    filesystem path.
+    """
+
+    # Resolution needed:
+    AUTO = "AUTO"
+    # Concrete values:
+    DIR = "DIR"
+    ZIP = "ZIP"
+
+    def open(
+        self,
+        path: pathlib.Path,
+    ) -> contextlib.AbstractContextManager["Reader"]:
+        """Creates a context manager for a ``Reader``.
+
+        :param path: Path for the reader to read.
+        :raises Error: If ``self`` is an unknown or unresolved value like
+        ``AUTO``.
+        :return: Context manager for a ``Reader``.
+        """
+        match self:
+            case IOType.DIR:
+                return DirReader.open(path)
+            case IOType.ZIP:
+                return ZipReader.open(path)
+            case _:
+                raise Error(f"cannot open output type {self} with a path")
+
+    def create(
+        self,
+        path: pathlib.Path,
+    ) -> contextlib.AbstractContextManager["Writer"]:
+        """Creates a context manager for a ``Writer``.
+
+        :param path: Path for the writer to create.
+        :raises Error: If ``self`` is an unknown or unresolved value like
+        ``AUTO``.
+        :return: Context manager for a ``Writer``.
+        """
+        match self:
+            case IOType.DIR:
+                return DirWriter.create(path)
+            case IOType.ZIP:
+                return ZipWriter.create(path)
+            case _:
+                raise Error(f"cannot open output type {self} with a path")
+
+    def resolve_auto(self, path: pathlib.Path) -> "IOType":
+        """Returns a concrete IOType for the given filesystem ``path``.
+
+        :param path: Filesystem path to aid resolution.
+        :return: If ``self`` is ``AUTO``, then a concrete value or ``self`` if
+        concrete.
+        """
+        if self != IOType.AUTO:
+            return self
+
+        if not path.exists():
+            if path.suffix == ".zip":
+                return IOType.ZIP
+            return IOType.DIR
+        if path.is_file():
+            return IOType.ZIP
+        # Fall back to guessing as directory.
+        return IOType.DIR
 
 
 class Reader(Protocol):

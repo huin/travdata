@@ -6,7 +6,6 @@ CSV files.
 
 import argparse
 import contextlib
-import enum
 import pathlib
 import sys
 import textwrap
@@ -16,12 +15,6 @@ from progress import bar as progress  # type: ignore[import-untyped]
 from travdata import config, filesio
 from travdata.cli import cliutil
 from travdata.extraction import bookextract, tabulautil
-
-
-class _OutputType(enum.StrEnum):
-    AUTO = "AUTO"
-    DIR = "DIR"
-    ZIP = "ZIP"
 
 
 def add_subparser(subparsers) -> None:
@@ -87,9 +80,9 @@ def add_subparser(subparsers) -> None:
             * ZIP writes as a ZIP file.
             """
         ),
-        type=_OutputType,
-        choices=_OutputType,
-        default=_OutputType.AUTO,
+        type=filesio.IOType,
+        choices=filesio.IOType,
+        default=filesio.IOType.AUTO,
     )
 
     outsel_grp = argparser.add_argument_group(
@@ -177,40 +170,12 @@ def _progress_reporter(no_progress: bool) -> Iterator[Callable[[bookextract.Prog
 def _create_writer(
     args: argparse.Namespace,
 ) -> contextlib.AbstractContextManager[filesio.Writer]:
-    output = args.output
-    output_type = _pick_writer(args)
-    match output_type:
-        case _OutputType.DIR:
-            return filesio.DirWriter.create(output)
-        case _OutputType.ZIP:
-            if args.overwrite_existing:
-                raise cliutil.UsageError(
-                    "--overwrite-existing is incompatible with writing to a ZIP file"
-                )
-            return filesio.ZipWriter.create(output)
-        case _:
-            raise RuntimeError(f"failed to pick an output type, got {output_type}")
-
-
-def _pick_writer(args: argparse.Namespace) -> _OutputType:
-    output = args.output
-    match args.output_type:
-        case _OutputType.AUTO:
-            if not output.exists():
-                if output.suffix == ".zip":
-                    return _OutputType.ZIP
-                return _OutputType.DIR
-            if output.is_dir():
-                return _OutputType.DIR
-            if output.is_file():
-                return _OutputType.ZIP
-            raise RuntimeError(f"don't know how to output to existing path {output}")
-        case _OutputType.DIR:
-            return _OutputType.DIR
-        case _OutputType.ZIP:
-            return _OutputType.ZIP
-        case _:
-            raise RuntimeError(f"unknown --output-type {args.output_type}")
+    output: pathlib.Path = args.output
+    output_type: filesio.IOType = args.output_type
+    output_type = output_type.resolve_auto(output)
+    if output_type == filesio.IOType.ZIP and args.overwrite_existing:
+        raise cliutil.UsageError("--overwrite-existing is incompatible with writing to a ZIP file")
+    return output_type.create(output)
 
 
 def run(args: argparse.Namespace) -> int:
