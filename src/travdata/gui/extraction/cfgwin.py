@@ -58,7 +58,7 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
         return self._config_path
 
     @property
-    def config_type(self) -> Optional[filesio.IOType]:
+    def config_type(self) -> filesio.IOType:
         """Returns the current configuration type."""
         return self._config_type
 
@@ -216,18 +216,9 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._config_path_button = QtWidgets.QPushButton("Select configuration")
         self._config_path_button.clicked.connect(self._select_config_path)
 
-        self._config_type_dir = QtWidgets.QRadioButton("Config directory")
-        self._config_type_zip = QtWidgets.QRadioButton("Config ZIP")
-        self._config_type_group = QtWidgets.QButtonGroup(self)
-        self._config_type_group.addButton(
-            self._config_type_dir,
-            id=filesio.IOType.DIR.to_int_id(),
-        )
-        self._config_type_group.addButton(
-            self._config_type_zip,
-            id=filesio.IOType.ZIP.to_int_id(),
-        )
-        self._config_type_group.idToggled.connect(self._toggle_config_type)
+        self._config_type_combo = QtWidgets.QComboBox()
+        _repopulate_io_type_combo(self._config_type_combo)
+        self._config_type_combo.currentIndexChanged.connect(self._select_config_type)
 
         self._default_config_path_button = QtWidgets.QPushButton("Use default configuration")
         self._default_config_path_button.clicked.connect(self._select_default_config_path)
@@ -267,8 +258,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         config_box = qtutil.make_group_vbox(
             "Extraction configuration",
-            self._config_type_dir,
-            self._config_type_zip,
+            self._config_type_combo,
             config_label_box,
             self._config_path_error,
             select_config_box,
@@ -317,9 +307,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
     def _refresh_from_state(self) -> None:
         """Update widgets from current self.state."""
-        output_type = self._extract_builder.config_type
-        _update_checked(self._config_type_dir, output_type == filesio.IOType.DIR)
-        _update_checked(self._config_type_zip, output_type == filesio.IOType.ZIP)
+        _update_io_type_combo(self._config_type_combo, self._extract_builder.config_type)
 
         _bulk_enable(
             self._extract_builder.cfg is not None,
@@ -378,6 +366,11 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
     @QtCore.Slot()
     def _select_default_config_path(self) -> None:
         self._extract_builder.set_config_path(self._default_config_path)
+        self._refresh_from_state()
+
+    @QtCore.Slot()
+    def _select_config_type(self, index: int) -> None:
+        self._extract_builder.set_config_type(self._config_type_combo.itemData(index))
         self._refresh_from_state()
 
     @QtCore.Slot()
@@ -489,6 +482,21 @@ def _bulk_enable(
 ) -> None:
     for widget in widgets:
         widget.setEnabled(enabled)
+
+
+def _repopulate_io_type_combo(combo: QtWidgets.QComboBox) -> None:
+    combo.clear()
+    combo.addItem("Directory", filesio.IOType.DIR)
+    combo.addItem("ZIP file", filesio.IOType.ZIP)
+
+
+def _update_io_type_combo(combo: QtWidgets.QComboBox, io_type: filesio.IOType) -> None:
+    for i in range(combo.count()):
+        if io_type == combo.itemData(i):
+            combo.setCurrentIndex(i)
+            return
+    # Fall back to selecting the first item.
+    combo.setCurrentIndex(0)
 
 
 def _repopulate_book_combo(combo: QtWidgets.QComboBox, cfg: Optional[config.Config]) -> None:
