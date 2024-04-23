@@ -15,7 +15,8 @@ jobs:
     outputs:
       upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
-      - id: release
+      - name: Create release
+        id: release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -24,6 +25,13 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: true
           prerelease: true
+
+      - name: Print upload URL for release
+        id: print_upload_url
+        shell: bash
+        run: |
+          echo "Upload URL: ${{ steps.release.outputs.upload_url }}"
+
   create-assets:
     needs: release
     uses: ./.github/workflows/create-release-assets.yaml
