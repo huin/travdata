@@ -67,6 +67,11 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
         """Returns the current configuration error."""
         return self._cfg_error
 
+    @property
+    def config_version(self) -> Optional[str]:
+        """Returns the current configuration version."""
+        return self._cfg_version
+
     def set_config_path(
         self,
         path: Optional[pathlib.Path],
@@ -96,12 +101,15 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
                 except filesio.NotFoundError as exc:
                     self._cfg = None
                     self._cfg_error = f"File not found in configuration: {exc}"
+                    self._cfg_version = None
                 except cfgerror.ConfigurationError as exc:
                     self._cfg = None
                     self._cfg_error = f"Configuration error: {exc}"
+                    self._cfg_version = None
                 else:
                     self._cfg = cfg
                     self._cfg_error = None
+                    self._cfg_version = config.load_config_version(cfg_reader)
 
         if self._cfg is None or self.book_id not in self._cfg.books:
             self.book_id = None
@@ -202,6 +210,8 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._extract = None
 
         self._config_path_label = QtWidgets.QLabel("")
+        self._config_version_label = QtWidgets.QLabel("")
+        self._config_version_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignTrailing)
         self._config_path_error = QtWidgets.QLabel("")
         self._config_path_button = QtWidgets.QPushButton("Select configuration")
         self._config_path_button.clicked.connect(self._select_config_path)
@@ -242,12 +252,17 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             self._config_path_button,
             self._default_config_path_button,
         )
+        config_label_box = qtutil.make_group_hbox(
+            None,
+            self._config_path_label,
+            self._config_version_label,
+        )
 
         config_box = qtutil.make_group_vbox(
             "Extraction configuration",
             self._config_type_dir,
             self._config_type_zip,
-            self._config_path_label,
+            config_label_box,
             self._config_path_error,
             select_config_box,
         )
@@ -306,6 +321,11 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             self._output_dir_button,
         )
         _update_path_label(self._config_path_label, self._extract_builder.config_path)
+        if version := self._extract_builder.config_version:
+            self._config_version_label.setText(f"Version: {version}")
+        else:
+            self._config_version_label.setText("Version: <unknown>")
+
         _update_path_label(self._input_pdf_label, self._extract_builder.input_pdf)
         if self._book_combo_dirty:
             _repopulate_book_combo(self._book_combo, self._extract_builder.cfg)
