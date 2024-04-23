@@ -27,11 +27,11 @@ class _ExtractionConfigErrors:
 
 
 def _open_config_reader(
+    config_type: filesio.IOType,
     config_path: pathlib.Path,
 ) -> contextlib.AbstractContextManager[filesio.Reader]:
-    if config_path.is_file():
-        return filesio.ZipReader.open(config_path)
-    return filesio.DirReader.open(config_path)
+    config_type = config_type.resolve_auto(config_path)
+    return config_type.open(config_path)
 
 
 @dataclasses.dataclass
@@ -40,7 +40,7 @@ class _ExtractionConfigBuilder:
     cfg_error: Optional[str] = None
 
     # Remaining fields enable building a config.ExtractionConfig.
-    config_type: Optional[filesio.IOType] = filesio.IOType.AUTO
+    config_type: filesio.IOType = filesio.IOType.AUTO
     config_path: Optional[pathlib.Path] = None
     input_pdf: Optional[pathlib.Path] = None
     book_id: Optional[str] = None
@@ -68,13 +68,13 @@ class _ExtractionConfigBuilder:
         self.config_path = path
 
         if self.config_path is None:
-            self.config_type = None
+            self.config_type = filesio.IOType.AUTO
             self.cfg = None
         else:
             self.config_type = filesio.IOType.AUTO.resolve_auto(
                 self.config_path,
             )
-            with _open_config_reader(self.config_path) as cfg_reader:
+            with _open_config_reader(self.config_type, self.config_path) as cfg_reader:
                 try:
                     cfg = config.load_config(cfg_reader)
                 except filesio.NotFoundError as exc:
@@ -129,7 +129,7 @@ class _ExtractionConfigBuilder:
             return None
 
         return bookextract.ExtractionConfig(
-            cfg_reader_ctx=_open_config_reader(self.config_path),
+            cfg_reader_ctx=_open_config_reader(self.config_type, self.config_path),
             out_writer_ctx=filesio.DirWriter.create(self.output_dir),
             input_pdf=self.input_pdf,
             book_id=self.book_id,
