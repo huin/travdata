@@ -273,6 +273,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         _do_file_selection(
             parent=self,
+            accept_mode=QtWidgets.QFileDialog.AcceptMode.AcceptOpen,
             file_mode=QtWidgets.QFileDialog.FileMode.ExistingFile,
             selected_callback=selected,
             filter_="*.zip",
@@ -292,6 +293,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         _do_file_selection(
             parent=self,
+            accept_mode=QtWidgets.QFileDialog.AcceptMode.AcceptOpen,
             file_mode=QtWidgets.QFileDialog.FileMode.ExistingFile,
             selected_callback=selected,
             filter_="*.pdf",
@@ -325,6 +327,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         _do_file_selection(
             parent=self,
+            accept_mode=QtWidgets.QFileDialog.AcceptMode.AcceptSave,
             file_mode=QtWidgets.QFileDialog.FileMode.Directory,
             selected_callback=selected,
             filter_="",
@@ -355,6 +358,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
 def _do_file_selection(
     parent: QtWidgets.QWidget,
+    accept_mode: QtWidgets.QFileDialog.AcceptMode,
     file_mode: QtWidgets.QFileDialog.FileMode,
     selected_callback: Callable[[pathlib.Path], None],
     filter_: str,
@@ -364,6 +368,7 @@ def _do_file_selection(
         selected_callback(pathlib.Path(path))
 
     dialog = QtWidgets.QFileDialog(parent=parent, filter=filter_)
+    dialog.setAcceptMode(accept_mode)
     dialog.setFileMode(file_mode)
     dialog.fileSelected.connect(selected)
     dialog.show()
