@@ -5,7 +5,7 @@ import contextlib
 import csv
 import dataclasses
 import pathlib
-from typing import Callable, Iterator
+from typing import Callable, Iterator, Optional
 
 from travdata import config, csvutil, filesio
 from travdata.extraction import tableextract
@@ -98,9 +98,10 @@ class ExtractEvents:
     further processing is attempted.
     """
 
-    on_progress: Callable[[Progress], None]
-    on_error: Callable[[str], None]
-    do_continue: Callable[[], bool]
+    on_progress: Optional[Callable[[Progress], None]] = None
+    on_output: Optional[Callable[[pathlib.PurePath], None]] = None
+    on_error: Optional[Callable[[str], None]] = None
+    do_continue: Optional[Callable[[], bool]] = None
 
 
 def extract_book(
@@ -125,19 +126,21 @@ def extract_book(
         try:
             book_cfg = cfg.books[ext_cfg.book_id]
         except KeyError:
-            events.on_error(
-                f"Book {ext_cfg.book_id} not found in configuration.",
-            )
+            if events.on_error:
+                events.on_error(
+                    f"Book {ext_cfg.book_id} not found in configuration.",
+                )
             return
 
         book_group = book_cfg.load_group(cfg_reader)
 
         output_tables = list(_filter_tables(ext_cfg, book_group, out_writer))
 
-        events.on_progress(Progress(0, len(output_tables)))
+        if events.on_progress:
+            events.on_progress(Progress(0, len(output_tables)))
 
         for i, output_table in enumerate(output_tables, start=1):
-            if not events.do_continue():
+            if events.do_continue and not events.do_continue():
                 return
 
             try:
@@ -149,9 +152,14 @@ def extract_book(
                     output_table=output_table,
                 )
             except tableextract.ConfigurationError as exc:
-                events.on_error(
-                    f"Configuration error while processing table "
-                    f"{output_table.table.file_stem}: {exc}"
-                )
+                if events.on_error:
+                    events.on_error(
+                        f"Configuration error while processing table "
+                        f"{output_table.table.file_stem}: {exc}"
+                    )
+            else:
+                if events.on_output:
+                    events.on_output(output_table.out_filepath)
             finally:
-                events.on_progress(Progress(i, len(output_tables)))
+                if events.on_progress:
+                    events.on_progress(Progress(i, len(output_tables)))

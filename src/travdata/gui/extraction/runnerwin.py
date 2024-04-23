@@ -4,6 +4,7 @@
 # Pylint doesn't like QT much.
 # pylint: disable=I1101
 
+import pathlib
 import traceback
 from typing import Optional
 
@@ -15,6 +16,7 @@ from travdata.gui import qtutil
 
 class _WorkerSignals(QtCore.QObject):
     progress = QtCore.Signal(bookextract.Progress)
+    output = QtCore.Signal(pathlib.PurePath)
     error = QtCore.Signal(str)
     stopped = QtCore.Signal()
     finished = QtCore.Signal()
@@ -46,6 +48,7 @@ class _Worker(QtCore.QRunnable):
                 ext_cfg=self._ext_cfg,
                 events=bookextract.ExtractEvents(
                     on_error=self.signals.error.emit,
+                    on_output=self.signals.output.emit,
                     on_progress=self.signals.progress.emit,
                     do_continue=lambda: self._continue,
                 ),
@@ -105,6 +108,7 @@ class ExtractionRunnerWindow(QtWidgets.QWidget):
         """Starts the extraction."""
         self._worker = _Worker(self._cfg, self._table_reader)
         self._worker.signals.progress.connect(self._progress)
+        self._worker.signals.output.connect(self._on_output)
         self._worker.signals.error.connect(self._error)
         self._worker.signals.finished.connect(self._finished)
         self._worker.signals.stopped.connect(self._stopped)
@@ -136,8 +140,12 @@ class ExtractionRunnerWindow(QtWidgets.QWidget):
         self._progress_bar.setValue(progress.completed)
 
     @QtCore.Slot()
+    def _on_output(self, path: pathlib.PurePath) -> None:
+        self._output_text_area.appendPlainText(f"Output {path}")
+
+    @QtCore.Slot()
     def _error(self, error: str) -> None:
-        self._output_text_area.appendPlainText(error + "\n")
+        self._output_text_area.appendPlainText(error)
 
     @QtCore.Slot()
     def _finished(self) -> None:
