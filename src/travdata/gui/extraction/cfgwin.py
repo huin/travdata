@@ -36,19 +36,16 @@ def _open_config_reader(
 
 @dataclasses.dataclass
 class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
-    _cfg: Optional[config.Config] = None
-    _cfg_error: Optional[str] = None
-    _cfg_version: Optional[str] = None
+    _cfg: Optional[config.Config] = dataclasses.field(default=None, init=False)
+    _cfg_error: Optional[str] = dataclasses.field(default=None, init=False)
+    _cfg_version: Optional[str] = dataclasses.field(default=None, init=False)
 
     # Remaining fields enable building a config.ExtractionConfig.
-    _config_type: filesio.IOType = filesio.IOType.AUTO
-    _config_path: Optional[pathlib.Path] = None
+    _config_type: filesio.IOType = dataclasses.field(default=filesio.IOType.AUTO, init=False)
+    _config_path: Optional[pathlib.Path] = dataclasses.field(default=None, init=False)
     input_pdf: Optional[pathlib.Path] = None
     book_id: Optional[str] = None
     output_dir: Optional[pathlib.Path] = None
-
-    def __post_init__(self) -> None:
-        self.set_config_path(self._config_path, force_update=True)
 
     @property
     def cfg(self) -> Optional[config.Config]:
@@ -73,8 +70,6 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
     def set_config_path(
         self,
         path: Optional[pathlib.Path],
-        *,
-        force_update: bool = False,
     ) -> bool:
         """Sets the config dir, loading the config if set.
 
@@ -83,7 +78,7 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
         would be no change.
         :return: True if changed.
         """
-        if not force_update and self._config_path == path:
+        if self._config_path == path:
             return False
 
         self._config_path = path
