@@ -235,22 +235,18 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self.setCentralWidget(outer_box)
 
     def _init_select_config(self) -> QtWidgets.QWidget:
-        self._config_path_label = QtWidgets.QLabel("")
-        self._config_type_combo = QtWidgets.QComboBox()
-        _repopulate_io_type_combo(self._config_type_combo)
-        self._config_type_combo.currentIndexChanged.connect(self._select_config_type)
-        self._config_version_label = QtWidgets.QLabel("")
-        self._config_path_error = QtWidgets.QLabel("")
-        qtutil.set_error_style(self._config_path_error)
-        self._config_path_button = QtWidgets.QPushButton(self._file_icon, "Select")
-        self._config_path_button.clicked.connect(self._select_config_path)
+        self._config_path_button_dir = QtWidgets.QPushButton(self._folder_icon, "Select directory")
+        self._config_path_button_dir.clicked.connect(self._select_config_path_dir)
+        self._config_path_button_zip = QtWidgets.QPushButton(self._file_icon, "Select ZIP")
+        self._config_path_button_zip.clicked.connect(self._select_config_path_zip)
         self._default_config_path_button = QtWidgets.QPushButton("Default")
         self._default_config_path_button.clicked.connect(self._select_default_config_path)
 
         select_config_box = QtWidgets.QWidget()
         layout = QtWidgets.QHBoxLayout(select_config_box)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._config_path_button)
+        layout.addWidget(self._config_path_button_dir)
+        layout.addWidget(self._config_path_button_zip)
         layout.addWidget(self._default_config_path_button)
         layout.addSpacerItem(
             QtWidgets.QSpacerItem(
@@ -261,11 +257,15 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             )
         )
 
+        self._config_path_label = QtWidgets.QLabel("")
+        self._config_version_label = QtWidgets.QLabel("")
+        self._config_path_error = QtWidgets.QLabel("")
+        qtutil.set_error_style(self._config_path_error)
+
         config_box = QtWidgets.QGroupBox("Extraction configuration")
         layout = QtWidgets.QFormLayout(config_box)
-        layout.addRow("Config path:", self._config_path_label)
-        layout.addRow("Config type:", self._config_type_combo)
         layout.addRow("Select config:", select_config_box)
+        layout.addRow("Config path:", self._config_path_label)
         layout.addRow("Config version:", self._config_version_label)
         layout.addRow(self._config_path_error)
 
@@ -282,10 +282,10 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         input_pdf_box = QtWidgets.QGroupBox("Input PDF")
         layout = QtWidgets.QFormLayout(input_pdf_box)
+        layout.addRow("Select PDF:", self._input_pdf_button)
         layout.addRow("Input PDF:", self._input_pdf_label)
         layout.addRow(self._input_pdf_error)
         qtutil.set_error_style(self._input_pdf_error)
-        layout.addRow("Select PDF:", self._input_pdf_button)
         layout.addRow("Select book:", self._book_combo)
 
         return input_pdf_box
@@ -302,9 +302,9 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         output_dir_box = QtWidgets.QGroupBox("Output directory")
         layout = QtWidgets.QFormLayout(output_dir_box)
+        layout.addRow("Select directory:", self._output_dir_button)
         layout.addRow("Output directory:", self._output_dir_label)
         layout.addRow(self._output_dir_error)
-        layout.addRow("Select directory:", self._output_dir_button)
 
         return output_dir_box
 
@@ -315,13 +315,6 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
     def _refresh_from_state(self) -> None:
         """Update widgets from current self.state."""
-        _update_io_type_combo(self._config_type_combo, self._extract_builder.config_type)
-        match self._extract_builder.config_type:
-            case filesio.IOType.DIR:
-                self._config_path_button.setIcon(self._folder_icon)
-            case filesio.IOType.ZIP:
-                self._config_path_button.setIcon(self._file_icon)
-
         _bulk_enable(
             self._extract_builder.cfg is not None,
             self._input_pdf_button,
@@ -349,40 +342,34 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._extract = self._extract_builder.build()
         self._extract_button.setEnabled(self._extract is not None and self._runner is None)
 
+    def _selected_config(self, config_path: pathlib.Path) -> None:
+        self._book_combo_dirty = self._extract_builder.set_config_path(config_path)
+        self._guess_book_combo()
+        self._refresh_from_state()
+
     @QtCore.Slot()
-    def _select_config_path(self) -> None:
-        def selected(path: pathlib.Path) -> None:
-            self._book_combo_dirty = self._extract_builder.set_config_path(path)
-            self._guess_book_combo()
-            self._refresh_from_state()
-
-        match self._extract_builder.config_type:
-            case filesio.IOType.DIR:
-                file_mode = QtWidgets.QFileDialog.FileMode.Directory
-                filter_ = "*"
-            case filesio.IOType.ZIP:
-                file_mode = QtWidgets.QFileDialog.FileMode.ExistingFile
-                filter_ = "*.zip"
-            case _:
-                file_mode = QtWidgets.QFileDialog.FileMode.AnyFile
-                filter_ = "*"
-
+    def _select_config_path_dir(self) -> None:
         _do_file_selection(
             parent=self,
             accept_mode=QtWidgets.QFileDialog.AcceptMode.AcceptOpen,
-            file_mode=file_mode,
-            selected_callback=selected,
-            filter_=filter_,
+            file_mode=QtWidgets.QFileDialog.FileMode.Directory,
+            selected_callback=self._selected_config,
+            filter_="*",
+        )
+
+    @QtCore.Slot()
+    def _select_config_path_zip(self) -> None:
+        _do_file_selection(
+            parent=self,
+            accept_mode=QtWidgets.QFileDialog.AcceptMode.AcceptOpen,
+            file_mode=QtWidgets.QFileDialog.FileMode.ExistingFile,
+            selected_callback=self._selected_config,
+            filter_="*.zip",
         )
 
     @QtCore.Slot()
     def _select_default_config_path(self) -> None:
         self._book_combo_dirty = self._extract_builder.set_config_path(self._default_config_path)
-        self._refresh_from_state()
-
-    @QtCore.Slot()
-    def _select_config_type(self, index: int) -> None:
-        self._extract_builder.set_config_type(self._config_type_combo.itemData(index))
         self._refresh_from_state()
 
     @QtCore.Slot()
