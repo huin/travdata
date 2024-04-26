@@ -373,6 +373,7 @@ class ZipWriter(Writer):
     @contextlib.contextmanager
     def create(cls, zip_path: pathlib.Path) -> Iterator[Self]:
         """Create a ZipWriter to write to a new ZIP file at the path."""
+        zip_path.parent.mkdir(parents=True, exist_ok=True)
         zip_file = zipfile.ZipFile(zip_path, "w")
         try:
             yield cls(zip_file)

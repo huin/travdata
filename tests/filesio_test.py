@@ -31,7 +31,7 @@ def test_mem_roundtrip() -> None:
 
 def test_zip_roundtrip() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
-        zip_path = pathlib.Path(tmpdir) / "files.zip"
+        zip_path = pathlib.Path(tmpdir) / "dir" / "files.zip"
         _roundtrip_test(
             reader_ctx=filesio.ZipReader.open(zip_path),
             writer_ctx=filesio.ZipWriter.create(zip_path),
