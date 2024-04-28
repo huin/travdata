@@ -26,13 +26,13 @@ class TableReader(Protocol):
         *,
         pdf_path: pathlib.Path,
         template_file: IO[str],
-    ) -> list[tabulautil.TabulaTable]:
+    ) -> tuple[set[int], list[tabulautil.TabulaTable]]:
         """Reads tables from a PDF file, using the named template file.
 
         :param pdf_path: Path to the PDF file.
         :param template_file: File-like reader for the Tabula template JSON
         file.
-        :return: List of extracted tables.
+        :return: Set of page numbers and list of extracted tables.
         """
         raise NotImplementedError
 
@@ -46,7 +46,7 @@ def extract_table(
     table: config.Table,
     pdf_path: pathlib.Path,
     table_reader: TableReader,
-) -> Iterator[list[str]]:
+) -> tuple[set[int], Iterator[list[str]]]:
     """Extracts a table from the PDF.
 
     :cfg_reader: Configuration file reader.
@@ -54,7 +54,7 @@ def extract_table(
     must not be None.
     :param pdf_path: Path to the PDF to extract from.
     :param tabula_reader: Used to read the table from the PDF.
-    :returns: Iterator over rows from the table.
+    :returns: Set of page numbers and iterator over rows from the table.
     :raises ValueError: ``table.extraction`` is None.
     """
     if table.extraction is None:
@@ -63,18 +63,17 @@ def extract_table(
         )
 
     with cfg_reader.open_read(table.tabula_template_path) as tmpl_file:
-        tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(
-            table_reader.read_pdf_with_template(
-                pdf_path=pdf_path,
-                template_file=tmpl_file,
-            )
+        pages, tables = table_reader.read_pdf_with_template(
+            pdf_path=pdf_path,
+            template_file=tmpl_file,
         )
+        tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(tables)
         rows = tabulautil.table_rows_text(tabula_rows)
 
         for transform_cfg in table.extraction.transforms:
             rows = _transform(transform_cfg, rows)
 
-        return _clean_rows(rows)
+        return pages, _clean_rows(rows)
 
 
 _Row: TypeAlias = list[str]

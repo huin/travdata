@@ -81,6 +81,7 @@ class Book:
     name: str
     default_filename: str
     tags: set[str] = dataclasses.field(default_factory=set)
+    page_offset: int = 1
     _group: Optional[Group] = None
 
     def load_group(self, cfg_reader: filesio.Reader) -> Group:
@@ -171,6 +172,7 @@ class _YamlBook(yamlutil.YamlMappingMixin):
     name: str
     default_filename: str
     tags: set[str] = dataclasses.field(default_factory=set, metadata=yamlutil.SET_METADATA)
+    page_offset: int = 1
 
     @classmethod
     def yaml_create_empty(cls) -> Self:
@@ -186,12 +188,13 @@ class _YamlBook(yamlutil.YamlMappingMixin):
         :param book_id: ID of the book within the parent _YamlConfig.
         :return: Prepared ``Book``.
         """
-        tags = self.tags | {f"book/{self.name}"}
+        tags = self.tags | {f"book/{book_id}"}
         return Book(
             id_=book_id,
             name=self.name,
             default_filename=self.default_filename,
             tags=tags,
+            page_offset=self.page_offset,
         )
 
 

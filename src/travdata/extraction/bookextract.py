@@ -76,9 +76,9 @@ def _extract_single_table(
     table_reader: tableextract.TableReader,
     input_pdf: pathlib.Path,
     output_table: _OutputTable,
-) -> None:
-    """Helper wrapper of `extract_table` for `extract_book`."""
-    rows = tableextract.extract_table(
+) -> set[int]:
+    """Helper wrapper of `extract_table` for `extract_book`, returning page numbers."""
+    pages, rows = tableextract.extract_table(
         cfg_reader=cfg_reader,
         table=output_table.table,
         pdf_path=input_pdf,
@@ -86,6 +86,7 @@ def _extract_single_table(
     )
     with csvutil.open_by_writer(out_writer, output_table.out_filepath) as f:
         csv.writer(f).writerows(rows)
+    return pages
 
 
 @dataclasses.dataclass
@@ -134,32 +135,53 @@ def extract_book(
 
         book_group = book_cfg.load_group(cfg_reader)
 
-        output_tables = list(_filter_tables(ext_cfg, book_group, out_writer))
+        output_tables = sorted(
+            _filter_tables(ext_cfg, book_group, out_writer),
+            key=lambda ft: ft.out_filepath,
+        )
 
         if events.on_progress:
             events.on_progress(Progress(0, len(output_tables)))
 
-        for i, output_table in enumerate(output_tables, start=1):
-            if events.do_continue and not events.do_continue():
-                return
+        with csvutil.open_by_writer(out_writer, pathlib.PurePath("index.csv")) as index_out:
+            index_writer = csv.DictWriter(
+                index_out,
+                ["pages", "table_path", "tags"],
+            )
+            index_writer.writeheader()
 
-            try:
-                _extract_single_table(
-                    cfg_reader=cfg_reader,
-                    out_writer=out_writer,
-                    table_reader=table_reader,
-                    input_pdf=ext_cfg.input_pdf,
-                    output_table=output_table,
-                )
-            except tableextract.ConfigurationError as exc:
-                if events.on_error:
-                    events.on_error(
-                        f"Configuration error while processing table "
-                        f"{output_table.table.file_stem}: {exc}"
+            for i, output_table in enumerate(output_tables, start=1):
+                if events.do_continue and not events.do_continue():
+                    return
+
+                try:
+                    pages = _extract_single_table(
+                        cfg_reader=cfg_reader,
+                        out_writer=out_writer,
+                        table_reader=table_reader,
+                        input_pdf=ext_cfg.input_pdf,
+                        output_table=output_table,
                     )
-            else:
-                if events.on_output:
-                    events.on_output(output_table.out_filepath)
-            finally:
-                if events.on_progress:
-                    events.on_progress(Progress(i, len(output_tables)))
+                except tableextract.ConfigurationError as exc:
+                    if events.on_error:
+                        events.on_error(
+                            f"Configuration error while processing table "
+                            f"{output_table.table.file_stem}: {exc}"
+                        )
+                else:
+                    if events.on_output:
+                        events.on_output(output_table.out_filepath)
+
+                    index_writer.writerow(
+                        {
+                            "table_path": str(output_table.out_filepath),
+                            "pages": ";".join(
+                                str(book_cfg.page_offset + page) for page in sorted(pages)
+                            ),
+                            "tags": ";".join(sorted(output_table.table.tags)),
+                        }
+                    )
+
+                finally:
+                    if events.on_progress:
+                        events.on_progress(Progress(i, len(output_tables)))

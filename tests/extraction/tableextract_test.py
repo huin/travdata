@@ -41,9 +41,9 @@ class FakeTableReader:
         *,
         pdf_path: pathlib.Path,
         template_file: IO[str],
-    ) -> list[tabulautil.TabulaTable]:
+    ) -> tuple[set[int], list[tabulautil.TabulaTable]]:
         self.calls.append(Call(pdf_path, template_file.read()))
-        return self.return_tables
+        return {1}, self.return_tables
 
 
 @pytest.mark.parametrize(
@@ -388,7 +388,7 @@ def test_extract_table(
     file_stem = pathlib.Path("foo/bar")
     with filesio.MemReader.open(files) as cfg_reader:
         table_reader = FakeTableReader(tables_in=tables_in)
-        actual = tableextract.extract_table(
+        actual_pages, actual = tableextract.extract_table(
             cfg_reader=cfg_reader,
             table=config.Table(
                 file_stem=file_stem,
@@ -397,6 +397,7 @@ def test_extract_table(
             pdf_path=pdf_path,
             table_reader=table_reader,
         )
+    assert actual_pages == {1}
     # Check read_pdf_with_template calls.
     testfixtures.compare(expected=[Call(pdf_path, tmpl_content)], actual=table_reader.calls)
     # Check output.

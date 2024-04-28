@@ -93,21 +93,24 @@ class TabulaClient:
         *,
         pdf_path: pathlib.Path,
         template_file: IO[str],
-    ) -> list[TabulaTable]:
+    ) -> tuple[set[int], list[TabulaTable]]:
         """Reads table(s) from a PDF, based on the Tabula template.
 
         :param pdf_path: Path to PDF to read from.
         :param template_file: File-like reader for the Tabula template JSON
         file.
-        :return: Tables read from the PDF.
+        :return: Page numbers and tables read from the PDF.
         """
         self._needs_shutdown = not self._force_subprocess
 
         result: list[TabulaTable] = []
         template = cast(list[_TemplateEntry], json.load(template_file))
 
+        pages: set[int] = set()
+
         for entry in template:
             method = entry["extraction_method"]
+            pages.add(int(entry["page"]))
             result.extend(
                 cast(
                     list[TabulaTable],
@@ -124,7 +127,7 @@ class TabulaClient:
                 )
             )
 
-        return result
+        return pages, result
 
     def _read_pdf(self, **kwargs) -> list[TabulaTable]:
         return cast(
