@@ -42,8 +42,8 @@ def run(args: argparse.Namespace) -> None:
     registry.load_all_converters()
 
     with (
-        filesio.DirReader.open(args.input_dir) as csv_reader,
-        filesio.DirWriter.create(args.output_dir) as yaml_writer,
+        filesio.DirReader.new_reader(args.input_dir) as csv_reader,
+        filesio.DirReadWriter.new_read_writer(args.output_dir) as yaml_writer,
     ):
         for conv_key, conv_fn in registry.CONVERTERS.converters.items():
             in_group_dir = pathlib.PurePath(conv_key.group_name)

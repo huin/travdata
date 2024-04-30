@@ -30,7 +30,7 @@ def _open_config_reader(
     config_path: pathlib.Path,
 ) -> contextlib.AbstractContextManager[filesio.Reader]:
     config_type = config_type.resolve_auto(config_path)
-    return config_type.open(config_path)
+    return config_type.new_reader(config_path)
 
 
 @dataclasses.dataclass
@@ -166,7 +166,7 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
 
         return bookextract.ExtractionConfig(
             cfg_reader_ctx=_open_config_reader(self._config_type, self._config_path),
-            out_writer_ctx=filesio.DirWriter.create(self.output_dir),
+            out_writer_ctx=filesio.DirReadWriter.new_read_writer(self.output_dir),
             input_pdf=self.input_pdf,
             book_id=self.book_id,
             overwrite_existing=False,

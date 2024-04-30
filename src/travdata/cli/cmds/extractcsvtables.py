@@ -13,7 +13,6 @@ from typing import Callable, Iterator
 
 from progress import bar as progress  # type: ignore[import-untyped]
 from travdata import config, filesio
-from travdata.cli import cliutil
 from travdata.extraction import bookextract, tabulautil
 
 
@@ -167,15 +166,13 @@ def _progress_reporter(no_progress: bool) -> Iterator[Callable[[bookextract.Prog
             progress_bar.finish()
 
 
-def _create_writer(
+def _create_read_writer(
     args: argparse.Namespace,
-) -> contextlib.AbstractContextManager[filesio.Writer]:
+) -> contextlib.AbstractContextManager[filesio.ReadWriter]:
     output: pathlib.Path = args.output
     output_type: filesio.IOType = args.output_type
     output_type = output_type.resolve_auto(output)
-    if output_type == filesio.IOType.ZIP and args.overwrite_existing:
-        raise cliutil.UsageError("--overwrite-existing is incompatible with writing to a ZIP file")
-    return output_type.create(output)
+    return output_type.new_read_writer(output)
 
 
 def run(args: argparse.Namespace) -> int:
@@ -193,7 +190,7 @@ def run(args: argparse.Namespace) -> int:
 
     ext_cfg = bookextract.ExtractionConfig(
         cfg_reader_ctx=config.config_reader(args),
-        out_writer_ctx=_create_writer(args),
+        out_writer_ctx=_create_read_writer(args),
         input_pdf=args.input_pdf,
         book_id=args.book_name,
         overwrite_existing=args.overwrite_existing,

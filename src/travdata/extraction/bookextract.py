@@ -33,7 +33,7 @@ class ExtractionConfig:
     """
 
     cfg_reader_ctx: contextlib.AbstractContextManager[filesio.Reader]
-    out_writer_ctx: contextlib.AbstractContextManager[filesio.Writer]
+    out_writer_ctx: contextlib.AbstractContextManager[filesio.ReadWriter]
     input_pdf: pathlib.Path
     book_id: str
     overwrite_existing: bool
@@ -50,7 +50,7 @@ class _OutputTable:
 def _filter_tables(
     ext_cfg: ExtractionConfig,
     book_group: config.Group,
-    out_writer: filesio.Writer,
+    out_writer: filesio.ReadWriter,
 ) -> Iterator[_OutputTable]:
     for table in book_group.all_tables():
         if table.extraction is None:
@@ -72,7 +72,7 @@ def _filter_tables(
 def _extract_single_table(
     *,
     cfg_reader: filesio.Reader,
-    out_writer: filesio.Writer,
+    out_writer: filesio.ReadWriter,
     table_reader: tableextract.TableReader,
     input_pdf: pathlib.Path,
     output_table: _OutputTable,
@@ -84,7 +84,7 @@ def _extract_single_table(
         pdf_path=input_pdf,
         table_reader=table_reader,
     )
-    with csvutil.open_by_writer(out_writer, output_table.out_filepath) as f:
+    with csvutil.open_by_read_writer(out_writer, output_table.out_filepath) as f:
         csv.writer(f).writerows(rows)
     return pages
 
@@ -143,7 +143,7 @@ def extract_book(
         if events.on_progress:
             events.on_progress(Progress(0, len(output_tables)))
 
-        with csvutil.open_by_writer(out_writer, pathlib.PurePath("index.csv")) as index_out:
+        with csvutil.open_by_read_writer(out_writer, pathlib.PurePath("index.csv")) as index_out:
             index_writer = csv.DictWriter(
                 index_out,
                 ["pages", "table_path", "tags"],

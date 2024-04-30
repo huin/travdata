@@ -386,7 +386,7 @@ def test_extract_table(
     files = {tmpl_path: tmpl_content}
     pdf_path = pathlib.Path("some.pdf")
     file_stem = pathlib.Path("foo/bar")
-    with filesio.MemReader.open(files) as cfg_reader:
+    with filesio.MemReadWriter.new_reader(files) as cfg_reader:
         table_reader = FakeTableReader(tables_in=tables_in)
         actual_pages, actual = tableextract.extract_table(
             cfg_reader=cfg_reader,

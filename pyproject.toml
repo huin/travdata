@@ -26,6 +26,7 @@ pytest = "^8.0.2"
 testfixtures = "^8.0.0"
 trove-classifiers = "^2024.3.3"
 types-pyinstaller = "^6.5.0.20240311"
+pytest-subtests = "^0.12.1"
 
 [tool.poetry.group.dev.dependencies.pyinstaller]
 version = "^6.5.0"

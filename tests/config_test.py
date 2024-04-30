@@ -33,7 +33,7 @@ groups:
             defaults: !Table {}
 """
     files = {book_yaml_path: book_yaml}
-    with filesio.MemReader.open(files) as cfg_reader:
+    with filesio.MemReadWriter.new_reader(files) as cfg_reader:
         actual = config.load_book(cfg_reader, book_name, {"outer"})
 
     testfixtures.compare(

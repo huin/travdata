@@ -276,7 +276,7 @@ def load_config_version(cfg_reader: filesio.Reader) -> Optional[str]:
         return None
 
 
-def save_config_version(cfg_writer: filesio.Writer, version: str) -> None:
+def save_config_version(cfg_writer: filesio.ReadWriter, version: str) -> None:
     """Writes the configuration version to the ``cfg_writer``."""
     with cfg_writer.open_write(_VERSION_FILE) as f:
         f.write(version)
@@ -356,7 +356,7 @@ def config_reader(
     """
     path: pathlib.Path = args.config
     output_type = filesio.IOType.AUTO.resolve_auto(path)
-    return output_type.open(path)
+    return output_type.new_reader(path)
 
 
 def create_config_zip(
@@ -371,8 +371,8 @@ def create_config_zip(
     :param config_zip: Config ZIP file to create.
     """
     with (
-        filesio.DirReader.open(config_dir) as cfg_reader,
-        filesio.ZipWriter.create(config_zip) as cfg_writer,
+        filesio.DirReader.new_reader(config_dir) as cfg_reader,
+        filesio.ZipReadWriter.new_read_writer(config_zip) as cfg_writer,
     ):
         save_config_version(cfg_writer, version)
 

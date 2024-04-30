@@ -33,17 +33,17 @@ def open_read(
     return path.open(mode="rt", encoding="utf-8", newline="")
 
 
-def open_by_writer(
-    writer: filesio.Writer,
+def open_by_read_writer(
+    read_writer: filesio.ReadWriter,
     path: pathlib.PurePath,
 ) -> contextlib.AbstractContextManager[IO[str]]:
     """Opens a file in a manner suitable for writing CSV data into.
 
-    :param writer: Writer to use.
+    :param read_writer: ReadWriter to use.
     :param path: Path to the file to write.
     :return: Opened file.
     """
-    return writer.open_write(path, newline="")
+    return read_writer.open_write(path, newline="")
 
 
 def open_write(
