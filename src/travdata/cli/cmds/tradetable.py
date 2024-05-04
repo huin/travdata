@@ -27,10 +27,12 @@ from typing import (
     cast,
 )
 
-from travdata import csvutil
+from travdata import csvutil, filesio
+from travdata.cli import cliutil
 from travdata.datatypes import yamlcodec
 from travdata.datatypes.core import trade, worldcreation
-from travdata.extraction import parseutil
+from travdata.tableconverters.core import trade as tradeconv, worldcreation as worldcreationconv
+from travdata.extraction import index, parseutil
 from travdata.travellermap import apiurls, sectorparse, world
 
 T = TypeVar("T")
@@ -184,10 +186,15 @@ def add_subparser(subparsers) -> None:
 
     data_inputs_grp = argparser.add_argument_group("Data inputs")
     data_inputs_grp.add_argument(
-        "data_dir",
-        help="Path to the directory to read the Traveller YAML files from.",
+        "trav_data",
+        help=textwrap.dedent(
+            """
+            Path to the ZIP file or directory to read the Traveller CSV files
+            from. This is the output from running extractcsvtables.
+            """
+        ),
         type=pathlib.Path,
-        metavar="IN_DIR",
+        metavar="DATA_DIR",
     )
     data_inputs_grp.add_argument(
         "--trade-good-illegality",
@@ -273,6 +280,7 @@ def add_subparser(subparsers) -> None:
         help="""Format of the output trading sheet.""",
         choices=_RESULT_WRITERS.keys(),
         metavar="FORMAT",
+        required=True,
     )
 
     argparser.add_argument(
@@ -659,18 +667,50 @@ _RESULT_WRITERS: dict[str, _ResultWriter] = {
 }
 
 
+_T = TypeVar("_T")
+
+
+def _read_trav_data_table(
+    reader: filesio.Reader,
+    idx: index.Index,
+    tags: list[str],
+    converter: Callable[[Iterable[dict[str, str | None]]], Iterable[_T]],
+) -> list[_T]:
+    paths = list(idx.paths_with_all_tags(tags))
+    num = len(paths)
+    if num != 1:
+        raise cliutil.UsageError(f"found {num} table(s) with tags {tags}, want exactly 1")
+
+    with csvutil.open_by_reader(reader, paths[0]) as read_io:
+        read_csv = csv.DictReader(read_io)
+        return list(converter(read_csv))
+
+
+def _read_trade_goods(
+    reader: filesio.Reader,
+    idx: index.Index,
+) -> list[trade.TradeGood]:
+    return _read_trav_data_table(reader, idx, ["type/trade-good"], tradeconv.trade_goods)
+
+
+def _read_trade_codes(
+    reader: filesio.Reader,
+    idx: index.Index,
+) -> list[worldcreation.TradeCode]:
+    return _read_trav_data_table(reader, idx, ["type/trade-code"], worldcreationconv.trade_codes)
+
+
 def process(args: argparse.Namespace) -> None:
     """Runs the program, given the parsed command line arguments.
 
     :param args: Command line arguments.
     """
-    tcodes = cast(
-        list[worldcreation.TradeCode],
-        _load_yaml(list, args.data_dir / worldcreation.GROUP / "trade-codes.yaml"),
-    )
-    tgoods = cast(
-        list[trade.TradeGood], _load_yaml(list, args.data_dir / trade.GROUP / "trade-goods.yaml")
-    )
+
+    with filesio.new_reader(args.trav_data) as reader:
+        idx = index.Index.read(reader)
+        tgoods = _read_trade_goods(reader, idx)
+        tcodes = _read_trade_codes(reader, idx)
+
     tgood_illegality: TradeGoodIllegality
     if args.trade_good_illegality:
         tgood_illegality = cast(TradeGoodIllegality, _load_yaml(dict, args.trade_good_illegality))

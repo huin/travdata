@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """Code to create/update an index of output data."""
 
+import collections
 import contextlib
 import csv
+import dataclasses
 import pathlib
-from typing import Iterable, Iterator, Protocol
+from typing import Iterable, Iterator, Protocol, Self
 
 from travdata import config, csvutil, filesio
 
@@ -20,6 +22,59 @@ _INDEX_COLUMNS = [
 ]
 
 _INDEX_PATH = pathlib.PurePath("index.csv")
+
+
+@dataclasses.dataclass
+class _Entry:
+    path: pathlib.PurePath
+    tags: list[str]
+
+
+class Index:
+    """Index of all extracted tables in an output."""
+
+    _paths: frozenset[pathlib.PurePath]
+    _tags_to_paths: dict[str, set[pathlib.PurePath]]
+
+    def __init__(self, entries: Iterable[_Entry]) -> None:
+        """Initialises the index."""
+        self._tags_to_paths = collections.defaultdict(set)
+        paths: list[pathlib.PurePath] = []
+        for entry in entries:
+            paths.append(entry.path)
+            for tag in entry.tags:
+                self._tags_to_paths[tag].add(entry.path)
+        self._paths = frozenset(paths)
+
+    def paths_with_all_tags(self, tags: Iterable[str]) -> Iterable[pathlib.PurePath]:
+        """Returns paths to tables with all of the given tags.
+
+        :param tags: Tags to select for.
+        :return: Paths of matching tables. Returns all tables if ``tags`` is empty.
+        """
+        matches: frozenset[pathlib.PurePath] = self._paths
+        for tag in tags:
+            matches &= self._tags_to_paths[tag]
+        return matches
+
+    @classmethod
+    def read(cls, reader: filesio.Reader) -> Self:
+        """Parses and returns an index from the ``Reader``.
+
+        :param reader: Reader containing the index to read.
+        :return: Parsed index.
+        """
+
+        def parse_rows(rows: Iterable[dict[str, str]]) -> Iterator[_Entry]:
+            for row in rows:
+                yield _Entry(
+                    pathlib.PurePath(row[_INDEX_TABLE_PATH]),
+                    row[_INDEX_TAGS].split(";"),
+                )
+
+        with csvutil.open_by_reader(reader, _INDEX_PATH) as read_io:
+            read_csv = csv.DictReader(read_io)
+            return cls(parse_rows(read_csv))
 
 
 class Writer(Protocol):

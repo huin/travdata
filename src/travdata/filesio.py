@@ -121,6 +121,22 @@ class IOType(enum.StrEnum):
         return IOType.DIR
 
 
+def new_reader(
+    path: pathlib.Path,
+    type_: IOType = IOType.AUTO,
+) -> contextlib.AbstractContextManager["Reader"]:
+    """Opens a ``Reader`` for the given path."""
+    return type_.resolve_auto(path).new_reader(path)
+
+
+def new_read_writer(
+    path: pathlib.Path,
+    type_: IOType = IOType.AUTO,
+) -> contextlib.AbstractContextManager["ReadWriter"]:
+    """Opens a ``ReadWriter`` for the given path."""
+    return type_.resolve_auto(path).new_read_writer(path)
+
+
 class Reader(Protocol):
     """Protocol for reading files from the collection."""
 
