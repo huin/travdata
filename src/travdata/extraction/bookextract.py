@@ -5,10 +5,10 @@ import contextlib
 import csv
 import dataclasses
 import pathlib
-from typing import Callable, Iterable, Iterator, Optional, Self
+from typing import Callable, Iterator, Optional
 
 from travdata import config, csvutil, filesio
-from travdata.extraction import tableextract
+from travdata.extraction import index, tableextract
 
 
 @dataclasses.dataclass
@@ -105,86 +105,6 @@ class ExtractEvents:
     do_continue: Optional[Callable[[], bool]] = None
 
 
-# Columns/record field names in the output index file.
-_INDEX_TABLE_PATH = "table_path"
-_INDEX_PAGES = "pages"
-_INDEX_TAGS = "tags"
-_INDEX_COLUMNS = [
-    _INDEX_TABLE_PATH,
-    _INDEX_PAGES,
-    _INDEX_TAGS,
-]
-
-_INDEX_PATH = pathlib.PurePath("index.csv")
-
-
-class _Indexer:
-    _write_csv: csv.DictWriter
-    _seen_paths: set[str]
-
-    def __init__(self, write_csv: csv.DictWriter) -> None:
-        self._write_csv = write_csv
-        self._seen_paths = set()
-
-    @classmethod
-    @contextlib.contextmanager
-    def for_read_writer(cls, read_writer: filesio.ReadWriter) -> Iterator[Self]:
-        """Manages an ``_Indexer``.
-
-        :param read_writer: ReadWriter containing the index to create or update.
-        :yield: The ``_Indexer``.
-        """
-        # Read in any existing index so that we can append new entries.
-        existing_rows: list[dict[str, str]] = []
-        prior_field_names: set[str] = set()
-        try:
-            with csvutil.open_by_reader(read_writer, _INDEX_PATH) as read_io:
-                read_csv = csv.DictReader(read_io)
-                existing_rows.extend(read_csv)
-                if read_csv.fieldnames:
-                    prior_field_names = set(read_csv.fieldnames)
-        except filesio.NotFoundError:
-            # No existing index, no existing entries to copy over.
-            pass
-
-        # Retain unknown columns, merge known existing.
-        fieldnames = _INDEX_COLUMNS + sorted(prior_field_names - set(_INDEX_COLUMNS))
-
-        with csvutil.open_by_read_writer(read_writer, _INDEX_PATH) as write_io:
-            write_csv = csv.DictWriter(write_io, fieldnames=fieldnames)
-            write_csv.writeheader()
-
-            self = cls(write_csv)
-            yield self
-
-            for row in existing_rows:
-                if row.get(_INDEX_TABLE_PATH, None) in self._seen_paths:
-                    continue
-                write_csv.writerows(existing_rows)
-
-    def write_entry(
-        self,
-        output_table: _OutputTable,
-        book_cfg: config.Book,
-        pages: Iterable[int],
-    ) -> None:
-        """Write an index entry.
-
-        :param output_table: Table being output.
-        :param book_cfg: Book configuration.
-        :param pages: Page numbers that the entry was sourced from.
-        """
-        path = str(output_table.out_filepath)
-        self._write_csv.writerow(
-            {
-                _INDEX_TABLE_PATH: str(output_table.out_filepath),
-                _INDEX_PAGES: ";".join(str(book_cfg.page_offset + page) for page in sorted(pages)),
-                _INDEX_TAGS: ";".join(sorted(output_table.table.tags)),
-            }
-        )
-        self._seen_paths.add(path)
-
-
 def extract_book(
     *,
     table_reader: tableextract.TableReader,
@@ -202,7 +122,7 @@ def extract_book(
     with (
         ext_cfg.cfg_reader_ctx as cfg_reader,
         ext_cfg.out_writer_ctx as out_writer,
-        _Indexer.for_read_writer(out_writer) as indexer,
+        index.writer(out_writer) as indexer,
     ):
         cfg = config.load_config(cfg_reader)
         try:
@@ -247,7 +167,8 @@ def extract_book(
                     events.on_output(output_table.out_filepath)
 
                 indexer.write_entry(
-                    output_table=output_table,
+                    output_path=output_table.out_filepath,
+                    table=output_table.table,
                     book_cfg=book_cfg,
                     pages=pages,
                 )
