@@ -13,14 +13,13 @@ import dataclasses
 import enum
 from typing import ClassVar, Optional
 
-from travdata.datatypes import basic, yamlcodec
+from travdata.datatypes import basic
 from travdata.extraction import parseutil
 
 GROUP = "worldcreation"
 
 
 @dataclasses.dataclass
-@yamlcodec.register_type
 class Government:
     """Government type identifying code and information."""
 
@@ -32,7 +31,6 @@ class Government:
 
 
 @dataclasses.dataclass
-@yamlcodec.register_type
 class LawLevel:
     """Descriptors for law levels, and weapons and armour banned in them."""
 
@@ -44,7 +42,6 @@ class LawLevel:
 
 
 @dataclasses.dataclass
-@yamlcodec.register_type
 class TradeCode:
     """Criteria for a world trade classification/code."""
 
@@ -60,7 +57,6 @@ class TradeCode:
 
 
 @enum.unique
-@yamlcodec.register_type
 class StarportType(enum.StrEnum):
     """Enumeration for core starport type codes."""
 
@@ -73,7 +69,6 @@ class StarportType(enum.StrEnum):
 
 
 @dataclasses.dataclass(frozen=True)
-@yamlcodec.register_type
 class UWP:
     """Universal World Profile."""
 

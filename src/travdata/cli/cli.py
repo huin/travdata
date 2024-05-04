@@ -17,7 +17,6 @@ from travdata import commontext
 from travdata import travdatarelease
 from travdata.cli import cliutil
 from travdata.cli.cmds import (
-    csvtoyaml,
     extractcsvtables,
     licenses,
     listbooks,
@@ -43,7 +42,6 @@ def main() -> None:
     )
 
     subparsers = argparser.add_subparsers(required=True)
-    csvtoyaml.add_subparser(subparsers)
     extractcsvtables.add_subparser(subparsers)
     licenses.add_subparser(subparsers)
     listbooks.add_subparser(subparsers)

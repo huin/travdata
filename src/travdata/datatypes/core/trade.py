@@ -4,13 +4,10 @@
 import dataclasses
 from typing import Optional
 
-from travdata.datatypes import yamlcodec
-
 GROUP = "trade"
 
 
 @dataclasses.dataclass
-@yamlcodec.register_type
 class TradeGoodProperties:
     """Specific about a single trade good that are not present for all trade goods."""
 
@@ -23,7 +20,6 @@ class TradeGoodProperties:
 
 
 @dataclasses.dataclass
-@yamlcodec.register_type
 class TradeGood:
     """Data about a single trade good."""
 

@@ -5,8 +5,6 @@ import dataclasses
 import re
 from typing import Any, ClassVar, Optional, TypeVar
 
-from travdata.datatypes import yamlcodec
-
 T = TypeVar("T")
 
 
@@ -16,7 +14,6 @@ _MIN_RANGE_RX = re.compile("(\\d+)[+]")
 
 
 @dataclasses.dataclass
-@yamlcodec.register_type
 class IntRange:
     """Inclusive integer range [self.min_value, self.max_value]."""
 
@@ -77,7 +74,6 @@ class IntRange:
 
 
 @dataclasses.dataclass
-@yamlcodec.register_type
 class IntRangeSet:
     """A set of inclusive integer ranges."""
 

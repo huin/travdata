@@ -12,18 +12,13 @@
     "!ExpandColumnOnRegex mapping",
     "!FoldRows sequence",
     "!Group mapping",
-    "!Government mapping",
     "!IntRange mapping",
     "!IntRangeSet sequence",
     "!JoinColumns mapping",
-    "!LawLevel mapping",
     "!PrependRow sequence",
     "!StaticRowCounts sequence",
     "!Table mapping",
     "!TableExtraction sequence",
-    "!TradeCode mapping",
-    "!TradeGood mapping",
-    "!TradeGoodProperties mapping",
     "!Transpose mapping",
     "!WrapRowEveryN scalar"
   ]
