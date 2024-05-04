@@ -29,15 +29,12 @@ from typing import (
 
 from travdata import csvutil, filesio, yamlutil
 from travdata.cli import cliutil
-from travdata.datatypes import yamlcodec
 from travdata.datatypes.core import trade, worldcreation
 from travdata.tableconverters.core import trade as tradeconv, worldcreation as worldcreationconv
 from travdata.extraction import index, parseutil
 from travdata.travellermap import apiurls, sectorparse, world
 
 T = TypeVar("T")
-# Maps from TradeGood.d66 to the lowest law level at which that good is illegal.
-TradeGoodIllegality: TypeAlias = dict[str, int]
 
 
 class UserError(Exception):
@@ -46,6 +43,12 @@ class UserError(Exception):
 
 class _IgnoreUnknown(enum.StrEnum):
     TRADE_CODES = "trade-codes"
+
+
+def _eval_override(v: T, override: Optional[T]) -> T:
+    if override is not None:
+        return override
+    return v
 
 
 # Trade overrides for a trade good on a world.
@@ -59,24 +62,9 @@ class WorldTradeOverrides:
     illegal: Optional[bool] = None
 
 
-def _eval_override(v: T, override: Optional[T]) -> T:
-    if override is not None:
-        return override
-    return v
-
-
 _EMPTY_OVERRIDES = WorldTradeOverrides()
-
-
 # Maps: [world location hex,trade good d66] -> overrides
 WorldTradeOverridesMap: TypeAlias = dict[tuple[str, str], WorldTradeOverrides]
-
-
-def _load_yaml(t: type[T], stream: pathlib.Path | io.TextIOBase) -> T:
-    data = yamlcodec.DATATYPES_YAML.load(stream)
-    if not isinstance(data, t):
-        raise TypeError(type(data))
-    return data
 
 
 def _load_world_csv_data(path: str) -> Iterator[world.World]:
@@ -107,6 +95,22 @@ def _load_world_csv_data(path: str) -> Iterator[world.World]:
                     ),
                 ),
             )
+
+
+# Maps from TradeGood.d66 to the lowest law level at which that good is illegal.
+TradeGoodIllegality: TypeAlias = dict[str, int]
+
+
+def _load_trade_good_illegality(path: pathlib.Path) -> TradeGoodIllegality:
+    tgood_illegality: TradeGoodIllegality = {}
+
+    with csvutil.open_read(path) as read_io:
+        read_csv = csv.DictReader(read_io)
+
+        for row in read_csv:
+            tgood_illegality[row["D66"]] = int(row["Illegal law level"])
+
+    return tgood_illegality
 
 
 def _load_travellermap_tsv_file(path: str) -> list[world.World]:
@@ -190,12 +194,15 @@ def add_subparser(subparsers) -> None:
         "--trade-good-illegality",
         help=textwrap.dedent(
             """
-            Goods illegality data. Simple YAML mapping from trade good d66
-            string to the numeric minimum law level at which it considered
-            illegal.
+            File containing trade good illegality data. CSV file with columns:
+            D66,Illegal law level
+
+            "D66" is the D66 code of the trade good.
+            "Illegal law level" is the lowest level at which the trade good is
+            regarded as illegal.
             """
         ),
-        type=argparse.FileType("rt"),
+        type=pathlib.Path,
         metavar="trade-good-illegality.yaml",
     )
     data_inputs_grp.add_argument(
@@ -703,7 +710,7 @@ def process(args: argparse.Namespace) -> None:
 
     tgood_illegality: TradeGoodIllegality
     if args.trade_good_illegality:
-        tgood_illegality = cast(TradeGoodIllegality, _load_yaml(dict, args.trade_good_illegality))
+        tgood_illegality = _load_trade_good_illegality(args.trade_good_illegality)
     else:
         tgood_illegality = {}
     if args.world_trade_overrides:
