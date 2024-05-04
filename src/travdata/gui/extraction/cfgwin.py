@@ -33,6 +33,13 @@ def _open_config_reader(
     return config_type.new_reader(config_path)
 
 
+def _open_read_writer(
+    path: pathlib.Path,
+) -> contextlib.AbstractContextManager[filesio.ReadWriter]:
+    config_type = filesio.IOType.AUTO.resolve_auto(path)
+    return config_type.new_read_writer(path)
+
+
 @dataclasses.dataclass
 class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
     _cfg: Optional[config.Config] = dataclasses.field(default=None, init=False)
@@ -44,7 +51,7 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
     _config_path: Optional[pathlib.Path] = dataclasses.field(default=None, init=False)
     input_pdf: Optional[pathlib.Path] = None
     book_id: Optional[str] = None
-    output_dir: Optional[pathlib.Path] = None
+    output_path: Optional[pathlib.Path] = None
 
     @property
     def cfg(self) -> Optional[config.Config]:
@@ -143,12 +150,6 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
             elif not self.input_pdf.is_file():
                 errors.input_pdf = f"{self.input_pdf} is not a regular file."
 
-        if self.output_dir is not None:
-            if not self.output_dir.exists():
-                errors.output_dir = f"{self.output_dir} does not exist."
-            elif not self.output_dir.is_dir():
-                errors.output_dir = f"{self.output_dir} is not a directory."
-
         return errors
 
     def build(self) -> Optional[bookextract.ExtractionConfig]:
@@ -161,12 +162,12 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
             return None
         if self.book_id is None:
             return None
-        if self.output_dir is None:
+        if self.output_path is None:
             return None
 
         return bookextract.ExtractionConfig(
             cfg_reader_ctx=_open_config_reader(self._config_type, self._config_path),
-            out_writer_ctx=filesio.DirReadWriter.new_read_writer(self.output_dir),
+            out_writer_ctx=_open_read_writer(self.output_path),
             input_pdf=self.input_pdf,
             book_id=self.book_id,
             overwrite_existing=False,
@@ -222,7 +223,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             data_usage_text,
             self._init_select_config(),
             self._init_select_input_pdf(),
-            self._init_select_output_dir(),
+            self._init_select_output(),
             QtWidgets.QSpacerItem(
                 0,
                 0,
@@ -290,21 +291,40 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
 
         return input_pdf_box
 
-    def _init_select_output_dir(self) -> QtWidgets.QWidget:
-        self._output_dir_label = QtWidgets.QLabel("")
-        self._output_dir_error = QtWidgets.QLabel("")
-        qtutil.set_error_style(self._output_dir_error)
-        self._output_dir_button = QtWidgets.QPushButton(
-            self._folder_icon,
-            "Select output directory",
-        )
-        self._output_dir_button.clicked.connect(self._select_output_dir)
+    def _init_select_output(self) -> QtWidgets.QWidget:
+        self._output_path_label = QtWidgets.QLabel("")
+        self._output_path_error = QtWidgets.QLabel("")
+        qtutil.set_error_style(self._output_path_error)
 
-        output_dir_box = QtWidgets.QGroupBox("Output directory")
+        self._output_path_button_dir = QtWidgets.QPushButton(self._folder_icon, "Select directory")
+        self._output_path_button_dir.clicked.connect(self._select_output_dir)
+        self._output_path_button_zip = QtWidgets.QPushButton(self._file_icon, "Select ZIP")
+        self._output_path_button_zip.clicked.connect(self._select_output_zip)
+        self._output_path_button = QtWidgets.QPushButton(
+            self._folder_icon,
+            "Select output path",
+        )
+        self._output_path_button.clicked.connect(self._select_output_dir)
+
+        select_output_box = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout(select_output_box)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._output_path_button_dir)
+        layout.addWidget(self._output_path_button_zip)
+        layout.addSpacerItem(
+            QtWidgets.QSpacerItem(
+                0,
+                0,
+                QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+                QtWidgets.QSizePolicy.Policy.Minimum,
+            )
+        )
+
+        output_dir_box = QtWidgets.QGroupBox("Output")
         layout = QtWidgets.QFormLayout(output_dir_box)
-        layout.addRow("Select directory:", self._output_dir_button)
-        layout.addRow("Output directory:", self._output_dir_label)
-        layout.addRow(self._output_dir_error)
+        layout.addRow("Select output:", select_output_box)
+        layout.addRow("Output path:", self._output_path_label)
+        layout.addRow(self._output_path_error)
 
         return output_dir_box
 
@@ -319,7 +339,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             self._extract_builder.cfg is not None,
             self._input_pdf_button,
             self._book_combo,
-            self._output_dir_button,
+            self._output_path_button,
         )
         _update_path_label(self._config_path_label, self._extract_builder.config_path)
         if version := self._extract_builder.config_version:
@@ -332,12 +352,12 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
             _repopulate_book_combo(self._book_combo, self._extract_builder.cfg)
             self._book_combo_dirty = False
         _update_book_combo(self._book_combo, self._extract_builder.book_id)
-        _update_path_label(self._output_dir_label, self._extract_builder.output_dir)
+        _update_path_label(self._output_path_label, self._extract_builder.output_path)
 
         errors = self._extract_builder.build_errors()
         _update_error_label(self._config_path_error, errors.config_path)
         _update_error_label(self._input_pdf_error, errors.input_pdf)
-        _update_error_label(self._output_dir_error, errors.output_dir)
+        _update_error_label(self._output_path_error, errors.output_dir)
 
         self._extract = self._extract_builder.build()
         self._extract_button.setEnabled(self._extract is not None and self._runner is None)
@@ -415,18 +435,28 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._extract_builder.book_id = self._book_combo.itemData(index)
         self._refresh_from_state()
 
+    def _selected_output(self, output_path: pathlib.Path) -> None:
+        self._extract_builder.output_path = output_path
+        self._refresh_from_state()
+
     @QtCore.Slot()
     def _select_output_dir(self) -> None:
-        def selected(path: pathlib.Path) -> None:
-            self._extract_builder.output_dir = path
-            self._refresh_from_state()
-
         _do_file_selection(
             parent=self,
             accept_mode=QtWidgets.QFileDialog.AcceptMode.AcceptSave,
             file_mode=QtWidgets.QFileDialog.FileMode.Directory,
-            selected_callback=selected,
+            selected_callback=self._selected_output,
             filter_="",
+        )
+
+    @QtCore.Slot()
+    def _select_output_zip(self) -> None:
+        _do_file_selection(
+            parent=self,
+            accept_mode=QtWidgets.QFileDialog.AcceptMode.AcceptSave,
+            file_mode=QtWidgets.QFileDialog.FileMode.AnyFile,
+            selected_callback=self._selected_output,
+            filter_="*.zip",
         )
 
     @QtCore.Slot()
