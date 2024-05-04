@@ -500,32 +500,12 @@ def _do_file_selection(
     dialog.show()
 
 
-def _update_checked(radio: QtWidgets.QRadioButton, state: bool) -> None:
-    if radio.isChecked() != state:
-        radio.setChecked(state)
-
-
 def _bulk_enable(
     enabled: bool,
     *widgets: QtWidgets.QWidget,
 ) -> None:
     for widget in widgets:
         widget.setEnabled(enabled)
-
-
-def _repopulate_io_type_combo(combo: QtWidgets.QComboBox) -> None:
-    combo.clear()
-    combo.addItem("Directory", filesio.IOType.DIR)
-    combo.addItem("ZIP file", filesio.IOType.ZIP)
-
-
-def _update_io_type_combo(combo: QtWidgets.QComboBox, io_type: filesio.IOType) -> None:
-    for i in range(combo.count()):
-        if io_type == combo.itemData(i):
-            combo.setCurrentIndex(i)
-            return
-    # Fall back to selecting the first item.
-    combo.setCurrentIndex(0)
 
 
 def _repopulate_book_combo(combo: QtWidgets.QComboBox, cfg: Optional[config.Config]) -> None:
