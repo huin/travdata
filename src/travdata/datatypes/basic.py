@@ -3,7 +3,7 @@
 
 import dataclasses
 import re
-from typing import Any, ClassVar, Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 T = TypeVar("T")
 
@@ -77,7 +77,6 @@ class IntRange:
 class IntRangeSet:
     """A set of inclusive integer ranges."""
 
-    yaml_tag: ClassVar = "!IntRangeSet"
     ranges: list[IntRange] = dataclasses.field(default_factory=list)
 
     @classmethod
@@ -100,14 +99,3 @@ class IntRangeSet:
 
     def __contains__(self, v: Any) -> bool:
         return any(v in r for r in self.ranges)
-
-    @classmethod
-    def to_yaml(cls, representer, node):
-        """Implements ruamel.yaml serialisation."""
-        return representer.represent_sequence(cls.yaml_tag, node.ranges)
-
-    @classmethod
-    def from_yaml(cls, constructor, node):
-        """Implements ruamel.yaml serialisation."""
-        del constructor  # unused
-        return cls(node.value)

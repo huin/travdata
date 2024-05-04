@@ -11,7 +11,7 @@ in the core rulebook.
 
 import dataclasses
 import enum
-from typing import ClassVar, Optional
+from typing import Optional
 
 from travdata.datatypes import basic
 from travdata.extraction import parseutil
@@ -72,7 +72,6 @@ class StarportType(enum.StrEnum):
 class UWP:
     """Universal World Profile."""
 
-    yaml_tag: ClassVar = "!UWP"
     starport: StarportType
     size: int
     atmosphere: int
@@ -104,14 +103,3 @@ class UWP:
                 parseutil.fmt_ehex_char(self.tech_level),
             ]
         )
-
-    @classmethod
-    def to_yaml(cls, representer, node):
-        """Implements ruamel.yaml serialisation."""
-        return representer.represent_scalar(cls.yaml_tag, str(node))
-
-    @classmethod
-    def from_yaml(cls, constructor, node):
-        """Implements ruamel.yaml serialisation."""
-        del constructor  # unused
-        return cls.parse(node.value)

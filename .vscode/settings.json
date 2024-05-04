@@ -12,8 +12,6 @@
     "!ExpandColumnOnRegex mapping",
     "!FoldRows sequence",
     "!Group mapping",
-    "!IntRange mapping",
-    "!IntRangeSet sequence",
     "!JoinColumns mapping",
     "!PrependRow sequence",
     "!StaticRowCounts sequence",
