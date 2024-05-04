@@ -27,7 +27,7 @@ from typing import (
     cast,
 )
 
-from travdata import csvutil, filesio
+from travdata import csvutil, filesio, yamlutil
 from travdata.cli import cliutil
 from travdata.datatypes import yamlcodec
 from travdata.datatypes.core import trade, worldcreation
@@ -50,7 +50,6 @@ class _IgnoreUnknown(enum.StrEnum):
 
 # Trade overrides for a trade good on a world.
 @dataclasses.dataclass
-@yamlcodec.register_type
 class WorldTradeOverrides:
     """Overrides specified on a specific world and trade good."""
 
@@ -144,15 +143,6 @@ _WORLD_DATA_TYPES: dict[str, Callable[[str], Iterable[world.World]]] = {
 }
 
 
-def _pbool(s: str) -> bool:
-    v = s.lower()
-    if v == "true":
-        return True
-    if v == "false":
-        return False
-    raise ValueError(v)
-
-
 def _load_world_trade_overrides(path: pathlib.Path) -> WorldTradeOverridesMap:
     result: WorldTradeOverridesMap = {}
     with csvutil.open_read(path) as fp:
@@ -160,10 +150,10 @@ def _load_world_trade_overrides(path: pathlib.Path) -> WorldTradeOverridesMap:
         for row in r:
             key = row["Location"], row["D66"]
             result[key] = WorldTradeOverrides(
-                available=parseutil.map_opt_dict_key(_pbool, row, "Available"),
+                available=parseutil.map_opt_dict_key(yamlutil.parse_bool, row, "Available"),
                 purchase_dm=parseutil.map_opt_dict_key(int, row, "Purchase DM"),
                 sale_dm=parseutil.map_opt_dict_key(int, row, "Sale DM"),
-                illegal=parseutil.map_opt_dict_key(_pbool, row, "Illegal"),
+                illegal=parseutil.map_opt_dict_key(yamlutil.parse_bool, row, "Illegal"),
             )
     return result
 

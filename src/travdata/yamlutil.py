@@ -19,6 +19,19 @@ TO_YAML = "to_yaml"  # Callable to convert to YAML value.
 FROM_YAML = "from_yaml"  # Callable to convert from YAML value.
 
 
+def parse_bool(v: bool | str) -> bool:
+    """Converts a YAML bool to bool."""
+    if isinstance(v, bool):
+        return v
+    v = v.lower()
+    if v == "true":
+        return True
+    if v == "false":
+        return False
+    raise ValueError(v)
+
+
+BOOL_METADATA = {FROM_YAML: parse_bool}
 INT_METADATA = {TO_YAML: int, FROM_YAML: int}
 SET_METADATA = {TO_YAML: sorted, FROM_YAML: set}
 
