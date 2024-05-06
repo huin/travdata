@@ -1,14 +1,12 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use std::{path, time::Instant};
+use std::path;
 
 mod config;
 mod extraction;
 mod table;
 
-use extraction::tabulautil;
-
-use crate::extraction::tableextract;
+use crate::extraction::{tableextract, tabulautil};
 
 /// Experimental CLI version of travdata_cli written in Rust.
 #[derive(Parser, Debug)]
@@ -49,9 +47,6 @@ fn process_group(
     input_pdf: &path::Path,
 ) -> Result<()> {
     for (table_name, table_cfg) in &grp.tables {
-        if table_name != "encounter-modifiers" {
-            continue; // Remove this when finished experimenting.
-        }
         let tmpl_path = grp_path
             .join(table_name)
             .with_extension("tabula-template.json");
@@ -60,9 +55,6 @@ fn process_group(
     }
 
     for (child_grp_name, child_grp) in &grp.groups {
-        if child_grp_name != "05-encounters-and-dangers" {
-            continue; // Remove this when finished experimenting.
-        }
         let child_grp_path = grp_path.join(child_grp_name);
         process_group(tabula_client, child_grp, &child_grp_path, input_pdf)
             .with_context(|| format!("processing group {:?}", child_grp_name))?;
@@ -81,19 +73,15 @@ fn process_table(
         return Ok(());
     }
 
-    println!("Extraction config: {:?}", table_cfg);
-    let now = Instant::now();
     let extracted_tables = tabula_client
         .read_pdf_with_template(input_pdf, tmpl_path)
         .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
     let table = tableextract::concat_tables(extracted_tables.tables);
     let table = tableextract::apply_transforms(&table_cfg.extraction, table)?;
 
-    println!("Rows:");
     for row in table.0 {
         println!("{:?}", row);
     }
-    println!("Extracted in: {:?}", now.elapsed());
 
     Ok(())
 }
