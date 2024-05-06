@@ -49,11 +49,8 @@ fn transform(cfg: &extract::TableTransform, table: Table) -> Result<Table> {
         FoldRows(cfg) => Ok(fold_rows(cfg, table)),
         JoinColumns(cfg) => Ok(join_columns(cfg, table)),
         PrependRow(cfg) => Ok(prepend_row(cfg, table)),
-        other => {
-            // Make the match exhaustive, rather than have this placeholder
-            // default case.
-            todo!("{:?}", other);
-        }
+        Transpose(_) => Ok(transpose(table)),
+        WrapRowEveryN(cfg) => Ok(wrap_row_every_n(cfg, table)),
     }
 }
 
@@ -273,6 +270,28 @@ fn join_columns(cfg: &extract::JoinColumns, mut table: Table) -> Table {
     }
 
     table
+}
+
+fn transpose(table: Table) -> Table {
+    let orig_num_cols: usize = table.iter().map(|row| row.len()).max().unwrap_or(0);
+    let orig_num_rows: usize = table.len();
+
+    let mut out_table = Table(Vec::with_capacity(orig_num_cols));
+
+    // Preallocate in a rectangle of empty strings.
+    for _ in 0..orig_num_cols {
+        let mut row: Vec<String> = Vec::with_capacity(orig_num_rows);
+        row.resize(orig_num_rows, String::new());
+        out_table.push(Row(row))
+    }
+
+    for (orig_row, row) in table.0.into_iter().enumerate() {
+        for (orig_col, cell) in row.0.into_iter().enumerate() {
+            out_table[orig_col][orig_row] = cell;
+        }
+    }
+
+    out_table
 }
 
 fn wrap_row_every_n(cfg: &extract::WrapRowEveryN, table: Table) -> Table {
@@ -608,6 +627,26 @@ mod tests {
                     &["r4c1 r4c2"],
                     &["r5c1"],
                     &[],
+                ],
+            );
+        }
+
+        #[googletest::test]
+        /// Transposes a table.
+        fn transpose() {
+            test_apply_transforms_case(
+                r#"
+                - !Transpose {}
+                "#,
+                &[
+                    &["r1c1", "r1c2", "r1c3"],
+                    &["r2c1", "r2c2"],
+                    &["r3c1", "r3c2", "r3c3"],
+                ],
+                &[
+                    &["r1c1", "r2c1", "r3c1"],
+                    &["r1c2", "r2c2", "r3c2"],
+                    &["r1c3", "", "r3c3"],
                 ],
             );
         }
