@@ -15,6 +15,15 @@ struct Args {
     #[arg(long)]
     tabula_libpath: String,
 
+    /// Path to the configuration. This must be either a directory or ZIP file,
+    /// directly containing a config.yaml file, book.yaml files in directories,
+    /// and its required Tabula templates. Some configurations for this should
+    /// be included with this program's distribution.
+    ///
+    /// TODO: Support reading from ZIP file.
+    #[arg(long)]
+    config: path::PathBuf,
+
     /// Path to book config directory.
     book_dir: path::PathBuf,
 
@@ -24,6 +33,8 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
+
+    let _cfg = config::root::load_config(&args.config)?;
 
     let tabula_client = tabulautil::TabulaClient::new(&args.tabula_libpath)
         .with_context(|| "initialising Tabula")?;
