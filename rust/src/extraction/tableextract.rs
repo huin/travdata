@@ -1,6 +1,10 @@
 //! Extracts a single table from a PDF.
 
+use anyhow::Result;
+use lazy_regex::regex;
+
 use crate::config::extract;
+use crate::extraction::parseutil::clean_text;
 use crate::table::{Row, Table};
 
 type RowIterator = dyn Iterator<Item = Row>;
@@ -14,32 +18,124 @@ pub fn concat_tables(tables: Vec<Table>) -> Table {
     )
 }
 
-pub fn apply_transforms(cfg: &extract::TableExtraction, table: Table) -> Table {
+pub fn apply_transforms(cfg: &extract::TableExtraction, table: Table) -> Result<Table> {
     let mut rows = table;
     for trn in &cfg.transforms {
-        rows = transform(trn, rows);
+        rows = transform(trn, rows)?;
     }
-    rows
+
+    clean_table(&mut rows);
+
+    Ok(rows)
 }
 
-fn transform(cfg: &extract::TableTransform, table: Table) -> Table {
-    use extract::TableTransform::*;
-    match cfg {
-        PrependRow(cfg) => prepend_row_iter(cfg, table),
-        FoldRows(cfg) => fold_rows(cfg, table),
-        other => {
-            // Make the match exhaustive, rather than have this placeholder
-            // default case.
-            eprintln!(
-                "Transform {:?} unhandled, passing through as identity.",
-                other
-            );
-            table
+/// Clean leading, trailing, and redundant sequences of whitespace within the
+/// `Table`, in-place.
+fn clean_table(table: &mut Table) {
+    for row in table.iter_mut() {
+        for cell in row.iter_mut() {
+            clean_text(cell);
         }
     }
 }
 
-fn prepend_row_iter(cfg: &extract::PrependRow, mut table: Table) -> Table {
+fn transform(cfg: &extract::TableTransform, table: Table) -> Result<Table> {
+    use extract::TableTransform::*;
+    match cfg {
+        ExpandColumnOnRegex(cfg) => expand_column_on_regex(cfg, table),
+        PrependRow(cfg) => Ok(prepend_row(cfg, table)),
+        FoldRows(cfg) => Ok(fold_rows(cfg, table)),
+        other => {
+            // Make the match exhaustive, rather than have this placeholder
+            // default case.
+            todo!("{:?}", other);
+        }
+    }
+}
+
+/// Replace Python `\1` style replacements with Rust regex `${1}` style.
+fn replace_replacements(s: &str) -> String {
+    let r = regex!(r"\\(g<)?([0-9]+)(?:>)?");
+    r.replace_all(s, |captures: &regex::Captures| {
+        match (captures.get(1), captures.get(2)) {
+            (Some(_), Some(num)) => format!("${{{}}}", num.as_str()),
+            (None, Some(num)) => format!("${{{}}}", num.as_str()),
+            _ => panic!("should never not match one of the above cases"),
+        }
+    }).to_string()
+}
+
+struct CellExpansions {
+    expansions: Vec<String>,
+}
+
+impl CellExpansions {
+    fn new(srcs: &[String]) -> Self {
+        Self {
+            expansions: srcs.iter().map(|s| replace_replacements(s)).collect(),
+        }
+    }
+
+    fn expand_from_capture<'a>(
+        &'a self,
+        captures: &'a regex::Captures,
+    ) -> impl Iterator<Item = String> + 'a {
+        self.expansions.iter().map(|repl| {
+            let mut dst = String::default();
+            captures.expand(repl, &mut dst);
+            dst
+        })
+    }
+}
+
+fn expand_column_on_regex(cfg: &extract::ExpandColumnOnRegex, mut table: Table) -> Result<Table> {
+    let pattern = regex::Regex::new(&cfg.pattern)?;
+
+    let on_match = CellExpansions::new(&cfg.on_match);
+    let default = CellExpansions::new(&cfg.default);
+
+    for row in &mut table.0 {
+        let cell = match row.get_mut(cfg.column) {
+            None => {
+                // Specified column not present. Leave as-is.
+                continue;
+            }
+            Some(vec_cell) => {
+                // Steal the original value from the vector for replacement.
+                // This allows a later splice on the row vector without keeping
+                // a borrowed ref to a member inside it, which we're replacing
+                // anyway.
+                let mut cell = String::default();
+                std::mem::swap(&mut cell, vec_cell);
+                cell
+            }
+        };
+
+        match pattern.captures(&cell) {
+            Some(captures) => {
+                // Replace with the expansions in `on_match`.
+                row.splice(
+                    cfg.column..cfg.column + 1,
+                    on_match.expand_from_capture(&captures),
+                );
+            }
+            None => {
+                // Fall back to expansions in `default`.
+                let captures = regex!(r".*")
+                    .captures(&cell)
+                    .expect("must match any string");
+                row.splice(
+                    cfg.column..cfg.column + 1,
+                    default.expand_from_capture(&captures),
+                );
+            }
+        }
+    }
+
+    Ok(table)
+}
+
+fn prepend_row(cfg: &extract::PrependRow, mut table: Table) -> Table {
     table.0.insert(0, cfg.0.clone().into());
     table
 }
@@ -67,58 +163,6 @@ fn static_row_counts(cfg: &extract::StaticRowCounts, rows: &mut Box<RowIterator>
     groups
 }
 
-#[test]
-fn test_static_row_counts_with_shortfall() {
-    let cfg = extract::StaticRowCounts {
-        row_counts: vec![2, 1, 2],
-    };
-    let rows_in: Vec<Row> = vec![Row(vec!["first".to_string()])];
-    let mut rows_iter: Box<RowIterator> = Box::new(rows_in.into_iter());
-
-    let groups = static_row_counts(&cfg, &mut rows_iter);
-
-    assert_eq!(groups, vec![vec![Row(vec!["first".to_string()]),],],);
-
-    let remainder = vec![];
-    assert_eq!(rows_iter.collect::<Vec<Row>>(), remainder,);
-}
-
-#[test]
-fn test_static_row_counts_with_remainder() {
-    let cfg = extract::StaticRowCounts {
-        row_counts: vec![2, 1, 2],
-    };
-    let rows_in: Vec<Row> = vec![
-        Row(vec!["first".to_string()]),
-        Row(vec!["second".to_string()]),
-        Row(vec!["third".to_string()]),
-        Row(vec!["fourth".to_string()]),
-        Row(vec!["fifth".to_string()]),
-        Row(vec!["sixth".to_string()]),
-    ];
-    let mut rows_iter: Box<RowIterator> = Box::new(rows_in.into_iter());
-
-    let groups = static_row_counts(&cfg, &mut rows_iter);
-
-    assert_eq!(
-        groups,
-        vec![
-            vec![
-                Row(vec!["first".to_string()]),
-                Row(vec!["second".to_string()]),
-            ],
-            vec![Row(vec!["third".to_string()])],
-            vec![
-                Row(vec!["fourth".to_string()]),
-                Row(vec!["fifth".to_string()]),
-            ],
-        ],
-    );
-
-    let remainder = vec![Row(vec!["sixth".to_string()])];
-    assert_eq!(rows_iter.collect::<Vec<Row>>(), remainder,);
-}
-
 fn empty_column(cfg: &extract::EmptyColumn, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
     let mut groups: Vec<Vec<Row>> = Vec::new();
     let mut group: Vec<Row> = Vec::new();
@@ -128,8 +172,10 @@ fn empty_column(cfg: &extract::EmptyColumn, rows: &mut Box<RowIterator>) -> Vec<
             group.push(row);
         } else {
             // Cell is non-empty, starts new group.
-            groups.push(group);
-            group = Vec::new();
+            if !group.is_empty() {
+                groups.push(group);
+            }
+            group = vec![row];
         }
     }
     if !group.is_empty() {
@@ -159,7 +205,8 @@ fn fold_rows(cfg: &extract::FoldRows, table: Table) -> Table {
     for group_cfg in &cfg.group_by {
         let groups = group_rows(group_cfg, &mut rows_iter);
         for group in groups {
-            // `cells` is used to join together the contents of each resulting cell.
+            // `cells` is used to join together the contents of each resulting
+            // cell. Keep it here to reuse the allocation.
             let mut cells: Vec<&str> = Vec::with_capacity(group.len());
 
             let row_len = match group.iter().map(|row| row.0.len()).max() {
@@ -178,11 +225,211 @@ fn fold_rows(cfg: &extract::FoldRows, table: Table) -> Table {
                     }
                 }
                 row_out.0.push(cells.join(" "));
+                cells.clear();
             }
 
             table_out.0.push(row_out);
         }
     }
 
+    // Pass through everything else without folding.
+    table_out.0.extend(rows_iter);
+
     table_out
+}
+
+#[cfg(test)]
+mod tests {
+    use googletest::{expect_that, matchers::eq};
+
+    use crate::extraction::tableextract::replace_replacements;
+
+    #[googletest::test]
+    fn test_replace_replacements() {
+        let actual = replace_replacements(r"foo \1b bar \2 baz \123 quux");
+        expect_that!(actual, eq("foo ${1}b bar ${2} baz ${123} quux"));
+    }
+
+    #[googletest::test]
+    fn test_replace_replacements_g() {
+        let actual = replace_replacements(r"\g<0> \g<1>");
+        expect_that!(actual, eq("${0} ${1}"));
+    }
+
+    mod test_apply_transforms {
+        use googletest::matchers::ok;
+        use googletest::{expect_that, matchers::eq};
+
+        use crate::{config::extract::*, table::Table};
+
+        use crate::extraction::tableextract::apply_transforms;
+
+        #[googletest::test]
+        /// Base behaviour with default config.
+        fn with_default_config() {
+            test_apply_transforms_case(
+                r#"[]"#,
+                &[&["header 1", "header 2"], &["r1c1", "r1c2"]],
+                &[&["header 1", "header 2"], &["r1c1", "r1c2"]],
+            );
+        }
+
+        #[googletest::test]
+        fn adds_specified_leading_row() {
+            test_apply_transforms_case(
+                r#"
+                - !PrependRow
+                    - "added header 1"
+                    - "added header 2"
+                "#,
+                &[&["r1c1", "r1c2"], &["r2c1", "r2c2"]],
+                &[
+                    &["added header 1", "added header 2"],
+                    &["r1c1", "r1c2"],
+                    &["r2c1", "r2c2"],
+                ],
+            );
+        }
+
+        #[googletest::test]
+        /// Merges specified header rows, and keeps individual rows thereafter.
+        fn merges_static_header_rows_keeps_individual_rows_thereafter() {
+            test_apply_transforms_case(
+                r#"
+                - !FoldRows
+                    - !StaticRowCounts [2]
+                "#,
+                &[
+                    &["header 1-1", "header 2-1"],
+                    &["header 1-2", "header 2-2"],
+                    &["r1c1", "r1c2"],
+                    &["r2c1", "r2c2"],
+                ],
+                &[
+                    &["header 1-1 header 1-2", "header 2-1 header 2-2"],
+                    &["r1c1", "r1c2"],
+                    &["r2c1", "r2c2"],
+                ],
+            );
+        }
+
+        #[googletest::test]
+        /// Merges rows based on configured StaticRowCounts.
+        fn merges_rows_based_on_static_row_counts() {
+            test_apply_transforms_case(
+                r#"
+                - !FoldRows
+                    - !StaticRowCounts [2, 2, 2]
+                "#,
+                &[
+                    &["", "header 2-1"],
+                    &["header 1", "header 2-2"],
+                    &["r1c1", "r1c2"],
+                    &["", "r2c2"],
+                    &["r3c1", "r3c2"],
+                    &["r4c1", ""],
+                    &["r5c1", "r5c2"],
+                ],
+                &[
+                    &["header 1", "header 2-1 header 2-2"],
+                    &["r1c1", "r1c2 r2c2"],
+                    &["r3c1 r4c1", "r3c2"],
+                    &["r5c1", "r5c2"],
+                ],
+            )
+        }
+
+        #[googletest::test]
+        /// Merges rows based on configured leading StaticRowLengths and EmptyColumn thereafter.
+        fn merges_leading_static_row_counts_and_then_empty_column_thereafter() {
+            test_apply_transforms_case(
+                r#"
+                - !FoldRows
+                    - !StaticRowCounts [2]
+                    - !EmptyColumn 0
+                "#,
+                &[
+                    &["", "header 2-1"],
+                    &["header 1", "header 2-2"],
+                    &["r1c1", "r1c2"],
+                    &["", "r2c2"],
+                    &["r3c1", "r3c2"],
+                    &["r4c1", ""],
+                    &["r5c1", "r5c2"],
+                ],
+                &[
+                    &["header 1", "header 2-1 header 2-2"],
+                    &["r1c1", "r1c2 r2c2"],
+                    &["r3c1", "r3c2"],
+                    &["r4c1", ""],
+                    &["r5c1", "r5c2"],
+                ],
+            );
+        }
+
+        #[googletest::test]
+        /// Fold all rows.
+        fn fold_all_rows() {
+            test_apply_transforms_case(
+                r#"
+                - !FoldRows
+                    - !AllRows {}
+                "#,
+                &[
+                    &["r1c1", "r1c2", "r1c3"],
+                    &["r2c1", "r2c2"],
+                    &["r3c1", "r3c2", "r3c3"],
+                ],
+                &[&["r1c1 r2c1 r3c1", "r1c2 r2c2 r3c2", "r1c3 r3c3"]],
+            );
+        }
+
+        #[googletest::test]
+        /// Splits a column by the matches of a regex.
+        fn split_column_by_regex_matches() {
+            test_apply_transforms_case(
+                r#"
+                - !ExpandColumnOnRegex
+                    column: 1
+                    pattern: '[*] +([^:]+): +(.+)'
+                    on_match: ['\1', '\2']
+                    default: ['', '\g<0>']
+                "#,
+                &[
+                    &["r1c1", "* label 1: text 1", "last col"],
+                    &["r2c1", "* label 2: text 2", "last col"],
+                    &["r3c1", "continuation text", "last col"],
+                    &["r4c1", "* text 4: without last col"],
+                    &["r5c1"], // Row without split column.
+                    &[],       // Empty row.
+                ],
+                &[
+                    &["r1c1", "label 1", "text 1", "last col"],
+                    &["r2c1", "label 2", "text 2", "last col"],
+                    &["r3c1", "", "continuation text", "last col"],
+                    &["r4c1", "text 4", "without last col"],
+                    &["r5c1"],
+                    &[], // Empty row.
+                ],
+            );
+        }
+
+        fn test_apply_transforms_case(
+            cfg_str: &str,
+            table_in_str: &[&[&str]],
+            table_expected_str: &[&[&str]],
+        ) {
+            let cfg: TableExtraction = serde_yaml_ng::from_str(cfg_str).unwrap();
+
+            let table_in: Table = table_in_str.iter().map(|r| r.into_iter().copied()).into();
+            let table_expected: Table = table_expected_str
+                .iter()
+                .map(|r| r.into_iter().copied())
+                .into();
+
+            let table_out = apply_transforms(&cfg, table_in);
+
+            expect_that!(table_out, ok(eq(table_expected)));
+        }
+    }
 }
