@@ -1,4 +1,4 @@
-use std::path;
+use std::{io::stdout, path};
 
 use anyhow::{Context, Result};
 use clap::Args;
@@ -84,6 +84,10 @@ fn process_table(
         return Ok(());
     }
 
+    let mut csv_writer = csv::WriterBuilder::new()
+        .flexible(true)
+        .from_writer(stdout());
+
     let extracted_tables = tabula_client
         .read_pdf_with_template(input_pdf, tmpl_path)
         .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
@@ -91,8 +95,13 @@ fn process_table(
     let table = tableextract::apply_transforms(&table_cfg.extraction, table)?;
 
     for row in table.0 {
-        println!("{:?}", row);
+        csv_writer
+            .write_record(&row.0)
+            .with_context(|| "writing record")?;
     }
+
+    // Check for error rather than implicitly flushing and ignoring.
+    csv_writer.flush().with_context(|| "flushing to CSV")?;
 
     Ok(())
 }
