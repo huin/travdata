@@ -5,15 +5,22 @@ mod internal;
 
 use anyhow::Result;
 use lazy_regex::regex;
+use serde::Deserialize;
 
-use crate::config::extract;
 use crate::extraction::parseutil::clean_text;
 use crate::table::{Row, Table};
 
 type RowIterator = dyn Iterator<Item = Row>;
 
+#[derive(Deserialize, Debug, Default)]
+#[serde(transparent)]
+/// Configures the specifics of extracting the CSV from the PDF.
+pub struct TableExtraction {
+    pub transforms: Vec<TableTransform>,
+}
+
 /// Applies the transformations specified in `cfg`.
-pub fn apply_transforms(cfg: &extract::TableExtraction, table: Table) -> Result<Table> {
+pub fn apply_transforms(cfg: &TableExtraction, table: Table) -> Result<Table> {
     let mut rows = table;
     for trn in &cfg.transforms {
         rows = transform(trn, rows)?;
@@ -44,8 +51,19 @@ fn clean_table(table: &mut Table) {
     }
 }
 
-fn transform(cfg: &extract::TableTransform, table: Table) -> Result<Table> {
-    use extract::TableTransform::*;
+#[derive(Deserialize, Debug)]
+/// Supported table transformation operations.
+pub enum TableTransform {
+    ExpandColumnOnRegex(ExpandColumnOnRegex),
+    FoldRows(FoldRows),
+    JoinColumns(JoinColumns),
+    PrependRow(PrependRow),
+    Transpose(Transpose),
+    WrapRowEveryN(WrapRowEveryN),
+}
+
+fn transform(cfg: &TableTransform, table: Table) -> Result<Table> {
+    use TableTransform::*;
     match cfg {
         ExpandColumnOnRegex(cfg) => expand_column_on_regex(cfg, table),
         FoldRows(cfg) => Ok(fold_rows(cfg, table)),
@@ -56,7 +74,23 @@ fn transform(cfg: &extract::TableTransform, table: Table) -> Result<Table> {
     }
 }
 
-fn expand_column_on_regex(cfg: &extract::ExpandColumnOnRegex, mut table: Table) -> Result<Table> {
+#[derive(Deserialize, Debug)]
+/// Splits a column by the matches of a regex.
+pub struct ExpandColumnOnRegex {
+    pub column: usize,
+    pub pattern: String,
+    // When `pattern` matches (using `Pattern.fullmatch`), `on_match` produces
+    // the resulting cells, using groups from the match to the pattern. Each
+    // string is expanded using `Match.expand`, see
+    // https://docs.python.org/3/library/re.html#match-objects.
+    pub on_match: Vec<String>,
+    // When `pattern` does not match, default produces cells as if matching on a
+    // regex ".*" when `pattern` does not match. Similarly, each string is
+    // expanded using `Match.expand` (using \g<0> makes sense here to extract the
+    // entire original text into a cell).
+    pub default: Vec<String>,
+}
+fn expand_column_on_regex(cfg: &ExpandColumnOnRegex, mut table: Table) -> Result<Table> {
     let pattern = regex::Regex::new(&cfg.pattern)?;
 
     let on_match = internal::CellExpansions::new(&cfg.on_match);
@@ -103,7 +137,14 @@ fn expand_column_on_regex(cfg: &extract::ExpandColumnOnRegex, mut table: Table) 
     Ok(table)
 }
 
-fn fold_rows(cfg: &extract::FoldRows, table: Table) -> Table {
+#[derive(Deserialize, Debug)]
+#[serde(transparent)]
+/// Folds rows, according to the given sequence of groupings.
+pub struct FoldRows {
+    pub group_by: Vec<groupers::RowGrouper>,
+}
+
+fn fold_rows(cfg: &FoldRows, table: Table) -> Table {
     let mut table_out = Table::default();
 
     // Can we get away without boxing this?
@@ -148,7 +189,18 @@ fn fold_rows(cfg: &extract::FoldRows, table: Table) -> Table {
     table_out
 }
 
-fn join_columns(cfg: &extract::JoinColumns, mut table: Table) -> Table {
+#[derive(Deserialize, Debug)]
+/// Joins a range of columns.
+pub struct JoinColumns {
+    #[serde(default = "Default::default")]
+    pub from: Option<usize>,
+    #[serde(default = "Default::default")]
+    pub to: Option<usize>,
+    #[serde(default = "Default::default")]
+    pub delim: String,
+}
+
+fn join_columns(cfg: &JoinColumns, mut table: Table) -> Table {
     // `joiner`'s allocation is reused to join cells.
     let mut joiner: Vec<String> = Vec::new();
 
@@ -169,10 +221,19 @@ fn join_columns(cfg: &extract::JoinColumns, mut table: Table) -> Table {
     table
 }
 
-fn prepend_row(cfg: &extract::PrependRow, mut table: Table) -> Table {
+#[derive(Deserialize, Debug)]
+#[serde(transparent)]
+/// Appends given literal row values to the start of a table.
+pub struct PrependRow(pub Vec<String>);
+
+fn prepend_row(cfg: &PrependRow, mut table: Table) -> Table {
     table.0.insert(0, cfg.0.clone().into());
     table
 }
+
+#[derive(Deserialize, Debug)]
+/// Transposes the table (rows become columns and vice versa).
+pub struct Transpose {}
 
 fn transpose(table: Table) -> Table {
     let orig_num_cols: usize = table.iter().map(|row| row.len()).max().unwrap_or(0);
@@ -196,7 +257,14 @@ fn transpose(table: Table) -> Table {
     out_table
 }
 
-fn wrap_row_every_n(cfg: &extract::WrapRowEveryN, table: Table) -> Table {
+#[derive(Deserialize, Debug)]
+#[serde(transparent)]
+/// Wraps a row every N columns.
+pub struct WrapRowEveryN {
+    pub num_columns: usize,
+}
+
+fn wrap_row_every_n(cfg: &WrapRowEveryN, table: Table) -> Table {
     let num_cells: usize = table.iter().map(|row| row.len()).sum();
     let num_out_rows = num_cells / cfg.num_columns
         + if num_cells % cfg.num_columns > 0 {
@@ -231,6 +299,7 @@ mod tests {
         use googletest::matchers::ok;
         use googletest::{expect_that, matchers::eq};
 
+        use crate::extraction::tableextract::TableExtraction;
         use crate::table::Table;
 
         use super::super::apply_transforms;
@@ -548,8 +617,7 @@ mod tests {
             table_in_str: &[&[&str]],
             table_expected_str: &[&[&str]],
         ) {
-            let cfg: crate::config::extract::TableExtraction =
-                serde_yaml_ng::from_str(cfg_str).unwrap();
+            let cfg: TableExtraction = serde_yaml_ng::from_str(cfg_str).unwrap();
 
             let table_in: Table = table_in_str.iter().map(|r| r.into_iter().copied()).into();
             let table_expected: Table = table_expected_str
