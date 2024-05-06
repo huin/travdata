@@ -275,6 +275,34 @@ fn join_columns(cfg: &extract::JoinColumns, mut table: Table) -> Table {
     table
 }
 
+fn wrap_row_every_n(cfg: &extract::WrapRowEveryN, table: Table) -> Table {
+    let num_cells: usize = table.iter().map(|row| row.len()).sum();
+    let num_out_rows = num_cells / cfg.num_columns
+        + if num_cells % cfg.num_columns > 0 {
+            1
+        } else {
+            0
+        };
+
+    let mut out_table = Table(Vec::with_capacity(num_out_rows));
+    let mut out_row = Vec::with_capacity(cfg.num_columns);
+    for row in table.0 {
+        for cell in row.0 {
+            out_row.push(cell);
+            if out_row.len() >= cfg.num_columns {
+                out_table.0.push(Row(out_row));
+                out_row = Vec::with_capacity(cfg.num_columns);
+            }
+        }
+    }
+
+    if !out_row.is_empty() {
+        out_table.push(Row(out_row));
+    }
+
+    out_table
+}
+
 #[cfg(test)]
 mod tests {
     use googletest::{
@@ -580,6 +608,32 @@ mod tests {
                     &["r4c1 r4c2"],
                     &["r5c1"],
                     &[],
+                ],
+            );
+        }
+
+        #[googletest::test]
+        /// Wraps a row every N columns.
+        fn wraps_row_every_n() {
+            test_apply_transforms_case(
+                r#"
+                - !WrapRowEveryN 2
+                "#,
+                &[
+                    &["r1c1", "r1c2", "r1c3", "r1c4"],
+                    &["r2c1", "r2c2", "r2c3", "r2c4", "r2c5"],
+                    &["r3c1", "r3c2", "r3c3"],
+                    &[],
+                    &["r5c1"],
+                ],
+                &[
+                    &["r1c1", "r1c2"],
+                    &["r1c3", "r1c4"],
+                    &["r2c1", "r2c2"],
+                    &["r2c3", "r2c4"],
+                    &["r2c5", "r3c1"],
+                    &["r3c2", "r3c3"],
+                    &["r5c1"],
                 ],
             );
         }
