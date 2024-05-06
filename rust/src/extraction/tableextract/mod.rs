@@ -1,7 +1,7 @@
 //! Extracts a single table from a PDF.
 
-use std::cmp::min;
-use std::ops::Range;
+mod groupers;
+mod internal;
 
 use anyhow::Result;
 use lazy_regex::regex;
@@ -12,15 +12,7 @@ use crate::table::{Row, Table};
 
 type RowIterator = dyn Iterator<Item = Row>;
 
-pub fn concat_tables(tables: Vec<Table>) -> Table {
-    Table(
-        tables
-            .into_iter()
-            .flat_map(|table| table.0.into_iter())
-            .collect(),
-    )
-}
-
+/// Applies the transformations specified in `cfg`.
 pub fn apply_transforms(cfg: &extract::TableExtraction, table: Table) -> Result<Table> {
     let mut rows = table;
     for trn in &cfg.transforms {
@@ -30,6 +22,16 @@ pub fn apply_transforms(cfg: &extract::TableExtraction, table: Table) -> Result<
     clean_table(&mut rows);
 
     Ok(rows)
+}
+
+/// Concatenates the given tables into a single `Table`.
+pub fn concat_tables(tables: Vec<Table>) -> Table {
+    Table(
+        tables
+            .into_iter()
+            .flat_map(|table| table.0.into_iter())
+            .collect(),
+    )
 }
 
 /// Clean leading, trailing, and redundant sequences of whitespace within the
@@ -54,47 +56,11 @@ fn transform(cfg: &extract::TableTransform, table: Table) -> Result<Table> {
     }
 }
 
-/// Replace Python `\1` style replacements with Rust regex `${1}` style.
-fn replace_replacements(s: &str) -> String {
-    let r = regex!(r"\\(g<)?([0-9]+)(?:>)?");
-    r.replace_all(s, |captures: &regex::Captures| {
-        match (captures.get(1), captures.get(2)) {
-            (Some(_), Some(num)) => format!("${{{}}}", num.as_str()),
-            (None, Some(num)) => format!("${{{}}}", num.as_str()),
-            _ => panic!("should never not match one of the above cases"),
-        }
-    })
-    .to_string()
-}
-
-struct CellExpansions {
-    expansions: Vec<String>,
-}
-
-impl CellExpansions {
-    fn new(srcs: &[String]) -> Self {
-        Self {
-            expansions: srcs.iter().map(|s| replace_replacements(s)).collect(),
-        }
-    }
-
-    fn expand_from_capture<'a>(
-        &'a self,
-        captures: &'a regex::Captures,
-    ) -> impl Iterator<Item = String> + 'a {
-        self.expansions.iter().map(|repl| {
-            let mut dst = String::default();
-            captures.expand(repl, &mut dst);
-            dst
-        })
-    }
-}
-
 fn expand_column_on_regex(cfg: &extract::ExpandColumnOnRegex, mut table: Table) -> Result<Table> {
     let pattern = regex::Regex::new(&cfg.pattern)?;
 
-    let on_match = CellExpansions::new(&cfg.on_match);
-    let default = CellExpansions::new(&cfg.default);
+    let on_match = internal::CellExpansions::new(&cfg.on_match);
+    let default = internal::CellExpansions::new(&cfg.default);
 
     for row in &mut table.0 {
         let cell = match row.get_mut(cfg.column) {
@@ -137,64 +103,6 @@ fn expand_column_on_regex(cfg: &extract::ExpandColumnOnRegex, mut table: Table) 
     Ok(table)
 }
 
-fn prepend_row(cfg: &extract::PrependRow, mut table: Table) -> Table {
-    table.0.insert(0, cfg.0.clone().into());
-    table
-}
-
-fn all_rows(rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
-    vec![rows.collect()]
-}
-
-fn static_row_counts(cfg: &extract::StaticRowCounts, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
-    let mut groups = Vec::with_capacity(cfg.row_counts.len());
-    for count in &cfg.row_counts {
-        let mut group = Vec::with_capacity(*count);
-        for _ in 0..*count {
-            match rows.next() {
-                Some(row) => group.push(row),
-                None => {
-                    groups.push(group);
-                    return groups;
-                }
-            }
-        }
-        groups.push(group);
-    }
-
-    groups
-}
-
-fn empty_column(cfg: &extract::EmptyColumn, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
-    let mut groups: Vec<Vec<Row>> = Vec::new();
-    let mut group: Vec<Row> = Vec::new();
-    for row in rows {
-        if row.0.get(cfg.column_index).map_or(true, String::is_empty) {
-            // Cell is empty or absent - continues the group:
-            group.push(row);
-        } else {
-            // Cell is non-empty, starts new group.
-            if !group.is_empty() {
-                groups.push(group);
-            }
-            group = vec![row];
-        }
-    }
-    if !group.is_empty() {
-        groups.push(group);
-    }
-    groups
-}
-
-fn group_rows(cfg: &extract::RowGrouper, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
-    use extract::RowGrouper::*;
-    match cfg {
-        AllRows(_) => all_rows(rows),
-        StaticRowCounts(cfg) => static_row_counts(cfg, rows),
-        EmptyColumn(cfg) => empty_column(cfg, rows),
-    }
-}
-
 fn fold_rows(cfg: &extract::FoldRows, table: Table) -> Table {
     let mut table_out = Table::default();
 
@@ -205,7 +113,7 @@ fn fold_rows(cfg: &extract::FoldRows, table: Table) -> Table {
     // FnMut that pushes each group to the table? (fewer allocations)
 
     for group_cfg in &cfg.group_by {
-        let groups = group_rows(group_cfg, &mut rows_iter);
+        let groups = groupers::group_rows(group_cfg, &mut rows_iter);
         for group in groups {
             // `cells` is used to join together the contents of each resulting
             // cell. Keep it here to reuse the allocation.
@@ -240,23 +148,12 @@ fn fold_rows(cfg: &extract::FoldRows, table: Table) -> Table {
     table_out
 }
 
-fn intersect_range(len: usize, from: Option<usize>, to: Option<usize>) -> Option<Range<usize>> {
-    let from = min(len, from.unwrap_or(0));
-    let to = min(len, to.unwrap_or(len));
-
-    if from < to {
-        Some(from..to)
-    } else {
-        None
-    }
-}
-
 fn join_columns(cfg: &extract::JoinColumns, mut table: Table) -> Table {
     // `joiner`'s allocation is reused to join cells.
     let mut joiner: Vec<String> = Vec::new();
 
     for row in &mut table.0 {
-        match intersect_range(row.len(), cfg.from, cfg.to) {
+        match internal::intersect_range(row.len(), cfg.from, cfg.to) {
             None => {
                 // Range does not affect any columns. Leave as-is.
                 continue;
@@ -269,6 +166,11 @@ fn join_columns(cfg: &extract::JoinColumns, mut table: Table) -> Table {
         }
     }
 
+    table
+}
+
+fn prepend_row(cfg: &extract::PrependRow, mut table: Table) -> Table {
+    table.0.insert(0, cfg.0.clone().into());
     table
 }
 
@@ -324,50 +226,14 @@ fn wrap_row_every_n(cfg: &extract::WrapRowEveryN, table: Table) -> Table {
 
 #[cfg(test)]
 mod tests {
-    use googletest::{
-        expect_that,
-        matchers::{eq, none, some},
-    };
-
-    use crate::extraction::tableextract::{intersect_range, replace_replacements};
-
-    #[googletest::test]
-    fn test_replace_replacements() {
-        let actual = replace_replacements(r"foo \1b bar \2 baz \123 quux");
-        expect_that!(actual, eq("foo ${1}b bar ${2} baz ${123} quux"));
-    }
-
-    #[googletest::test]
-    fn test_replace_replacements_g() {
-        let actual = replace_replacements(r"\g<0> \g<1>");
-        expect_that!(actual, eq("${0} ${1}"));
-    }
-
-    #[googletest::test]
-    fn test_intersect_range() {
-        expect_that!(intersect_range(10, None, None), some(eq(0..10)));
-        expect_that!(intersect_range(10, Some(3), Some(5)), some(eq(3..5)));
-        expect_that!(intersect_range(10, None, Some(5)), some(eq(0..5)));
-        expect_that!(intersect_range(10, Some(3), None), some(eq(3..10)));
-        expect_that!(intersect_range(10, Some(3), Some(12)), some(eq(3..10)));
-        expect_that!(intersect_range(10, Some(13), Some(15)), none());
-        // from == to
-        expect_that!(intersect_range(10, Some(3), Some(3)), none());
-        // from > to
-        expect_that!(intersect_range(10, Some(5), Some(3)), none());
-        // len == 0
-        expect_that!(intersect_range(0, Some(1), None), none());
-        expect_that!(intersect_range(0, None, Some(1)), none());
-        expect_that!(intersect_range(0, None, None), none());
-    }
-
-    mod test_apply_transforms {
+    #[cfg(test)]
+    mod apply_transforms {
         use googletest::matchers::ok;
         use googletest::{expect_that, matchers::eq};
 
-        use crate::{config::extract::*, table::Table};
+        use crate::table::Table;
 
-        use crate::extraction::tableextract::apply_transforms;
+        use super::super::apply_transforms;
 
         #[googletest::test]
         /// Base behaviour with default config.
@@ -682,7 +548,8 @@ mod tests {
             table_in_str: &[&[&str]],
             table_expected_str: &[&[&str]],
         ) {
-            let cfg: TableExtraction = serde_yaml_ng::from_str(cfg_str).unwrap();
+            let cfg: crate::config::extract::TableExtraction =
+                serde_yaml_ng::from_str(cfg_str).unwrap();
 
             let table_in: Table = table_in_str.iter().map(|r| r.into_iter().copied()).into();
             let table_expected: Table = table_expected_str
