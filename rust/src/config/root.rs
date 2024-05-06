@@ -6,9 +6,10 @@ use std::{
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-//// Loads the configuration from the given `path`.
+/// Loads the configuration from the given `path`.
 pub fn load_config(path: &Path) -> Result<Config> {
-    let rdr = std::fs::File::open(path)
+    let cfg_path = path.join("config.yaml");
+    let rdr = std::fs::File::open(cfg_path)
         .with_context(|| format!("opening configuration file {:?}", path))?;
     let config: YamlConfig = serde_yaml_ng::from_reader(rdr)
         .with_context(|| format!("parsing configuration file {:?}", path))?;
@@ -70,7 +71,7 @@ impl YamlBook {
         let mut tags = self.tags;
         tags.insert(format!("book/{}", id));
         Book {
-            id: id,
+            id,
             name: self.name,
             default_filename: self.default_filename,
             tags,
