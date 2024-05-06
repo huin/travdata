@@ -84,7 +84,9 @@ pub struct JoinColumns {
 #[derive(Deserialize, Debug)]
 #[serde(transparent)]
 /// Wraps a row every N columns.
-pub struct WrapRowEveryN(pub usize);
+pub struct WrapRowEveryN {
+    pub num_columns: usize,
+}
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(transparent)]
