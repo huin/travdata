@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::Deserialize;
 
-pub mod extract;
+use crate::extraction::tableextract;
 
 #[derive(Deserialize, Debug)]
 pub struct YamlTable {
@@ -11,7 +11,7 @@ pub struct YamlTable {
     #[serde(default = "default_true")]
     pub extraction_enabled: bool,
     #[serde(default = "Default::default")]
-    pub extraction: extract::TableExtraction,
+    pub extraction: tableextract::TableExtraction,
 }
 
 fn default_true() -> bool {
