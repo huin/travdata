@@ -87,7 +87,7 @@ fn process_table(
         .read_pdf_with_template(input_pdf, tmpl_path)
         .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
     let table = tableextract::concat_tables(extracted_tables.tables);
-    let table = tableextract::apply_transforms(&table_cfg.extraction, table);
+    let table = tableextract::apply_transforms(&table_cfg.extraction, table)?;
 
     println!("Rows:");
     for row in table.0 {
