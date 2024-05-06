@@ -1,0 +1,8 @@
+newline_style = "Unix"
+
+# Uncomment when available on stable:
+# format_code_in_doc_comments = true
+# imports_layout = "HorizontalVertical"
+# inline_attribute_width = 50
+# reorder_impl_items = true
+# wrap_comments = true
