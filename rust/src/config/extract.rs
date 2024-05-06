@@ -1,13 +1,20 @@
 use serde::Deserialize;
 
+#[derive(Deserialize, Debug, Default)]
+#[serde(transparent)]
+/// Configures the specifics of extracting the CSV from the PDF.
+pub struct TableExtraction {
+    pub transforms: Vec<TableTransform>,
+}
+
 #[derive(Deserialize, Debug)]
 /// Supported table transformation operations.
 pub enum TableTransform {
     ExpandColumnOnRegex(ExpandColumnOnRegex),
-    PrependRow(PrependRow),
-    Transpose(Transpose),
     FoldRows(FoldRows),
     JoinColumns(JoinColumns),
+    PrependRow(PrependRow),
+    Transpose(Transpose),
     WrapRowEveryN(WrapRowEveryN),
 }
 
@@ -30,41 +37,6 @@ pub struct ExpandColumnOnRegex {
 
 #[derive(Deserialize, Debug)]
 #[serde(transparent)]
-/// Appends given literal row values to the start of a table.
-pub struct PrependRow(pub Vec<String>);
-
-#[derive(Deserialize, Debug)]
-/// Transposes the table (rows become columns and vice versa).
-pub struct Transpose {}
-
-#[derive(Deserialize, Debug)]
-/// Suported configuring row grouping operations.
-pub enum RowGrouper {
-    AllRows(AllRows),
-    StaticRowCounts(StaticRowCounts),
-    EmptyColumn(EmptyColumn),
-}
-
-#[derive(Deserialize, Debug)]
-/// Specifies to group all remaining rows.
-pub struct AllRows {}
-
-#[derive(Deserialize, Debug)]
-#[serde(transparent)]
-/// Specifies explicit input row counts for output grouped rows.
-pub struct StaticRowCounts {
-    pub row_counts: Vec<usize>,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(transparent)]
-/// Specifies to group rows by when a given column is empty.
-pub struct EmptyColumn {
-    pub column_index: usize,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(transparent)]
 /// Folds rows, according to the given sequence of groupings.
 pub struct FoldRows {
     pub group_by: Vec<RowGrouper>,
@@ -83,14 +55,42 @@ pub struct JoinColumns {
 
 #[derive(Deserialize, Debug)]
 #[serde(transparent)]
+/// Appends given literal row values to the start of a table.
+pub struct PrependRow(pub Vec<String>);
+
+#[derive(Deserialize, Debug)]
+/// Transposes the table (rows become columns and vice versa).
+pub struct Transpose {}
+
+#[derive(Deserialize, Debug)]
+#[serde(transparent)]
 /// Wraps a row every N columns.
 pub struct WrapRowEveryN {
     pub num_columns: usize,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug)]
+/// Suported configuring row grouping operations.
+pub enum RowGrouper {
+    AllRows(AllRows),
+    EmptyColumn(EmptyColumn),
+    StaticRowCounts(StaticRowCounts),
+}
+
+#[derive(Deserialize, Debug)]
+/// Specifies to group all remaining rows.
+pub struct AllRows {}
+
+#[derive(Deserialize, Debug)]
 #[serde(transparent)]
-/// Configures the specifics of extracting the CSV from the PDF.
-pub struct TableExtraction {
-    pub transforms: Vec<TableTransform>,
+/// Specifies to group rows by when a given column is empty.
+pub struct EmptyColumn {
+    pub column_index: usize,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(transparent)]
+/// Specifies explicit input row counts for output grouped rows.
+pub struct StaticRowCounts {
+    pub row_counts: Vec<usize>,
 }
