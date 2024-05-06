@@ -123,19 +123,13 @@ fn empty_column(cfg: &extract::EmptyColumn, rows: &mut Box<RowIterator>) -> Vec<
     let mut groups: Vec<Vec<Row>> = Vec::new();
     let mut group: Vec<Row> = Vec::new();
     for row in rows {
-        match row.0.get(cfg.column_index).map(String::as_str) {
-            // Cell is effectively empty in both cases:
-            Some("") => {
-                group.push(row);
-            }
-            None => {
-                group.push(row);
-            }
+        if row.0.get(cfg.column_index).map_or(true, String::is_empty) {
+            // Cell is empty or absent - continues the group:
+            group.push(row);
+        } else {
             // Cell is non-empty, starts new group.
-            Some(_) => {
-                groups.push(group);
-                group = Vec::new();
-            }
+            groups.push(group);
+            group = Vec::new();
         }
     }
     if !group.is_empty() {
@@ -180,7 +174,7 @@ fn fold_rows(cfg: &extract::FoldRows, table: Table) -> Table {
                 for row_idx in 0..group.len() {
                     let row_in = group.get(row_idx).expect("must be in bounds");
                     if let Some(cell) = row_in.0.get(col) {
-                        cells.push(cell.as_str());
+                        cells.push(cell.as_str().trim());
                     }
                 }
                 row_out.0.push(cells.join(" "));
