@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::extraction::tableextract::groupers;
+
 #[derive(Deserialize, Debug, Default)]
 #[serde(transparent)]
 /// Configures the specifics of extracting the CSV from the PDF.
@@ -39,7 +41,7 @@ pub struct ExpandColumnOnRegex {
 #[serde(transparent)]
 /// Folds rows, according to the given sequence of groupings.
 pub struct FoldRows {
-    pub group_by: Vec<RowGrouper>,
+    pub group_by: Vec<groupers::RowGrouper>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -67,30 +69,4 @@ pub struct Transpose {}
 /// Wraps a row every N columns.
 pub struct WrapRowEveryN {
     pub num_columns: usize,
-}
-
-#[derive(Deserialize, Debug)]
-/// Suported configuring row grouping operations.
-pub enum RowGrouper {
-    AllRows(AllRows),
-    EmptyColumn(EmptyColumn),
-    StaticRowCounts(StaticRowCounts),
-}
-
-#[derive(Deserialize, Debug)]
-/// Specifies to group all remaining rows.
-pub struct AllRows {}
-
-#[derive(Deserialize, Debug)]
-#[serde(transparent)]
-/// Specifies to group rows by when a given column is empty.
-pub struct EmptyColumn {
-    pub column_index: usize,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(transparent)]
-/// Specifies explicit input row counts for output grouped rows.
-pub struct StaticRowCounts {
-    pub row_counts: Vec<usize>,
 }
