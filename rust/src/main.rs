@@ -31,7 +31,7 @@ fn main() -> Result<()> {
     let book_config_path = args.book_dir.join("book.yaml");
     let book_reader = std::fs::File::open(&book_config_path)
         .with_context(|| format!("opening book configuration {:?}", &book_config_path))?;
-    let book: config::YamlGroup =
+    let book: config::book::YamlGroup =
         serde_yaml_ng::from_reader(book_reader).with_context(|| "parsing book configuration")?;
 
     process_group(&tabula_client, &book, &args.book_dir, &args.input_pdf)
@@ -42,7 +42,7 @@ fn main() -> Result<()> {
 
 fn process_group(
     tabula_client: &tabulautil::TabulaClient,
-    grp: &config::YamlGroup,
+    grp: &config::book::YamlGroup,
     grp_path: &path::Path,
     input_pdf: &path::Path,
 ) -> Result<()> {
@@ -65,7 +65,7 @@ fn process_group(
 
 fn process_table(
     tabula_client: &tabulautil::TabulaClient,
-    table_cfg: &config::YamlTable,
+    table_cfg: &config::book::YamlTable,
     tmpl_path: &path::Path,
     input_pdf: &path::Path,
 ) -> Result<()> {
