@@ -1,5 +1,8 @@
 //! Extracts a single table from a PDF.
 
+use std::cmp::min;
+use std::ops::Range;
+
 use anyhow::Result;
 use lazy_regex::regex;
 
@@ -43,8 +46,9 @@ fn transform(cfg: &extract::TableTransform, table: Table) -> Result<Table> {
     use extract::TableTransform::*;
     match cfg {
         ExpandColumnOnRegex(cfg) => expand_column_on_regex(cfg, table),
-        PrependRow(cfg) => Ok(prepend_row(cfg, table)),
         FoldRows(cfg) => Ok(fold_rows(cfg, table)),
+        JoinColumns(cfg) => Ok(join_columns(cfg, table)),
+        PrependRow(cfg) => Ok(prepend_row(cfg, table)),
         other => {
             // Make the match exhaustive, rather than have this placeholder
             // default case.
@@ -62,7 +66,8 @@ fn replace_replacements(s: &str) -> String {
             (None, Some(num)) => format!("${{{}}}", num.as_str()),
             _ => panic!("should never not match one of the above cases"),
         }
-    }).to_string()
+    })
+    .to_string()
 }
 
 struct CellExpansions {
@@ -238,11 +243,46 @@ fn fold_rows(cfg: &extract::FoldRows, table: Table) -> Table {
     table_out
 }
 
+fn intersect_range(len: usize, from: Option<usize>, to: Option<usize>) -> Option<Range<usize>> {
+    let from = min(len, from.unwrap_or(0));
+    let to = min(len, to.unwrap_or(len));
+
+    if from < to {
+        Some(from..to)
+    } else {
+        None
+    }
+}
+
+fn join_columns(cfg: &extract::JoinColumns, mut table: Table) -> Table {
+    // `joiner`'s allocation is reused to join cells.
+    let mut joiner: Vec<String> = Vec::new();
+
+    for row in &mut table.0 {
+        match intersect_range(row.len(), cfg.from, cfg.to) {
+            None => {
+                // Range does not affect any columns. Leave as-is.
+                continue;
+            }
+            Some(rng) => {
+                joiner.extend(row.splice(rng.clone(), ["".to_string()]));
+                row[rng.start] = joiner.join(&cfg.delim);
+                joiner.clear();
+            }
+        }
+    }
+
+    table
+}
+
 #[cfg(test)]
 mod tests {
-    use googletest::{expect_that, matchers::eq};
+    use googletest::{
+        expect_that,
+        matchers::{eq, none, some},
+    };
 
-    use crate::extraction::tableextract::replace_replacements;
+    use crate::extraction::tableextract::{intersect_range, replace_replacements};
 
     #[googletest::test]
     fn test_replace_replacements() {
@@ -254,6 +294,24 @@ mod tests {
     fn test_replace_replacements_g() {
         let actual = replace_replacements(r"\g<0> \g<1>");
         expect_that!(actual, eq("${0} ${1}"));
+    }
+
+    #[googletest::test]
+    fn test_intersect_range() {
+        expect_that!(intersect_range(10, None, None), some(eq(0..10)));
+        expect_that!(intersect_range(10, Some(3), Some(5)), some(eq(3..5)));
+        expect_that!(intersect_range(10, None, Some(5)), some(eq(0..5)));
+        expect_that!(intersect_range(10, Some(3), None), some(eq(3..10)));
+        expect_that!(intersect_range(10, Some(3), Some(12)), some(eq(3..10)));
+        expect_that!(intersect_range(10, Some(13), Some(15)), none());
+        // from == to
+        expect_that!(intersect_range(10, Some(3), Some(3)), none());
+        // from > to
+        expect_that!(intersect_range(10, Some(5), Some(3)), none());
+        // len == 0
+        expect_that!(intersect_range(0, Some(1), None), none());
+        expect_that!(intersect_range(0, None, Some(1)), none());
+        expect_that!(intersect_range(0, None, None), none());
     }
 
     mod test_apply_transforms {
@@ -410,6 +468,118 @@ mod tests {
                     &["r4c1", "text 4", "without last col"],
                     &["r5c1"],
                     &[], // Empty row.
+                ],
+            );
+        }
+
+        #[googletest::test]
+        /// Joins a range of columns - from+to set.
+        fn join_columns_from_to_set() {
+            test_apply_transforms_case(
+                r#"
+                - !JoinColumns
+                    from: 1
+                    to: 3
+                    delim: " "
+                "#,
+                &[
+                    &["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
+                    &["r2c1", "r2c2", "r2c3", "r2c4"],
+                    &["r3c1", "r3c2", "r3c3"],
+                    &["r4c1", "r4c2"],
+                    &["r5c1"],
+                    &[],
+                ],
+                &[
+                    &["r1c1", "r1c2 r1c3", "r1c4", "r1c5"],
+                    &["r2c1", "r2c2 r2c3", "r2c4"],
+                    &["r3c1", "r3c2 r3c3"],
+                    &["r4c1", "r4c2"],
+                    &["r5c1"],
+                    &[],
+                ],
+            );
+        }
+
+        #[googletest::test]
+        /// Joins a range of columns - from set.
+        fn joins_columns_from_set() {
+            test_apply_transforms_case(
+                r#"
+                - !JoinColumns
+                    from: 1
+                    delim: " "
+                "#,
+                &[
+                    &["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
+                    &["r2c1", "r2c2", "r2c3", "r2c4"],
+                    &["r3c1", "r3c2", "r3c3"],
+                    &["r4c1", "r4c2"],
+                    &["r5c1"],
+                    &[],
+                ],
+                &[
+                    &["r1c1", "r1c2 r1c3 r1c4 r1c5"],
+                    &["r2c1", "r2c2 r2c3 r2c4"],
+                    &["r3c1", "r3c2 r3c3"],
+                    &["r4c1", "r4c2"],
+                    &["r5c1"],
+                    &[],
+                ],
+            );
+        }
+
+        #[googletest::test]
+        /// Joins a range of columns - to set.
+        fn joins_columns_to_set() {
+            test_apply_transforms_case(
+                r#"
+                - !JoinColumns
+                    to: 3
+                    delim: " "
+                "#,
+                &[
+                    &["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
+                    &["r2c1", "r2c2", "r2c3", "r2c4"],
+                    &["r3c1", "r3c2", "r3c3"],
+                    &["r4c1", "r4c2"],
+                    &["r5c1"],
+                    &[],
+                ],
+                &[
+                    &["r1c1 r1c2 r1c3", "r1c4", "r1c5"],
+                    &["r2c1 r2c2 r2c3", "r2c4"],
+                    &["r3c1 r3c2 r3c3"],
+                    &["r4c1 r4c2"],
+                    &["r5c1"],
+                    &[],
+                ],
+            );
+        }
+
+        #[googletest::test]
+        /// Joins a range of columns - neither from/to set set.
+        fn joins_columns_neither_set() {
+            test_apply_transforms_case(
+                r#"
+                - !JoinColumns
+                    delim: " "
+                "#,
+                &[
+                    &["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
+                    &["r2c1", "r2c2", "r2c3", "r2c4"],
+                    &["r3c1", "r3c2", "r3c3"],
+                    &["r4c1", "r4c2"],
+                    &["r5c1"],
+                    &[],
+                ],
+                &[
+                    &["r1c1 r1c2 r1c3 r1c4 r1c5"],
+                    &["r2c1 r2c2 r2c3 r2c4"],
+                    &["r3c1 r3c2 r3c3"],
+                    &["r4c1 r4c2"],
+                    &["r5c1"],
+                    &[],
                 ],
             );
         }
