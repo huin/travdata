@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::extraction::tabulautil;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct Table(pub Vec<Row>);
 
 impl Deref for Table {
@@ -25,11 +25,12 @@ impl From<tabulautil::JsonTable> for Table {
     }
 }
 
-impl<R> From<Vec<R>> for Table
+impl<C, R> From<C> for Table
 where
+    C: IntoIterator<Item = R>,
     R: Into<Row>,
 {
-    fn from(value: Vec<R>) -> Self {
+    fn from(value: C) -> Self {
         Table(value.into_iter().map(Into::into).collect())
     }
 }
@@ -57,8 +58,12 @@ impl From<tabulautil::JsonRow> for Row {
     }
 }
 
-impl From<Vec<String>> for Row {
-    fn from(value: Vec<String>) -> Self {
-        Row(value)
+impl<C, S> From<C> for Row
+where
+    C: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    fn from(value: C) -> Self {
+        Row(value.into_iter().map(Into::into).collect())
     }
 }
