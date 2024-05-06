@@ -1,6 +1,6 @@
 //! Extracts a single table from a PDF.
 
-mod groupers;
+pub mod groupers;
 mod internal;
 
 use anyhow::Result;

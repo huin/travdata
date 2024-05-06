@@ -1,11 +1,20 @@
-//! Grouping functions used by `fold_rows`.
+//! Grouping configuration and functions used by `fold_rows`.
 
-use crate::{config::extract, table::Row};
+use serde::Deserialize;
 
 use super::RowIterator;
+use crate::table::Row;
 
-pub fn group_rows(cfg: &extract::RowGrouper, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
-    use extract::RowGrouper::*;
+#[derive(Deserialize, Debug)]
+/// Suported configuring row grouping operations.
+pub enum RowGrouper {
+    AllRows(AllRows),
+    EmptyColumn(EmptyColumn),
+    StaticRowCounts(StaticRowCounts),
+}
+
+pub fn group_rows(cfg: &RowGrouper, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
+    use RowGrouper::*;
     match cfg {
         AllRows(_) => all_rows(rows),
         StaticRowCounts(cfg) => static_row_counts(cfg, rows),
@@ -13,11 +22,22 @@ pub fn group_rows(cfg: &extract::RowGrouper, rows: &mut Box<RowIterator>) -> Vec
     }
 }
 
+#[derive(Deserialize, Debug)]
+/// Specifies to group all remaining rows.
+pub struct AllRows {}
+
 fn all_rows(rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
     vec![rows.collect()]
 }
 
-fn empty_column(cfg: &extract::EmptyColumn, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
+#[derive(Deserialize, Debug)]
+#[serde(transparent)]
+/// Specifies to group rows by when a given column is empty.
+pub struct EmptyColumn {
+    pub column_index: usize,
+}
+
+fn empty_column(cfg: &EmptyColumn, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
     let mut groups: Vec<Vec<Row>> = Vec::new();
     let mut group: Vec<Row> = Vec::new();
     for row in rows {
@@ -38,7 +58,14 @@ fn empty_column(cfg: &extract::EmptyColumn, rows: &mut Box<RowIterator>) -> Vec<
     groups
 }
 
-fn static_row_counts(cfg: &extract::StaticRowCounts, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
+#[derive(Deserialize, Debug)]
+#[serde(transparent)]
+/// Specifies explicit input row counts for output grouped rows.
+pub struct StaticRowCounts {
+    pub row_counts: Vec<usize>,
+}
+
+fn static_row_counts(cfg: &StaticRowCounts, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
     let mut groups = Vec::with_capacity(cfg.row_counts.len());
     for count in &cfg.row_counts {
         let mut group = Vec::with_capacity(*count);
