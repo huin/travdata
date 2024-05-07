@@ -10,7 +10,6 @@ This is a suite of tools that perform either or both of the following:
 
 
 import argparse
-import os
 import sys
 
 from travdata import commontext
@@ -52,7 +51,7 @@ def main() -> None:
         sys.exit(args.run(args))
     except cfgerror.ConfigurationError as exc:
         print(exc, file=sys.stderr)
-        sys.exit(os.EX_CONFIG)
+        sys.exit(cliutil.EX_CONFIG)
     except cliutil.UsageError as exc:
         argparser.print_usage(sys.stderr)
         print(exc, file=sys.stderr)
