@@ -13,6 +13,7 @@ regex = "1.10.4"
 serde_derive = "1.0.200"
 serde_json = "1.0.116"
 serde_yaml_ng = "0.9.36"
+tabula = "0.1.1"
 
 [dependencies.lazy-regex]
 version = "3.1.0"
@@ -21,9 +22,6 @@ features = ["std"]
 [dependencies.serde]
 version = "1.0.200"
 features = ["std", "serde_derive"]
-
-[dependencies.tabula]
-path = "./deps/tabula-rs"
 
 [dev-dependencies]
 googletest = { version = "0.11.0", features = ["anyhow"] }
