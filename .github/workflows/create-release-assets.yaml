@@ -96,13 +96,6 @@ jobs:
       - uses: ./.github/actions/setup-python
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Build release asset with PyInstaller
-        shell: bash
-        run: |
-          poetry run python -- \
-            ./scripts/dev/build_pyinstaller_release.py \
-            "${{ inputs.github_ref_name }}" \
-            "./${{ steps.asset_filename.outputs.ZIP }}"
 
       - name: Run mypy
         shell: bash
@@ -113,6 +106,14 @@ jobs:
         shell: bash
         run: |
           poetry run pytest
+
+      - name: Build release asset with PyInstaller
+        shell: bash
+        run: |
+          poetry run python -- \
+            ./scripts/dev/build_pyinstaller_release.py \
+            "${{ inputs.github_ref_name }}" \
+            "./${{ steps.asset_filename.outputs.ZIP }}"
 
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
