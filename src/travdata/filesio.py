@@ -311,6 +311,16 @@ class MemReadWriter(MemReader):
             self._files[path] = f.read()
 
 
+def _native_to_zip(p: pathlib.PurePath) -> str:
+    """Convert to a POSIX path within a ZIP file."""
+    return str(pathlib.PurePosixPath(p))
+
+
+def _zip_to_native(s: str) -> pathlib.PurePath:
+    """Convert from a POSIX path within a ZIP file."""
+    return pathlib.PurePath(pathlib.PurePosixPath(s))
+
+
 class ZipReader(Reader):
     """Reads files from a ZIP file."""
 
@@ -361,7 +371,7 @@ class ZipReader(Reader):
             raise NotFoundError(path)
 
         try:
-            f = self._zip_file.open(str(path), "r")
+            f = self._zip_file.open(_native_to_zip(path), "r")
         except KeyError as exc:
             raise NotFoundError(path) from exc
         with f:
@@ -373,7 +383,7 @@ class ZipReader(Reader):
             return
 
         for info in self._zip_file.infolist():
-            yield pathlib.PurePath(info.filename)
+            yield _zip_to_native(info.filename)
 
     def exists(
         self,
@@ -384,7 +394,7 @@ class ZipReader(Reader):
             return False
 
         try:
-            self._zip_file.getinfo(str(path))
+            self._zip_file.getinfo(_native_to_zip(path))
         except KeyError:
             return False
         return True
@@ -483,7 +493,7 @@ def _copy_reader_into_zipfile(
         for path in reader.iter_files():
             with (
                 reader.open_read(path, newline="") as r,
-                zw.open(str(path), mode="w") as w,
+                zw.open(_native_to_zip(path), mode="w") as w,
             ):
                 wb = io.TextIOWrapper(w, encoding=_ENCODING, newline="")
                 n = 0
