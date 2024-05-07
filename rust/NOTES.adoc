@@ -22,3 +22,16 @@ This will produce the required
 The entry point into Tabula Java opens the PDF document each time, which is
 probably computationally expensive. Unsure if that's addressable without
 patching Tabula further.
+
+== Adding ZIP file support
+
+When ZIP files are to be read, we might be able to make do with no extra features:
+
+[source,toml]
+----
+[dependencies.zip]
+version = "1.2.1"
+# We don't need many features - we write our own ZIP files without encryption
+# and compression etc., so strip this down to a minimum.
+default-features = false
+----
