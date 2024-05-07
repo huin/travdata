@@ -104,6 +104,16 @@ jobs:
             "${{ inputs.github_ref_name }}" \
             "./${{ steps.asset_filename.outputs.ZIP }}"
 
+      - name: Run mypy
+        shell: bash
+        run: |
+          poetry run mypy scripts src tests
+
+      - name: Run tests
+        shell: bash
+        run: |
+          poetry run pytest
+
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
         env:
