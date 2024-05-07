@@ -4,6 +4,10 @@
 import os
 
 
+EX_CONFIG = getattr(os, "EX_CONFIG", 2)
+EX_USAGE = getattr(os, "EX_USAGE", 3)
+
+
 class CLIError(Exception):
     """Base class for CLI errors."""
 
@@ -13,4 +17,4 @@ class CLIError(Exception):
 class UsageError(CLIError):
     """Exception for user usage error."""
 
-    exit_code = os.EX_USAGE
+    exit_code = getattr(os, "EX_USAGE", 2)
