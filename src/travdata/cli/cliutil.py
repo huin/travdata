@@ -17,4 +17,4 @@ class CLIError(Exception):
 class UsageError(CLIError):
     """Exception for user usage error."""
 
-    exit_code = getattr(os, "EX_USAGE", 2)
+    exit_code = EX_USAGE
