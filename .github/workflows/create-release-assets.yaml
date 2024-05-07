@@ -42,6 +42,16 @@ jobs:
         with:
           python-version: 3.11
 
+      - name: Run mypy
+        shell: bash
+        run: |
+          poetry run mypy scripts src tests
+
+      - name: Run tests
+        shell: bash
+        run: |
+          poetry run pytest
+
       - name: Build config ZIP release asset
         shell: bash
         run: |
