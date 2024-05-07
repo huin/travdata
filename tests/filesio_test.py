@@ -108,6 +108,7 @@ def _test_io(
         _reads_created_files,
         _readers_iter_files,
         _read_writer_overwrites_file,
+        _created_files_exist,
     ]
     for full_case in full_cases:
         with (
@@ -152,7 +153,7 @@ def _read_writer_reads_own_file(io_ctx: IOContext) -> None:
 def _reads_created_files(io_ctx: IOContext) -> None:
     files = [
         (pathlib.PurePath("file.txt"), "file contents"),
-        (pathlib.PurePath("subdir/other.txt"), "other contents"),
+        (pathlib.PurePosixPath("subdir/other.txt"), "other contents"),
     ]
 
     with io_ctx.read_writer_factory() as read_writer:
@@ -223,3 +224,26 @@ def _read_writer_overwrites_file(io_ctx: IOContext) -> None:
     with io_ctx.reader_factory() as reader:
         with reader.open_read(path) as r:
             assert v3 == r.read()
+
+
+def _created_files_exist(io_ctx: IOContext) -> None:
+    paths: list[pathlib.PurePath] = sorted(
+        [
+            pathlib.PurePath("file.txt"),
+            pathlib.PurePath("subdir/other.txt"),
+        ]
+    )
+
+    with io_ctx.read_writer_factory() as read_writer:
+        for path in paths:
+            with read_writer.open_write(path) as w:
+                w.write("ignored content")
+            # Should exist in ReadWriter that created them.
+            read_writer.exists(path)
+
+    # Should exist in Reader implementations.
+    for reader_desc, reader_factory in io_ctx.reader_factories():
+        with reader_factory() as reader:
+            for path in paths:
+                # Should exist in ReadWriter that created them.
+                assert reader.exists(path), reader_desc
