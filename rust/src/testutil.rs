@@ -36,7 +36,8 @@ impl<E: Display + Debug + Send + Sync + 'static, InnerMatcherT: Matcher<ActualT 
     type ActualT = anyhow::Error;
 
     fn matches(&self, actual: &Self::ActualT) -> MatcherResult {
-        actual.downcast_ref::<E>()
+        actual
+            .downcast_ref::<E>()
             .map(|v| self.inner.matches(v))
             .unwrap_or(MatcherResult::NoMatch)
     }
@@ -44,11 +45,16 @@ impl<E: Display + Debug + Send + Sync + 'static, InnerMatcherT: Matcher<ActualT 
     fn explain_match(&self, actual: &Self::ActualT) -> Description {
         match actual.downcast_ref::<E>() {
             Some(e) => Description::new()
-                .text(format!("which is of the expected concrete error type {}", Self::type_name()))
+                .text(format!(
+                    "which is of the expected concrete error type {}",
+                    Self::type_name()
+                ))
                 .text("with value")
                 .nested(self.inner.explain_match(e)),
-            None => Description::new()
-                .text(format!("which is not the expected concrete error type {}", Self::type_name()))
+            None => Description::new().text(format!(
+                "which is not the expected concrete error type {}",
+                Self::type_name()
+            )),
         }
     }
 
