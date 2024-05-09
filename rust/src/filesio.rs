@@ -176,21 +176,21 @@ mod tests {
 
     use super::{BoxRead, DirReadWriter, ReadWriter, Reader};
 
-    type BoxTestIo = Box<dyn TestIo>;
+    type BoxIoTestEnvironment = Box<dyn IoTestEnvironment>;
     type BoxReader<'a> = Box<dyn Reader<'a>>;
     type BoxReadWriter<'a> = Box<dyn ReadWriter<'a>>;
 
-    trait TestIo {
+    trait IoTestEnvironment {
         fn make_reader(&self) -> BoxReader<'static>;
         fn make_read_writer(&self) -> BoxReadWriter<'static>;
     }
 
-    struct TestDir {
+    struct DirTestEnvironment {
         temp_dir: TempDir,
     }
 
-    impl TestDir {
-        fn new() -> Result<BoxTestIo> {
+    impl DirTestEnvironment {
+        fn new() -> Result<BoxIoTestEnvironment> {
             Ok(Box::new(Self {
                 temp_dir: tempdir()?,
             }))
@@ -201,7 +201,7 @@ mod tests {
         }
     }
 
-    impl TestIo for TestDir {
+    impl IoTestEnvironment for DirTestEnvironment {
         fn make_reader(&self) -> BoxReader<'static> {
             Box::new(DirReadWriter::new(self.dir_path()))
         }
@@ -213,11 +213,11 @@ mod tests {
 
     struct IoType {
         name: &'static str,
-        new: &'static dyn Fn() -> Result<Box<dyn TestIo>>,
+        new: &'static dyn Fn() -> Result<Box<dyn IoTestEnvironment>>,
     }
 
     impl IoType {
-        fn new_env(&self) -> Box<dyn TestIo> {
+        fn new_env(&self) -> Box<dyn IoTestEnvironment> {
             (self.new)().expect("should not fail")
         }
     }
@@ -230,7 +230,7 @@ mod tests {
 
     const IO_TYPES: &[IoType] = &[IoType {
         name: "Dir",
-        new: &TestDir::new,
+        new: &DirTestEnvironment::new,
     }];
 
     struct Case(&'static str, &'static dyn Fn(&IoType));
