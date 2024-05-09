@@ -16,7 +16,7 @@ pub type BoxWrite<'a> = Box<dyn DebugWrite<'a>>;
 
 /// Concrete error type returned by `FilesIo` implementations for cases that
 /// might reasonably be handled by callers.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FilesIoError {
     NonRelativePath(NonRelativePathType),
     NotFound,
@@ -37,7 +37,7 @@ impl Display for FilesIoError {
 }
 
 /// Type of path `Component` causing a path to be non-relative.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NonRelativePathType {
     Prefix,
     RootDir,
@@ -156,14 +156,18 @@ fn check_fully_relative(path: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
+    use std::{
+        fmt::Debug,
+        path::{Path, PathBuf},
+    };
 
     use anyhow::Result;
     use googletest::{
-        assert_that, expect_that,
+        assert_that,
         matchers::{eq, err, ok},
     };
     use tempfile::{tempdir, TempDir};
+    use test_casing::{test_casing, Product};
 
     use crate::{
         filesio::{check_fully_relative, FilesIoError, NonRelativePathType},
@@ -172,7 +176,6 @@ mod tests {
 
     use super::{BoxRead, DirReadWriter, ReadWriter, Reader};
 
-    type NewBoxTestIo = &'static dyn Fn() -> Result<BoxTestIo>;
     type BoxTestIo = Box<dyn TestIo>;
     type BoxReader<'a> = Box<dyn Reader<'a>>;
     type BoxReadWriter<'a> = Box<dyn ReadWriter<'a>>;
@@ -208,33 +211,70 @@ mod tests {
         }
     }
 
-    #[googletest::test]
-    fn test_dir() {
-        test_io(&TestDir::new);
+    struct IoType {
+        name: &'static str,
+        new: &'static dyn Fn() -> Result<Box<dyn TestIo>>,
     }
 
-    fn test_io(new_test_io: NewBoxTestIo) {
-        empty_reader_has_no_files(new_test_io);
-        empty_reader_not_exists(new_test_io);
-        empty_reader_open_read_returns_not_found_err(new_test_io);
-
-        read_writer_reads_own_file(new_test_io);
+    impl IoType {
+        fn new_env(&self) -> Box<dyn TestIo> {
+            (self.new)().expect("should not fail")
+        }
     }
 
-    fn empty_reader_has_no_files(new_test_io: NewBoxTestIo) {
-        let test_io = new_test_io().unwrap();
+    impl Debug for IoType {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.name)
+        }
+    }
+
+    const IO_TYPES: &[IoType] = &[IoType {
+        name: "Dir",
+        new: &TestDir::new,
+    }];
+
+    struct Case(&'static str, &'static dyn Fn(&IoType));
+
+    impl Debug for Case {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
+
+    const COMMON_IO_TESTS: &[Case] = &[
+        Case("empty_reader_has_no_files", &empty_reader_has_no_files),
+        Case("empty_reader_not_exists", &empty_reader_not_exists),
+        Case(
+            "empty_reader_open_read_returns_not_found_err",
+            &empty_reader_open_read_returns_not_found_err,
+        ),
+        Case("read_writer_reads_own_file", &read_writer_reads_own_file),
+    ];
+
+    #[test]
+    fn io_test_count() {
+        assert_eq!(4, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
+    }
+
+    #[test_casing(4, Product((IO_TYPES, COMMON_IO_TESTS)))]
+    fn io_test(io_type: &IoType, case: &Case) {
+        case.1(io_type);
+    }
+
+    fn empty_reader_has_no_files(io_type: &IoType) {
+        let test_io = io_type.new_env();
         let reader = test_io.make_reader();
         assert_that!(reader.iter_files().count(), eq(0));
     }
 
-    fn empty_reader_not_exists(new_test_io: NewBoxTestIo) {
-        let test_io = new_test_io().unwrap();
+    fn empty_reader_not_exists(io_type: &IoType) {
+        let test_io = io_type.new_env();
         let reader = test_io.make_reader();
         assert_that!(reader.exists(Path::new("not-exist")), eq(false));
     }
 
-    fn empty_reader_open_read_returns_not_found_err(new_test_io: NewBoxTestIo) {
-        let test_io = new_test_io().unwrap();
+    fn empty_reader_open_read_returns_not_found_err(io_type: &IoType) {
+        let test_io = io_type.new_env();
         let reader = test_io.make_reader();
         assert_that!(
             reader.open_read(Path::new("not-exist")),
@@ -244,8 +284,8 @@ mod tests {
         );
     }
 
-    fn read_writer_reads_own_file(new_test_io: NewBoxTestIo) {
-        let test_io = new_test_io().unwrap();
+    fn read_writer_reads_own_file(io_type: &IoType) {
+        let test_io = io_type.new_env();
         let read_writer = test_io.make_read_writer();
 
         let path = Path::new("file.txt");
@@ -260,57 +300,82 @@ mod tests {
         assert_that!(&actual_contents, eq(contents));
     }
 
+    const VALID_RELATIVE_PATHS: &[&str] = &[r#"foo"#, r#"foo/bar"#];
+
+    #[test]
+    fn test_is_fully_relative_count() {
+        assert_eq!(2, VALID_RELATIVE_PATHS.iter().count());
+    }
+
+    #[test_casing(2, VALID_RELATIVE_PATHS)]
+    fn test_is_fully_relative(path: &str) {
+        assert_that!(check_fully_relative(Path::new(path)), ok(()));
+    }
+
+    const INVALID_RELATIVE_PATHS: &[(&str, FilesIoError)] = &[(
+        r#"/foo"#,
+        FilesIoError::NonRelativePath(NonRelativePathType::RootDir),
+    )];
+
+    #[test]
+    fn test_invalid_relative_path_count() {
+        assert_eq!(1, INVALID_RELATIVE_PATHS.iter().count());
+    }
+
+    #[test_casing(1, INVALID_RELATIVE_PATHS)]
+    fn test_invalid_relative_path(path: &str, expect_error: &FilesIoError) {
+        assert_that!(
+            check_fully_relative(Path::new(path)),
+            err(anyhow_downcasts_to::<FilesIoError>(eq(*expect_error))),
+        );
+    }
+
+    const INVALID_RELATIVE_PATHS_ON_WINDOWS: &[(&str, FilesIoError)] = &[
+        (
+            r#"\foo"#,
+            FilesIoError::NonRelativePath(NonRelativePathType::RootDir),
+        ),
+        (
+            r#"C:\foo"#,
+            FilesIoError::NonRelativePath(NonRelativePathType::Prefix),
+        ),
+        (
+            r#"C:/foo"#,
+            FilesIoError::NonRelativePath(NonRelativePathType::Prefix),
+        ),
+        (
+            r#"C:foo"#,
+            FilesIoError::NonRelativePath(NonRelativePathType::Prefix),
+        ),
+        (
+            r#"c:foo"#,
+            FilesIoError::NonRelativePath(NonRelativePathType::Prefix),
+        ),
+        (
+            r#"\\server\share\foo"#,
+            FilesIoError::NonRelativePath(NonRelativePathType::Prefix),
+        ),
+    ];
+
+    #[test]
+    fn test_invalid_relative_path_on_windows_count() {
+        assert_eq!(6, INVALID_RELATIVE_PATHS_ON_WINDOWS.iter().count());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test_casing(6, INVALID_RELATIVE_PATHS_ON_WINDOWS)]
+    fn test_invalid_relative_path_on_windows(path: &str, expect_error: &FilesIoError) {
+        assert_that!(
+            check_fully_relative(Path::new(path)),
+            err(anyhow_downcasts_to::<FilesIoError>(eq(*expect_error))),
+        );
+    }
+
+    // Utility code for tests:
+
     fn read_vec(r: &mut BoxRead) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
         r.read_to_end(&mut buf)?;
         Ok(buf)
-    }
-
-    #[googletest::test]
-    fn test_is_fully_relative() {
-        expect_that!(check_fully_relative(Path::new(r#"foo"#)), ok(()));
-        expect_that!(check_fully_relative(Path::new(r#"foo/bar"#)), ok(()));
-        expect_that!(
-            check_fully_relative(Path::new(r#"/foo"#)),
-            err(anyhow_downcasts_to::<FilesIoError>(eq(
-                FilesIoError::NonRelativePath(NonRelativePathType::RootDir)
-            )))
-        );
-    }
-
-    #[cfg(target_os = "windows")]
-    #[googletest::test]
-    fn test_is_fully_relative_on_windows() {
-        expect_that!(check_fully_relative(Path::new(r#"foo\bar"#)), ok(()));
-        expect_that!(
-            check_fully_relative(Path::new(r#"C:\foo"#)),
-            err(anyhow_downcasts_to::<FilesIoError>(eq(
-                FilesIoError::NonRelativePath(NonRelativePathType::Prefix)
-            )))
-        );
-        expect_that!(
-            check_fully_relative(Path::new(r#"C:/foo"#)),
-            err(anyhow_downcasts_to::<FilesIoError>(eq(
-                FilesIoError::NonRelativePath(NonRelativePathType::Prefix)
-            )))
-        );
-        expect_that!(
-            check_fully_relative(Path::new(r#"C:foo"#)),
-            err(anyhow_downcasts_to::<FilesIoError>(eq(
-                FilesIoError::NonRelativePath(NonRelativePathType::Prefix)
-            )))
-        );
-        expect_that!(
-            check_fully_relative(Path::new(r#"c:foo"#)),
-            err(anyhow_downcasts_to::<FilesIoError>(eq(
-                FilesIoError::NonRelativePath(NonRelativePathType::Prefix)
-            )))
-        );
-        expect_that!(
-            check_fully_relative(Path::new(r#"\\server\share\foo"#)),
-            err(anyhow_downcasts_to::<FilesIoError>(eq(
-                FilesIoError::NonRelativePath(NonRelativePathType::Prefix)
-            )))
-        );
     }
 }
