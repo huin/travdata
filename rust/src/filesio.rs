@@ -115,9 +115,14 @@ impl<'a> Reader<'a> for DirReadWriter {
                 .into_iter()
                 .filter_map(move |dir_entry| match dir_entry {
                     Err(e) => match e.io_error() {
-                        // NotFound is assumed to be for self.dir_path, which
-                        // implies no entries at all.
-                        Some(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+                        // NotFound for dir_path implies no entries at all,
+                        // which is not an error, just an empty reader.
+                        Some(io_err)
+                            if io_err.kind() == std::io::ErrorKind::NotFound
+                                && e.path() == Some(&dir_path) =>
+                        {
+                            None
+                        }
                         // Pass other errors through.
                         _ => Some(Err(anyhow!(e))),
                     },
