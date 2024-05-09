@@ -67,7 +67,7 @@ pub trait Reader<'a> {
     fn exists(&self, path: &Path) -> bool;
 }
 
-// Protocol for reading and writing files in the collection.
+/// Protocol for reading and writing files in the collection.
 pub trait ReadWriter<'a>: Reader<'a> {
     /// Open a text file for writing. `path` is the path of the file to write.
     fn open_write(&self, path: &Path) -> Result<BoxWrite<'a>>;
@@ -251,6 +251,7 @@ mod tests {
         Case("read_writer_reads_own_file", &read_writer_reads_own_file),
     ];
 
+    /// Checks the `test_casing` count in `io_test`.
     #[test]
     fn io_test_count() {
         assert_eq!(4, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
@@ -302,6 +303,7 @@ mod tests {
 
     const VALID_RELATIVE_PATHS: &[&str] = &[r#"foo"#, r#"foo/bar"#];
 
+    /// Checks the `test_casing` count in `test_is_fully_relative`.
     #[test]
     fn test_is_fully_relative_count() {
         assert_eq!(2, VALID_RELATIVE_PATHS.iter().count());
@@ -317,6 +319,7 @@ mod tests {
         FilesIoError::NonRelativePath(NonRelativePathType::RootDir),
     )];
 
+    /// Checks the `test_casing` count in `test_invalid_relative_path`.
     #[test]
     fn test_invalid_relative_path_count() {
         assert_eq!(1, INVALID_RELATIVE_PATHS.iter().count());
@@ -357,6 +360,7 @@ mod tests {
         ),
     ];
 
+    /// Checks the `test_casing` count in `test_invalid_relative_path_on_windows`.
     #[test]
     fn test_invalid_relative_path_on_windows_count() {
         assert_eq!(6, INVALID_RELATIVE_PATHS_ON_WINDOWS.iter().count());
