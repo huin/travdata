@@ -61,7 +61,7 @@ pub trait Reader<'a> {
     fn open_read(&self, path: &Path) -> Result<BoxRead<'a>>;
 
     /// Iterates over all files that the reader has. The order is undefined.
-    fn iter_files(&self) -> Box<dyn Iterator<Item = &'a Path> + 'a>;
+    fn iter_files(&self) -> Box<dyn Iterator<Item = Result<PathBuf>> + 'a>;
 
     /// Return `true` if the file exists.
     fn exists(&self, path: &Path) -> bool;
@@ -106,9 +106,30 @@ impl<'a> Reader<'a> for DirReadWriter {
         Ok(Box::new(f))
     }
 
-    fn iter_files(&self) -> Box<dyn Iterator<Item = &'a Path> + 'a> {
-        // Incomplete implementation. Write failing tests.
-        Box::new(vec![].into_iter())
+    fn iter_files(&self) -> Box<dyn Iterator<Item = Result<PathBuf>> + 'a> {
+        let dir_path = self.dir_path.to_owned();
+        Box::new(
+            walkdir::WalkDir::new(&dir_path)
+                .follow_links(false)
+                .same_file_system(true)
+                .into_iter()
+                .filter_map(move |dir_entry| match dir_entry {
+                    Err(e) => match e.io_error() {
+                        // NotFound is assumed to be for self.dir_path, which
+                        // implies no entries at all.
+                        Some(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+                        // Pass other errors through.
+                        _ => Some(Err(anyhow!(e))),
+                    },
+                    Ok(dir_entry) if dir_entry.file_type().is_file() => {
+                        match dir_entry.path().strip_prefix(&dir_path) {
+                            Err(e) => Some(Err(anyhow!(e))),
+                            Ok(rel_path) => Some(Ok(rel_path.to_owned())),
+                        }
+                    }
+                    _ => None,
+                }),
+        )
     }
 
     fn exists(&self, _path: &Path) -> bool {
@@ -164,7 +185,7 @@ mod tests {
     use anyhow::Result;
     use googletest::{
         assert_that,
-        matchers::{eq, err, ok},
+        matchers::{eq, err, ok, unordered_elements_are},
     };
     use tempfile::{tempdir, TempDir};
     use test_casing::{test_casing, Product};
@@ -260,15 +281,16 @@ mod tests {
         ),
         Case("read_writer_reads_own_file", &read_writer_reads_own_file),
         Case("reads_created_files", &reads_created_files),
+        Case("readers_iter_files", &readers_iter_files),
     ];
 
     /// Checks the `test_casing` count in `io_test`.
     #[test]
     fn io_test_count() {
-        assert_eq!(5, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
+        assert_eq!(6, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
     }
 
-    #[test_casing(5, Product((IO_TYPES, COMMON_IO_TESTS)))]
+    #[test_casing(6, Product((IO_TYPES, COMMON_IO_TESTS)))]
     fn io_test(io_type: &IoType, case: &Case) {
         case.1(io_type);
     }
@@ -276,7 +298,8 @@ mod tests {
     fn empty_reader_has_no_files(io_type: &IoType) {
         let test_io = io_type.new_env();
         let reader = test_io.make_reader();
-        assert_that!(reader.iter_files().count(), eq(0));
+        let actual_files = read_iter_files(reader.as_ref());
+        assert_that!(actual_files, unordered_elements_are![]);
     }
 
     fn empty_reader_not_exists(io_type: &IoType) {
@@ -342,6 +365,49 @@ mod tests {
                 let read_contents = read_vec(&mut r).expect("should read");
                 assert_that!(&read_contents, eq(contents));
             }
+        });
+    }
+
+    fn readers_iter_files(io_type: &IoType) {
+        let test_io = io_type.new_env();
+        let files: Vec<&Path> = vec![
+            Path::new("file.txt"),
+            Path::new("subdir/other.txt"),
+            Path::new("subdir/anotherdir/file.txt"),
+        ];
+
+        {
+            let read_writer = test_io.make_read_writer();
+            for path in &files {
+                let mut w = read_writer.open_write(path).expect("should open");
+                w.write_all(b"ignored content").expect("should write");
+            }
+
+            // Should be present in ReadWriter that created them.
+            let actual_files = read_writer_iter_files(read_writer.as_ref());
+            assert_that!(
+                actual_files,
+                unordered_elements_are![
+                    ok(eq(Path::new("file.txt"))),
+                    ok(eq(Path::new("subdir/other.txt"))),
+                    ok(eq(Path::new("subdir/anotherdir/file.txt"))),
+                ]
+            );
+        }
+
+        // Should be present in Reader implementations.
+        test_io.run_with_reader_and_read_writer(&|desc, reader| {
+            println!("Testing {}", desc);
+            // Should be present in ReadWriter that created them.
+            let actual_files = read_iter_files(reader.as_ref());
+            assert_that!(
+                actual_files,
+                unordered_elements_are![
+                    ok(eq(Path::new("file.txt"))),
+                    ok(eq(Path::new("subdir/other.txt"))),
+                    ok(eq(Path::new("subdir/anotherdir/file.txt"))),
+                ]
+            );
         });
     }
 
@@ -425,5 +491,13 @@ mod tests {
         let mut buf = Vec::new();
         r.read_to_end(&mut buf)?;
         Ok(buf)
+    }
+
+    fn read_iter_files(reader: &dyn Reader) -> Vec<Result<PathBuf>> {
+        reader.iter_files().collect()
+    }
+
+    fn read_writer_iter_files(reader: &dyn ReadWriter) -> Vec<Result<PathBuf>> {
+        reader.iter_files().collect()
     }
 }
