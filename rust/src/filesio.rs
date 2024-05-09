@@ -137,9 +137,9 @@ impl<'a> Reader<'a> for DirReadWriter {
         )
     }
 
-    fn exists(&self, _path: &Path) -> bool {
-        // Incomplete implementation. Write failing tests.
-        false
+    fn exists(&self, path: &Path) -> bool {
+        let full_path = self.dir_path.join(path);
+        full_path.exists()
     }
 }
 
@@ -288,15 +288,16 @@ mod tests {
         Case("reads_created_files", &reads_created_files),
         Case("readers_iter_files", &readers_iter_files),
         Case("read_writer_overwrites_file", &read_writer_overwrites_file),
+        Case("created_files_exist", &created_files_exist),
     ];
 
     /// Checks the `test_casing` count in `io_test`.
     #[test]
     fn io_test_count() {
-        assert_eq!(7, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
+        assert_eq!(8, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
     }
 
-    #[test_casing(7, Product((IO_TYPES, COMMON_IO_TESTS)))]
+    #[test_casing(8, Product((IO_TYPES, COMMON_IO_TESTS)))]
     fn io_test(io_type: &IoType, case: &Case) {
         case.1(io_type);
     }
@@ -466,6 +467,36 @@ mod tests {
             let mut r = reader.open_read(path).expect("should open");
             assert_that!(read_vec(&mut r), ok(eq(v3)));
         }
+    }
+
+    fn created_files_exist(io_type: &IoType) {
+        let paths = vec![
+            Path::new("file.txt"),
+            Path::new("subdir/other.txt"),
+            Path::new("subdir/anotherdir/file.txt"),
+        ];
+
+        let test_io = io_type.new_env();
+
+        {
+            let read_writer = test_io.make_read_writer();
+            for path in &paths {
+                let mut w = read_writer.open_write(path).expect("should open");
+                w.write_all(b"ignored content").expect("should write");
+                drop(w);
+
+                // Should be present in ReadWriter that created them.
+                assert_that!(read_writer.exists(path), eq(true));
+            }
+        }
+
+        // Should be present in Reader implementations.
+        test_io.run_with_reader_and_read_writer(&|desc, reader| {
+            println!("Testing {}", desc);
+            for path in &paths {
+                assert_that!(reader.exists(path), eq(true));
+            }
+        });
     }
 
     const VALID_RELATIVE_PATHS: &[&str] = &[r#"foo"#, r#"foo/bar"#];
