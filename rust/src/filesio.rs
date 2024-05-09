@@ -183,6 +183,12 @@ mod tests {
     trait IoTestEnvironment {
         fn make_reader(&self) -> BoxReader<'static>;
         fn make_read_writer(&self) -> BoxReadWriter<'static>;
+        fn make_read_writer_as_reader(&self) -> BoxReader<'static>;
+
+        fn run_with_reader_and_read_writer(&self, f: &dyn Fn(&'static str, BoxReader<'static>)) {
+            f("Reader", self.make_reader());
+            f("ReadWriter", self.make_read_writer_as_reader());
+        }
     }
 
     struct DirTestEnvironment {
@@ -207,6 +213,10 @@ mod tests {
         }
 
         fn make_read_writer(&self) -> BoxReadWriter<'static> {
+            Box::new(DirReadWriter::new(self.dir_path()))
+        }
+
+        fn make_read_writer_as_reader(&self) -> BoxReader<'static> {
             Box::new(DirReadWriter::new(self.dir_path()))
         }
     }
@@ -249,15 +259,16 @@ mod tests {
             &empty_reader_open_read_returns_not_found_err,
         ),
         Case("read_writer_reads_own_file", &read_writer_reads_own_file),
+        Case("reads_created_files", &reads_created_files),
     ];
 
     /// Checks the `test_casing` count in `io_test`.
     #[test]
     fn io_test_count() {
-        assert_eq!(4, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
+        assert_eq!(5, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
     }
 
-    #[test_casing(4, Product((IO_TYPES, COMMON_IO_TESTS)))]
+    #[test_casing(5, Product((IO_TYPES, COMMON_IO_TESTS)))]
     fn io_test(io_type: &IoType, case: &Case) {
         case.1(io_type);
     }
@@ -299,6 +310,39 @@ mod tests {
         let mut r = read_writer.open_read(&path).expect("should open");
         let actual_contents = read_vec(&mut r).expect("should read");
         assert_that!(&actual_contents, eq(contents));
+    }
+
+    fn reads_created_files(io_type: &IoType) {
+        let test_io = io_type.new_env();
+        let files: Vec<(&Path, &[u8])> = vec![
+            (Path::new("file.txt"), b"file contents"),
+            (Path::new("subdir/other.txt"), b"other contents"),
+        ];
+
+        {
+            let read_writer = test_io.make_read_writer();
+            for (path, contents) in &files {
+                let mut w = read_writer.open_write(path).expect("should open");
+                w.write_all(*contents).expect("should write");
+            }
+
+            for (path, contents) in &files {
+                // Should be present in ReadWriter that created them.
+                let mut r = read_writer.open_read(path).expect("should open");
+                let read_contents = read_vec(&mut r).expect("should read");
+                assert_that!(&read_contents, eq(contents));
+            }
+        }
+
+        // Should be present in Reader implementations.
+        test_io.run_with_reader_and_read_writer(&|desc, reader| {
+            for (path, contents) in &files {
+                println!("Testing {}", desc);
+                let mut r = reader.open_read(path).expect("should open");
+                let read_contents = read_vec(&mut r).expect("should read");
+                assert_that!(&read_contents, eq(contents));
+            }
+        });
     }
 
     const VALID_RELATIVE_PATHS: &[&str] = &[r#"foo"#, r#"foo/bar"#];
