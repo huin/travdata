@@ -556,6 +556,7 @@ dependencies = [
  "tabula",
  "tempfile",
  "test-casing",
+ "walkdir",
 ]
 
 [[package]]
