@@ -287,15 +287,16 @@ mod tests {
         Case("read_writer_reads_own_file", &read_writer_reads_own_file),
         Case("reads_created_files", &reads_created_files),
         Case("readers_iter_files", &readers_iter_files),
+        Case("read_writer_overwrites_file", &read_writer_overwrites_file),
     ];
 
     /// Checks the `test_casing` count in `io_test`.
     #[test]
     fn io_test_count() {
-        assert_eq!(6, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
+        assert_eq!(7, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
     }
 
-    #[test_casing(6, Product((IO_TYPES, COMMON_IO_TESTS)))]
+    #[test_casing(7, Product((IO_TYPES, COMMON_IO_TESTS)))]
     fn io_test(io_type: &IoType, case: &Case) {
         case.1(io_type);
     }
@@ -414,6 +415,57 @@ mod tests {
                 ]
             );
         });
+    }
+
+    fn read_writer_overwrites_file(io_type: &IoType) {
+        let path = Path::new("file.txt");
+        let v1 = b"content v1";
+        let v2 = b"content v2";
+        let v3 = b"content v3";
+
+        let test_io = io_type.new_env();
+
+        {
+            let read_writer = test_io.make_read_writer();
+            {
+                let mut w = read_writer.open_write(path).expect("should open");
+                w.write_all(v1).expect("should write");
+            }
+            {
+                let mut r = read_writer.open_read(path).expect("should open");
+                assert_that!(read_vec(&mut r), ok(eq(v1)));
+            }
+        }
+
+        {
+            let read_writer = test_io.make_read_writer();
+            {
+                let mut r = read_writer.open_read(path).expect("should open");
+                assert_that!(read_vec(&mut r), ok(eq(v1)));
+            }
+            {
+                let mut w = read_writer.open_write(path).expect("should open");
+                w.write_all(v2).expect("should write");
+            }
+            {
+                let mut r = read_writer.open_read(path).expect("should open");
+                assert_that!(read_vec(&mut r), ok(eq(v2)));
+            }
+            {
+                let mut w = read_writer.open_write(path).expect("should open");
+                w.write_all(v3).expect("should write");
+            }
+            {
+                let mut r = read_writer.open_read(path).expect("should open");
+                assert_that!(read_vec(&mut r), ok(eq(v3)));
+            }
+        }
+
+        {
+            let reader = test_io.make_reader();
+            let mut r = reader.open_read(path).expect("should open");
+            assert_that!(read_vec(&mut r), ok(eq(v3)));
+        }
     }
 
     const VALID_RELATIVE_PATHS: &[&str] = &[r#"foo"#, r#"foo/bar"#];
