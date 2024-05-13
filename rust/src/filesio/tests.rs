@@ -1,5 +1,6 @@
 use std::{
     fmt::Debug,
+    io::{Read, Write},
     path::{Path, PathBuf},
 };
 
@@ -105,15 +106,19 @@ const COMMON_IO_TESTS: &[Case] = &[
     Case("readers_iter_files", &readers_iter_files),
     Case("read_writer_overwrites_file", &read_writer_overwrites_file),
     Case("created_files_exist", &created_files_exist),
+    Case(
+        "discarded_files_do_not_exist",
+        &discarded_files_do_not_exist,
+    ),
 ];
 
 /// Checks the `test_casing` count in `io_test`.
 #[test]
 fn io_test_count() {
-    assert_eq!(8, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
+    assert_eq!(9, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
 }
 
-#[test_casing(8, Product((IO_TYPES, COMMON_IO_TESTS)))]
+#[test_casing(9, Product((IO_TYPES, COMMON_IO_TESTS)))]
 fn io_test(io_type: &IoType, case: &Case) {
     case.1(io_type);
 }
@@ -151,7 +156,7 @@ fn read_writer_reads_own_file(io_type: &IoType) {
 
     let mut w = read_writer.open_write(&path).expect("should open");
     w.write_all(contents).expect("should write");
-    drop(w);
+    w.commit().expect("should commit");
 
     let mut r = read_writer.open_read(&path).expect("should open");
     let actual_contents = read_vec(&mut r).expect("should read");
@@ -170,6 +175,7 @@ fn reads_created_files(io_type: &IoType) {
         for (path, contents) in &files {
             let mut w = read_writer.open_write(path).expect("should open");
             w.write_all(*contents).expect("should write");
+            w.commit().expect("should commit");
         }
 
         for (path, contents) in &files {
@@ -204,6 +210,7 @@ fn readers_iter_files(io_type: &IoType) {
         for path in &files {
             let mut w = read_writer.open_write(path).expect("should open");
             w.write_all(b"ignored content").expect("should write");
+            w.commit().expect("should commit");
         }
 
         // Should be present in ReadWriter that created them.
@@ -247,6 +254,7 @@ fn read_writer_overwrites_file(io_type: &IoType) {
         {
             let mut w = read_writer.open_write(path).expect("should open");
             w.write_all(v1).expect("should write");
+            w.commit().expect("should commit");
         }
         {
             let mut r = read_writer.open_read(path).expect("should open");
@@ -263,6 +271,7 @@ fn read_writer_overwrites_file(io_type: &IoType) {
         {
             let mut w = read_writer.open_write(path).expect("should open");
             w.write_all(v2).expect("should write");
+            w.commit().expect("should commit");
         }
         {
             let mut r = read_writer.open_read(path).expect("should open");
@@ -271,6 +280,7 @@ fn read_writer_overwrites_file(io_type: &IoType) {
         {
             let mut w = read_writer.open_write(path).expect("should open");
             w.write_all(v3).expect("should write");
+            w.commit().expect("should commit");
         }
         {
             let mut r = read_writer.open_read(path).expect("should open");
@@ -299,7 +309,7 @@ fn created_files_exist(io_type: &IoType) {
         for path in &paths {
             let mut w = read_writer.open_write(path).expect("should open");
             w.write_all(b"ignored content").expect("should write");
-            drop(w);
+            w.commit().expect("should commit");
 
             // Should be present in ReadWriter that created them.
             assert_that!(read_writer.exists(path), eq(true));
@@ -312,6 +322,47 @@ fn created_files_exist(io_type: &IoType) {
         for path in &paths {
             assert_that!(reader.exists(path), eq(true));
         }
+    });
+}
+
+fn discarded_files_do_not_exist(io_type: &IoType) {
+    let paths = vec![
+        Path::new("file.txt"),
+        Path::new("subdir/other.txt"),
+        Path::new("subdir/anotherdir/file.txt"),
+    ];
+    let committed = Path::new("committed.txt");
+
+    let test_io = io_type.new_env();
+
+    {
+        let read_writer = test_io.make_read_writer();
+        for path in &paths {
+            let mut w = read_writer.open_write(path).expect("should open");
+            w.write_all(b"ignored content").expect("should write");
+            w.discard().expect("should discard");
+
+            // Should not be present in ReadWriter that created them.
+            assert_that!(read_writer.exists(path), eq(false));
+        }
+        let w = read_writer.open_write(committed).expect("should open");
+        w.commit().expect("should commit");
+
+        // Should not be present from iteration.
+        let actual_files = read_writer_iter_files(read_writer.as_ref());
+        assert_that!(actual_files, unordered_elements_are![ok(eq(committed))]);
+    }
+
+    // Should not be present in Reader implementations.
+    test_io.run_with_reader_and_read_writer(&|desc, reader| {
+        println!("Testing {}", desc);
+        for path in &paths {
+            assert_that!(reader.exists(path), eq(false));
+        }
+
+        // Should not be present from iteration.
+        let actual_files = read_iter_files(reader.as_ref());
+        assert_that!(actual_files, unordered_elements_are![ok(eq(committed))]);
     });
 }
 

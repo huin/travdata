@@ -4,10 +4,13 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
+use atomic_write_file::AtomicWriteFile;
 
 use crate::filesio::FilesIoError;
 
-use super::{check_fully_relative, BoxFileRead, BoxFileWrite, FileRead, FileWrite, ReadWriter, Reader};
+use super::{
+    check_fully_relative, BoxFileRead, BoxFileWrite, FileRead, FileWrite, ReadWriter, Reader,
+};
 
 #[derive(Debug)]
 pub struct DirReadWriter {
@@ -39,7 +42,7 @@ impl<'a> Reader<'a> for DirReadWriter {
                 }));
             }
         };
-        Ok(Box::new(f))
+        Ok(BoxFileRead::new(f))
     }
 
     fn iter_files(&self) -> Box<dyn Iterator<Item = Result<PathBuf>> + 'a> {
@@ -88,10 +91,21 @@ impl<'a> ReadWriter<'a> for DirReadWriter {
             std::fs::create_dir_all(parent)?;
         }
 
-        let f = File::create(full_path)?;
-        Ok(Box::new(f))
+        let f = AtomicWriteFile::options().read(false).open(full_path)?;
+        Ok(BoxFileWrite::new(f))
     }
 }
 
+
 impl<'a> FileRead<'a> for File {}
-impl<'a> FileWrite<'a> for File {}
+impl<'a> FileWrite<'a> for AtomicWriteFile {
+    fn commit(self: Box<Self>) -> Result<()> {
+        (*self).commit()?;
+        Ok(())
+    }
+
+    fn discard(self: Box<Self>) -> Result<()> {
+        (*self).discard()?;
+        Ok(())
+    }
+}
