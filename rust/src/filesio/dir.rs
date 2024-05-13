@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 
 use crate::filesio::FilesIoError;
 
-use super::{check_fully_relative, BoxRead, BoxWrite, ReadWriter, Reader};
+use super::{check_fully_relative, BoxFileRead, BoxFileWrite, ReadWriter, Reader};
 
 #[derive(Debug)]
 pub struct DirReadWriter {
@@ -26,7 +26,7 @@ impl DirReadWriter {
 }
 
 impl<'a> Reader<'a> for DirReadWriter {
-    fn open_read(&self, path: &Path) -> Result<BoxRead<'a>> {
+    fn open_read(&self, path: &Path) -> Result<BoxFileRead<'a>> {
         check_fully_relative(path)?;
         let full_path = self.dir_path.join(path);
 
@@ -80,7 +80,7 @@ impl<'a> Reader<'a> for DirReadWriter {
 }
 
 impl<'a> ReadWriter<'a> for DirReadWriter {
-    fn open_write(&self, path: &Path) -> Result<BoxWrite<'a>> {
+    fn open_write(&self, path: &Path) -> Result<BoxFileWrite<'a>> {
         check_fully_relative(path)?;
         let full_path = self.dir_path.join(path);
 

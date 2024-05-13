@@ -14,11 +14,11 @@ use anyhow::{anyhow, Result};
 
 pub use dir::DirReadWriter;
 
-pub trait DebugRead<'a>: Debug + Read + 'a {}
-pub trait DebugWrite<'a>: Debug + Write + 'a {}
+pub trait FileRead<'a>: Debug + Read + 'a {}
+pub trait FileWrite<'a>: Debug + Write + 'a {}
 
-pub type BoxRead<'a> = Box<dyn DebugRead<'a>>;
-pub type BoxWrite<'a> = Box<dyn DebugWrite<'a>>;
+pub type BoxFileRead<'a> = Box<dyn FileRead<'a>>;
+pub type BoxFileWrite<'a> = Box<dyn FileWrite<'a>>;
 
 /// Concrete error type returned by `FilesIo` implementations for cases that
 /// might reasonably be handled by callers.
@@ -64,7 +64,7 @@ impl Error for FilesIoError {}
 /// Protocol for reading files from the collection.
 pub trait Reader<'a> {
     /// Open a text file for reading. `path` is the path of the file to read.
-    fn open_read(&self, path: &Path) -> Result<BoxRead<'a>>;
+    fn open_read(&self, path: &Path) -> Result<BoxFileRead<'a>>;
 
     /// Iterates over all files that the reader has. The order is undefined.
     fn iter_files(&self) -> Box<dyn Iterator<Item = Result<PathBuf>> + 'a>;
@@ -76,11 +76,11 @@ pub trait Reader<'a> {
 /// Protocol for reading and writing files in the collection.
 pub trait ReadWriter<'a>: Reader<'a> {
     /// Open a text file for writing. `path` is the path of the file to write.
-    fn open_write(&self, path: &Path) -> Result<BoxWrite<'a>>;
+    fn open_write(&self, path: &Path) -> Result<BoxFileWrite<'a>>;
 }
 
-impl<'a> DebugRead<'a> for File {}
-impl<'a> DebugWrite<'a> for File {}
+impl<'a> FileRead<'a> for File {}
+impl<'a> FileWrite<'a> for File {}
 
 /// Returns an error if `path` is not strictly relative. That is satisfying both:
 /// * Has no prefix component.

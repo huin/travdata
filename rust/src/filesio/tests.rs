@@ -16,7 +16,7 @@ use crate::{
     testutil::anyhow_downcasts_to,
 };
 
-use super::{BoxRead, DirReadWriter, ReadWriter, Reader};
+use super::{BoxFileRead, DirReadWriter, ReadWriter, Reader};
 
 type BoxIoTestEnvironment = Box<dyn IoTestEnvironment>;
 type BoxReader<'a> = Box<dyn Reader<'a>>;
@@ -391,7 +391,7 @@ fn test_invalid_relative_path_on_windows(path: &str, expect_error: &FilesIoError
 
 // Utility code for tests:
 
-fn read_vec(r: &mut BoxRead) -> Result<Vec<u8>> {
+fn read_vec(r: &mut BoxFileRead) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
     r.read_to_end(&mut buf)?;
     Ok(buf)
