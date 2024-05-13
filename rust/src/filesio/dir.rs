@@ -7,7 +7,7 @@ use anyhow::{anyhow, Result};
 
 use crate::filesio::FilesIoError;
 
-use super::{check_fully_relative, BoxFileRead, BoxFileWrite, ReadWriter, Reader};
+use super::{check_fully_relative, BoxFileRead, BoxFileWrite, FileRead, FileWrite, ReadWriter, Reader};
 
 #[derive(Debug)]
 pub struct DirReadWriter {
@@ -92,3 +92,6 @@ impl<'a> ReadWriter<'a> for DirReadWriter {
         Ok(Box::new(f))
     }
 }
+
+impl<'a> FileRead<'a> for File {}
+impl<'a> FileWrite<'a> for File {}

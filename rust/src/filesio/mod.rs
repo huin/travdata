@@ -5,7 +5,6 @@ mod tests;
 use std::{
     error::Error,
     fmt::{Debug, Display},
-    fs::File,
     io::{Read, Write},
     path::{Path, PathBuf},
 };
@@ -78,9 +77,6 @@ pub trait ReadWriter<'a>: Reader<'a> {
     /// Open a text file for writing. `path` is the path of the file to write.
     fn open_write(&self, path: &Path) -> Result<BoxFileWrite<'a>>;
 }
-
-impl<'a> FileRead<'a> for File {}
-impl<'a> FileWrite<'a> for File {}
 
 /// Returns an error if `path` is not strictly relative. That is satisfying both:
 /// * Has no prefix component.
