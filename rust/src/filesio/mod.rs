@@ -14,10 +14,78 @@ use anyhow::{anyhow, Result};
 pub use dir::DirReadWriter;
 
 pub trait FileRead<'a>: Debug + Read + 'a {}
-pub trait FileWrite<'a>: Debug + Write + 'a {}
+pub trait FileWrite<'a>: Debug + Write + 'a {
+    fn commit(self: Box<Self>) -> Result<()>;
+    fn discard(self: Box<Self>) -> Result<()>;
+}
 
-pub type BoxFileRead<'a> = Box<dyn FileRead<'a>>;
-pub type BoxFileWrite<'a> = Box<dyn FileWrite<'a>>;
+pub struct BoxFileRead<'a> {
+    delegate: Box<dyn FileRead<'a>>,
+}
+
+impl<'a> BoxFileRead<'a> {
+    fn new<T>(delegate: T) -> Self
+    where
+        T: FileRead<'a>,
+    {
+        Self {
+            delegate: Box::new(delegate),
+        }
+    }
+}
+
+impl<'a> Debug for BoxFileRead<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.delegate.fmt(f)
+    }
+}
+
+impl<'a> Read for BoxFileRead<'a> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.delegate.read(buf)
+    }
+}
+
+pub struct BoxFileWrite<'a> {
+    delegate: Box<dyn FileWrite<'a>>,
+}
+
+impl<'a> BoxFileWrite<'a> {
+    fn new<T>(delegate: T) -> Self
+    where
+        T: FileWrite<'a>,
+    {
+        Self {
+            delegate: Box::new(delegate),
+        }
+    }
+
+    pub fn commit(self) -> Result<()> {
+        self.delegate.commit()
+    }
+
+    pub fn discard(self) -> Result<()> {
+        self.delegate.discard()
+    }
+}
+
+impl<'a> Debug for BoxFileWrite<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.delegate.fmt(f)
+    }
+}
+
+impl<'a> Write for BoxFileWrite<'a> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.delegate.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.delegate.flush()
+    }
+}
+
+// pub type BoxFileWrite<'a> = Box<dyn FileWrite<'a>>;
 
 /// Concrete error type returned by `FilesIo` implementations for cases that
 /// might reasonably be handled by callers.
