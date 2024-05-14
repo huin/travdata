@@ -13,20 +13,20 @@ use anyhow::{anyhow, Result};
 
 pub use dir::DirReadWriter;
 
-pub trait FileRead<'a>: Debug + Read + 'a {}
-pub trait FileWrite<'a>: Debug + Write + 'a {
+trait FileReadImpl<'a>: Debug + Read + 'a {}
+trait FileWriteImpl<'a>: Debug + Write + 'a {
     fn commit(self: Box<Self>) -> Result<()>;
     fn discard(self: Box<Self>) -> Result<()>;
 }
 
-pub struct BoxFileRead<'a> {
-    delegate: Box<dyn FileRead<'a>>,
+pub struct FileRead<'a> {
+    delegate: Box<dyn FileReadImpl<'a>>,
 }
 
-impl<'a> BoxFileRead<'a> {
+impl<'a> FileRead<'a> {
     fn new<T>(delegate: T) -> Self
     where
-        T: FileRead<'a>,
+        T: FileReadImpl<'a>,
     {
         Self {
             delegate: Box::new(delegate),
@@ -34,26 +34,26 @@ impl<'a> BoxFileRead<'a> {
     }
 }
 
-impl<'a> Debug for BoxFileRead<'a> {
+impl<'a> Debug for FileRead<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.delegate.fmt(f)
     }
 }
 
-impl<'a> Read for BoxFileRead<'a> {
+impl<'a> Read for FileRead<'a> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         self.delegate.read(buf)
     }
 }
 
-pub struct BoxFileWrite<'a> {
-    delegate: Box<dyn FileWrite<'a>>,
+pub struct FileWrite<'a> {
+    delegate: Box<dyn FileWriteImpl<'a>>,
 }
 
-impl<'a> BoxFileWrite<'a> {
+impl<'a> FileWrite<'a> {
     fn new<T>(delegate: T) -> Self
     where
-        T: FileWrite<'a>,
+        T: FileWriteImpl<'a>,
     {
         Self {
             delegate: Box::new(delegate),
@@ -69,13 +69,13 @@ impl<'a> BoxFileWrite<'a> {
     }
 }
 
-impl<'a> Debug for BoxFileWrite<'a> {
+impl<'a> Debug for FileWrite<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.delegate.fmt(f)
     }
 }
 
-impl<'a> Write for BoxFileWrite<'a> {
+impl<'a> Write for FileWrite<'a> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.delegate.write(buf)
     }
@@ -131,7 +131,7 @@ impl Error for FilesIoError {}
 /// Protocol for reading files from the collection.
 pub trait Reader<'a> {
     /// Open a text file for reading. `path` is the path of the file to read.
-    fn open_read(&self, path: &Path) -> Result<BoxFileRead<'a>>;
+    fn open_read(&self, path: &Path) -> Result<FileRead<'a>>;
 
     /// Iterates over all files that the reader has. The order is undefined.
     fn iter_files(&self) -> Box<dyn Iterator<Item = Result<PathBuf>> + 'a>;
@@ -143,7 +143,7 @@ pub trait Reader<'a> {
 /// Protocol for reading and writing files in the collection.
 pub trait ReadWriter<'a>: Reader<'a> {
     /// Open a text file for writing. `path` is the path of the file to write.
-    fn open_write(&self, path: &Path) -> Result<BoxFileWrite<'a>>;
+    fn open_write(&self, path: &Path) -> Result<FileWrite<'a>>;
 }
 
 /// Returns an error if `path` is not strictly relative. That is satisfying both:
