@@ -36,10 +36,10 @@ impl<'a> Reader<'a> for DirReadWriter {
         let f: File = match File::open(full_path) {
             Ok(f) => f,
             Err(e) => {
-                return Err(anyhow!(match e.kind() {
+                return Err(match e.kind() {
                     std::io::ErrorKind::NotFound => anyhow!(FilesIoError::NotFound),
                     _ => anyhow!(e),
-                }));
+                });
             }
         };
         Ok(FileRead::new(f))
