@@ -1,4 +1,5 @@
 mod dir;
+mod mem;
 #[cfg(test)]
 mod tests;
 

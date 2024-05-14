@@ -17,7 +17,7 @@ use crate::{
     testutil::anyhow_downcasts_to,
 };
 
-use super::{FileRead, DirReadWriter, ReadWriter, Reader};
+use super::{mem::{MemFilesHandle, MemReadWriter}, DirReadWriter, FileRead, ReadWriter, Reader};
 
 type BoxIoTestEnvironment = Box<dyn IoTestEnvironment>;
 type BoxReader<'a> = Box<dyn Reader<'a>>;
@@ -64,6 +64,32 @@ impl IoTestEnvironment for DirTestEnvironment {
     }
 }
 
+struct MemTestEnvironment {
+    handle: MemFilesHandle,
+}
+
+impl MemTestEnvironment {
+    fn new() -> Result<BoxIoTestEnvironment> {
+        Ok(Box::new(Self {
+            handle: MemFilesHandle::default(),
+        }))
+    }
+}
+
+impl IoTestEnvironment for MemTestEnvironment {
+    fn make_reader(&self) -> BoxReader<'static> {
+        Box::new(MemReadWriter::new(self.handle.clone()))
+    }
+
+    fn make_read_writer(&self) -> BoxReadWriter<'static> {
+        Box::new(MemReadWriter::new(self.handle.clone()))
+    }
+
+    fn make_read_writer_as_reader(&self) -> BoxReader<'static> {
+        Box::new(MemReadWriter::new(self.handle.clone()))
+    }
+}
+
 struct IoType {
     name: &'static str,
     new: &'static dyn Fn() -> Result<Box<dyn IoTestEnvironment>>,
@@ -81,10 +107,16 @@ impl Debug for IoType {
     }
 }
 
-const IO_TYPES: &[IoType] = &[IoType {
-    name: "Dir",
-    new: &DirTestEnvironment::new,
-}];
+const IO_TYPES: &[IoType] = &[
+    IoType {
+        name: "Dir",
+        new: &DirTestEnvironment::new,
+    },
+    IoType {
+        name: "Mem",
+        new: &MemTestEnvironment::new,
+    },
+];
 
 struct Case(&'static str, &'static dyn Fn(&IoType));
 
@@ -115,10 +147,10 @@ const COMMON_IO_TESTS: &[Case] = &[
 /// Checks the `test_casing` count in `io_test`.
 #[test]
 fn io_test_count() {
-    assert_eq!(9, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
+    assert_eq!(18, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
 }
 
-#[test_casing(9, Product((IO_TYPES, COMMON_IO_TESTS)))]
+#[test_casing(18, Product((IO_TYPES, COMMON_IO_TESTS)))]
 fn io_test(io_type: &IoType, case: &Case) {
     case.1(io_type);
 }
