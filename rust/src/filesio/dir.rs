@@ -9,7 +9,7 @@ use atomic_write_file::AtomicWriteFile;
 use crate::filesio::FilesIoError;
 
 use super::{
-    check_fully_relative, BoxFileRead, BoxFileWrite, FileRead, FileWrite, ReadWriter, Reader,
+    check_fully_relative, FileRead, FileWrite, FileReadImpl, FileWriteImpl, ReadWriter, Reader,
 };
 
 #[derive(Debug)]
@@ -29,7 +29,7 @@ impl DirReadWriter {
 }
 
 impl<'a> Reader<'a> for DirReadWriter {
-    fn open_read(&self, path: &Path) -> Result<BoxFileRead<'a>> {
+    fn open_read(&self, path: &Path) -> Result<FileRead<'a>> {
         check_fully_relative(path)?;
         let full_path = self.dir_path.join(path);
 
@@ -42,7 +42,7 @@ impl<'a> Reader<'a> for DirReadWriter {
                 }));
             }
         };
-        Ok(BoxFileRead::new(f))
+        Ok(FileRead::new(f))
     }
 
     fn iter_files(&self) -> Box<dyn Iterator<Item = Result<PathBuf>> + 'a> {
@@ -83,7 +83,7 @@ impl<'a> Reader<'a> for DirReadWriter {
 }
 
 impl<'a> ReadWriter<'a> for DirReadWriter {
-    fn open_write(&self, path: &Path) -> Result<BoxFileWrite<'a>> {
+    fn open_write(&self, path: &Path) -> Result<FileWrite<'a>> {
         check_fully_relative(path)?;
         let full_path = self.dir_path.join(path);
 
@@ -92,13 +92,13 @@ impl<'a> ReadWriter<'a> for DirReadWriter {
         }
 
         let f = AtomicWriteFile::options().read(false).open(full_path)?;
-        Ok(BoxFileWrite::new(f))
+        Ok(FileWrite::new(f))
     }
 }
 
 
-impl<'a> FileRead<'a> for File {}
-impl<'a> FileWrite<'a> for AtomicWriteFile {
+impl<'a> FileReadImpl<'a> for File {}
+impl<'a> FileWriteImpl<'a> for AtomicWriteFile {
     fn commit(self: Box<Self>) -> Result<()> {
         (*self).commit()?;
         Ok(())
