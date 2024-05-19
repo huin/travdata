@@ -1,13 +1,10 @@
-use std::{
-    io::stdout,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use clap::Args;
 
 use crate::{
-    config::{self, book::load_book, root::load_config},
+    config::{self, root::load_config},
     extraction::{tableextract, tabulautil},
     filesio::{DirReadWriter, ReadWriter, Reader},
 };

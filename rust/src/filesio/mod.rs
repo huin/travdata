@@ -67,6 +67,7 @@ impl<'a> FileWrite<'a> {
         self.delegate.commit()
     }
 
+    #[allow(dead_code)]
     pub fn discard(self) -> Result<()> {
         self.delegate.discard()
     }
