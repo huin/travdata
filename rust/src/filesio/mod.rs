@@ -167,9 +167,12 @@ pub trait ReadWriter<'a>: Reader<'a> {
     fn close(self: Box<Self>) -> Result<()>;
 }
 
-/// Returns an error if `path` is not strictly relative. That is satisfying both:
+/// Returns an error if `path` is not strictly linear and relative. That is
+/// satisfying both:
+/// * Has no leading current directory component.
+/// * Has no parent directory component.
 /// * Has no prefix component.
-/// * Has no root component.
+/// * Has no root directory component.
 fn check_fully_relative(path: &Path) -> Result<()> {
     use std::path::Component::{CurDir, ParentDir, Prefix, RootDir};
 
