@@ -9,7 +9,7 @@ use atomic_write_file::AtomicWriteFile;
 use crate::filesio::FilesIoError;
 
 use super::{
-    check_fully_relative, FileRead, FileWrite, FileReadImpl, FileWriteImpl, ReadWriter, Reader,
+    check_fully_relative, FileRead, FileReadImpl, FileWrite, FileWriteImpl, ReadWriter, Reader,
 };
 
 #[derive(Debug)]
@@ -94,8 +94,12 @@ impl<'a> ReadWriter<'a> for DirReadWriter {
         let f = AtomicWriteFile::options().read(false).open(full_path)?;
         Ok(FileWrite::new(f))
     }
-}
 
+    fn close(self: Box<DirReadWriter>) -> Result<()> {
+        // No implementation needed for now.
+        Ok(())
+    }
+}
 
 impl<'a> FileReadImpl<'a> for File {}
 impl<'a> FileWriteImpl<'a> for AtomicWriteFile {
