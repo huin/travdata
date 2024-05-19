@@ -176,31 +176,22 @@ pub trait ReadWriter<'a>: Reader<'a> {
 fn check_fully_relative(path: &Path) -> Result<()> {
     use std::path::Component::{CurDir, ParentDir, Prefix, RootDir};
 
-    for component in path.components() {
-        match component {
-            Prefix(_) => {
-                return Err(anyhow!(FilesIoError::NonLinearRelativePath(
-                    NonRelativePathType::Prefix
-                )))
-            }
-            RootDir => {
-                return Err(anyhow!(FilesIoError::NonLinearRelativePath(
-                    NonRelativePathType::RootDir
-                )))
-            }
-            CurDir => {
-                return Err(anyhow!(FilesIoError::NonLinearRelativePath(
-                    NonRelativePathType::CurDir
-                )))
-            }
-            ParentDir => {
-                return Err(anyhow!(FilesIoError::NonLinearRelativePath(
-                    NonRelativePathType::ParentDir
-                )))
-            }
-            _ => {}
-        }
-    }
-
-    Ok(())
+    path.components()
+        .find_map(|component| match component {
+            Prefix(_) => Some(FilesIoError::NonLinearRelativePath(
+                NonRelativePathType::Prefix,
+            )),
+            RootDir => Some(FilesIoError::NonLinearRelativePath(
+                NonRelativePathType::RootDir,
+            )),
+            CurDir => Some(FilesIoError::NonLinearRelativePath(
+                NonRelativePathType::CurDir,
+            )),
+            ParentDir => Some(FilesIoError::NonLinearRelativePath(
+                NonRelativePathType::ParentDir,
+            )),
+            _ => None,
+        })
+        .map(|err| Err(anyhow!(err)))
+        .unwrap_or(Ok(()))
 }
