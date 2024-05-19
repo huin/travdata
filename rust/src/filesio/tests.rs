@@ -464,18 +464,32 @@ fn test_is_fully_relative(path: &str) {
     assert_that!(check_fully_relative(Path::new(path)), ok(()));
 }
 
-const INVALID_RELATIVE_PATHS: &[(&str, FilesIoError)] = &[(
-    r#"/foo"#,
-    FilesIoError::NonRelativePath(NonRelativePathType::RootDir),
-)];
+const INVALID_RELATIVE_PATHS: &[(&str, FilesIoError)] = &[
+    (
+        r#"/foo"#,
+        FilesIoError::NonLinearRelativePath(NonRelativePathType::RootDir),
+    ),
+    (
+        r#"../foo"#,
+        FilesIoError::NonLinearRelativePath(NonRelativePathType::ParentDir),
+    ),
+    (
+        r#"foo/../bar"#,
+        FilesIoError::NonLinearRelativePath(NonRelativePathType::ParentDir),
+    ),
+    (
+        r#"./foo"#,
+        FilesIoError::NonLinearRelativePath(NonRelativePathType::CurDir),
+    ),
+];
 
 /// Checks the `test_casing` count in `test_invalid_relative_path`.
 #[test]
 fn test_invalid_relative_path_count() {
-    assert_eq!(1, INVALID_RELATIVE_PATHS.iter().count());
+    assert_eq!(4, INVALID_RELATIVE_PATHS.iter().count());
 }
 
-#[test_casing(1, INVALID_RELATIVE_PATHS)]
+#[test_casing(4, INVALID_RELATIVE_PATHS)]
 fn test_invalid_relative_path(path: &str, expect_error: &FilesIoError) {
     assert_that!(
         check_fully_relative(Path::new(path)),
@@ -486,27 +500,27 @@ fn test_invalid_relative_path(path: &str, expect_error: &FilesIoError) {
 const INVALID_RELATIVE_PATHS_ON_WINDOWS: &[(&str, FilesIoError)] = &[
     (
         r#"\foo"#,
-        FilesIoError::NonRelativePath(NonRelativePathType::RootDir),
+        FilesIoError::NonLinearRelativePath(NonRelativePathType::RootDir),
     ),
     (
         r#"C:\foo"#,
-        FilesIoError::NonRelativePath(NonRelativePathType::Prefix),
+        FilesIoError::NonLinearRelativePath(NonRelativePathType::Prefix),
     ),
     (
         r#"C:/foo"#,
-        FilesIoError::NonRelativePath(NonRelativePathType::Prefix),
+        FilesIoError::NonLinearRelativePath(NonRelativePathType::Prefix),
     ),
     (
         r#"C:foo"#,
-        FilesIoError::NonRelativePath(NonRelativePathType::Prefix),
+        FilesIoError::NonLinearRelativePath(NonRelativePathType::Prefix),
     ),
     (
         r#"c:foo"#,
-        FilesIoError::NonRelativePath(NonRelativePathType::Prefix),
+        FilesIoError::NonLinearRelativePath(NonRelativePathType::Prefix),
     ),
     (
         r#"\\server\share\foo"#,
-        FilesIoError::NonRelativePath(NonRelativePathType::Prefix),
+        FilesIoError::NonLinearRelativePath(NonRelativePathType::Prefix),
     ),
 ];
 

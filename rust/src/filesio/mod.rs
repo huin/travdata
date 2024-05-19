@@ -89,13 +89,11 @@ impl<'a> Write for FileWrite<'a> {
     }
 }
 
-// pub type BoxFileWrite<'a> = Box<dyn FileWrite<'a>>;
-
 /// Concrete error type returned by `FilesIo` implementations for cases that
 /// might reasonably be handled by callers.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FilesIoError {
-    NonRelativePath(NonRelativePathType),
+    NonLinearRelativePath(NonRelativePathType),
     NotFound,
 }
 
@@ -113,9 +111,9 @@ impl Display for FilesIoError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FilesIoError::*;
         match self {
-            NonRelativePath(t) => write!(
+            NonLinearRelativePath(t) => write!(
                 f,
-                "path is not relative because it contains a {} component",
+                "path is not linear relative because it contains a {} component",
                 t
             ),
             NotFound => write!(f, "file not found"),
@@ -126,6 +124,8 @@ impl Display for FilesIoError {
 /// Type of path `Component` causing a path to be non-relative.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NonRelativePathType {
+    CurDir,
+    ParentDir,
     Prefix,
     RootDir,
 }
@@ -134,6 +134,8 @@ impl Display for NonRelativePathType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use NonRelativePathType::*;
         match self {
+            CurDir => write!(f, "current directory"),
+            ParentDir => write!(f, "parent directory"),
             Prefix => write!(f, "prefix"),
             RootDir => write!(f, "root directory"),
         }
@@ -169,18 +171,33 @@ pub trait ReadWriter<'a>: Reader<'a> {
 /// * Has no prefix component.
 /// * Has no root component.
 fn check_fully_relative(path: &Path) -> Result<()> {
-    use std::path::Component::{Prefix, RootDir};
-    match path.components().next() {
-        Some(Prefix(_)) => Err(anyhow!(FilesIoError::NonRelativePath(
-            NonRelativePathType::Prefix
-        ))),
-        Some(RootDir) => Err(anyhow!(FilesIoError::NonRelativePath(
-            NonRelativePathType::RootDir
-        ))),
-        _ => Ok(()),
+    use std::path::Component::{Prefix, RootDir, CurDir, ParentDir};
+
+    for component in path.components() {
+        match component {
+            Prefix(_) => {
+                return Err(anyhow!(FilesIoError::NonLinearRelativePath(
+                    NonRelativePathType::Prefix
+                )))
+            }
+            RootDir => {
+                return Err(anyhow!(FilesIoError::NonLinearRelativePath(
+                    NonRelativePathType::RootDir
+                )))
+            }
+            CurDir => {
+                return Err(anyhow!(FilesIoError::NonLinearRelativePath(
+                    NonRelativePathType::CurDir
+                )))
+            }
+            ParentDir => {
+                return Err(anyhow!(FilesIoError::NonLinearRelativePath(
+                    NonRelativePathType::ParentDir
+                )))
+            }
+            _ => {}
+        }
     }
 
-    // Should check for parent paths? Although this isn't foolproof in itself.
-    // We should be checking configuration that leads to this. Not worth
-    // checking all symlink type situations.
+    Ok(())
 }
