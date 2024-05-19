@@ -3,12 +3,30 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::extraction::tableextract;
+use crate::{extraction::tableextract, filesio::Reader};
+
+pub fn load_book(
+    cfg_reader: &dyn Reader,
+    book_name: &str,
+    parent_tags: &HashSet<String>,
+) -> Result<Group> {
+    let rel_book_dir: PathBuf = book_name.into();
+    let config_path = rel_book_dir.join("book.yaml");
+
+    let file = cfg_reader
+        .open_read(&config_path)
+        .with_context(|| format!("opening book configuration {:?}", &book_name))?;
+    let yaml_group: YamlGroup =
+        serde_yaml_ng::from_reader(file).with_context(|| "parsing book configuration")?;
+
+    Ok(yaml_group.prepare(rel_book_dir, parent_tags))
+}
 
 #[derive(Deserialize, Debug)]
-pub struct YamlTable {
+struct YamlTable {
     #[serde(default = "Default::default")]
     pub tags: HashSet<String>,
     #[serde(default = "default_true")]
@@ -28,7 +46,7 @@ impl YamlTable {
     /// * `rel_group_dir` path to the directory of the table's parent
     /// `YamlGroup`.
     /// * `parent_tags` tags to inherit from parent `YamlGroup`.
-    pub fn prepare(self, name: &str, rel_group_dir: &Path, parent_tags: &HashSet<String>) -> Table {
+    fn prepare(self, name: &str, rel_group_dir: &Path, parent_tags: &HashSet<String>) -> Table {
         let tags = self.tags.union(parent_tags).cloned().collect();
         Table {
             file_stem: rel_group_dir.join(name),
@@ -46,8 +64,15 @@ pub struct Table {
     pub extraction: tableextract::TableExtraction,
 }
 
+impl Table {
+    /// Path to the Tabula template, assuming that it exists.
+    pub fn tabula_template_path(&self) -> PathBuf {
+        self.file_stem.with_extension("tabula-template.json")
+    }
+}
+
 #[derive(Deserialize, Debug)]
-pub struct YamlGroup {
+struct YamlGroup {
     #[serde(default = "Default::default")]
     pub tags: HashSet<String>,
     #[serde(default = "Default::default")]
@@ -61,7 +86,7 @@ impl YamlGroup {
     ///
     /// * `rel_dir` Path to this group's directory.
     /// * `parent_tags` tags to inherit from parent `YamlGroup`.
-    pub fn prepare(self, rel_dir: PathBuf, parent_tags: &HashSet<String>) -> Group {
+    fn prepare(self, rel_dir: PathBuf, parent_tags: &HashSet<String>) -> Group {
         let tags: HashSet<String> = self.tags.union(parent_tags).cloned().collect();
         let tables = self
             .tables
