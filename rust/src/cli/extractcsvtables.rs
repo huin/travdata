@@ -9,13 +9,26 @@ use clap::Args;
 use crate::{
     config::{self, book::load_book, root::load_config},
     extraction::{tableextract, tabulautil},
-    filesio::{DirReadWriter, Reader},
+    filesio::{DirReadWriter, ReadWriter, Reader},
 };
 
 /// Extracts data tables from the Mongoose Traveller 2022 core rules PDF as CSV
 /// files.
 #[derive(Args, Debug)]
 pub struct Command {
+    /// Path to the configuration.
+    book_name: String,
+
+    /// Path to input PDF.
+    input_pdf: PathBuf,
+
+    /// Path to the directory or ZIP file to output the CSV files into.
+    ///
+    /// Whether this is a directory or ZIP file is controlled by --output-type.
+    ///
+    /// TODO: Support writing to ZIP file as well.
+    output: PathBuf,
+
     /// Path to the configuration. This must be either a directory or ZIP file,
     /// directly containing a config.yaml file, book.yaml files in directories,
     /// and its required Tabula templates. Some configurations for this should
@@ -24,12 +37,6 @@ pub struct Command {
     /// TODO: Support reading from ZIP file as well.
     #[arg(long)]
     config: PathBuf,
-
-    /// Path to the configuration.
-    book_name: String,
-
-    /// Path to input PDF.
-    input_pdf: PathBuf,
 
     /// Path to Tabula JAR file.
     #[arg(long)]
@@ -42,6 +49,7 @@ pub fn run(cmd: &Command) -> Result<()> {
         .with_context(|| "initialising Tabula")?;
 
     let cfg_reader = DirReadWriter::new(&cmd.config);
+    let out_writer = Box::new(DirReadWriter::new(&cmd.output));
 
     let cfg = load_config(&cfg_reader)?;
     let book = cfg
@@ -58,11 +66,14 @@ pub fn run(cmd: &Command) -> Result<()> {
     process_group(
         &tabula_client,
         &cfg_reader,
+        out_writer.as_ref(),
         &book,
         &cmd.config,
         &cmd.input_pdf,
     )
     .with_context(|| "processing book")?;
+
+    out_writer.close()?;
 
     Ok(())
 }
@@ -70,12 +81,13 @@ pub fn run(cmd: &Command) -> Result<()> {
 fn process_group(
     tabula_client: &tabulautil::TabulaClient,
     cfg_reader: &dyn Reader,
+    out_writer: &dyn ReadWriter,
     grp: &config::book::Group,
     grp_path: &Path,
     input_pdf: &Path,
 ) -> Result<()> {
     for (table_name, table_cfg) in &grp.tables {
-        process_table(tabula_client, cfg_reader, table_cfg, input_pdf)
+        process_table(tabula_client, cfg_reader, out_writer, table_cfg, input_pdf)
             .with_context(|| format!("processing table {:?}", table_name))?;
     }
 
@@ -84,6 +96,7 @@ fn process_group(
         process_group(
             tabula_client,
             cfg_reader,
+            out_writer,
             child_grp,
             &child_grp_path,
             input_pdf,
@@ -97,6 +110,7 @@ fn process_group(
 fn process_table(
     tabula_client: &tabulautil::TabulaClient,
     cfg_reader: &dyn Reader,
+    out_writer: &dyn ReadWriter,
     table_cfg: &config::book::Table,
     input_pdf: &Path,
 ) -> Result<()> {
@@ -104,9 +118,10 @@ fn process_table(
         return Ok(());
     }
 
+    let mut csv_file = out_writer.open_write(&table_cfg.file_stem.with_extension("csv"))?;
     let mut csv_writer = csv::WriterBuilder::new()
         .flexible(true)
-        .from_writer(stdout());
+        .from_writer(&mut csv_file);
 
     let tmpl_path = table_cfg.tabula_template_path();
 
@@ -124,6 +139,8 @@ fn process_table(
 
     // Check for error rather than implicitly flushing and ignoring.
     csv_writer.flush().with_context(|| "flushing to CSV")?;
+    drop(csv_writer);
+    csv_file.commit().with_context(|| "committing CSV file")?;
 
     Ok(())
 }
