@@ -8,7 +8,10 @@ use std::{
 
 use anyhow::{anyhow, Result};
 
-use super::{util::read_from_slice, FileRead, FileReadImpl, FileWrite, FileWriteImpl, FilesIoError, ReadWriter, Reader};
+use super::{
+    util::read_from_slice, FileRead, FileReadImpl, FileWrite, FileWriteImpl, FilesIoError,
+    ReadWriter, Reader,
+};
 
 type FileMap = HashMap<PathBuf, Arc<[u8]>>;
 
