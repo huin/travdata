@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+};
 
 use serde::Deserialize;
 
@@ -18,26 +21,30 @@ fn default_true() -> bool {
     true
 }
 
-// def prepare(
-//     self,
-//     name: str,
-//     rel_group_dir: pathlib.PurePath,
-//     parent_tags: set[str],
-// ) -> Table:
-//     """Creates a ``Table`` from self.
+impl YamlTable {
+    /// Creates a `Table` from `self`.
+    ///
+    /// * `name` name of the table within the parent `YamlGroup.tables`.
+    /// * `rel_group_dir` path to the directory of the table's parent
+    /// `YamlGroup`.
+    /// * `parent_tags` tags to inherit from parent `YamlGroup`.
+    pub fn prepare(self, name: &str, rel_group_dir: &Path, parent_tags: &HashSet<String>) -> Table {
+        let tags = self.tags.union(parent_tags).cloned().collect();
+        Table {
+            file_stem: rel_group_dir.join(name),
+            tags,
+            extraction_enabled: self.extraction_enabled,
+            extraction: self.extraction,
+        }
+    }
+}
 
-//     :param name: Name of the table within its ``Group.groups``.
-//     :param rel_group_dir: Path to the directory of the table's parent
-//     group's directory, relative to the top-level config directory.
-//     :param parent_tags: Tags to inherit from parent ``Group``.
-//     :return: Prepared ``Table``.
-//     """
-//     tags = self.tags | parent_tags
-//     return Table(
-//         file_stem=rel_group_dir / name,
-//         tags=tags,
-//         extraction=self.extraction,
-//     )
+pub struct Table {
+    pub file_stem: PathBuf,
+    pub tags: HashSet<String>,
+    pub extraction_enabled: bool,
+    pub extraction: tableextract::TableExtraction,
+}
 
 #[derive(Deserialize, Debug)]
 pub struct YamlGroup {
@@ -49,30 +56,41 @@ pub struct YamlGroup {
     pub tables: HashMap<String, YamlTable>,
 }
 
-// def prepare(
-//     self,
-//     rel_group_dir: pathlib.PurePath,
-//     parent_tags: set[str],
-// ) -> Group:
-//     """Creates a ``Group`` from self.
+impl YamlGroup {
+    /// Creates a `Group` from `self`.
+    ///
+    /// * `rel_dir` Path to this group's directory.
+    /// * `parent_tags` tags to inherit from parent `YamlGroup`.
+    pub fn prepare(self, rel_dir: PathBuf, parent_tags: &HashSet<String>) -> Group {
+        let tags: HashSet<String> = self.tags.union(parent_tags).cloned().collect();
+        let tables = self
+            .tables
+            .into_iter()
+            .map(|(name, yaml_table)| {
+                let table = yaml_table.prepare(&name, &rel_dir, &tags);
+                (name, table)
+            })
+            .collect();
+        let groups = self
+            .groups
+            .into_iter()
+            .map(|(name, yaml_group)| {
+                let child_rel_dir = rel_dir.join(&name);
+                (name, yaml_group.prepare(child_rel_dir, &tags))
+            })
+            .collect();
+        Group {
+            rel_dir,
+            tags,
+            tables,
+            groups,
+        }
+    }
+}
 
-//     :param rel_group_dir: Path to the directory of this group's directory,
-//     relative to the top-level config directory.
-//     :param parent_tags: Tags to inherit from parent ``Group``.
-//     :return: Prepared ``Group``.
-//     """
-//     tags = self.tags | parent_tags
-//     return Group(
-//         rel_dir=rel_group_dir,
-//         tags=tags,
-//         tables={
-//             name: table.prepare(name, rel_group_dir, parent_tags=tags)
-//             for name, table in self.tables.items()
-//         },
-//         groups={
-//             name: group.prepare(rel_group_dir / name, parent_tags=tags)
-//             for name, group in self.groups.items()
-//         },
-//         # templates not included, as it is only for use in anchoring and
-//         # aliasing by the cfgyaml.YAML.file author at the time of YAML parsing.
-//     )
+pub struct Group {
+    pub rel_dir: PathBuf,
+    pub tags: HashSet<String>,
+    pub groups: HashMap<String, Group>,
+    pub tables: HashMap<String, Table>,
+}
