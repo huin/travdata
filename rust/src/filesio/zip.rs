@@ -15,7 +15,10 @@ use zip::{write::SimpleFileOptions, ZipArchive, ZipWriter};
 
 use crate::filesio::FilesIoError;
 
-use super::{util::read_from_slice, DirReadWriter, FileRead, FileReadImpl, ReadWriter, Reader};
+use super::{
+    check_fully_relative, util::read_from_slice, DirReadWriter, FileRead, FileReadImpl, ReadWriter,
+    Reader,
+};
 
 pub struct ZipReader {
     zip_archive: Option<RefCell<ZipArchive<File>>>,
@@ -40,6 +43,7 @@ impl ZipReader {
 
 impl<'a> Reader<'a> for ZipReader {
     fn open_read(&self, path: &Path) -> anyhow::Result<super::FileRead<'a>> {
+        check_fully_relative(path)?;
         match &self.zip_archive {
             Some(zip_archive) => {
                 let mut zip_file_mut = zip_archive.borrow_mut();
@@ -135,6 +139,7 @@ impl ZipReadWriter {
 
 impl<'a> Reader<'a> for ZipReadWriter {
     fn open_read(&self, path: &Path) -> anyhow::Result<super::FileRead<'a>> {
+        check_fully_relative(path)?;
         match self.read_writer.open_read(path) {
             Ok(fw) => Ok(fw),
             Err(err) if FilesIoError::NotFound.eq_anyhow(&err) => {
@@ -175,6 +180,7 @@ impl<'a> Reader<'a> for ZipReadWriter {
 
 impl<'a> ReadWriter<'a> for ZipReadWriter {
     fn open_write(&self, path: &Path) -> anyhow::Result<super::FileWrite<'a>> {
+        check_fully_relative(path)?;
         self.read_writer.open_write(path)
     }
 

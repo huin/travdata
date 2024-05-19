@@ -9,8 +9,8 @@ use std::{
 use anyhow::{anyhow, Result};
 
 use super::{
-    util::read_from_slice, FileRead, FileReadImpl, FileWrite, FileWriteImpl, FilesIoError,
-    ReadWriter, Reader,
+    check_fully_relative, util::read_from_slice, FileRead, FileReadImpl, FileWrite, FileWriteImpl,
+    FilesIoError, ReadWriter, Reader,
 };
 
 type FileMap = HashMap<PathBuf, Arc<[u8]>>;
@@ -32,6 +32,7 @@ impl MemReadWriter {
 
 impl<'a> Reader<'a> for MemReadWriter {
     fn open_read(&self, path: &std::path::Path) -> anyhow::Result<super::FileRead<'a>> {
+        check_fully_relative(path)?;
         let files_guard = self.files.file_map.lock().expect("failed to lock file map");
         match files_guard.get(path) {
             None => Err(anyhow!(FilesIoError::NotFound)),
@@ -63,6 +64,7 @@ impl<'a> Reader<'a> for MemReadWriter {
 
 impl<'a> ReadWriter<'a> for MemReadWriter {
     fn open_write(&self, path: &std::path::Path) -> anyhow::Result<super::FileWrite<'a>> {
+        check_fully_relative(path)?;
         Ok(FileWrite::new(MemFileWrite {
             files: self.files.clone(),
             path: path.to_owned(),
