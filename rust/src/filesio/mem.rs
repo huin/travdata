@@ -86,7 +86,7 @@ impl MemFileRead {
     }
 }
 
-impl<'a> Debug for MemFileRead {
+impl Debug for MemFileRead {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MemFileRead")
             .field("path", &self.path)
@@ -112,7 +112,7 @@ struct MemFileWrite {
     buf: Vec<u8>,
 }
 
-impl<'a> Debug for MemFileWrite {
+impl Debug for MemFileWrite {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MemFileWrite")
             .field("path", &self.path)
