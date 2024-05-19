@@ -7,7 +7,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
 
 use super::{FileRead, FileReadImpl, FileWrite, FileWriteImpl, FilesIoError, ReadWriter, Reader};
 
@@ -66,6 +66,11 @@ impl<'a> ReadWriter<'a> for MemReadWriter {
             path: path.to_owned(),
             buf: Vec::new(),
         }))
+    }
+
+    fn close(self: Box<MemReadWriter>) -> Result<()> {
+        // No implementation needed for now.
+        Ok(())
     }
 }
 

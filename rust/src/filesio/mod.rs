@@ -2,6 +2,7 @@ mod dir;
 mod mem;
 #[cfg(test)]
 mod tests;
+mod zip;
 
 use std::{
     error::Error,
@@ -96,6 +97,16 @@ pub enum FilesIoError {
     NotFound,
 }
 
+impl FilesIoError {
+    pub fn eq_anyhow(&self, err: &anyhow::Error) -> bool {
+        if let Some(&err) = err.downcast_ref::<Self>() {
+            err == *self
+        } else {
+            false
+        }
+    }
+}
+
 impl Display for FilesIoError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FilesIoError::*;
@@ -145,6 +156,11 @@ pub trait Reader<'a> {
 pub trait ReadWriter<'a>: Reader<'a> {
     /// Open a text file for writing. `path` is the path of the file to write.
     fn open_write(&self, path: &Path) -> Result<FileWrite<'a>>;
+
+    /// Close the `ReadWriter` and flush its changes. Any changes commited via
+    /// `FileWrite` may or may not be visible to other `Reader`s and
+    /// `ReadWriter`s if this is not called instead of dropping.
+    fn close(self: Box<Self>) -> Result<()>;
 }
 
 /// Returns an error if `path` is not strictly relative. That is satisfying both:

@@ -17,7 +17,11 @@ use crate::{
     testutil::anyhow_downcasts_to,
 };
 
-use super::{mem::{MemFilesHandle, MemReadWriter}, DirReadWriter, FileRead, ReadWriter, Reader};
+use super::{
+    mem::{MemFilesHandle, MemReadWriter},
+    zip::{ZipReadWriter, ZipReader},
+    DirReadWriter, FileRead, ReadWriter, Reader,
+};
 
 type BoxIoTestEnvironment = Box<dyn IoTestEnvironment>;
 type BoxReader<'a> = Box<dyn Reader<'a>>;
@@ -90,6 +94,36 @@ impl IoTestEnvironment for MemTestEnvironment {
     }
 }
 
+struct ZipTestEnvironment {
+    temp_dir: TempDir,
+}
+
+impl ZipTestEnvironment {
+    fn new() -> Result<BoxIoTestEnvironment> {
+        Ok(Box::new(Self {
+            temp_dir: tempdir()?,
+        }))
+    }
+
+    fn zip_path(&self) -> PathBuf {
+        self.temp_dir.path().join("archive.zip")
+    }
+}
+
+impl IoTestEnvironment for ZipTestEnvironment {
+    fn make_reader(&self) -> BoxReader<'static> {
+        Box::new(ZipReader::new(&self.zip_path(), true).expect("ZipReader::new should not fail"))
+    }
+
+    fn make_read_writer(&self) -> BoxReadWriter<'static> {
+        Box::new(ZipReadWriter::new(&self.zip_path()).expect("ZipReader::new should not fail"))
+    }
+
+    fn make_read_writer_as_reader(&self) -> BoxReader<'static> {
+        Box::new(ZipReadWriter::new(&self.zip_path()).expect("ZipReader::new should not fail"))
+    }
+}
+
 struct IoType {
     name: &'static str,
     new: &'static dyn Fn() -> Result<Box<dyn IoTestEnvironment>>,
@@ -116,6 +150,10 @@ const IO_TYPES: &[IoType] = &[
         name: "Mem",
         new: &MemTestEnvironment::new,
     },
+    IoType {
+        name: "Zip",
+        new: &ZipTestEnvironment::new,
+    },
 ];
 
 struct Case(&'static str, &'static dyn Fn(&IoType));
@@ -127,6 +165,7 @@ impl Debug for Case {
 }
 
 const COMMON_IO_TESTS: &[Case] = &[
+    // TODO: add tests for non-relative paths.
     Case("empty_reader_has_no_files", &empty_reader_has_no_files),
     Case("empty_reader_not_exists", &empty_reader_not_exists),
     Case(
@@ -147,10 +186,10 @@ const COMMON_IO_TESTS: &[Case] = &[
 /// Checks the `test_casing` count in `io_test`.
 #[test]
 fn io_test_count() {
-    assert_eq!(18, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
+    assert_eq!(27, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
 }
 
-#[test_casing(18, Product((IO_TYPES, COMMON_IO_TESTS)))]
+#[test_casing(27, Product((IO_TYPES, COMMON_IO_TESTS)))]
 fn io_test(io_type: &IoType, case: &Case) {
     case.1(io_type);
 }
@@ -193,6 +232,8 @@ fn read_writer_reads_own_file(io_type: &IoType) {
     let mut r = read_writer.open_read(&path).expect("should open");
     let actual_contents = read_vec(&mut r).expect("should read");
     assert_that!(&actual_contents, eq(contents));
+
+    read_writer.close().expect("should close");
 }
 
 fn reads_created_files(io_type: &IoType) {
@@ -216,6 +257,8 @@ fn reads_created_files(io_type: &IoType) {
             let read_contents = read_vec(&mut r).expect("should read");
             assert_that!(&read_contents, eq(contents));
         }
+
+        read_writer.close().expect("should close");
     }
 
     // Should be present in Reader implementations.
@@ -255,6 +298,8 @@ fn readers_iter_files(io_type: &IoType) {
                 ok(eq(Path::new("subdir/anotherdir/file.txt"))),
             ]
         );
+
+        read_writer.close().expect("should close");
     }
 
     // Should be present in Reader implementations.
@@ -292,6 +337,8 @@ fn read_writer_overwrites_file(io_type: &IoType) {
             let mut r = read_writer.open_read(path).expect("should open");
             assert_that!(read_vec(&mut r), ok(eq(v1)));
         }
+
+        read_writer.close().expect("should close");
     }
 
     {
@@ -318,6 +365,8 @@ fn read_writer_overwrites_file(io_type: &IoType) {
             let mut r = read_writer.open_read(path).expect("should open");
             assert_that!(read_vec(&mut r), ok(eq(v3)));
         }
+
+        read_writer.close().expect("should close");
     }
 
     {
@@ -346,6 +395,8 @@ fn created_files_exist(io_type: &IoType) {
             // Should be present in ReadWriter that created them.
             assert_that!(read_writer.exists(path), eq(true));
         }
+
+        read_writer.close().expect("should close");
     }
 
     // Should be present in Reader implementations.
@@ -383,6 +434,8 @@ fn discarded_files_do_not_exist(io_type: &IoType) {
         // Should not be present from iteration.
         let actual_files = read_writer_iter_files(read_writer.as_ref());
         assert_that!(actual_files, unordered_elements_are![ok(eq(committed))]);
+
+        read_writer.close().expect("should close");
     }
 
     // Should not be present in Reader implementations.

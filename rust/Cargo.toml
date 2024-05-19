@@ -27,5 +27,9 @@ features = ["std"]
 version = "1.0.200"
 features = ["std", "serde_derive"]
 
+[dependencies.zip]
+version = "1.2.3"
+default-features = false
+
 [dev-dependencies]
 googletest = { version = "0.11.0", features = ["anyhow"] }
