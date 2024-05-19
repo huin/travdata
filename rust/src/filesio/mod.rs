@@ -171,7 +171,7 @@ pub trait ReadWriter<'a>: Reader<'a> {
 /// * Has no prefix component.
 /// * Has no root component.
 fn check_fully_relative(path: &Path) -> Result<()> {
-    use std::path::Component::{Prefix, RootDir, CurDir, ParentDir};
+    use std::path::Component::{CurDir, ParentDir, Prefix, RootDir};
 
     for component in path.components() {
         match component {
