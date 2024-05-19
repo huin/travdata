@@ -1,5 +1,4 @@
 use std::{
-    cmp::min,
     collections::HashMap,
     fmt::Debug,
     io::{Read, Write},
@@ -9,7 +8,7 @@ use std::{
 
 use anyhow::{anyhow, Result};
 
-use super::{FileRead, FileReadImpl, FileWrite, FileWriteImpl, FilesIoError, ReadWriter, Reader};
+use super::{util::read_from_slice, FileRead, FileReadImpl, FileWrite, FileWriteImpl, FilesIoError, ReadWriter, Reader};
 
 type FileMap = HashMap<PathBuf, Arc<[u8]>>;
 
@@ -98,11 +97,7 @@ impl<'a> FileReadImpl<'a> for MemFileRead {}
 
 impl Read for MemFileRead {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let bytes_remaining = self.buf.len() - self.pos;
-        let n = min(buf.len(), bytes_remaining);
-        buf[..n].copy_from_slice(&self.buf[self.pos..self.pos + n]);
-        self.pos += n;
-        Ok(n)
+        read_from_slice(&mut self.pos, &self.buf, buf)
     }
 }
 
