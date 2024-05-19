@@ -3,11 +3,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::Args;
 
 use crate::{
-    config::{self, book::load_book},
+    config::{self, book::load_book, root::load_config},
     extraction::{tableextract, tabulautil},
     filesio::{DirReadWriter, Reader},
 };
@@ -38,17 +38,22 @@ pub struct Command {
 
 /// Runs the subcommand.
 pub fn run(cmd: &Command) -> Result<()> {
-    let _cfg = config::root::load_config(&cmd.config)?;
-
     let tabula_client = tabulautil::TabulaClient::new(&cmd.tabula_libpath)
         .with_context(|| "initialising Tabula")?;
 
     let cfg_reader = DirReadWriter::new(&cmd.config);
-    let book = load_book(
-        &cfg_reader,
-        &cmd.book_name,
-        &std::collections::HashSet::new(),
-    )?;
+
+    let cfg = load_config(&cfg_reader)?;
+    let book = cfg
+        .books
+        .get(&cmd.book_name)
+        .ok_or_else(|| {
+            anyhow!(
+                "book {:?} does not exist in the configuration",
+                cmd.book_name
+            )
+        })?
+        .load_group(&cfg_reader)?;
 
     process_group(
         &tabula_client,
