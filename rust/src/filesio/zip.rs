@@ -1,6 +1,5 @@
 use std::{
     cell::RefCell,
-    cmp::min,
     collections::HashSet,
     fmt::Debug,
     fs::File,
@@ -16,7 +15,7 @@ use zip::{write::SimpleFileOptions, ZipArchive, ZipWriter};
 
 use crate::filesio::FilesIoError;
 
-use super::{DirReadWriter, FileRead, FileReadImpl, ReadWriter, Reader};
+use super::{util::read_from_slice, DirReadWriter, FileRead, FileReadImpl, ReadWriter, Reader};
 
 pub struct ZipReader {
     zip_archive: Option<RefCell<ZipArchive<File>>>,
@@ -102,11 +101,7 @@ impl Debug for ZipFileRead {
 
 impl Read for ZipFileRead {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let bytes_remaining = self.buf.len() - self.pos;
-        let n = min(buf.len(), bytes_remaining);
-        buf[..n].copy_from_slice(&self.buf[self.pos..self.pos + n]);
-        self.pos += n;
-        Ok(n)
+        read_from_slice(&mut self.pos, &self.buf, buf)
     }
 }
 
