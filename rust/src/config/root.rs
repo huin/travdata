@@ -6,13 +6,17 @@ use std::{
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
+use crate::filesio::Reader;
+
+use super::book::{load_book, Group};
+
 /// Loads the configuration from the given `path`.
-pub fn load_config(path: &Path) -> Result<Config> {
-    let cfg_path = path.join("config.yaml");
-    let rdr = std::fs::File::open(cfg_path)
-        .with_context(|| format!("opening configuration file {:?}", path))?;
-    let config: YamlConfig = serde_yaml_ng::from_reader(rdr)
-        .with_context(|| format!("parsing configuration file {:?}", path))?;
+pub fn load_config(cfg_reader: &dyn Reader) -> Result<Config> {
+    let rdr = cfg_reader
+        .open_read(Path::new("config.yaml"))
+        .with_context(|| "opening configuration file")?;
+    let config: YamlConfig =
+        serde_yaml_ng::from_reader(rdr).with_context(|| "parsing configuration file")?;
 
     Ok(config.prepare())
 }
@@ -29,6 +33,13 @@ pub struct Book {
     pub default_filename: String,
     pub tags: HashSet<String>,
     pub page_offset: i32,
+}
+
+impl Book {
+    /// Loads and returns the top-level group in the `Book`.
+    pub fn load_group(&self, cfg_reader: &dyn Reader) -> Result<Group> {
+        load_book(cfg_reader, &self.id, &self.tags)
+    }
 }
 
 /// Top level configuration, read from a `config.yaml`.
