@@ -2,6 +2,7 @@ mod dir;
 mod mem;
 #[cfg(test)]
 mod tests;
+mod util;
 mod zip;
 
 use std::{
