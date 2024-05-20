@@ -48,25 +48,34 @@ pub fn run(cmd: &Command) -> Result<()> {
     let cfg_reader = DirReadWriter::new(&cmd.config);
     let out_writer = Box::new(DirReadWriter::new(&cmd.output));
 
-    let cfg = load_config(&cfg_reader)?;
+    run_impl(&tabula_client, &cfg_reader, out_writer, &cmd.input_pdf, &cmd.book_name)
+}
+
+fn run_impl(
+    tabula_client: &tabulautil::TabulaClient,
+    cfg_reader: &dyn Reader,
+    out_writer: Box<dyn ReadWriter>,
+    input_pdf: &Path,
+    book_name: &str,
+) -> Result<()> {
+    let cfg = load_config(cfg_reader)?;
     let book = cfg
         .books
-        .get(&cmd.book_name)
+        .get(book_name)
         .ok_or_else(|| {
             anyhow!(
                 "book {:?} does not exist in the configuration",
-                cmd.book_name
+                book_name
             )
         })?
-        .load_group(&cfg_reader)?;
+        .load_group(cfg_reader)?;
 
     process_group(
         &tabula_client,
-        &cfg_reader,
+        cfg_reader,
         out_writer.as_ref(),
         &book,
-        &cmd.config,
-        &cmd.input_pdf,
+        input_pdf,
     )
     .with_context(|| "processing book")?;
 
@@ -80,7 +89,6 @@ fn process_group(
     cfg_reader: &dyn Reader,
     out_writer: &dyn ReadWriter,
     grp: &config::book::Group,
-    grp_path: &Path,
     input_pdf: &Path,
 ) -> Result<()> {
     for (table_name, table_cfg) in &grp.tables {
@@ -89,13 +97,11 @@ fn process_group(
     }
 
     for (child_grp_name, child_grp) in &grp.groups {
-        let child_grp_path = grp_path.join(child_grp_name);
         process_group(
             tabula_client,
             cfg_reader,
             out_writer,
             child_grp,
-            &child_grp_path,
             input_pdf,
         )
         .with_context(|| format!("processing group {:?}", child_grp_name))?;
