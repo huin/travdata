@@ -14,7 +14,10 @@ use std::{
 
 use anyhow::{anyhow, Result};
 
+use clap::ValueEnum;
 pub use dir::DirReadWriter;
+
+use crate::filesio::zip::{ZipReadWriter, ZipReader};
 
 trait FileReadImpl<'a>: Debug + Read + 'a {}
 trait FileWriteImpl<'a>: Debug + Write + 'a {
@@ -194,4 +197,55 @@ fn check_fully_relative(path: &Path) -> Result<()> {
         })
         .map(|err| Err(anyhow!(err)))
         .unwrap_or(Ok(()))
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum IoType {
+    /// Access files stored in a directory.
+    Dir,
+    /// Access files stored in a ZIP archive.
+    Zip,
+}
+
+impl IoType {
+    /// Creates a `Reader` of the given type for the directory or archive at the
+    /// given path.
+    pub fn new_reader(self, path: &Path) -> Result<Box<dyn Reader>> {
+        use IoType::*;
+        match self {
+            Dir => Ok(Box::new(DirReadWriter::new(path))),
+            Zip => Ok(Box::new(ZipReader::new(path, false)?)),
+        }
+    }
+
+    /// Creates a `ReadWriter` of the given type for the directory or archive at
+    /// the given path.
+    pub fn new_read_writer(self, path: &Path) -> Result<Box<dyn ReadWriter>> {
+        use IoType::*;
+        match self {
+            Dir => Ok(Box::new(DirReadWriter::new(path))),
+            Zip => Ok(Box::new(ZipReadWriter::new(path)?)),
+        }
+    }
+
+    // Resolves the `Option<IoType>` into a concrete type, based on the given
+    // path, attempting to guess a reasonable value.
+    pub fn resolve_auto(io_type: Option<IoType>, path: &Path) -> Self {
+        match io_type {
+            Some(io_type) => io_type,
+            None => {
+                if !path.exists() {
+                    if path.extension().and_then(|oss| oss.to_str()) == Some("zip") {
+                        IoType::Zip
+                    } else {
+                        IoType::Dir
+                    }
+                } else if path.is_file() {
+                    IoType::Zip
+                } else {
+                    IoType::Dir
+                }
+            }
+        }
+    }
 }
