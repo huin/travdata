@@ -6,7 +6,7 @@ use clap::Args;
 use crate::{
     config::{self, root::load_config},
     extraction::{tableextract, tabulautil},
-    filesio::{self, DirReadWriter, ReadWriter, Reader},
+    filesio::{self, ReadWriter, Reader},
 };
 
 /// Extracts data tables from the Mongoose Traveller 2022 core rules PDF as CSV
@@ -82,7 +82,7 @@ fn run_impl(
         .load_group(cfg_reader)?;
 
     process_group(
-        &tabula_client,
+        tabula_client,
         cfg_reader,
         out_writer.as_ref(),
         &book,
