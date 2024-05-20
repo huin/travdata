@@ -6,7 +6,7 @@ use clap::Args;
 use crate::{
     config::{self, root::load_config},
     extraction::{tableextract, tabulautil},
-    filesio::{DirReadWriter, ReadWriter, Reader},
+    filesio::{self, DirReadWriter, ReadWriter, Reader},
 };
 
 /// Extracts data tables from the Mongoose Traveller 2022 core rules PDF as CSV
@@ -22,22 +22,25 @@ pub struct Command {
     /// Path to the directory or ZIP file to output the CSV files into.
     ///
     /// Whether this is a directory or ZIP file is controlled by --output-type.
-    ///
-    /// TODO: Support writing to ZIP file as well.
     output: PathBuf,
 
     /// Path to the configuration. This must be either a directory or ZIP file,
     /// directly containing a config.yaml file, book.yaml files in directories,
     /// and its required Tabula templates. Some configurations for this should
     /// be included with this program's distribution.
-    ///
-    /// TODO: Support reading from ZIP file as well.
     #[arg(long)]
     config: PathBuf,
 
     /// Path to Tabula JAR file.
     #[arg(long)]
     tabula_libpath: String,
+
+    /// Controls how data is written to the output.
+    ///
+    /// By default, it guesses, based on any existing file or directory at the
+    /// path or the path suffix ending in ".zip".
+    #[arg(long)]
+    output_type: Option<crate::filesio::IoType>,
 }
 
 /// Runs the subcommand.
@@ -45,10 +48,23 @@ pub fn run(cmd: &Command) -> Result<()> {
     let tabula_client = tabulautil::TabulaClient::new(&cmd.tabula_libpath)
         .with_context(|| "initialising Tabula")?;
 
-    let cfg_reader = DirReadWriter::new(&cmd.config);
-    let out_writer = Box::new(DirReadWriter::new(&cmd.output));
+    let cfg_type = filesio::IoType::resolve_auto(None, &cmd.config);
+    let cfg_reader = cfg_type
+        .new_reader(&cmd.config)
+        .with_context(|| format!("opening config path {:?} as {:?}", cmd.config, cfg_type))?;
 
-    run_impl(&tabula_client, &cfg_reader, out_writer, &cmd.input_pdf, &cmd.book_name)
+    let output_type = filesio::IoType::resolve_auto(cmd.output_type, &cmd.output);
+    let out_writer = output_type
+        .new_read_writer(&cmd.output)
+        .with_context(|| format!("opening output path {:?} as {:?}", cmd.output, output_type))?;
+
+    run_impl(
+        &tabula_client,
+        cfg_reader.as_ref(),
+        out_writer,
+        &cmd.input_pdf,
+        &cmd.book_name,
+    )
 }
 
 fn run_impl(
@@ -62,12 +78,7 @@ fn run_impl(
     let book = cfg
         .books
         .get(book_name)
-        .ok_or_else(|| {
-            anyhow!(
-                "book {:?} does not exist in the configuration",
-                book_name
-            )
-        })?
+        .ok_or_else(|| anyhow!("book {:?} does not exist in the configuration", book_name))?
         .load_group(cfg_reader)?;
 
     process_group(
@@ -97,14 +108,8 @@ fn process_group(
     }
 
     for (child_grp_name, child_grp) in &grp.groups {
-        process_group(
-            tabula_client,
-            cfg_reader,
-            out_writer,
-            child_grp,
-            input_pdf,
-        )
-        .with_context(|| format!("processing group {:?}", child_grp_name))?;
+        process_group(tabula_client, cfg_reader, out_writer, child_grp, input_pdf)
+            .with_context(|| format!("processing group {:?}", child_grp_name))?;
     }
 
     Ok(())
