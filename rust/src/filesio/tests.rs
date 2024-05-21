@@ -18,9 +18,10 @@ use crate::{
 };
 
 use super::{
+    dir::DirReadWriter,
     mem::{MemFilesHandle, MemReadWriter},
     zip::{ZipReadWriter, ZipReader},
-    DirReadWriter, FileRead, ReadWriter, Reader,
+    FileRead, ReadWriter, Reader,
 };
 
 type BoxIoTestEnvironment = Box<dyn IoTestEnvironment>;
