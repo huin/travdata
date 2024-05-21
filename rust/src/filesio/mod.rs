@@ -1,5 +1,5 @@
 mod dir;
-mod mem;
+pub mod mem;
 #[cfg(test)]
 mod tests;
 mod util;
@@ -15,9 +15,11 @@ use std::{
 use anyhow::{anyhow, Result};
 
 use clap::ValueEnum;
-pub use dir::DirReadWriter;
 
-use crate::filesio::zip::{ZipReadWriter, ZipReader};
+use crate::filesio::{
+    dir::DirReadWriter,
+    zip::{ZipReadWriter, ZipReader},
+};
 
 trait FileReadImpl<'a>: Debug + Read + 'a {}
 trait FileWriteImpl<'a>: Debug + Write + 'a {
