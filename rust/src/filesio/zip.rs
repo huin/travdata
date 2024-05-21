@@ -16,8 +16,8 @@ use zip::{write::SimpleFileOptions, ZipArchive, ZipWriter};
 use crate::filesio::FilesIoError;
 
 use super::{
-    check_fully_relative, util::read_from_slice, DirReadWriter, FileRead, FileReadImpl, ReadWriter,
-    Reader,
+    check_fully_relative, dir::DirReadWriter, util::read_from_slice, FileRead, FileReadImpl,
+    ReadWriter, Reader,
 };
 
 pub struct ZipReader {
