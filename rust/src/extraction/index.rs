@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     config::{
-        book::{self, Table},
+        book::Table,
         root::Book,
     },
     filesio::{FileRead, FileWrite, FilesIoError, ReadWriter, Reader},
@@ -72,7 +72,7 @@ impl Index {
     ///
     /// Returns paths of matching tables. Returns all tables if `tags` is empty.
     fn paths_with_all_tags(&self, tags: &[&str]) -> Vec<&Path> {
-        let mut tags_iter = tags.into_iter();
+        let mut tags_iter = tags.iter();
 
         match tags_iter.next() {
             None => self.paths.iter().map(AsRef::as_ref).collect(),
