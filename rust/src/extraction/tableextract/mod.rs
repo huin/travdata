@@ -3,12 +3,18 @@
 pub mod groupers;
 mod internal;
 
-use anyhow::Result;
+use std::path::Path;
+
+use anyhow::{Context, Result};
 use lazy_regex::regex;
 use serde::Deserialize;
 
+use crate::config;
 use crate::extraction::parseutil::clean_text;
+use crate::filesio::{ReadWriter, Reader};
 use crate::table::{Row, Table};
+
+use super::tabulautil;
 
 type RowIterator = dyn Iterator<Item = Row>;
 
@@ -19,8 +25,47 @@ pub struct TableExtraction {
     pub transforms: Vec<TableTransform>,
 }
 
+/// Extracts a single table into a CSV file.
+pub fn extract_table(
+    tabula_client: &tabulautil::TabulaClient,
+    cfg_reader: &dyn Reader,
+    out_writer: &dyn ReadWriter,
+    table_cfg: &config::book::Table,
+    input_pdf: &Path,
+) -> Result<()> {
+    if !table_cfg.extraction_enabled {
+        return Ok(());
+    }
+
+    let mut csv_file = out_writer.open_write(&table_cfg.file_stem.with_extension("csv"))?;
+    let mut csv_writer = csv::WriterBuilder::new()
+        .flexible(true)
+        .from_writer(&mut csv_file);
+
+    let tmpl_path = table_cfg.tabula_template_path();
+
+    let extracted_tables = tabula_client
+        .read_pdf_with_template(cfg_reader, input_pdf, &tmpl_path)
+        .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
+    let table = concat_tables(extracted_tables.tables);
+    let table = apply_transforms(&table_cfg.extraction, table)?;
+
+    for row in table.0 {
+        csv_writer
+            .write_record(&row.0)
+            .with_context(|| "writing record")?;
+    }
+
+    // Check for error rather than implicitly flushing and ignoring.
+    csv_writer.flush().with_context(|| "flushing to CSV")?;
+    drop(csv_writer);
+    csv_file.commit().with_context(|| "committing CSV file")?;
+
+    Ok(())
+}
+
 /// Applies the transformations specified in `cfg`.
-pub fn apply_transforms(cfg: &TableExtraction, table: Table) -> Result<Table> {
+fn apply_transforms(cfg: &TableExtraction, table: Table) -> Result<Table> {
     let mut rows = table;
     for trn in &cfg.transforms {
         rows = transform(trn, rows)?;
@@ -32,7 +77,7 @@ pub fn apply_transforms(cfg: &TableExtraction, table: Table) -> Result<Table> {
 }
 
 /// Concatenates the given tables into a single `Table`.
-pub fn concat_tables(tables: Vec<Table>) -> Table {
+fn concat_tables(tables: Vec<Table>) -> Table {
     Table(
         tables
             .into_iter()
@@ -90,6 +135,7 @@ pub struct ExpandColumnOnRegex {
     // entire original text into a cell).
     pub default: Vec<String>,
 }
+
 fn expand_column_on_regex(cfg: &ExpandColumnOnRegex, mut table: Table) -> Result<Table> {
     let pattern = regex::Regex::new(&cfg.pattern)?;
 
