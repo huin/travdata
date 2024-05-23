@@ -68,7 +68,7 @@ impl Index {
 
     /// Returns paths to tables with all of the given tags.
     ///
-    /// * `tags`` Tags to select for.
+    /// * `tags` Tags to select for.
     ///
     /// Returns paths of matching tables. Returns all tables if `tags` is empty.
     fn paths_with_all_tags(&self, tags: &[&str]) -> Vec<&Path> {
