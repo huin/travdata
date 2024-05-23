@@ -5,7 +5,7 @@ use clap::Args;
 
 use crate::{
     config::root::load_config,
-    extraction::{tableextract::bookextract::extract_book, tabulautil},
+    extraction::{bookextract::extract_book, tabulautil},
     filesio::{self, ReadWriter, Reader},
 };
 
