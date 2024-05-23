@@ -1,7 +1,12 @@
 //! Misc internal functions used by tableextract.
 
-use lazy_regex::regex;
 use std::{cmp::min, ops::Range};
+
+use lazy_regex::regex;
+
+use crate::table::Row;
+
+pub type RowIterator = dyn Iterator<Item = Row>;
 
 pub fn intersect_range(len: usize, from: Option<usize>, to: Option<usize>) -> Option<Range<usize>> {
     let from = min(len, from.unwrap_or(0));
