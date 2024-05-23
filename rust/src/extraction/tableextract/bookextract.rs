@@ -1,14 +1,31 @@
 use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 
 use crate::{
-    config::self,
+    config::{self, root::Config},
     extraction::{tableextract, tabulautil},
     filesio::{ReadWriter, Reader},
 };
 
-pub fn process_group(
+pub fn extract_book(
+    tabula_client: &tabulautil::TabulaClient,
+    cfg: &Config,
+    cfg_reader: &dyn Reader,
+    out_writer: &dyn ReadWriter,
+    book_name: &str,
+    input_pdf: &Path,
+) -> Result<()> {
+    let top_group = cfg
+        .books
+        .get(book_name)
+        .ok_or_else(|| anyhow!("book {:?} does not exist in the configuration", book_name))?
+        .load_group(cfg_reader)?;
+
+    process_group(tabula_client, cfg_reader, out_writer, &top_group, input_pdf)
+}
+
+fn process_group(
     tabula_client: &tabulautil::TabulaClient,
     cfg_reader: &dyn Reader,
     out_writer: &dyn ReadWriter,
