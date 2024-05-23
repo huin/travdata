@@ -1,11 +1,11 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use clap::Args;
 
 use crate::{
     config::root::load_config,
-    extraction::{tableextract::bookextract::process_group, tabulautil},
+    extraction::{tableextract::bookextract::extract_book, tabulautil},
     filesio::{self, ReadWriter, Reader},
 };
 
@@ -75,17 +75,13 @@ fn run_impl(
     book_name: &str,
 ) -> Result<()> {
     let cfg = load_config(cfg_reader)?;
-    let book = cfg
-        .books
-        .get(book_name)
-        .ok_or_else(|| anyhow!("book {:?} does not exist in the configuration", book_name))?
-        .load_group(cfg_reader)?;
 
-    process_group(
+    extract_book(
         tabula_client,
+        &cfg,
         cfg_reader,
         out_writer.as_ref(),
-        &book,
+        book_name,
         input_pdf,
     )
     .with_context(|| "processing book")?;
