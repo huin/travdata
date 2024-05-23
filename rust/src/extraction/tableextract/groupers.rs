@@ -2,8 +2,9 @@
 
 use serde::Deserialize;
 
-use super::RowIterator;
 use crate::table::Row;
+
+use super::internal::RowIterator;
 
 #[derive(Deserialize, Debug)]
 /// Suported configuring row grouping operations.
