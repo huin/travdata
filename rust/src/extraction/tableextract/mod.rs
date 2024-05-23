@@ -1,6 +1,5 @@
 //! Extracts a single table from a PDF.
 
-pub mod bookextract;
 pub mod groupers;
 mod internal;
 
