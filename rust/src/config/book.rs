@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map, HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -118,4 +118,62 @@ pub struct Group {
     pub tags: HashSet<String>,
     pub groups: HashMap<String, Group>,
     pub tables: HashMap<String, Table>,
+}
+
+impl Group {
+    /// Iterate over all tables in the group and its descendant groups.
+    pub fn iter_tables(&self) -> GroupTablesIter {
+        GroupTablesIter::new(self)
+    }
+}
+
+pub struct GroupTablesIter<'g> {
+    grp_stack: Vec<hash_map::Iter<'g, String, Group>>,
+    table_iter: hash_map::Iter<'g, String, Table>,
+}
+
+impl<'g> GroupTablesIter<'g> {
+    fn new(top: &'g Group) -> Self {
+        Self {
+            grp_stack: vec![top.groups.iter()],
+            table_iter: top.tables.iter(),
+        }
+    }
+}
+
+impl<'g> Iterator for GroupTablesIter<'g> {
+    type Item = &'g Table;
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.table_iter.next() {
+                Some((_, table)) => return Some(table),
+                None => {
+                    // Exhausted tables on current group.
+                    match self.grp_stack.last_mut() {
+                        None => {
+                            // No more groups, iteration complete.
+                            return None;
+                        }
+                        Some(group_iter) => {
+                            // Try for next child group.
+                            match group_iter.next() {
+                                Some((_, group)) => {
+                                    // Start processing tables and groups in the
+                                    // next child group.
+                                    self.table_iter = group.tables.iter();
+                                    self.grp_stack.push(group.groups.iter());
+                                },
+                                None => {
+                                    // No more child groups. Go up a level to
+                                    // continue next sibling group.
+                                    self.grp_stack.pop();
+                                },
+                            }
+                        }
+                    }
+                },
+            }
+        }
+    }
 }
