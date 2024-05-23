@@ -10,10 +10,7 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    config::{
-        book::Table,
-        root::Book,
-    },
+    config::{book::Table, root::Book},
     filesio::{FileRead, FileWrite, FilesIoError, ReadWriter, Reader},
     fmtutil,
 };
@@ -167,11 +164,11 @@ impl<'rw> IndexWriter<'rw> {
     pub fn add_entry(
         &mut self,
         output_path: PathBuf,
-        table: &Table,
         book_cfg: &Book,
+        table_cfg: &Table,
         pages: &[i32],
     ) {
-        let mut sorted_tags: Vec<String> = table.tags.iter().map(String::clone).collect();
+        let mut sorted_tags: Vec<String> = table_cfg.tags.iter().map(String::clone).collect();
         sorted_tags.sort();
 
         let mut sorted_pages: Vec<i32> = pages
