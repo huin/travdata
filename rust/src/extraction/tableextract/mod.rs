@@ -14,6 +14,7 @@ use crate::extraction::parseutil::clean_text;
 use crate::filesio::{ReadWriter, Reader};
 use crate::table::Table;
 
+use super::index::{self, IndexWriter};
 use super::tabulautil;
 
 #[derive(Deserialize, Debug, Default)]
@@ -28,6 +29,8 @@ pub fn extract_table(
     tabula_client: &tabulautil::TabulaClient,
     cfg_reader: &dyn Reader,
     out_writer: &dyn ReadWriter,
+    index_writer: &mut IndexWriter,
+    book_cfg: &config::root::Book,
     table_cfg: &config::book::Table,
     input_pdf: &Path,
 ) -> Result<()> {
@@ -35,7 +38,8 @@ pub fn extract_table(
         return Ok(());
     }
 
-    let mut csv_file = out_writer.open_write(&table_cfg.file_stem.with_extension("csv"))?;
+    let csv_path = table_cfg.file_stem.with_extension("csv");
+    let mut csv_file = out_writer.open_write(&csv_path)?;
     let mut csv_writer = csv::WriterBuilder::new()
         .flexible(true)
         .from_writer(&mut csv_file);
@@ -45,6 +49,7 @@ pub fn extract_table(
     let extracted_tables = tabula_client
         .read_pdf_with_template(cfg_reader, input_pdf, &tmpl_path)
         .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
+
     let table = concat_tables(extracted_tables.tables);
     let mut table = transform::apply_transforms(&table_cfg.extraction.transforms, table)?;
 
@@ -60,6 +65,9 @@ pub fn extract_table(
     csv_writer.flush().with_context(|| "flushing to CSV")?;
     drop(csv_writer);
     csv_file.commit().with_context(|| "committing CSV file")?;
+
+    let page_numbers: Vec<i32> = extracted_tables.source_pages.into_iter().collect();
+    index_writer.add_entry(csv_path, book_cfg, table_cfg, &page_numbers);
 
     Ok(())
 }
