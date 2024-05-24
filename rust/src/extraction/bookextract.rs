@@ -24,7 +24,7 @@ pub struct Extractor<'a> {
 }
 
 impl<'a> Extractor<'a> {
-    /// Create a new `Extractor`.
+    /// Create a new [Extractor].
     pub fn new(
         tabula_client: tabulautil::TabulaClient,
         cfg_reader: Box<dyn Reader<'a>>,

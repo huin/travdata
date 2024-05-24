@@ -38,12 +38,6 @@ pub fn extract_table(
         return Ok(());
     }
 
-    let csv_path = table_cfg.file_stem.with_extension("csv");
-    let mut csv_file = out_writer.open_write(&csv_path)?;
-    let mut csv_writer = csv::WriterBuilder::new()
-        .flexible(true)
-        .from_writer(&mut csv_file);
-
     let tmpl_path = table_cfg.tabula_template_path();
 
     let extracted_tables = tabula_client
@@ -55,15 +49,12 @@ pub fn extract_table(
 
     clean_table(&mut table);
 
-    for row in table.0 {
-        csv_writer
-            .write_record(&row.0)
-            .with_context(|| "writing record")?;
-    }
+    let csv_path = table_cfg.file_stem.with_extension("csv");
+    let mut csv_file = out_writer.open_write(&csv_path)?;
+
+    table.write_csv(&mut csv_file)?;
 
     // Check for error rather than implicitly flushing and ignoring.
-    csv_writer.flush().with_context(|| "flushing to CSV")?;
-    drop(csv_writer);
     csv_file.commit().with_context(|| "committing CSV file")?;
 
     let page_numbers: Vec<i32> = extracted_tables.source_pages.into_iter().collect();
