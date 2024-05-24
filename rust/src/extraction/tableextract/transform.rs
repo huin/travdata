@@ -265,7 +265,6 @@ fn wrap_row_every_n(cfg: &WrapRowEveryN, table: Table) -> Table {
 mod tests {
     #[cfg(test)]
     mod apply_transforms {
-        use googletest::matchers::ok;
         use googletest::{expect_that, matchers::eq};
 
         use crate::extraction::tableextract::{clean_table, TableExtraction};

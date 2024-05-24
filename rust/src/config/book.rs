@@ -143,7 +143,7 @@ impl<'g> GroupTablesIter<'g> {
 
 impl<'g> Iterator for GroupTablesIter<'g> {
     type Item = &'g Table;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             match self.table_iter.next() {
@@ -163,16 +163,16 @@ impl<'g> Iterator for GroupTablesIter<'g> {
                                     // next child group.
                                     self.table_iter = group.tables.iter();
                                     self.grp_stack.push(group.groups.iter());
-                                },
+                                }
                                 None => {
                                     // No more child groups. Go up a level to
                                     // continue next sibling group.
                                     self.grp_stack.pop();
-                                },
+                                }
                             }
                         }
                     }
-                },
+                }
             }
         }
     }
