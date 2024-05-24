@@ -1,6 +1,7 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
+use simple_bar::ProgressBar;
 
 use crate::{
     config::{self, root::Config},
@@ -28,15 +29,27 @@ pub fn extract_book(
     let mut index_writer =
         IndexWriter::new(out_writer).with_context(|| "opening index for update")?;
 
-    process_group(
-        tabula_client,
-        cfg_reader,
-        out_writer,
-        &mut index_writer,
-        book_cfg,
-        &top_group,
-        input_pdf,
-    )?;
+    let output_tables: Vec<OutputTable<'_>> = top_group.iter_tables()
+        .map(OutputTable::from_table_cfg)
+        .filter(|out_table| !out_writer.exists(&out_table.out_filepath))
+        .collect();
+
+    let mut progress_bar = ProgressBar::cargo_style(output_tables.len() as u32, 80, true);
+
+    for out_table in &output_tables {
+        extract_table(
+            tabula_client,
+            cfg_reader,
+            out_writer,
+            &mut index_writer,
+            book_cfg,
+            out_table.table_cfg,
+            input_pdf,
+        )
+        .with_context(|| format!("processing table {:?}", out_table.out_filepath))?;
+
+        progress_bar.update();
+    }
 
     index_writer
         .commit()
@@ -45,40 +58,16 @@ pub fn extract_book(
     Ok(())
 }
 
-fn process_group(
-    tabula_client: &tabulautil::TabulaClient,
-    cfg_reader: &dyn Reader,
-    out_writer: &dyn ReadWriter,
-    index_writer: &mut IndexWriter,
-    book_cfg: &config::root::Book,
-    grp: &config::book::Group,
-    input_pdf: &Path,
-) -> Result<()> {
-    for (table_name, table_cfg) in &grp.tables {
-        extract_table(
-            tabula_client,
-            cfg_reader,
-            out_writer,
-            index_writer,
-            book_cfg,
+struct OutputTable<'cfg> {
+    out_filepath: PathBuf,
+    table_cfg: &'cfg config::book::Table,
+}
+
+impl<'cfg> OutputTable<'cfg> {
+    fn from_table_cfg(table_cfg: &'cfg config::book::Table) -> Self {
+        Self {
+            out_filepath: table_cfg.file_stem.with_extension("csv"),
             table_cfg,
-            input_pdf,
-        )
-        .with_context(|| format!("processing table {:?}", table_name))?;
+        }
     }
-
-    for (child_grp_name, child_grp) in &grp.groups {
-        process_group(
-            tabula_client,
-            cfg_reader,
-            out_writer,
-            index_writer,
-            book_cfg,
-            child_grp,
-            input_pdf,
-        )
-        .with_context(|| format!("processing group {:?}", child_grp_name))?;
-    }
-
-    Ok(())
 }
