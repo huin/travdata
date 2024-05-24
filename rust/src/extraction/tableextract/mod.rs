@@ -14,7 +14,7 @@ use crate::extraction::parseutil::clean_text;
 use crate::filesio::{ReadWriter, Reader};
 use crate::table::Table;
 
-use super::index::{self, IndexWriter};
+use super::index::IndexWriter;
 use super::tabulautil;
 
 #[derive(Deserialize, Debug, Default)]
