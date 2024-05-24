@@ -1,12 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::Args;
 
 use crate::{
-    config::root::load_config,
-    extraction::{bookextract::extract_book, tabulautil},
-    filesio::{self, ReadWriter, Reader},
+    extraction::{bookextract::Extractor, tabulautil},
+    filesio,
 };
 
 /// Extracts data tables from the Mongoose Traveller 2022 core rules PDF as CSV
@@ -63,38 +62,9 @@ pub fn run(cmd: &Command) -> Result<()> {
         .new_read_writer(&cmd.output)
         .with_context(|| format!("opening output path {:?} as {:?}", cmd.output, output_type))?;
 
-    run_impl(
-        &tabula_client,
-        cfg_reader.as_ref(),
-        out_writer,
-        &cmd.input_pdf,
-        &cmd.book_name,
-        cmd.overwrite_existing,
-    )
-}
+    let mut extractor = Extractor::new(tabula_client, cfg_reader, out_writer)?;
 
-fn run_impl(
-    tabula_client: &tabulautil::TabulaClient,
-    cfg_reader: &dyn Reader,
-    out_writer: Box<dyn ReadWriter>,
-    input_pdf: &Path,
-    book_name: &str,
-    overwrite_existing: bool,
-) -> Result<()> {
-    let cfg = load_config(cfg_reader)?;
+    extractor.extract_book(&cmd.book_name, &cmd.input_pdf, cmd.overwrite_existing)?;
 
-    extract_book(
-        tabula_client,
-        &cfg,
-        cfg_reader,
-        out_writer.as_ref(),
-        book_name,
-        input_pdf,
-        overwrite_existing,
-    )
-    .with_context(|| "processing book")?;
-
-    out_writer.close()?;
-
-    Ok(())
+    extractor.close()
 }
