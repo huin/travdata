@@ -47,15 +47,15 @@ fn transform(cfg: &TableTransform, table: Table) -> Result<Table> {
 pub struct ExpandColumnOnRegex {
     pub column: usize,
     pub pattern: String,
-    // When `pattern` matches (using `Pattern.fullmatch`), `on_match` produces
-    // the resulting cells, using groups from the match to the pattern. Each
-    // string is expanded using `Match.expand`, see
-    // https://docs.python.org/3/library/re.html#match-objects.
+    /// When `pattern` matches (using `Pattern.fullmatch`), `on_match` produces
+    /// the resulting cells, using groups from the match to the pattern. Each
+    /// string is expanded using [Match.expand], see
+    /// <https://docs.python.org/3/library/re.html#match-objects>.
     pub on_match: Vec<String>,
-    // When `pattern` does not match, default produces cells as if matching on a
-    // regex ".*" when `pattern` does not match. Similarly, each string is
-    // expanded using `Match.expand` (using \g<0> makes sense here to extract the
-    // entire original text into a cell).
+    /// When `pattern` does not match, default produces cells as if matching on
+    /// a regex `".*"` when `pattern` does not match. Similarly, each string is
+    /// expanded using [Match.expand] (using \g<0> makes sense here to extract
+    /// the entire original text into a cell).
     pub default: Vec<String>,
 }
 
