@@ -18,6 +18,7 @@ pub fn extract_book(
     out_writer: &dyn ReadWriter,
     book_name: &str,
     input_pdf: &Path,
+    overwrite_existing: bool,
 ) -> Result<()> {
     let book_cfg = cfg
         .books
@@ -29,9 +30,10 @@ pub fn extract_book(
     let mut index_writer =
         IndexWriter::new(out_writer).with_context(|| "opening index for update")?;
 
-    let output_tables: Vec<OutputTable<'_>> = top_group.iter_tables()
+    let output_tables: Vec<OutputTable<'_>> = top_group
+        .iter_tables()
         .map(OutputTable::from_table_cfg)
-        .filter(|out_table| !out_writer.exists(&out_table.out_filepath))
+        .filter(|out_table| overwrite_existing || !out_writer.exists(&out_table.out_filepath))
         .collect();
 
     let mut progress_bar = ProgressBar::cargo_style(output_tables.len() as u32, 80, true);

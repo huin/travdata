@@ -41,6 +41,11 @@ pub struct Command {
     /// path or the path suffix ending in ".zip".
     #[arg(long)]
     output_type: Option<crate::filesio::IoType>,
+
+    /// Extract CSV tables that already exist in the output. This is useful when
+    /// testing larger scale changes to the configuration or code.
+    #[arg(long)]
+    overwrite_existing: bool,
 }
 
 /// Runs the subcommand.
@@ -64,6 +69,7 @@ pub fn run(cmd: &Command) -> Result<()> {
         out_writer,
         &cmd.input_pdf,
         &cmd.book_name,
+        cmd.overwrite_existing,
     )
 }
 
@@ -73,6 +79,7 @@ fn run_impl(
     out_writer: Box<dyn ReadWriter>,
     input_pdf: &Path,
     book_name: &str,
+    overwrite_existing: bool,
 ) -> Result<()> {
     let cfg = load_config(cfg_reader)?;
 
@@ -83,6 +90,7 @@ fn run_impl(
         out_writer.as_ref(),
         book_name,
         input_pdf,
+        overwrite_existing,
     )
     .with_context(|| "processing book")?;
 
