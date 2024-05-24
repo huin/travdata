@@ -1,9 +1,44 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    io::{Read, Write},
+    ops::{Deref, DerefMut},
+};
+
+use anyhow::{Context, Result};
 
 use crate::extraction::tabulautil;
 
+type CsvResult<T> = std::result::Result<T, csv::Error>;
+
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct Table(pub Vec<Row>);
+
+impl Table {
+    /// Reads a [Table] encoded as CSV.
+    pub fn read_csv(r: &mut dyn Read) -> Result<Self> {
+        let mut csv_reader = csv::ReaderBuilder::new().flexible(true).from_reader(r);
+        let rows: Vec<Row> = csv_reader
+            .records()
+            .map(|record_result| {
+                record_result.map(|record| Row(record.iter().map(str::to_owned).collect()))
+            })
+            .collect::<CsvResult<Vec<Row>>>()?;
+
+        Ok(Self(rows))
+    }
+
+    /// Writes the [Table], encoding as CSV.
+    pub fn write_csv(&self, w: &mut dyn Write) -> Result<()> {
+        let mut csv_writer = csv::WriterBuilder::new().flexible(true).from_writer(w);
+        for row in &self.0 {
+            csv_writer
+                .write_record(&row.0)
+                .with_context(|| "writing record")?;
+        }
+        csv_writer.flush().with_context(|| "flushing to CSV")?;
+        drop(csv_writer);
+        Ok(())
+    }
+}
 
 impl Deref for Table {
     type Target = Vec<Row>;
