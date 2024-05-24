@@ -581,6 +581,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "simple_bar"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccdffed71b561404ac36b517600d8aa0fd24723dc5b8bb311310945fb46aeac5"
+
+[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -675,6 +681,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "serde_yaml_ng",
+ "simple_bar",
  "tabula",
  "tempfile",
  "test-casing",
