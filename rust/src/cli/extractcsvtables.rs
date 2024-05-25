@@ -4,7 +4,10 @@ use anyhow::{Context, Result};
 use clap::Args;
 
 use crate::{
-    extraction::{bookextract::Extractor, tabulautil},
+    extraction::{
+        bookextract::{ExtractSpec, Extractor},
+        tabulautil,
+    },
     filesio,
 };
 
@@ -45,6 +48,16 @@ pub struct Command {
     /// testing larger scale changes to the configuration or code.
     #[arg(long)]
     overwrite_existing: bool,
+
+    /// Only extract tables that have any of these tags. --without-tag takes
+    /// precedence over this.
+    #[arg(long, value_delimiter(','))]
+    with_tags: Vec<String>,
+
+    /// Only extract tables that do not have any of these tags. This takes
+    /// precedence over --with-tag.
+    #[arg(long, value_delimiter(','))]
+    without_tags: Vec<String>,
 }
 
 /// Runs the subcommand.
@@ -64,7 +77,15 @@ pub fn run(cmd: &Command) -> Result<()> {
 
     let mut extractor = Extractor::new(tabula_client, cfg_reader, out_writer)?;
 
-    extractor.extract_book(&cmd.book_name, &cmd.input_pdf, cmd.overwrite_existing)?;
+    let spec = ExtractSpec {
+        book_name: &cmd.book_name,
+        input_pdf: &cmd.input_pdf,
+        overwrite_existing: cmd.overwrite_existing,
+        with_tags: &cmd.with_tags,
+        without_tags: &cmd.without_tags,
+    };
+
+    extractor.extract_book(spec)?;
 
     extractor.close()
 }
