@@ -107,7 +107,6 @@ impl YamlGroup {
             .collect();
         Group {
             rel_dir,
-            tags,
             tables,
             groups,
         }
@@ -122,7 +121,6 @@ impl YamlGroup {
 /// tags during the import of [Group]s from YAML.
 pub struct Group {
     pub rel_dir: PathBuf,
-    pub tags: HashSet<String>,
     pub groups: HashMap<String, Group>,
     pub tables: HashMap<String, Table>,
 }
