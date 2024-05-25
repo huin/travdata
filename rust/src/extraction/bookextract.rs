@@ -1,8 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
-use serde_yaml_ng::with;
-use simple_bar::ProgressBar;
 
 use crate::{
     config::{
@@ -33,6 +31,16 @@ pub struct ExtractSpec<'a> {
     pub without_tags: &'a [String],
 }
 
+/// Trait to implement to receive notifications about extraction events, or to
+/// cancel extraction early.
+pub trait ExtractEvents {
+    fn on_progress(&mut self, completed: usize, total: usize);
+    fn on_output(&mut self, path: &Path);
+    fn on_error(&mut self, err: anyhow::Error);
+    fn on_end(&mut self);
+    fn do_continue(&self) -> bool;
+}
+
 impl<'a> Extractor<'a> {
     /// Create a new [Extractor].
     pub fn new(
@@ -55,15 +63,27 @@ impl<'a> Extractor<'a> {
     }
 
     /// Extracts tables from a single book.
-    pub fn extract_book(&mut self, spec: ExtractSpec) -> Result<()> {
-        let book_cfg = self.cfg.books.get(spec.book_name).ok_or_else(|| {
-            anyhow!(
-                "book {:?} does not exist in the configuration",
-                spec.book_name
-            )
-        })?;
+    pub fn extract_book(&mut self, spec: ExtractSpec, events: &mut dyn ExtractEvents) {
+        let book_cfg = match self.cfg.books.get(spec.book_name) {
+            Some(book_cfg) => book_cfg,
+            None => {
+                events.on_error(anyhow!(
+                    "book {:?} does not exist in the configuration",
+                    spec.book_name
+                ));
+                events.on_end();
+                return;
+            }
+        };
 
-        let top_group = book_cfg.load_group(self.cfg_reader.as_ref())?;
+        let top_group = match book_cfg.load_group(self.cfg_reader.as_ref()) {
+            Ok(top_group) => top_group,
+            Err(err) => {
+                events.on_error(err);
+                events.on_end();
+                return;
+            }
+        };
 
         let output_tables: Vec<OutputTable<'_>> = top_group
             .iter_tables()
@@ -82,10 +102,8 @@ impl<'a> Extractor<'a> {
             })
             .collect();
 
-        let mut progress_bar = ProgressBar::cargo_style(output_tables.len() as u32, 80, true);
-
-        for out_table in &output_tables {
-            extract_table(
+        for (i, out_table) in output_tables.iter().enumerate() {
+            let extract_result = extract_table(
                 &self.tabula_client,
                 self.cfg_reader.as_ref(),
                 self.out_writer.as_ref(),
@@ -94,12 +112,18 @@ impl<'a> Extractor<'a> {
                 out_table.table_cfg,
                 spec.input_pdf,
             )
-            .with_context(|| format!("processing table {:?}", out_table.out_filepath))?;
+            .with_context(|| format!("processing table {:?}", out_table.out_filepath));
+            if let Err(err) = extract_result {
+                events.on_error(err);
+            }
 
-            progress_bar.update();
+            events.on_progress(i + 1, output_tables.len());
+            if !events.do_continue() {
+                break;
+            }
         }
 
-        Ok(())
+        events.on_end();
     }
 
     /// Completes any extractions performed. Any extracted data may or may not
