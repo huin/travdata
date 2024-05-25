@@ -106,7 +106,6 @@ impl YamlGroup {
             })
             .collect();
         Group {
-            rel_dir,
             tables,
             groups,
         }
@@ -120,7 +119,6 @@ impl YamlGroup {
 /// organising Tabula template files. However, it does provide inheritance of
 /// tags during the import of [Group]s from YAML.
 pub struct Group {
-    pub rel_dir: PathBuf,
     pub groups: HashMap<String, Group>,
     pub tables: HashMap<String, Table>,
 }
