@@ -105,15 +105,12 @@ impl YamlGroup {
                 (name, yaml_group.prepare(child_rel_dir, &tags))
             })
             .collect();
-        Group {
-            tables,
-            groups,
-        }
+        Group { tables, groups }
     }
 }
 
 /// Configuration for extraction of many tables from a PDF.
-/// 
+///
 /// Each [Group] corresponds to a directory within the configuration directory.
 /// The hierarchy of [Group]s is not significant, it is merely a convenience for
 /// organising Tabula template files. However, it does provide inheritance of
