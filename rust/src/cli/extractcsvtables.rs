@@ -1,11 +1,12 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process};
 
 use anyhow::{Context, Result};
 use clap::Args;
+use simple_bar::ProgressBar;
 
 use crate::{
     extraction::{
-        bookextract::{ExtractSpec, Extractor},
+        bookextract::{ExtractEvents, ExtractSpec, Extractor},
         tabulautil,
     },
     filesio,
@@ -85,7 +86,46 @@ pub fn run(cmd: &Command) -> Result<()> {
         without_tags: &cmd.without_tags,
     };
 
-    extractor.extract_book(spec)?;
+    let mut events = EventDisplayer::new();
+
+    extractor.extract_book(spec, &mut events);
 
     extractor.close()
+}
+
+struct EventDisplayer {
+    progress_bar: Option<ProgressBar>,
+}
+
+impl EventDisplayer {
+    fn new() -> Self {
+        Self { progress_bar: None }
+    }
+}
+
+impl ExtractEvents for EventDisplayer {
+    fn on_progress(&mut self, _completed: usize, total: usize) {
+        let progress_bar: &mut ProgressBar = match self.progress_bar.as_mut() {
+            Some(progress_bar) => progress_bar,
+            None => {
+                let progress_bar = ProgressBar::cargo_style(total as u32, 80, true);
+                self.progress_bar = Some(progress_bar);
+                self.progress_bar.as_mut().unwrap()
+            }
+        };
+
+        progress_bar.update();
+    }
+
+    fn on_output(&mut self, _path: &std::path::Path) {}
+
+    fn on_error(&mut self, err: anyhow::Error) {
+        eprintln!("Error during extraction: {}.", err);
+    }
+
+    fn on_end(&mut self) {}
+
+    fn do_continue(&self) -> bool {
+        true
+    }
 }
