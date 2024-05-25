@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
+use serde_yaml_ng::with;
 use simple_bar::ProgressBar;
 
 use crate::{
@@ -21,6 +22,15 @@ pub struct Extractor<'a> {
     cfg_reader: Box<dyn Reader<'a>>,
     out_writer: Box<dyn ReadWriter<'a>>,
     index_writer: IndexWriter<'a>,
+}
+
+/// Specifies a book's tables to be extracted by [Extractor::extract_book].
+pub struct ExtractSpec<'a> {
+    pub book_name: &'a str,
+    pub input_pdf: &'a Path,
+    pub overwrite_existing: bool,
+    pub with_tags: &'a [String],
+    pub without_tags: &'a [String],
 }
 
 impl<'a> Extractor<'a> {
@@ -45,24 +55,30 @@ impl<'a> Extractor<'a> {
     }
 
     /// Extracts tables from a single book.
-    pub fn extract_book(
-        &mut self,
-        book_name: &str,
-        input_pdf: &Path,
-        overwrite_existing: bool,
-    ) -> Result<()> {
-        let book_cfg =
-            self.cfg.books.get(book_name).ok_or_else(|| {
-                anyhow!("book {:?} does not exist in the configuration", book_name)
-            })?;
+    pub fn extract_book(&mut self, spec: ExtractSpec) -> Result<()> {
+        let book_cfg = self.cfg.books.get(spec.book_name).ok_or_else(|| {
+            anyhow!(
+                "book {:?} does not exist in the configuration",
+                spec.book_name
+            )
+        })?;
 
         let top_group = book_cfg.load_group(self.cfg_reader.as_ref())?;
 
         let output_tables: Vec<OutputTable<'_>> = top_group
             .iter_tables()
+            .filter(|&table_cfg| {
+                spec.with_tags
+                    .iter()
+                    .any(|with_tag| table_cfg.tags.contains(with_tag))
+                    && !spec
+                        .without_tags
+                        .iter()
+                        .any(|without_tag| table_cfg.tags.contains(without_tag))
+            })
             .map(OutputTable::from_table_cfg)
             .filter(|out_table| {
-                overwrite_existing || !self.out_writer.exists(&out_table.out_filepath)
+                spec.overwrite_existing || !self.out_writer.exists(&out_table.out_filepath)
             })
             .collect();
 
@@ -76,7 +92,7 @@ impl<'a> Extractor<'a> {
                 &mut self.index_writer,
                 book_cfg,
                 out_table.table_cfg,
-                input_pdf,
+                spec.input_pdf,
             )
             .with_context(|| format!("processing table {:?}", out_table.out_filepath))?;
 
