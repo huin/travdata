@@ -57,6 +57,7 @@ impl YamlTable {
     }
 }
 
+/// Configuration for extraction of a table from a PDF.
 pub struct Table {
     pub file_stem: PathBuf,
     pub tags: HashSet<String>,
@@ -113,6 +114,12 @@ impl YamlGroup {
     }
 }
 
+/// Configuration for extraction of many tables from a PDF.
+/// 
+/// Each [Group] corresponds to a directory within the configuration directory.
+/// The hierarchy of [Group]s is not significant, it is merely a convenience for
+/// organising Tabula template files. However, it does provide inheritance of
+/// tags during the import of [Group]s from YAML.
 pub struct Group {
     pub rel_dir: PathBuf,
     pub tags: HashSet<String>,
@@ -121,7 +128,9 @@ pub struct Group {
 }
 
 impl Group {
-    /// Iterate over all tables in the group and its descendant groups.
+    /// Iterate over all tables in the group and its descendant groups, in no
+    /// particular order (that is: the order is unstable, and might change in
+    /// future, and between runs of the program).
     pub fn iter_tables(&self) -> GroupTablesIter {
         GroupTablesIter::new(self)
     }
