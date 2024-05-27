@@ -118,7 +118,8 @@ impl TabulaClient {
                 )
                 .with_context(|| "configuring Tabula to extract table")?;
 
-            let extracted_file = tabula.parse_document(pdf_path, "some-table")?;
+            let extracted_file = tempfile::NamedTempFile::new()?;
+            tabula.parse_document_into(pdf_path, extracted_file.path())?;
             let result: JsonTableSet = serde_json::from_reader(extracted_file)
                 .with_context(|| "parsing JSON output from Tabula")?;
 
