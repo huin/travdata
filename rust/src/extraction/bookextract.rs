@@ -34,8 +34,7 @@ pub struct ExtractSpec<'a> {
 /// Trait to implement to receive notifications about extraction events, or to
 /// cancel extraction early.
 pub trait ExtractEvents {
-    fn on_progress(&mut self, completed: usize, total: usize);
-    fn on_output(&mut self, path: &Path);
+    fn on_progress(&mut self, path: &Path, completed: usize, total: usize);
     fn on_error(&mut self, err: anyhow::Error);
     fn on_end(&mut self);
     fn do_continue(&self) -> bool;
@@ -122,7 +121,7 @@ impl<'a> Extractor<'a> {
                 events.on_error(err);
             }
 
-            events.on_progress(i + 1, output_tables.len());
+            events.on_progress(&out_table.out_filepath, i + 1, output_tables.len());
             if !events.do_continue() {
                 break;
             }
