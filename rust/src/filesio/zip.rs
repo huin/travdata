@@ -191,12 +191,8 @@ impl<'a> ReadWriter<'a> for ZipReadWriter {
         let mut new_paths: HashSet<String> = HashSet::new();
         for path_result in self.read_writer.iter_files() {
             let path = path_result?;
-            let path_str: &str = path.to_str().ok_or_else(|| {
-                anyhow!(
-                    "path {:?} could not be converted to a string for inclusion in ZIP archive",
-                    path
-                )
-            })?;
+            let path_str = normalise_path_slashes(&path)?;
+
             new_paths.insert(path_str.to_owned());
             zip_writer.start_file(path_str, SimpleFileOptions::default())?;
             let mut r = self.read_writer.open_read(&path)?;
@@ -226,4 +222,12 @@ impl<'a> ReadWriter<'a> for ZipReadWriter {
 
         Ok(())
     }
+}
+
+/// Normalise a [Path] to use forward slashes, for uniformity of ZIP file entry
+/// names between platforms.
+fn normalise_path_slashes(p: &Path) -> Result<String> {
+    Ok(p.to_str()
+        .ok_or_else(|| anyhow!("could not convert path {:?} to UTF-8 string", p))?
+        .replace('\\', "/"))
 }
