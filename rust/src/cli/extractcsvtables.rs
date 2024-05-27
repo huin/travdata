@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use clap::Args;
@@ -104,7 +104,7 @@ impl EventDisplayer {
 }
 
 impl ExtractEvents for EventDisplayer {
-    fn on_progress(&mut self, _completed: usize, total: usize) {
+    fn on_progress(&mut self, _path: &Path, _completed: usize, total: usize) {
         let progress_bar: &mut ProgressBar = match self.progress_bar.as_mut() {
             Some(progress_bar) => progress_bar,
             None => {
@@ -116,8 +116,6 @@ impl ExtractEvents for EventDisplayer {
 
         progress_bar.update();
     }
-
-    fn on_output(&mut self, _path: &std::path::Path) {}
 
     fn on_error(&mut self, err: anyhow::Error) {
         eprintln!("Error during extraction: {}.", err);
