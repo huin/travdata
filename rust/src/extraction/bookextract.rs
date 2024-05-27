@@ -88,10 +88,15 @@ impl<'a> Extractor<'a> {
         let output_tables: Vec<OutputTable<'_>> = top_group
             .iter_tables()
             .filter(|&table_cfg| {
-                spec.with_tags
-                    .iter()
-                    .any(|with_tag| table_cfg.tags.contains(with_tag))
-                    && !spec
+                spec.with_tags.is_empty()
+                    || spec
+                        .with_tags
+                        .iter()
+                        .any(|with_tag| table_cfg.tags.contains(with_tag))
+            })
+            .filter(|&table_cfg| {
+                spec.without_tags.is_empty()
+                    || !spec
                         .without_tags
                         .iter()
                         .any(|without_tag| table_cfg.tags.contains(without_tag))
