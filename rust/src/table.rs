@@ -1,5 +1,5 @@
 use std::{
-    io::{Read, Write},
+    io::Write,
     ops::{Deref, DerefMut},
 };
 
@@ -7,14 +7,16 @@ use anyhow::{Context, Result};
 
 use crate::extraction::tabulautil;
 
+#[cfg(test)]
 type CsvResult<T> = std::result::Result<T, csv::Error>;
 
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct Table(pub Vec<Row>);
 
 impl Table {
+    #[cfg(test)]
     /// Reads a [Table] encoded as CSV.
-    pub fn read_csv(r: &mut dyn Read) -> Result<Self> {
+    pub fn read_csv(r: &mut dyn std::io::Read) -> Result<Self> {
         let mut csv_reader = csv::ReaderBuilder::new().flexible(true).from_reader(r);
         let rows: Vec<Row> = csv_reader
             .records()

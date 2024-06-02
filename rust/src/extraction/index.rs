@@ -1,31 +1,32 @@
 //! Code to create/update an index of output data.
 
-use std::{
-    collections::{HashMap, HashSet},
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, path::{Path, PathBuf}};
 
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+use crate::filesio::Reader;
 use crate::{
     config::{book::Table, root::Book},
-    filesio::{FileRead, FileWrite, FilesIoError, ReadWriter, Reader},
+    filesio::{FileRead, FileWrite, FilesIoError, ReadWriter},
     fmtutil,
 };
 
+#[cfg(test)]
 type CsvResult<T> = std::result::Result<T, csv::Error>;
 
 const INDEX_PATH: &str = "index.csv";
 const ITEMS_DELIM: &str = ";";
 
+#[cfg(test)]
 /// Index of all extracted tables in an output.
 pub struct Index {
     paths: Vec<PathBuf>,
-    tags_to_paths: HashMap<String, HashSet<PathBuf>>,
+    tags_to_paths: HashMap<String, std::collections::HashSet<PathBuf>>,
 }
 
+#[cfg(test)]
 impl Index {
     /// Creates the index from `CsvRecord`s.
     fn from_records(records: impl IntoIterator<Item = CsvResult<CsvRecord>>) -> Result<Self> {
@@ -125,7 +126,10 @@ impl<'rw> IndexWriter<'rw> {
         })
     }
 
-    fn load_entries(r: &mut FileRead, entries: &mut HashMap<PathBuf, WriteRecord>) -> Result<()> {
+    fn load_entries(
+        r: &mut FileRead,
+        entries: &mut HashMap<PathBuf, WriteRecord>,
+    ) -> Result<()> {
         let mut reader = csv::Reader::from_reader(r);
         for record_result in reader.deserialize::<CsvRecord>() {
             let record = record_result?;
