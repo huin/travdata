@@ -1,6 +1,11 @@
 //! Code to create/update an index of output data.
 
-use std::{collections::HashMap, path::{Path, PathBuf}};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
+#[cfg(test)]
+use std::{collections::HashSet, io::Read};
 
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -126,10 +131,7 @@ impl<'rw> IndexWriter<'rw> {
         })
     }
 
-    fn load_entries(
-        r: &mut FileRead,
-        entries: &mut HashMap<PathBuf, WriteRecord>,
-    ) -> Result<()> {
+    fn load_entries(r: &mut FileRead, entries: &mut HashMap<PathBuf, WriteRecord>) -> Result<()> {
         let mut reader = csv::Reader::from_reader(r);
         for record_result in reader.deserialize::<CsvRecord>() {
             let record = record_result?;
