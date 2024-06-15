@@ -1,16 +1,27 @@
 use std::path::PathBuf;
 
-use gtk::prelude::{BoxExt, ButtonExt, FrameExt, GridExt, GtkWindowExt, OrientableExt, WidgetExt};
-use relm4::{gtk, ComponentParts, ComponentSender, RelmApp, RelmWidgetExt, SimpleComponent};
+use gtk::prelude::{BoxExt, FrameExt, GridExt, GtkWindowExt, OrientableExt, WidgetExt};
+use relm4::{
+    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmApp, RelmWidgetExt, SimpleComponent
+};
+use relm4_components::{
+    open_button::{OpenButton, OpenButtonSettings},
+    open_dialog::OpenDialogSettings,
+};
 
 use crate::{commontext, config::root::Config};
 
-#[derive(Default)]
+#[derive(Debug)]
+enum MainInputMsg {
+    SelectInputPdf(PathBuf),
+}
+
 struct MainModel {
     cfg: Option<Config>,
     cfg_error: Option<String>,
     cfg_version: Option<String>,
 
+    input_pdf_open: Controller<OpenButton>,
     input_pdf: Option<PathBuf>,
     book_id: Option<String>,
 
@@ -21,7 +32,7 @@ struct MainModel {
 impl SimpleComponent for MainModel {
     type Init = ();
 
-    type Input = ();
+    type Input = MainInputMsg;
     type Output = ();
 
     view! {
@@ -110,9 +121,7 @@ impl SimpleComponent for MainModel {
                             set_label: "Select PDF:",
                             set_halign: gtk::Align::Start,
                         },
-                        attach[1, 0, 1, 1] = &gtk::Button::with_label("Select PDF") {
-                            set_hexpand: true,
-                        },
+                        attach[1, 0, 1, 1] = model.input_pdf_open.widget(),
 
                         attach[0, 1, 1, 1] = &gtk::Label {
                             set_label: "Input PDF",
@@ -186,12 +195,31 @@ impl SimpleComponent for MainModel {
         }
     }
 
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {}
+
     fn init(
-        init: Self::Init,
+        _init: Self::Init,
         root: Self::Root,
-        _sender: ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = Self::default();
+        let model = Self {
+            cfg: None,
+            cfg_error: None,
+            cfg_version: None,
+
+            input_pdf_open: OpenButton::builder()
+                .launch(OpenButtonSettings {
+                    dialog_settings: OpenDialogSettings::default(),
+                    text: "Select PDF",
+                    recently_opened_files: Some(".input_pdfs"),
+                    max_recent_files: 10,
+                })
+                .forward(sender.input_sender(), MainInputMsg::SelectInputPdf),
+            input_pdf: None,
+            book_id: None,
+
+            output_path: None,
+        };
 
         let widgets = view_output!();
 
