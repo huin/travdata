@@ -927,6 +927,209 @@ groups:
       turrets-and-fixed-mounts: !Table
         tags: [spacecraft-turret-and-fixed-mount]
         extraction: *one-row-header
+  11-common-spacecraft: !Group
+    groups:
+      spacecraft: !Group
+        tags: [spacecraft]
+        templates:
+          - tables: &spacecraft-tables
+              components: !Table
+                tags:
+                - type/spacecraft-components
+                extraction: !TableExtraction
+                  - !PrependRow
+                    - Type
+                    - Component
+                    - Tons
+                    - Cost (MCr)
+              crew: !Table
+                tags:
+                - type/spacecraft-crew
+                extraction: !TableExtraction
+                  - !FoldRows
+                    - !AllRows {}
+                  - !SplitColumn
+                    column: 0
+                    pattern: ',\s*'
+                  - !Transpose {}
+                  - !ExpandColumnOnRegex
+                    column: 0
+                    pattern: '(\w+) x(\d+)$'
+                    on_match: ['\1', '\2']
+                    default: ['\g<0>', '1']
+                  - !PrependRow
+                    - "Crew"
+                    - "Count"
+              hull: !Table
+                tags:
+                - type/spacecraft-hull
+                extraction: !TableExtraction
+                  - !Transpose {}
+                  - !ExpandColumnOnRegex
+                    column: 0
+                    pattern: 'Hull:'
+                    on_match: ["Hull"]
+                    default: ['\g<0>']
+              running-costs: !Table
+                tags:
+                - type/spacecraft-running-costs
+                extraction: !TableExtraction
+                  - !Transpose {}
+                  - !WrapRowEveryN 2
+                  - !Transpose {}
+              power-requirements: !Table
+                tags:
+                - type/spacecraft-power-requirements
+                extraction: !TableExtraction
+                  - !Transpose {}
+                  - !WrapRowEveryN 2
+                  - !PrependRow
+                    - System
+                    - Power
+        groups:
+          close-escort: !Group
+            tags:
+            - spacecraft
+            - spacecraft-class/gazelle
+            - spacecraft/close-escort
+            tables: *spacecraft-tables
+          far-trader: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/a2
+            - spacecraft/far-trader
+            tables: *spacecraft-tables
+          free-trader: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/a
+            - spacecraft/free-trader
+            tables: *spacecraft-tables
+          gig: !Group
+            tags:
+            - category/small-craft
+            - spacecraft
+            - spacecraft/gig
+            tables: *spacecraft-tables
+          laboratory-ship: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/l
+            - spacecraft/laboratory-ship
+            tables: *spacecraft-tables
+          launch: !Group
+            tags:
+            - category/small-craft
+            - spacecraft
+            - spacecraft/launch
+            tables: *spacecraft-tables
+          light-fighter: !Group
+            tags:
+            - category/small-craft
+            - spacecraft
+            - spacecraft/light-fighter
+            tables: *spacecraft-tables
+          mercenary-cruiser: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/c
+            - spacecraft/mercenary-cruiser
+            tables: *spacecraft-tables
+          modular-cutter: !Group
+            tags:
+            - category/small-craft
+            - spacecraft
+            - spacecraft/modular-cutter
+            tables: *spacecraft-tables
+          passenger-shuttle: !Group
+            tags:
+            - category/small-craft
+            - spacecraft
+            - spacecraft/passenger-shuttle
+            tables: *spacecraft-tables
+          patrol-corvette: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/t
+            - spacecraft/patrol-corvette
+            tables: *spacecraft-tables
+          pinnace: !Group
+            tags:
+            - category/small-craft
+            - spacecraft
+            - spacecraft/pinnace
+            tables: *spacecraft-tables
+          safari-ship: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/k
+            - spacecraft/safari-ship
+            tables: *spacecraft-tables
+          scout-courier: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/s
+            - spacecraft/scout-courier
+            tables: *spacecraft-tables
+          seeker-mining: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/h
+            - spacecraft/seeker-mining
+            tables: *spacecraft-tables
+          ships-boat: !Group
+            tags:
+            - category/small-craft
+            - spacecraft
+            - spacecraft/ships-boat
+            tables: *spacecraft-tables
+          shuttle: !Group
+            tags:
+            - category/small-craft
+            - spacecraft
+            - spacecraft/shuttle
+            tables: *spacecraft-tables
+          slow-boat: !Group
+            tags:
+            - category/small-craft
+            - spacecraft
+            - spacecraft/slow-boat
+            tables: *spacecraft-tables
+          slow-pinnace: !Group
+            tags:
+            - category/small-craft
+            - spacecraft
+            - spacecraft/slow-pinnace
+            tables: *spacecraft-tables
+          subsidised-liner: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/m
+            - spacecraft/subsidised-liner
+            tables: *spacecraft-tables
+          subsidised-merchant: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/r
+            - spacecraft/subsidised-merchant
+            tables: *spacecraft-tables
+          survey-scout: !Group
+            tags:
+            - spacecraft
+            - spacecraft-class/donosev
+            - spacecraft/survey-scout
+            tables: *spacecraft-tables
+          system-defence-boat: !Group
+            tags:
+            - spacecraft
+            - spacecraft/system-defence-boat
+            tables: *spacecraft-tables
+          yacht: !Group
+            tags:
+            - spacecraft
+            - spacecraft-type/y
+            - spacecraft/yacht
+            tables: *spacecraft-tables
   13-trade: !Group
     tables:
       trade-goods: !Table
