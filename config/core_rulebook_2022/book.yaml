@@ -928,6 +928,13 @@ groups:
         tags: [spacecraft-turret-and-fixed-mount]
         extraction: *one-row-header
   11-common-spacecraft: !Group
+    tables:
+      outdated-ships: !Table
+        tags: [spacecraft-outdating]
+        extraction: !TableExtraction []
+      spacecraft-quirks: !Table
+        tags: [spacecraft-quirks]
+        extraction: *one-row-header
     groups:
       spacecraft: !Group
         tags: [spacecraft]
