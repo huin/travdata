@@ -329,6 +329,33 @@ class FakeTableReader:
             ],
         ),
         (
+            "Splits a column on a pattern.",
+            cfgextract.TableExtraction(
+                transforms=[
+                    cfgextract.SplitColumn(
+                        column=1,
+                        pattern=r",\s*",
+                    )
+                ],
+            ),
+            [
+                [
+                    ["0", "a, b,c"],
+                    ["0", "a, b,c", "d"],
+                    ["0", "a"],
+                    ["0"],
+                    [],
+                ],
+            ],
+            [
+                ["0", "a", "b", "c"],
+                ["0", "a", "b", "c", "d"],
+                ["0", "a"],
+                ["0"],
+                [],
+            ],
+        ),
+        (
             "Wraps a row every N columns.",
             cfgextract.TableExtraction(
                 transforms=[

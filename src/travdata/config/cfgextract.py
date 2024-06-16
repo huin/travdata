@@ -123,6 +123,20 @@ class JoinColumns(TableTransform, yamlutil.YamlMappingMixin):
 
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
+class SplitColumn(TableTransform, yamlutil.YamlMappingMixin):
+    """Splits a column on a pattern."""
+
+    yaml_tag: ClassVar = "!SplitColumn"
+    column: int
+    pattern: str
+
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        return cls(column=0, pattern="")
+
+
+@dataclasses.dataclass
+@yamlreg.YAML.register_class
 class WrapRowEveryN(TableTransform, yamlutil.YamlScalarMixin):
     """Wraps a row every N columns."""
 

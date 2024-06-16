@@ -81,6 +81,7 @@ _RowGroup: TypeAlias = list[_Row]
 
 
 def _transform(cfg: cfgextract.TableTransform, rows: Iterable[_Row]) -> Iterator[_Row]:
+    # pylint: disable=too-many-return-statements
     match cfg:
         case cfgextract.ExpandColumnOnRegex():
             return _expand_column_on_regex(cfg, rows)
@@ -90,6 +91,8 @@ def _transform(cfg: cfgextract.TableTransform, rows: Iterable[_Row]) -> Iterator
             return _prepend_row(cfg, rows)
         case cfgextract.FoldRows():
             return _fold_rows(cfg, rows)
+        case cfgextract.SplitColumn():
+            return _split_column(cfg, rows)
         case cfgextract.Transpose():
             return _transpose(rows)
         case cfgextract.WrapRowEveryN():
@@ -98,6 +101,7 @@ def _transform(cfg: cfgextract.TableTransform, rows: Iterable[_Row]) -> Iterator
             raise ConfigurationError(
                 f"{type(cfg).__name__} is an unknown type of TableTransform",
             )
+    # pylint: enable=too-many-return-statements
 
 
 def _expand_column_on_regex(
@@ -236,6 +240,21 @@ def _fold_rows(
 
         row: _Row = [" ".join(cell) for cell in row_accum]
         yield row
+
+
+def _split_column(
+    cfg: cfgextract.SplitColumn,
+    rows: Iterable[_Row],
+) -> Iterator[_Row]:
+    pattern = re.compile(cfg.pattern)
+    for row in rows:
+        if len(row) <= cfg.column:
+            yield row
+            continue
+        new_row = row[: cfg.column]
+        new_row.extend(pattern.split(row[cfg.column]))
+        new_row.extend(row[cfg.column + 1 :])
+        yield new_row
 
 
 def _transpose(
