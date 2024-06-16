@@ -1137,6 +1137,140 @@ groups:
             - spacecraft-type/y
             - spacecraft/yacht
             tables: *spacecraft-tables
+  12-psionics: !Group
+    tags: [psionics]
+    tables:
+      psionic-training: !Table
+        tags: [psionic/training]
+        extraction: !TableExtraction []
+      psionic-talents: !Table
+        tags: [psionic/talents]
+        extraction: !TableExtraction
+          - !ExpandColumnOnRegex
+            column: 0
+            pattern: '([^:]+): (.+)'
+            on_match: ['\1', '\2']
+            default: ['', '\g<0>']
+          - !PrependRow
+            - Talent
+            - Description
+      ranges: !Table
+        tags: [psionic-power/psionic-ranges]
+        extraction: !TableExtraction []
+      psi-drug-types: !Table
+        tags: [psi-drugs/types]
+        extraction: !TableExtraction []
+    groups:
+      power-effects: !Group
+        tables:
+          telekinesis-pyrokinesis-effects: !Table
+            tags: [psionic-power-effect/pyrokinesis]
+            extraction: *one-row-header
+      power-requirements: !Group
+        tags: [type/psionic-power-requirement]
+        templates:
+          - extraction: !TableExtraction &psionic-talent-requirement
+              - !ExpandColumnOnRegex
+                column: 0
+                pattern: '([^:]+): (.+)'
+                on_match: ['\1', '\2']
+                default: ['', '\g<0>']
+              - !FoldRows
+                - !EmptyColumn 0
+              - !PrependRow
+                - Aspect
+                - Requirement
+        groups:
+          awareness: !Group
+            tags: [psionic-power/awareness]
+            tables:
+              regeneration: !Table
+                tags: [psionic-power-requirement/regeneration]
+                extraction: *psionic-talent-requirement
+              enhanced-strength: !Table
+                tags: [psionic-power-requirement/enhanced-strength]
+                extraction: *psionic-talent-requirement
+              inspiration: !Table
+                tags: [psionic-power-requirement/inspiration]
+                extraction: *psionic-talent-requirement
+              suspended-animation: !Table
+                tags: [psionic-power-requirement/suspended-animation]
+                extraction: *psionic-talent-requirement
+              enhanced-endurance: !Table
+                tags: [psionic-power-requirement/enhanced-endurance]
+                extraction: *psionic-talent-requirement
+              fortitude: !Table
+                tags: [psionic-power-requirement/fortitude]
+                extraction: *psionic-talent-requirement
+          clairvoyance: !Group
+            tags: [psionic-power/clairvoyance]
+            tables:
+              tactical-awareness: !Table
+                tags: [psionic-power-requirement/tactical-awareness]
+                extraction: *psionic-talent-requirement
+              clairaudience: !Table
+                tags: [psionic-power-requirement/clairaudience]
+                extraction: *psionic-talent-requirement
+              clairvoyance: !Table
+                tags: [psionic-power-requirement/clairvoyance]
+                extraction: *psionic-talent-requirement
+              clairsentience: !Table
+                tags: [psionic-power-requirement/clairsentience]
+                extraction: *psionic-talent-requirement
+              sense: !Table
+                tags: [psionic-power-requirement/sense]
+                extraction: *psionic-talent-requirement
+          telekinesis: !Group
+            tags: [psionic-power/telekinesis]
+            tables:
+              flight: !Table
+                tags: [psionic-power-requirement/flight]
+                extraction: *psionic-talent-requirement
+              telekinesis: !Table
+                tags: [psionic-power-requirement/telekinesis]
+                extraction: *psionic-talent-requirement
+              microkinesis: !Table
+                tags: [psionic-power-requirement/microkinesis]
+                extraction: *psionic-talent-requirement
+              pyrokinesis: !Table
+                tags: [psionic-power-requirement/pyrokinesis]
+                extraction: *psionic-talent-requirement
+              telekinetic-punch: !Table
+                tags: [psionic-power-requirement/telekinetic-punch]
+                extraction: *psionic-talent-requirement
+          telepathy: !Group
+            tags: [psionic-power/telepathy]
+            tables:
+              suggestion: !Table
+                tags: [psionic-power-requirement/suggestion]
+                extraction: *psionic-talent-requirement
+              telempathy: !Table
+                tags: [psionic-power-requirement/telempathy]
+                extraction: *psionic-talent-requirement
+              assault: !Table
+                tags: [psionic-power-requirement/assault]
+                extraction: *psionic-talent-requirement
+              mind-link: !Table
+                tags: [psionic-power-requirement/mind-link]
+                extraction: *psionic-talent-requirement
+              read-surface-thoughts: !Table
+                tags: [psionic-power-requirement/read-surface-thoughts]
+                extraction: *psionic-talent-requirement
+              probe: !Table
+                tags: [psionic-power-requirement/probe]
+                extraction: *psionic-talent-requirement
+              life-detection: !Table
+                tags: [psionic-power-requirement/life-detection]
+                extraction: *psionic-talent-requirement
+              send-thoughts: !Table
+                tags: [psionic-power-requirement/send-thoughts]
+                extraction: *psionic-talent-requirement
+          teleportation: !Group
+            tags: [psionic-power/teleportation]
+            tables:
+              teleportation: !Table
+                tags: [psionic-power-requirement/teleportation]
+                extraction: *psionic-talent-requirement
   13-trade: !Group
     tables:
       trade-goods: !Table
