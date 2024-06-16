@@ -1272,10 +1272,111 @@ groups:
                 tags: [psionic-power-requirement/teleportation]
                 extraction: *psionic-talent-requirement
   13-trade: !Group
+    tags: [trade]
     tables:
       trade-goods: !Table
         tags: [type/trade-good]
         extraction: *one-row-header
+      mail-dm: !Table
+        tags: [mail/basic-dm]
+        extraction: !TableExtraction
+          - !PrependRow
+            - Modifier
+            - DM
+      passage-and-freight: !Table
+        tags: [passage-and-freight]
+        extraction: !TableExtraction []
+    groups:
+      freight: !Group
+        tags: [trade/freight]
+        tables:
+          freight-traffic: !Table
+            tags: [freight/traffic]
+            extraction: !TableExtraction []
+          cargo-lots: !Table
+            tags: [freight/cargo-lots]
+            extraction: !TableExtraction
+              - !ExpandColumnOnRegex
+                column: 0
+                pattern: '(\w+) [^0-9]+(\d+D(:? x \d+)?).*'
+                on_match: ['\1', '\2']
+                default: ['\g<0>']
+              - !PrependRow
+                - Lot type
+                - Tons of freight
+          freight-basic-dm: !Table
+            tags: [freight/basic-dm]
+            extraction: !TableExtraction
+              # Annoyingly, the last row gets extracted with both columns merged
+              # together. Hack to split it.
+              - !ExpandColumnOnRegex
+                column: 0
+                pattern: '^(.+) (DM-1)$'
+                on_match: ['\1', '\2']
+                default: ['\g<0>']
+              - !PrependRow
+                - Modifier
+                - DM
+          freight-world-dm: !Table
+            tags: [freight/world-dm]
+            extraction: !TableExtraction
+              - !PrependRow
+                - Modifier
+                - DM
+      passenger: !Group
+        tags: [trade/passenger]
+        tables:
+          passenger-basic-dm: !Table
+            tags: [passenger/basic-dm]
+            extraction: !TableExtraction
+              - !PrependRow
+                - Modifier
+                - DM
+          passenger-traffic: !Table
+            tags: [passenger/traffic]
+            extraction: !TableExtraction []
+          passenger-world-dm: !Table
+            tags: [passenger/world-dm]
+            extraction: !TableExtraction
+              - !PrependRow
+                - Modifier
+                - DM
+          random-passenger: !Table
+            tags: [passenger/random-special]
+            extraction: *one-row-header
+      speculative: !Group
+        tags: [trade/speculative]
+        tables:
+          find-supplier-checks: !Table
+            tags: [speculative/supplier-basic-dm]
+            extraction: !TableExtraction
+              - !FoldRows
+                - !StaticRowCounts [2, 3, 2]
+              - !ExpandColumnOnRegex
+                column: 0
+                pattern: '\w+ \w+ ([^:]+): (\w+ \(\d+[+]\)) (\w+) \w+ \((\d+D \w+), ([^)]+)\)\.'
+                on_match: ['\1', '\2', '\3', '\5', '\4']
+                default: ['\g<0>']
+              - !PrependRow
+                - Supplier Type
+                - Difficulty
+                - Skill
+                - Characteristic
+                - Time
+          find-supplier-starport-dm: !Table
+            tags: [speculative/supplier-starport-dm]
+            extraction: !TableExtraction
+              - !ExpandColumnOnRegex
+                column: 0
+                pattern: '\w+ (\w): (.+)'
+                on_match: ['\1', '\2']
+                default: ['\g<0>']
+              - !PrependRow
+                - Starport class
+                - DM
+          modified-price: !Table
+            tags: [speculative/modified-price]
+            extraction: !TableExtraction []
   14-worldcreation: !Group
     tables:
       governments: !Table
