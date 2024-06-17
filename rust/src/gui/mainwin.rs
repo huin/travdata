@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use gtk::prelude::{BoxExt, FrameExt, GridExt, GtkWindowExt, OrientableExt, WidgetExt};
 use relm4::{
-    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmApp, RelmWidgetExt, SimpleComponent
+    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmApp,
+    RelmWidgetExt, SimpleComponent,
 };
 use relm4_components::{
     open_button::{OpenButton, OpenButtonSettings},
@@ -16,6 +17,7 @@ enum MainInputMsg {
     SelectInputPdf(PathBuf),
 }
 
+#[allow(dead_code)]
 struct MainModel {
     cfg: Option<Config>,
     cfg_error: Option<String>,
@@ -128,7 +130,15 @@ impl SimpleComponent for MainModel {
                             set_halign: gtk::Align::Start,
                         },
                         attach[1, 1, 1, 1] = &gtk::Label {
-                            set_label: "<not selected>",
+                            #[watch]
+                            set_label: match &model.input_pdf {
+                                    None => "<not selected>",
+                                    Some(path) => match path.to_str() {
+                                        None => "<selected - cannot be displayed>",
+                                        Some(path_str) => path_str,
+                                    },
+                                }
+                            ,
                             set_halign: gtk::Align::Start,
                         },
 
@@ -195,7 +205,11 @@ impl SimpleComponent for MainModel {
         }
     }
 
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {}
+    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+        match message {
+            MainInputMsg::SelectInputPdf(path) => self.input_pdf = Some(path),
+        }
+    }
 
     fn init(
         _init: Self::Init,
