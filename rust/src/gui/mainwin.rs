@@ -10,15 +10,22 @@ use relm4_components::{
     open_dialog::OpenDialogSettings,
 };
 
-use crate::{commontext, config::root::Config};
+use crate::{commontext, config::root::Config, gui::util};
+
+use super::util::SelectedFileIo;
 
 #[derive(Debug)]
 enum MainInputMsg {
+    SelectConfigIo(SelectedFileIo),
     SelectInputPdf(PathBuf),
+    SelectOutputIo(SelectedFileIo),
 }
 
 #[allow(dead_code)]
 struct MainModel {
+    cfg_dir: Controller<OpenButton>,
+    cfg_zip: Controller<OpenButton>,
+    cfg_io: Option<util::SelectedFileIo>,
     cfg: Option<Config>,
     cfg_error: Option<String>,
     cfg_version: Option<String>,
@@ -27,7 +34,9 @@ struct MainModel {
     input_pdf: Option<PathBuf>,
     book_id: Option<String>,
 
-    output_path: Option<PathBuf>,
+    output_path_dir: Controller<OpenButton>,
+    output_path_zip: Controller<OpenButton>,
+    output_io: Option<util::SelectedFileIo>,
 }
 
 #[relm4::component]
@@ -75,10 +84,8 @@ impl SimpleComponent for MainModel {
                             set_homogeneous: true,
                             set_spacing: 5,
 
-                            gtk::Button::with_label("Select directory") {
-                            },
-                            gtk::Button::with_label("Select ZIP") {
-                            },
+                            model.cfg_dir.widget(),
+                            model.cfg_zip.widget(),
                             gtk::Button::with_label("Default") {
                             },
                         },
@@ -88,7 +95,8 @@ impl SimpleComponent for MainModel {
                             set_halign: gtk::Align::Start,
                         },
                         attach[1, 1, 1, 1] = &gtk::Label {
-                            set_label: "<not selected>",
+                            #[watch]
+                            set_label: &util::format_opt_selected_file_io(&model.cfg_io),
                             set_halign: gtk::Align::Start,
                         },
 
@@ -131,14 +139,7 @@ impl SimpleComponent for MainModel {
                         },
                         attach[1, 1, 1, 1] = &gtk::Label {
                             #[watch]
-                            set_label: match &model.input_pdf {
-                                    None => "<not selected>",
-                                    Some(path) => match path.to_str() {
-                                        None => "<selected - cannot be displayed>",
-                                        Some(path_str) => path_str,
-                                    },
-                                }
-                            ,
+                            set_label: util::format_opt_path(&model.input_pdf),
                             set_halign: gtk::Align::Start,
                         },
 
@@ -177,10 +178,8 @@ impl SimpleComponent for MainModel {
                             set_homogeneous: true,
                             set_spacing: 5,
 
-                            gtk::Button::with_label("Select directory") {
-                            },
-                            gtk::Button::with_label("Select ZIP") {
-                            },
+                            model.output_path_dir.widget(),
+                            model.output_path_zip.widget(),
                         },
 
                         attach[0, 1, 1, 1] = &gtk::Label {
@@ -188,7 +187,8 @@ impl SimpleComponent for MainModel {
                             set_halign: gtk::Align::Start,
                         },
                         attach[1, 1, 1, 1] = &gtk::Label {
-                            set_label: "<not selected>",
+                            #[watch]
+                            set_label: &util::format_opt_selected_file_io(&model.output_io),
                             set_halign: gtk::Align::Start,
                         },
                     },
@@ -207,7 +207,9 @@ impl SimpleComponent for MainModel {
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
+            MainInputMsg::SelectConfigIo(io) => self.cfg_io = Some(io),
             MainInputMsg::SelectInputPdf(path) => self.input_pdf = Some(path),
+            MainInputMsg::SelectOutputIo(io) => self.output_io = Some(io),
         }
     }
 
@@ -216,14 +218,65 @@ impl SimpleComponent for MainModel {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
+        let pdf_filter = gtk::FileFilter::new();
+        pdf_filter.set_name(Some("PDF file"));
+        pdf_filter.add_pattern("*.pdf");
+        pdf_filter.add_mime_type("application/pdf");
+        let zip_filter = gtk::FileFilter::new();
+        zip_filter.set_name(Some("ZIP archive"));
+        zip_filter.add_pattern("*.zip");
+        zip_filter.add_mime_type("application/zip");
+
         let model = Self {
+            cfg_dir: OpenButton::builder()
+                .launch(OpenButtonSettings {
+                    dialog_settings: OpenDialogSettings {
+                        folder_mode: true,
+                        cancel_label: "Cancel".to_string(),
+                        accept_label: "Read config from directory".to_string(),
+                        create_folders: false,
+                        is_modal: true,
+                        filters: vec![],
+                    },
+                    text: "Select directory",
+                    recently_opened_files: Some(".cfg_dir"),
+                    max_recent_files: 10,
+                })
+                .forward(sender.input_sender(), |path| {
+                    MainInputMsg::SelectConfigIo(SelectedFileIo::for_dir(path))
+                }),
+            cfg_zip: OpenButton::builder()
+                .launch(OpenButtonSettings {
+                    dialog_settings: OpenDialogSettings {
+                        folder_mode: false,
+                        cancel_label: "Cancel".to_string(),
+                        accept_label: "Read config from ZIP".to_string(),
+                        create_folders: false,
+                        is_modal: true,
+                        filters: vec![zip_filter.clone()],
+                    },
+                    text: "Select ZIP",
+                    recently_opened_files: Some(".cfg_zip"),
+                    max_recent_files: 10,
+                })
+                .forward(sender.input_sender(), |path| {
+                    MainInputMsg::SelectConfigIo(SelectedFileIo::for_zip(path))
+                }),
+            cfg_io: None,
             cfg: None,
             cfg_error: None,
             cfg_version: None,
 
             input_pdf_open: OpenButton::builder()
                 .launch(OpenButtonSettings {
-                    dialog_settings: OpenDialogSettings::default(),
+                    dialog_settings: OpenDialogSettings {
+                        folder_mode: false,
+                        cancel_label: "Cancel".to_string(),
+                        accept_label: "Choose Input PDF".to_string(),
+                        create_folders: false,
+                        is_modal: true,
+                        filters: vec![pdf_filter.clone()],
+                    },
                     text: "Select PDF",
                     recently_opened_files: Some(".input_pdfs"),
                     max_recent_files: 10,
@@ -232,7 +285,41 @@ impl SimpleComponent for MainModel {
             input_pdf: None,
             book_id: None,
 
-            output_path: None,
+            output_io: None,
+            output_path_dir: OpenButton::builder()
+                .launch(OpenButtonSettings {
+                    dialog_settings: OpenDialogSettings {
+                        folder_mode: true,
+                        cancel_label: "Cancel".to_string(),
+                        accept_label: "Choose Output Directory".to_string(),
+                        create_folders: true,
+                        is_modal: true,
+                        filters: vec![],
+                    },
+                    text: "Select directory",
+                    recently_opened_files: Some(".output_dir"),
+                    max_recent_files: 10,
+                })
+                .forward(sender.input_sender(), |path| {
+                    MainInputMsg::SelectOutputIo(SelectedFileIo::for_dir(path))
+                }),
+            output_path_zip: OpenButton::builder()
+                .launch(OpenButtonSettings {
+                    dialog_settings: OpenDialogSettings {
+                        folder_mode: false,
+                        cancel_label: "Cancel".to_string(),
+                        accept_label: "Choose Output ZIP".to_string(),
+                        create_folders: true,
+                        is_modal: true,
+                        filters: vec![zip_filter],
+                    },
+                    text: "Select ZIP",
+                    recently_opened_files: Some(".output_zip"),
+                    max_recent_files: 10,
+                })
+                .forward(sender.input_sender(), |path| {
+                    MainInputMsg::SelectOutputIo(SelectedFileIo::for_zip(path))
+                }),
         };
 
         let widgets = view_output!();
