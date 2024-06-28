@@ -4,8 +4,13 @@
 *.yaml
 *.zip
 
+# Nix devenv (devenv.sh).
+.devenv/
+.devenv*
+.direnv/
+
 # Local scratch files.
-/scratch
+scratch/
 
 # Executable builds.
 /build
