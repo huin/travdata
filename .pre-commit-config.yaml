@@ -35,7 +35,7 @@ repos:
     hooks:
       - id: black
         name: black
-        entry: scripts/pre-commit-hooks/black
+        entry: /usr/bin/env poetry run scripts/pre-commit-hooks/black
         language: script
         files: "[.]py$"
       - id: check-xxx
@@ -45,16 +45,16 @@ repos:
         entry: "[X]XX"
       - id: mypy
         name: mypy
-        entry: scripts/pre-commit-hooks/mypy
+        entry: /usr/bin/env poetry run scripts/pre-commit-hooks/mypy
         language: script
         files: "[.]py$"
       - id: pylint
         name: pylint
-        entry: scripts/pre-commit-hooks/pylint
+        entry: /usr/bin/env poetry run scripts/pre-commit-hooks/pylint
         language: script
         files: "[.]py$"
       - id: pytest
         name: pytest
-        entry: scripts/pre-commit-hooks/pytest
+        entry: /usr/bin/env poetry run scripts/pre-commit-hooks/pytest
         language: script
         files: "[.]py$"
