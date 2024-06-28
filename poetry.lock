@@ -212,6 +212,16 @@ docs = ["readthedocs-sphinx-ext", "sphinx", "sphinx-rtd-theme"]
 tests = ["pytest"]
 
 [[package]]
+name = "jsonnet"
+version = "0.20.0"
+description = "Python bindings for Jsonnet - The data templating language"
+optional = false
+python-versions = "*"
+files = [
+    {file = "jsonnet-0.20.0.tar.gz", hash = "sha256:7e770c7bf3a366b97b650a39430450f77612e74406731eb75c5bd59f3f104d4f"},
+]
+
+[[package]]
 name = "macholib"
 version = "1.16.3"
 description = "Mach-O header analysis and editing"
@@ -927,4 +937,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "b78d0a798de3485fd8f31f6b4451785f8b66bebec1fa937321e30bf758b47d1a"
+content-hash = "b1ae0eba8915db190e2f9a5db15b2f38d4322390158fbfb037f5c16d4dd9b44b"

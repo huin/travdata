@@ -39,7 +39,7 @@ class Table:
 
     file_stem: pathlib.PurePath
     tags: set[str] = dataclasses.field(default_factory=set)
-    extraction: Optional[cfgextract.TableExtraction] = dataclasses.field(
+    extraction: Optional[cfgextract.TableExtractionBase] = dataclasses.field(
         default_factory=cfgextract.TableExtraction
     )
 

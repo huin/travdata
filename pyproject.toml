@@ -47,6 +47,7 @@ pyside6-essentials = {version = "^6.6.3", python = ">=3.11,<3.13"}
 xdg-base-dirs = "^6.0.1"
 cachetools = "^5.3.3"
 types-cachetools = "^5.3.0.7"
+jsonnet = "^0.20.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -57,8 +58,10 @@ exclude = '''(?x)(
     travdata/gui/.*  # QtCore.pyi syntax error.
 )'''
 incremental = false
+mypy_path = "pystubs"
 
 [tool.pylint.main]
+extension-pkg-allow-list = ["_jsonnet"]
 ignore = ".venv"
 ignore-paths = ["oneoff"]
 persistent = true

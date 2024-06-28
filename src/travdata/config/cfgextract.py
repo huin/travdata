@@ -148,10 +148,27 @@ class WrapRowEveryN(TableTransform, yamlutil.YamlScalarMixin):
         return cls(columns=0)
 
 
+class TableExtractionBase(abc.ABC):
+    """Marker base class for configuration of table extraction."""
+
+
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
-class TableExtraction(yamlutil.YamlSequenceMixin):
-    """Configures the specifics of extracting the CSV from the PDF."""
+class TableExtraction(TableExtractionBase, yamlutil.YamlSequenceMixin):
+    """Configures the specifics of transforming the CSV from the PDF."""
 
     yaml_tag: ClassVar = "!TableExtraction"
     transforms: list[TableTransform] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
+@yamlreg.YAML.register_class
+class JsonnetExtraction(TableExtractionBase, yamlutil.YamlMappingMixin):
+    """Configures Jsonnet-based transformation"""
+
+    yaml_tag: ClassVar = "!JsonnetExtraction"
+    code: str
+
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        return cls(code="")

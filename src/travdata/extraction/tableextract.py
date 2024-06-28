@@ -4,7 +4,8 @@
 import pathlib
 
 from travdata import config, filesio
-from travdata.extraction import transforms
+from travdata.config import cfgerror, cfgextract
+from travdata.extraction import jsonnettransform, transforms
 from travdata.extraction.pdf import tablereader
 from travdata.tabledata import TableData
 
@@ -38,9 +39,20 @@ def extract_table(
 
     pages: set[int] = {t["page"] for t in tables}
 
-    table_data = transforms.perform_transforms(
-        cfg=table.extraction,
-        tables=tables,
-    )
+    match table.extraction:
+        case cfgextract.TableExtraction() as cfg:
+            table_data = transforms.perform_transforms(
+                cfg=cfg,
+                tables=tables,
+            )
+        case cfgextract.JsonnetExtraction() as cfg:
+            table_data = jsonnettransform.perform_transforms(
+                cfg=cfg,
+                extracted_tables=tables,
+            )
+        case _:
+            raise cfgerror.ConfigurationError(
+                f"Unsupported type in !Table.extraction: {type(table.extraction).__name__}"
+            )
 
     return pages, table_data
