@@ -19,22 +19,19 @@ TabulaRow: TypeAlias = list[TabulaCell]
 class TabulaTable(TypedDict):
     """Type of tables emitted by tabula-py."""
 
-    # Ignoring irrelevant fields.
+    page_number: int
     data: list[TabulaRow]
 
 
 class TableReader(Protocol):
-    """Required interface to extract a table from a PDF file.
-
-    :param Protocol: _description_
-    """
+    """Required interface to extract a table from a PDF file."""
 
     def read_pdf_with_template(
         self,
         *,
         pdf_path: pathlib.Path,
         template_file: IO[str],
-    ) -> tuple[set[int], list[TabulaTable]]:
+    ) -> list[TabulaTable]:
         """Reads tables from a PDF file, using the named template file.
 
         :param pdf_path: Path to the PDF file.

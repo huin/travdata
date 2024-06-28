@@ -29,7 +29,7 @@ class FakeTableReader:
         tables_out: list[tablereader.TabulaTable] = []
         for table_in in tables_in:
             rows_out: list[tablereader.TabulaRow] = []
-            tables_out.append({"data": rows_out})
+            tables_out.append({"page_number": 1, "data": rows_out})
             for row_in in table_in:
                 cells_out: tablereader.TabulaRow = []
                 rows_out.append(cells_out)
@@ -42,9 +42,9 @@ class FakeTableReader:
         *,
         pdf_path: pathlib.Path,
         template_file: IO[str],
-    ) -> tuple[set[int], list[tablereader.TabulaTable]]:
+    ) -> list[tablereader.TabulaTable]:
         self.calls.append(Call(pdf_path, template_file.read()))
-        return {1}, self.return_tables
+        return self.return_tables
 
 
 @pytest.mark.parametrize(

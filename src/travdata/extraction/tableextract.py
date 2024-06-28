@@ -42,10 +42,12 @@ def extract_table(
         )
 
     with cfg_reader.open_read(table.tabula_template_path) as tmpl_file:
-        pages, tables = table_reader.read_pdf_with_template(
+        pages: set[int] = set()
+        tables = table_reader.read_pdf_with_template(
             pdf_path=pdf_path,
             template_file=tmpl_file,
         )
+        pages.update(table["page_number"] for table in tables)
         tabula_rows: Iterator[tablereader.TabulaRow] = _table_rows_concat(tables)
         rows = _table_rows_text(tabula_rows)
 

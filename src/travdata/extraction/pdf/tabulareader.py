@@ -76,7 +76,7 @@ class TabulaClient:
         *,
         pdf_path: pathlib.Path,
         template_file: IO[str],
-    ) -> tuple[set[int], list[tablereader.TabulaTable]]:
+    ) -> list[tablereader.TabulaTable]:
         """Reads table(s) from a PDF, based on the Tabula template.
 
         :param pdf_path: Path to PDF to read from.
@@ -110,7 +110,7 @@ class TabulaClient:
                 )
             )
 
-        return pages, result
+        return result
 
     def _read_pdf(self, **kwargs) -> list[tablereader.TabulaTable]:
         return cast(
