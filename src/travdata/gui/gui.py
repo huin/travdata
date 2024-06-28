@@ -9,7 +9,7 @@ import sys
 from PySide6 import QtCore, QtWidgets
 
 from travdata import config
-from travdata.extraction import tabulautil
+from travdata.extraction.pdf import tabulareader
 from travdata.gui.extraction import cfgwin
 
 
@@ -18,7 +18,7 @@ def main() -> None:
     app = QtWidgets.QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
 
-    with tabulautil.TabulaClient(
+    with tabulareader.TabulaClient(
         force_subprocess=False,
     ) as tabula_client:
         window = cfgwin.ExtractionConfigWindow(

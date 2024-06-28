@@ -13,7 +13,8 @@ from PySide6 import QtCore, QtWidgets, QtGui
 
 from travdata import commontext, config, filesio
 from travdata.config import cfgerror
-from travdata.extraction import bookextract, tableextract
+from travdata.extraction import bookextract
+from travdata.extraction.pdf import tablereader
 from travdata.gui import qtutil
 from travdata.gui.extraction import runnerwin
 
@@ -191,7 +192,7 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
     def __init__(
         self,
         thread_pool: QtCore.QThreadPool,
-        table_reader: tableextract.TableReader,
+        table_reader: tablereader.TableReader,
         default_config_path: Optional[pathlib.Path],
     ) -> None:
         super().__init__()

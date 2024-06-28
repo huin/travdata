@@ -5,36 +5,15 @@ import functools
 import itertools
 import pathlib
 import re
-from typing import IO, Iterable, Iterator, Protocol, TypeAlias
+from typing import Iterable, Iterator, Protocol, TypeAlias
 
 from travdata import config, filesio
 from travdata.config import cfgextract
-from travdata.extraction import parseutil, tabulautil
+from travdata.extraction import parseutil
+from travdata.extraction.pdf import tablereader
 
 
 _RX_ANYTHING = re.compile(".*")
-
-
-class TableReader(Protocol):
-    """Required interface to extract a table from a PDF file.
-
-    :param Protocol: _description_
-    """
-
-    def read_pdf_with_template(
-        self,
-        *,
-        pdf_path: pathlib.Path,
-        template_file: IO[str],
-    ) -> tuple[set[int], list[tabulautil.TabulaTable]]:
-        """Reads tables from a PDF file, using the named template file.
-
-        :param pdf_path: Path to the PDF file.
-        :param template_file: File-like reader for the Tabula template JSON
-        file.
-        :return: Set of page numbers and list of extracted tables.
-        """
-        raise NotImplementedError
 
 
 class ConfigurationError(Exception):
@@ -45,7 +24,7 @@ def extract_table(
     cfg_reader: filesio.Reader,
     table: config.Table,
     pdf_path: pathlib.Path,
-    table_reader: TableReader,
+    table_reader: tablereader.TableReader,
 ) -> tuple[set[int], Iterator[list[str]]]:
     """Extracts a table from the PDF.
 
@@ -67,8 +46,8 @@ def extract_table(
             pdf_path=pdf_path,
             template_file=tmpl_file,
         )
-        tabula_rows: Iterator[tabulautil.TabulaRow] = tabulautil.table_rows_concat(tables)
-        rows = tabulautil.table_rows_text(tabula_rows)
+        tabula_rows: Iterator[tablereader.TabulaRow] = _table_rows_concat(tables)
+        rows = _table_rows_text(tabula_rows)
 
         for transform_cfg in table.extraction.transforms:
             rows = _transform(transform_cfg, rows)
@@ -302,3 +281,29 @@ def _wrap_row_every_n(
 def _clean_rows(rows: Iterable[list[str]]) -> Iterator[list[str]]:
     for row in rows:
         yield [parseutil.clean_text(text) for text in row]
+
+
+def _table_rows_concat(
+    tables: Iterable[tablereader.TabulaTable],
+) -> Iterator[tablereader.TabulaRow]:
+    """Concatenates rows from multiple Tabula tables into a single row iterator.
+
+    :param tables: Tables to concatenate rows from.
+    :yield: Rows from the tables.
+    """
+    for t in tables:
+        yield from t["data"]
+
+
+def _table_row_text(row: tablereader.TabulaRow) -> list[str]:
+    return [cell["text"] for cell in row]
+
+
+def _table_rows_text(rows: Iterable[tablereader.TabulaRow]) -> Iterator[list[str]]:
+    """Converts Tabula row dictionaries into simple lists of cells.
+
+    :param rows: Tabula rows to read from.
+    :yield: Lists of strings, each presenting the text from the cell.
+    """
+    for row in rows:
+        yield _table_row_text(row)

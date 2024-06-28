@@ -13,7 +13,8 @@ from typing import Callable, Iterator
 
 from progress import bar as progress  # type: ignore[import-untyped]
 from travdata import config, filesio
-from travdata.extraction import bookextract, tabulautil
+from travdata.extraction import bookextract
+from travdata.extraction.pdf import tabulareader
 
 
 def add_subparser(subparsers) -> None:
@@ -202,7 +203,7 @@ def run(args: argparse.Namespace) -> int:
         print(error, file=sys.stderr)
 
     with (
-        tabulautil.TabulaClient(force_subprocess=args.tabula_force_subprocess) as tabula_client,
+        tabulareader.TabulaClient(force_subprocess=args.tabula_force_subprocess) as tabula_client,
         _progress_reporter(args.no_progress) as on_progress,
     ):
         bookextract.extract_book(

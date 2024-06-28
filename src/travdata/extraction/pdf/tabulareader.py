@@ -4,28 +4,11 @@
 import json
 import pathlib
 import tempfile
-from typing import IO, Iterable, Iterator, TypeAlias, TypedDict, cast
+from typing import IO, Self, TypedDict, cast
 
 import jpype  # type: ignore[import-untyped]
 import tabula
-
-
-class TabulaCell(TypedDict):
-    """Type of table cells emitted by tabula-py."""
-
-    # Ignoring irrelevant fields.
-    text: str
-
-
-# Type of table rows emitted by tabula-py.
-TabulaRow: TypeAlias = list[TabulaCell]
-
-
-class TabulaTable(TypedDict):
-    """Type of tables emitted by tabula-py."""
-
-    # Ignoring irrelevant fields.
-    data: list[TabulaRow]
+from travdata.extraction.pdf import tablereader
 
 
 class _TemplateEntry(TypedDict):
@@ -60,7 +43,7 @@ class TabulaClient:
         self._force_subprocess = force_subprocess
         self._needs_shutdown = False
 
-    def __enter__(self) -> "TabulaClient":
+    def __enter__(self) -> Self:
         # Hack to get tabula initialised from the main thread, otherwise the
         # application may not quit when multi-threaded (such as in a GUI).
         with tempfile.NamedTemporaryFile() as tmpfile:
@@ -93,7 +76,7 @@ class TabulaClient:
         *,
         pdf_path: pathlib.Path,
         template_file: IO[str],
-    ) -> tuple[set[int], list[TabulaTable]]:
+    ) -> tuple[set[int], list[tablereader.TabulaTable]]:
         """Reads table(s) from a PDF, based on the Tabula template.
 
         :param pdf_path: Path to PDF to read from.
@@ -103,7 +86,7 @@ class TabulaClient:
         """
         self._needs_shutdown = not self._force_subprocess
 
-        result: list[TabulaTable] = []
+        result: list[tablereader.TabulaTable] = []
         template = cast(list[_TemplateEntry], json.load(template_file))
 
         pages: set[int] = set()
@@ -113,7 +96,7 @@ class TabulaClient:
             pages.add(int(entry["page"]))
             result.extend(
                 cast(
-                    list[TabulaTable],
+                    list[tablereader.TabulaTable],
                     self._read_pdf(
                         input_path=pdf_path,
                         pages=[entry["page"]],
@@ -129,34 +112,10 @@ class TabulaClient:
 
         return pages, result
 
-    def _read_pdf(self, **kwargs) -> list[TabulaTable]:
+    def _read_pdf(self, **kwargs) -> list[tablereader.TabulaTable]:
         return cast(
-            list[TabulaTable],
+            list[tablereader.TabulaTable],
             tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
                 java_options=["-Djava.awt.headless=true"], output_format="json", **kwargs
             ),
         )
-
-
-def table_rows_concat(tables: Iterable[TabulaTable]) -> Iterator[TabulaRow]:
-    """Concatenates rows from multiple Tabula tables into a single row iterator.
-
-    :param tables: Tables to concatenate rows from.
-    :yield: Rows from the tables.
-    """
-    for t in tables:
-        yield from t["data"]
-
-
-def _table_row_text(row: TabulaRow) -> list[str]:
-    return [cell["text"] for cell in row]
-
-
-def table_rows_text(rows: Iterable[TabulaRow]) -> Iterator[list[str]]:
-    """Converts Tabula row dictionaries into simple lists of cells.
-
-    :param rows: Tabula rows to read from.
-    :yield: Lists of strings, each presenting the text from the cell.
-    """
-    for row in rows:
-        yield _table_row_text(row)

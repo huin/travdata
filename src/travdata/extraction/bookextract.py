@@ -9,6 +9,7 @@ from typing import Callable, Iterator, Optional
 
 from travdata import config, csvutil, filesio
 from travdata.extraction import index, tableextract
+from travdata.extraction.pdf import tablereader
 
 
 @dataclasses.dataclass
@@ -73,7 +74,7 @@ def _extract_single_table(
     *,
     cfg_reader: filesio.Reader,
     out_writer: filesio.ReadWriter,
-    table_reader: tableextract.TableReader,
+    table_reader: tablereader.TableReader,
     input_pdf: pathlib.Path,
     output_table: _OutputTable,
 ) -> set[int]:
@@ -107,7 +108,7 @@ class ExtractEvents:
 
 def extract_book(
     *,
-    table_reader: tableextract.TableReader,
+    table_reader: tablereader.TableReader,
     ext_cfg: ExtractionConfig,
     events: ExtractEvents,
 ) -> None:

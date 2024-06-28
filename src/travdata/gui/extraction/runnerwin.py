@@ -10,7 +10,8 @@ from typing import Optional
 
 from PySide6 import QtCore, QtWidgets
 
-from travdata.extraction import bookextract, tableextract
+from travdata.extraction import bookextract
+from travdata.extraction.pdf import tablereader
 from travdata.gui import qtutil
 
 
@@ -27,7 +28,7 @@ class _Worker(QtCore.QRunnable):
     def __init__(
         self,
         ext_cfg: bookextract.ExtractionConfig,
-        table_reader: tableextract.TableReader,
+        table_reader: tablereader.TableReader,
     ) -> None:
         super().__init__()
         self.signals = _WorkerSignals()
@@ -71,7 +72,7 @@ class ExtractionRunnerWindow(QtWidgets.QWidget):
         self,
         cfg: bookextract.ExtractionConfig,
         thread_pool: QtCore.QThreadPool,
-        table_reader: tableextract.TableReader,
+        table_reader: tablereader.TableReader,
         *args,
         **kwargs,
     ) -> None:
