@@ -54,7 +54,9 @@ exclude = '''(?x)(
 )'''
 
 [tool.pylint.main]
+ignore = ".venv"
 ignore-paths = ["oneoff"]
+persistent = true
 
 [tool.pylint."messages control"]
 disable = [

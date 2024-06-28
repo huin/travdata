@@ -1,6 +1,0 @@
-[MAIN]
-ignore=.venv
-persistent=yes
-
-[MESSAGES CONTROL]
-disable=too-few-public-methods
