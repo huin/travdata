@@ -11,6 +11,7 @@ from travdata import config, filesio
 from travdata.config import cfgextract
 from travdata.extraction import parseutil
 from travdata.extraction.pdf import tablereader
+from travdata.table import RowData
 
 
 _RX_ANYTHING = re.compile(".*")
@@ -48,8 +49,7 @@ def extract_table(
             template_file=tmpl_file,
         )
         pages.update(t["page"] for t in tables)
-        tabula_rows: Iterator[tablereader.TabulaRow] = _table_rows_concat(tables)
-        rows = _table_rows_text(tabula_rows)
+        rows: Iterator[RowData] = _table_rows_concat(tables)
 
         for transform_cfg in table.extraction.transforms:
             rows = _transform(transform_cfg, rows)
@@ -57,11 +57,11 @@ def extract_table(
         return pages, _clean_rows(rows)
 
 
-_Row: TypeAlias = list[str]
-_RowGroup: TypeAlias = list[_Row]
+# _RowGroup represents a consecutive set of rows within a Table.
+_RowGroup: TypeAlias = list[RowData]
 
 
-def _transform(cfg: cfgextract.TableTransform, rows: Iterable[_Row]) -> Iterator[_Row]:
+def _transform(cfg: cfgextract.TableTransform, rows: Iterable[RowData]) -> Iterator[RowData]:
     # pylint: disable=too-many-return-statements
     match cfg:
         case cfgextract.ExpandColumnOnRegex():
@@ -87,8 +87,8 @@ def _transform(cfg: cfgextract.TableTransform, rows: Iterable[_Row]) -> Iterator
 
 def _expand_column_on_regex(
     cfg: cfgextract.ExpandColumnOnRegex,
-    rows: Iterable[_Row],
-) -> Iterator[_Row]:
+    rows: Iterable[RowData],
+) -> Iterator[RowData]:
     rx = re.compile(cfg.pattern)
     for row in rows:
         try:
@@ -116,8 +116,8 @@ def _expand_column_on_regex(
 
 def _join_columns(
     cfg: cfgextract.JoinColumns,
-    rows: Iterable[_Row],
-) -> Iterator[_Row]:
+    rows: Iterable[RowData],
+) -> Iterator[RowData]:
     delim = cfg.delim
     from_, to = cfg.from_, cfg.to
     for row in rows:
@@ -135,14 +135,14 @@ def _join_columns(
         yield out_row
 
 
-def _prepend_row(cfg: cfgextract.PrependRow, rows: Iterable[_Row]) -> Iterator[_Row]:
+def _prepend_row(cfg: cfgextract.PrependRow, rows: Iterable[RowData]) -> Iterator[RowData]:
     """Implements the config.PrependRow transformation."""
     return itertools.chain([cfg.row], rows)
 
 
 class _LineGrouper(Protocol):
 
-    def __call__(self, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+    def __call__(self, lines: Iterable[RowData]) -> Iterator[_RowGroup]:
         """Group input rows into groups, according to the implementation.
 
         :param lines: Input rows.
@@ -151,18 +151,18 @@ class _LineGrouper(Protocol):
         raise NotImplementedError
 
 
-def _all_rows(lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+def _all_rows(lines: Iterable[RowData]) -> Iterator[_RowGroup]:
     yield list(lines)
 
 
 def _static_row_lengths(
-    cfg: cfgextract.StaticRowCounts, lines: Iterable[_Row]
+    cfg: cfgextract.StaticRowCounts, lines: Iterable[RowData]
 ) -> Iterator[_RowGroup]:
     for num_lines in cfg.row_counts:
         yield list(itertools.islice(lines, num_lines))
 
 
-def _empty_column(cfg: cfgextract.EmptyColumn, lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+def _empty_column(cfg: cfgextract.EmptyColumn, lines: Iterable[RowData]) -> Iterator[_RowGroup]:
     group: _RowGroup = []
     for line in lines:
         if line[cfg.column_index] == "":
@@ -189,7 +189,7 @@ def _make_line_grouper(cfg: cfgextract.RowGrouper) -> _LineGrouper:
             )
 
 
-def _multi_grouper(groupers: list[_LineGrouper], lines: Iterable[_Row]) -> Iterator[_RowGroup]:
+def _multi_grouper(groupers: list[_LineGrouper], lines: Iterable[RowData]) -> Iterator[_RowGroup]:
     for grouper in groupers:
         yield from grouper(lines)
     # Everything remaining is in individual groups.
@@ -199,8 +199,8 @@ def _multi_grouper(groupers: list[_LineGrouper], lines: Iterable[_Row]) -> Itera
 
 def _fold_rows(
     cfg: cfgextract.FoldRows,
-    rows: Iterable[_Row],
-) -> Iterator[_Row]:
+    rows: Iterable[RowData],
+) -> Iterator[RowData]:
     """Implements the config.FoldRows transformation."""
 
     grouper = _multi_grouper([_make_line_grouper(folder) for folder in cfg.group_by], rows)
@@ -219,14 +219,14 @@ def _fold_rows(
                 if text:
                     acc.append(text)
 
-        row: _Row = [" ".join(cell) for cell in row_accum]
+        row: RowData = [" ".join(cell) for cell in row_accum]
         yield row
 
 
 def _split_column(
     cfg: cfgextract.SplitColumn,
-    rows: Iterable[_Row],
-) -> Iterator[_Row]:
+    rows: Iterable[RowData],
+) -> Iterator[RowData]:
     pattern = re.compile(cfg.pattern)
     for row in rows:
         if len(row) <= cfg.column:
@@ -239,14 +239,14 @@ def _split_column(
 
 
 def _transpose(
-    rows: Iterable[_Row],
-) -> Iterator[_Row]:
+    rows: Iterable[RowData],
+) -> Iterator[RowData]:
     orig_rows = list(rows)
     orig_num_cols = max(len(row) for row in orig_rows)
     orig_num_rows = len(orig_rows)
 
     for i in range(orig_num_cols):
-        row: _Row = []
+        row: RowData = []
         for j in range(orig_num_rows):
             try:
                 cell = orig_rows[j][i]
@@ -258,11 +258,11 @@ def _transpose(
 
 def _wrap_row_every_n(
     cfg: cfgextract.WrapRowEveryN,
-    rows: Iterable[_Row],
-) -> Iterator[_Row]:
+    rows: Iterable[RowData],
+) -> Iterator[RowData]:
     if cfg.columns < 1:
         raise ConfigurationError(f"{cfg.yaml_tag}.columns must be at least 1, but is {cfg.columns}")
-    accum: _Row = []
+    accum: RowData = []
     for row in rows:
         for cell in row:
             accum.append(cell)
@@ -286,8 +286,8 @@ def _clean_rows(rows: Iterable[list[str]]) -> Iterator[list[str]]:
 
 
 def _table_rows_concat(
-    tables: Iterable[tablereader.TabulaTable],
-) -> Iterator[tablereader.TabulaRow]:
+    tables: Iterable[tablereader.ExtractedTable],
+) -> Iterator[RowData]:
     """Concatenates rows from multiple Tabula tables into a single row iterator.
 
     :param tables: Tables to concatenate rows from.
@@ -295,17 +295,3 @@ def _table_rows_concat(
     """
     for t in tables:
         yield from t["data"]
-
-
-def _table_row_text(row: tablereader.TabulaRow) -> list[str]:
-    return [cell["text"] for cell in row]
-
-
-def _table_rows_text(rows: Iterable[tablereader.TabulaRow]) -> Iterator[list[str]]:
-    """Converts Tabula row dictionaries into simple lists of cells.
-
-    :param rows: Tabula rows to read from.
-    :yield: Lists of strings, each presenting the text from the cell.
-    """
-    for row in rows:
-        yield _table_row_text(row)

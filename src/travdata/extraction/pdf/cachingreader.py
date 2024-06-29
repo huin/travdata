@@ -63,7 +63,7 @@ class _FileHashEntry:
 
 class _PersistantCache(TypedDict):
     version: str
-    entries: dict[str, list[tablereader.TabulaTable]]
+    entries: dict[str, list[tablereader.ExtractedTable]]
 
 
 class CachingTableReader:
@@ -76,7 +76,7 @@ class CachingTableReader:
     _delegate: tablereader.TableReader
     _file_hash_cache: MutableMapping[pathlib.Path, _FileHashEntry]
     _tables_cache_path: pathlib.Path
-    _tables_cache: MutableMapping[str, list[tablereader.TabulaTable]]
+    _tables_cache: MutableMapping[str, list[tablereader.ExtractedTable]]
 
     def __init__(
         self,
@@ -160,7 +160,7 @@ class CachingTableReader:
         *,
         pdf_path: pathlib.Path,
         template_file: IO[str],
-    ) -> list[tablereader.TabulaTable]:
+    ) -> list[tablereader.ExtractedTable]:
         """Caching implementation of ``TableReader.read_pdf_with_templates``."""
         pdf_hash = self._hash_file(pdf_path)
 

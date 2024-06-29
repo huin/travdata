@@ -2,25 +2,16 @@
 """Defines the ``TableReader`` protocol and related data types."""
 
 import pathlib
-from typing import IO, Protocol, TypeAlias, TypedDict
+from typing import IO, Protocol, TypedDict
+
+from travdata import table
 
 
-class TabulaCell(TypedDict):
-    """Type of table cells emitted by tabula-py."""
-
-    # Ignoring irrelevant fields.
-    text: str
-
-
-# Type of table rows emitted by tabula-py.
-TabulaRow: TypeAlias = list[TabulaCell]
-
-
-class TabulaTable(TypedDict):
-    """Type of tables emitted by tabula-py."""
+class ExtractedTable(TypedDict):
+    """Type of tables emitted by TableReader."""
 
     page: int
-    data: list[TabulaRow]
+    data: table.TableData
 
 
 class TableReader(Protocol):
@@ -31,7 +22,7 @@ class TableReader(Protocol):
         *,
         pdf_path: pathlib.Path,
         template_file: IO[str],
-    ) -> list[TabulaTable]:
+    ) -> list[ExtractedTable]:
         """Reads tables from a PDF file, using the named template file.
 
         :param pdf_path: Path to the PDF file.

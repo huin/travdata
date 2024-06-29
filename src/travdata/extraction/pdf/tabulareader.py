@@ -4,14 +4,17 @@
 import json
 import pathlib
 import tempfile
-from typing import IO, Self, TypedDict, cast
+from typing import IO, Self, TypeAlias, TypedDict, cast
 
 import jpype  # type: ignore[import-untyped]
 import tabula
 from travdata.extraction.pdf import tablereader
+from travdata.table import TableData
 
 
 class _TemplateEntry(TypedDict):
+    """JSON type for a Tabula template entry."""
+
     page: int
     extraction_method: str
     x1: float
@@ -20,6 +23,22 @@ class _TemplateEntry(TypedDict):
     y2: float
     width: float
     height: float
+
+
+class _TabulaCell(TypedDict):
+    """Subset of a JSON type for a table cell from Tabula."""
+
+    text: str
+
+
+# JSON type for a table row from Tabula.
+_TabulaRow: TypeAlias = list[_TabulaCell]
+
+
+class _TabulaTable(TypedDict):
+    """Subset of a JSON type for a table from Tabula."""
+
+    data: list[_TabulaRow]
 
 
 class TabulaClient:
@@ -76,7 +95,7 @@ class TabulaClient:
         *,
         pdf_path: pathlib.Path,
         template_file: IO[str],
-    ) -> list[tablereader.TabulaTable]:
+    ) -> list[tablereader.ExtractedTable]:
         """Reads table(s) from a PDF, based on the Tabula template.
 
         :param pdf_path: Path to PDF to read from.
@@ -86,38 +105,43 @@ class TabulaClient:
         """
         self._needs_shutdown = not self._force_subprocess
 
-        result: list[tablereader.TabulaTable] = []
+        result: list[tablereader.ExtractedTable] = []
         template = cast(list[_TemplateEntry], json.load(template_file))
 
         for entry in template:
             method = entry["extraction_method"]
-            result.extend(
-                self._read_pdf(
-                    input_path=pdf_path,
-                    page=entry["page"],
-                    multiple_tables=True,
-                    area=[entry["y1"], entry["x1"], entry["y2"], entry["x2"]],
-                    force_subprocess=self._force_subprocess,
-                    stream=method == "stream",
-                    guess=method == "guess",
-                    lattice=method == "lattice",
-                )
+
+            raw_tables = self._read_pdf(
+                input_path=pdf_path,
+                pages=[entry["page"]],
+                multiple_tables=True,
+                area=[entry["y1"], entry["x1"], entry["y2"], entry["x2"]],
+                force_subprocess=self._force_subprocess,
+                stream=method == "stream",
+                guess=method == "guess",
+                lattice=method == "lattice",
             )
+
+            # The raw tables from Tabula contain extraneous information that
+            # isn't used elsewhere. Trim it down before returning it.
+
+            table: TableData = []
+            # Typically there should only be one entry per call to _read_pdf,
+            # but flattening is easier than checking.
+            for raw_table in raw_tables:
+                for raw_row in raw_table["data"]:
+                    table.append([raw_cell["text"] for raw_cell in raw_row])
+
+            result.append({"page": entry["page"], "data": table})
 
         return result
 
-    def _read_pdf(self, page: int, **kwargs) -> list[tablereader.TabulaTable]:
-        tables = cast(
-            list[tablereader.TabulaTable],
+    def _read_pdf(self, **kwargs) -> list[_TabulaTable]:
+        return cast(
+            list[_TabulaTable],
             tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
                 java_options=["-Djava.awt.headless=true"],
                 output_format="json",
-                pages=[page],
                 **kwargs,
             ),
         )
-        # Typically there should only be one entry, but looping is easier than
-        # checking.
-        for table in tables:
-            table["page"] = page
-        return tables
