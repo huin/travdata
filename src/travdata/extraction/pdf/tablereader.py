@@ -37,6 +37,6 @@ class TableReader(Protocol):
         :param pdf_path: Path to the PDF file.
         :param template_file: File-like reader for the Tabula template JSON
         file.
-        :return: Set of page numbers and list of extracted tables.
+        :return: List of extracted tables.
         """
         raise NotImplementedError

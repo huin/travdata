@@ -82,7 +82,7 @@ class TabulaClient:
         :param pdf_path: Path to PDF to read from.
         :param template_file: File-like reader for the Tabula template JSON
         file.
-        :return: Page numbers and tables read from the PDF.
+        :return: Tables read from the PDF.
         """
         self._needs_shutdown = not self._force_subprocess
 

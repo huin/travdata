@@ -3,6 +3,7 @@
 
 import pathlib
 
+import hamcrest as hc
 import pytest
 import testfixtures  # type: ignore[import-untyped]
 
@@ -368,12 +369,13 @@ from .pdf import pdftestutil
     ],
 )
 def test_extract_table(
+    record_property,
     name: str,
     extract_cfg: cfgextract.TableExtraction,
     tables_in: list[list[list[str]]],
     expected: list[list[str]],
 ) -> None:
-    print(name)
+    record_property("name", name)
     tmpl_path = pathlib.PurePath("foo/bar.tabula-template.json")
     tmpl_content = '{"fake": "json"}'
     files = {tmpl_path: tmpl_content}
@@ -381,9 +383,10 @@ def test_extract_table(
     file_stem = pathlib.Path("foo/bar")
     with filesio.MemReadWriter.new_reader(files) as cfg_reader:
         table_reader = pdftestutil.FakeTableReader()
-        table_reader.return_tables = [
-            pdftestutil.tabula_table_from_simple(1, table) for table in tables_in
-        ]
+        expect_call = pdftestutil.Call(pdf_path, tmpl_content)
+        table_reader.return_tables = {
+            expect_call: [pdftestutil.tabula_table_from_simple(1, table) for table in tables_in]
+        }
         actual_pages, actual = tableextract.extract_table(
             cfg_reader=cfg_reader,
             table=config.Table(
@@ -395,8 +398,6 @@ def test_extract_table(
         )
     assert actual_pages == {1}
     # Check read_pdf_with_template calls.
-    testfixtures.compare(
-        expected=[pdftestutil.Call(pdf_path, tmpl_content)], actual=table_reader.calls
-    )
+    hc.assert_that(table_reader.calls, hc.contains_exactly(hc.equal_to(expect_call)))
     # Check output.
     testfixtures.compare(expected=expected, actual=actual)

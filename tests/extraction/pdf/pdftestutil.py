@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-class-docstring,missing-function-docstring,missing-module-docstring
 
+import copy
 import dataclasses
 import pathlib
 from typing import IO
@@ -16,11 +17,11 @@ class Call:
 
 class FakeTableReader:
     calls: list[Call]
-    return_tables: list[tablereader.TabulaTable]
+    return_tables: dict[Call, list[tablereader.TabulaTable]]
 
     def __init__(self) -> None:
         self.calls = []
-        self.return_tables = []
+        self.return_tables = {}
 
     def read_pdf_with_template(
         self,
@@ -28,8 +29,9 @@ class FakeTableReader:
         pdf_path: pathlib.Path,
         template_file: IO[str],
     ) -> list[tablereader.TabulaTable]:
-        self.calls.append(Call(pdf_path, template_file.read()))
-        return self.return_tables
+        call = Call(pdf_path, template_file.read())
+        self.calls.append(call)
+        return copy.deepcopy(self.return_tables[call])
 
 
 def tabula_table_from_simple(
