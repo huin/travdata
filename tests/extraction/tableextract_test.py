@@ -1,50 +1,15 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-class-docstring,missing-function-docstring,missing-module-docstring
 
-import dataclasses
 import pathlib
-from typing import IO
 
 import pytest
 import testfixtures  # type: ignore[import-untyped]
+
 from travdata import config, filesio
 from travdata.config import cfgextract
 from travdata.extraction import tableextract
-from travdata.extraction.pdf import tablereader
-
-
-@dataclasses.dataclass(frozen=True)
-class Call:
-    pdf_path: pathlib.Path
-    template_content: str
-
-
-class FakeTableReader:
-    calls: list[Call]
-    return_tables: list[tablereader.TabulaTable]
-
-    def __init__(self, tables_in: list[list[list[str]]]) -> None:
-        self.calls = []
-
-        tables_out: list[tablereader.TabulaTable] = []
-        for table_in in tables_in:
-            rows_out: list[tablereader.TabulaRow] = []
-            tables_out.append({"page_number": 1, "data": rows_out})
-            for row_in in table_in:
-                cells_out: tablereader.TabulaRow = []
-                rows_out.append(cells_out)
-                for cell_in in row_in:
-                    cells_out.append({"text": cell_in})
-        self.return_tables = tables_out
-
-    def read_pdf_with_template(
-        self,
-        *,
-        pdf_path: pathlib.Path,
-        template_file: IO[str],
-    ) -> list[tablereader.TabulaTable]:
-        self.calls.append(Call(pdf_path, template_file.read()))
-        return self.return_tables
+from .pdf import pdftestutil
 
 
 @pytest.mark.parametrize(
@@ -405,7 +370,7 @@ class FakeTableReader:
 def test_extract_table(
     name: str,
     extract_cfg: cfgextract.TableExtraction,
-    tables_in,
+    tables_in: list[list[list[str]]],
     expected: list[list[str]],
 ) -> None:
     print(name)
@@ -415,7 +380,10 @@ def test_extract_table(
     pdf_path = pathlib.Path("some.pdf")
     file_stem = pathlib.Path("foo/bar")
     with filesio.MemReadWriter.new_reader(files) as cfg_reader:
-        table_reader = FakeTableReader(tables_in=tables_in)
+        table_reader = pdftestutil.FakeTableReader()
+        table_reader.return_tables = [
+            pdftestutil.tabula_table_from_simple(1, table) for table in tables_in
+        ]
         actual_pages, actual = tableextract.extract_table(
             cfg_reader=cfg_reader,
             table=config.Table(
@@ -427,6 +395,8 @@ def test_extract_table(
         )
     assert actual_pages == {1}
     # Check read_pdf_with_template calls.
-    testfixtures.compare(expected=[Call(pdf_path, tmpl_content)], actual=table_reader.calls)
+    testfixtures.compare(
+        expected=[pdftestutil.Call(pdf_path, tmpl_content)], actual=table_reader.calls
+    )
     # Check output.
     testfixtures.compare(expected=expected, actual=actual)
