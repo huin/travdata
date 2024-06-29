@@ -19,7 +19,7 @@ TabulaRow: TypeAlias = list[TabulaCell]
 class TabulaTable(TypedDict):
     """Type of tables emitted by tabula-py."""
 
-    page_number: int
+    page: int
     data: list[TabulaRow]
 
 

@@ -125,7 +125,7 @@ def test_does_not_cache_distinct_reads(
     distinct_reads: TwoReadsCase,
 ) -> None:
     first_original_tables = [
-        pdftestutil.fake_table_data(num_rows=1, num_cols=1, page_number=1),
+        pdftestutil.fake_table_data(num_rows=1, num_cols=1, page=1),
     ]
     first_expect_call = pdftestutil.Call(
         pdf_path=distinct_reads.first_pdf.path,
@@ -134,7 +134,7 @@ def test_does_not_cache_distinct_reads(
     fake_delegate.return_tables[first_expect_call] = first_original_tables
 
     second_original_tables = [
-        pdftestutil.fake_table_data(num_rows=2, num_cols=1, page_number=2),
+        pdftestutil.fake_table_data(num_rows=2, num_cols=1, page=2),
     ]
     second_expect_call = pdftestutil.Call(
         pdf_path=distinct_reads.second_pdf.path,

@@ -47,7 +47,7 @@ def extract_table(
             pdf_path=pdf_path,
             template_file=tmpl_file,
         )
-        pages.update(table["page_number"] for table in tables)
+        pages.update(t["page"] for t in tables)
         tabula_rows: Iterator[tablereader.TabulaRow] = _table_rows_concat(tables)
         rows = _table_rows_text(tabula_rows)
 

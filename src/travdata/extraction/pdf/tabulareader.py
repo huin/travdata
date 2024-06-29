@@ -50,7 +50,7 @@ class TabulaClient:
             tmpfile.write(b"dummy data")
             tmpfile.flush()
             try:
-                _ = self._read_pdf(input_path=tmpfile.name, pages=[1])
+                _ = self._read_pdf(input_path=tmpfile.name, page=1)
             except Exception:  # pylint: disable=broad-exception-caught
                 # Expected failure due to dummy file not being a real PDF.
                 pass
@@ -89,33 +89,35 @@ class TabulaClient:
         result: list[tablereader.TabulaTable] = []
         template = cast(list[_TemplateEntry], json.load(template_file))
 
-        pages: set[int] = set()
-
         for entry in template:
             method = entry["extraction_method"]
-            pages.add(int(entry["page"]))
             result.extend(
-                cast(
-                    list[tablereader.TabulaTable],
-                    self._read_pdf(
-                        input_path=pdf_path,
-                        pages=[entry["page"]],
-                        multiple_tables=True,
-                        area=[entry["y1"], entry["x1"], entry["y2"], entry["x2"]],
-                        force_subprocess=self._force_subprocess,
-                        stream=method == "stream",
-                        guess=method == "guess",
-                        lattice=method == "lattice",
-                    ),
+                self._read_pdf(
+                    input_path=pdf_path,
+                    page=entry["page"],
+                    multiple_tables=True,
+                    area=[entry["y1"], entry["x1"], entry["y2"], entry["x2"]],
+                    force_subprocess=self._force_subprocess,
+                    stream=method == "stream",
+                    guess=method == "guess",
+                    lattice=method == "lattice",
                 )
             )
 
         return result
 
-    def _read_pdf(self, **kwargs) -> list[tablereader.TabulaTable]:
-        return cast(
+    def _read_pdf(self, page: int, **kwargs) -> list[tablereader.TabulaTable]:
+        tables = cast(
             list[tablereader.TabulaTable],
             tabula.read_pdf(  # pyright: ignore[reportPrivateImportUsage]
-                java_options=["-Djava.awt.headless=true"], output_format="json", **kwargs
+                java_options=["-Djava.awt.headless=true"],
+                output_format="json",
+                pages=[page],
+                **kwargs,
             ),
         )
+        # Typically there should only be one entry, but looping is easier than
+        # checking.
+        for table in tables:
+            table["page"] = page
+        return tables

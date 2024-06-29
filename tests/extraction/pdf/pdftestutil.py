@@ -35,7 +35,7 @@ class FakeTableReader:
 
 
 def tabula_table_from_simple(
-    page_number: int,
+    page: int,
     rows: list[list[str]],
 ) -> tablereader.TabulaTable:
     rows_out: list[tablereader.TabulaRow] = []
@@ -46,14 +46,14 @@ def tabula_table_from_simple(
         for cell_in in row_in:
             cells_out.append({"text": cell_in})
 
-    return {"page_number": page_number, "data": rows_out}
+    return {"page": page, "data": rows_out}
 
 
 def fake_table_data(
     *,
     num_rows: int = 2,
     num_cols: int = 2,
-    page_number: int = 1,
+    page: int = 1,
 ) -> tablereader.TabulaTable:
     rows: list[tablereader.TabulaRow] = []
 
@@ -63,4 +63,4 @@ def fake_table_data(
             row.append({"text": f"r{ri}c{ci}"})
         rows.append(row)
 
-    return {"page_number": page_number, "data": rows}
+    return {"page": page, "data": rows}
