@@ -14,7 +14,7 @@ from typing import Callable, Iterator
 from progress import bar as progress  # type: ignore[import-untyped]
 from travdata import config, filesio
 from travdata.extraction import bookextract
-from travdata.extraction.pdf import tabulareader
+from travdata.extraction.pdf import cachingreader, tabulareader
 
 
 def add_subparser(subparsers) -> None:
@@ -64,6 +64,12 @@ def add_subparser(subparsers) -> None:
     argparser.add_argument(
         "--no-progress",
         help="""Disable progress bar.""",
+        action="store_true",
+        default=False,
+    )
+    argparser.add_argument(
+        "--no-table-cache",
+        help="""Disable the table cache.""",
         action="store_true",
         default=False,
     )
@@ -204,10 +210,14 @@ def run(args: argparse.Namespace) -> int:
 
     with (
         tabulareader.TabulaClient(force_subprocess=args.tabula_force_subprocess) as tabula_client,
+        cachingreader.optional_table_cache(
+            delegate=tabula_client,
+            disable=args.no_table_cache,
+        ) as table_reader,
         _progress_reporter(args.no_progress) as on_progress,
     ):
         bookextract.extract_book(
-            table_reader=tabula_client,
+            table_reader=table_reader,
             ext_cfg=ext_cfg,
             events=bookextract.ExtractEvents(
                 on_progress=on_progress,

@@ -2,14 +2,16 @@
 """Provides a caching wrapper around a ``TableReader``"""
 
 from collections.abc import MutableMapping
+import contextlib
 import dataclasses
 import hashlib
 import io
 import json
 import pathlib
-from typing import IO, Self, TypedDict
+from typing import IO, Iterator, Optional, Self, TypedDict
 
 import cachetools
+import xdg_base_dirs
 
 from travdata.extraction.pdf import tablereader
 
@@ -18,6 +20,25 @@ from travdata.extraction.pdf import tablereader
 _MAX_CACHE_SIZE = 1 << 20
 
 _PERSIST_CACHE_VERSION = "1"
+
+
+@contextlib.contextmanager
+def optional_table_cache(
+    delegate: tablereader.TableReader,
+    disable: bool,
+    cache_path: Optional[pathlib.Path] = None,
+) -> Iterator[tablereader.TableReader]:
+    """Conditionally injects a CachingTableReader."""
+    if disable:
+        yield delegate
+    else:
+        if cache_path is None:
+            cache_path = xdg_base_dirs.xdg_cache_home() / "travdata" / "table-cache.json"
+        with CachingTableReader(
+            delegate=delegate,
+            cache_path=cache_path,
+        ) as caching_reader:
+            yield caching_reader
 
 
 def _key(
@@ -96,6 +117,8 @@ class CachingTableReader:
             "entries": {},
         }
         dumped_cache["entries"].update(self._tables_cache)
+
+        self._tables_cache_path.parent.mkdir(parents=True, exist_ok=True)
 
         with self._tables_cache_path.open("wt") as f:
             json.dump(dumped_cache, f)
