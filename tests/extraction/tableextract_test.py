@@ -8,6 +8,7 @@ import pytest
 import testfixtures  # type: ignore[import-untyped]
 
 from travdata import config, filesio
+from travdata import table as tabledata
 from travdata.config import cfgextract
 from travdata.extraction import tableextract
 from .pdf import pdftestutil
@@ -372,10 +373,17 @@ def test_extract_table(
     record_property,
     name: str,
     extract_cfg: cfgextract.TableExtraction,
-    tables_in: list[list[list[str]]],
-    expected: list[list[str]],
+    tables_in: list[tabledata.TableData],
+    expected: tabledata.TableData,
 ) -> None:
+    # pylint: disable=too-many-locals
     record_property("name", name)
+
+    # Self-check the inputs.
+    for table_in in tables_in:
+        tabledata.check_table_type(table_in)
+    tabledata.check_table_type(expected)
+
     tmpl_path = pathlib.PurePath("foo/bar.tabula-template.json")
     tmpl_content = '{"fake": "json"}'
     files = {tmpl_path: tmpl_content}
@@ -401,3 +409,4 @@ def test_extract_table(
     hc.assert_that(table_reader.calls, hc.contains_exactly(hc.equal_to(expect_call)))
     # Check output.
     testfixtures.compare(expected=expected, actual=actual)
+    # pylint: enable=too-many-locals
