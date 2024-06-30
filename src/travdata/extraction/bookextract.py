@@ -8,6 +8,7 @@ import pathlib
 from typing import Callable, Iterator, Optional
 
 from travdata import config, csvutil, filesio
+from travdata.config import cfgerror
 from travdata.extraction import index, tableextract
 from travdata.extraction.pdf import tablereader
 
@@ -157,7 +158,7 @@ def extract_book(
                     input_pdf=ext_cfg.input_pdf,
                     output_table=output_table,
                 )
-            except tableextract.ConfigurationError as exc:
+            except cfgerror.ConfigurationError as exc:
                 if events.on_error:
                     events.on_error(
                         f"Configuration error while processing table "
