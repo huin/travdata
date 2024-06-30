@@ -9,7 +9,7 @@ from typing import IO, Self, TypeAlias, TypedDict, cast
 import jpype  # type: ignore[import-untyped]
 import tabula
 from travdata.extraction.pdf import tablereader
-from travdata.table import TableData
+from travdata.tabledata import TableData
 
 
 class _TemplateEntry(TypedDict):

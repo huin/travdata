@@ -9,7 +9,7 @@ from typing import Iterable, Iterator, Protocol, TypeAlias
 from travdata.config import cfgerror, cfgextract
 from travdata.extraction import parseutil
 from travdata.extraction.pdf import tablereader
-from travdata.table import RowData, TableData
+from travdata.tabledata import RowData, TableData
 
 
 _RX_ANYTHING = re.compile(".*")

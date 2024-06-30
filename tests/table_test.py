@@ -4,7 +4,7 @@
 from typing import Any
 import pytest
 
-from travdata import table as tabledata
+from travdata import tabledata
 
 
 @pytest.mark.parametrize(

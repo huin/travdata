@@ -7,7 +7,7 @@ import pathlib
 from typing import IO
 
 from travdata.extraction.pdf import tablereader
-from travdata.table import RowData, TableData
+from travdata.tabledata import RowData, TableData
 
 
 @dataclasses.dataclass(frozen=True)

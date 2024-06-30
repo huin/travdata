@@ -8,7 +8,7 @@ import pytest
 import testfixtures  # type: ignore[import-untyped]
 
 from travdata import config, filesio
-from travdata import table as tabledata
+from travdata import tabledata
 from travdata.config import cfgextract
 from travdata.extraction import tableextract
 from .pdf import pdftestutil

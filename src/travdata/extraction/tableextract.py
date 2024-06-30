@@ -6,7 +6,7 @@ import pathlib
 from travdata import config, filesio
 from travdata.extraction import transforms
 from travdata.extraction.pdf import tablereader
-from travdata.table import TableData
+from travdata.tabledata import TableData
 
 
 def extract_table(

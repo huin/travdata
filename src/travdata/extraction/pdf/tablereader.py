@@ -4,14 +4,14 @@
 import pathlib
 from typing import IO, Protocol, TypedDict
 
-from travdata import table
+from travdata import tabledata
 
 
 class ExtractedTable(TypedDict):
     """Type of tables emitted by TableReader."""
 
     page: int
-    data: table.TableData
+    data: tabledata.TableData
 
 
 class TableReader(Protocol):
