@@ -16,13 +16,11 @@ def perform_transforms(
     extracted_tables: list[tablereader.ExtractedTable],
 ) -> TableData:
     """Transforms the rows based on the configured Jsonnet."""
-    tables_in: list[TableData] = [t["data"] for t in extracted_tables]
-
     result_json = jsonnetlib.evaluate_snippet(
         "JsonnetExtraction",
         cfg.code,
         tla_codes={
-            "tables": json.dumps(tables_in),
+            "tables": json.dumps(extracted_tables),
         },
     )
     result = json.loads(result_json)

@@ -33,7 +33,10 @@ def test_perform_transform() -> None:
     cfg = cfgextract.JsonnetExtraction(
         code="""
         function(tables)
-            local rows = std.flattenArrays(tables);
+            local rows = std.flatMap(
+                function(table) table.data,
+                tables,
+            );
             local header = rows[0];
             local tail = rows[1:];
             [header + ["Square"]] +
