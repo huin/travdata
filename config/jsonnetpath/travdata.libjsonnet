@@ -1,0 +1,22 @@
+{
+    expand_column_on_regex:: function(cfg, rows) null,
+    fold_rows:: function(cfg, rows) null,
+    join_columns:: function(cfg, rows) null,
+    prepend_row:: function(cfg, rows) null,
+    split_column:: function(cfg, rows) null,
+    transpose:: function(rows) null,
+    wrap_row_every_n:: function(n, rows)
+        std.foldl(
+            function(acc, elem)
+                local cur_num_rows = std.length(acc);
+
+                if cur_num_rows > 0 || std.length(acc[cur_num_rows-1]) < n
+                then
+                    acc[0:cur_num_rows-1] + [acc[-1] + [elem]]
+                else
+                    acc + [[elem]]
+            ,
+            [], // init
+        )
+    ,
+}
