@@ -8,6 +8,7 @@
   packages = with pkgs; [
     git
     jdk
+    luaformatter
     poetry
     pre-commit
     python311Full
