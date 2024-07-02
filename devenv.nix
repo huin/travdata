@@ -8,6 +8,7 @@
   packages = with pkgs; [
     git
     jdk
+    jsonnet
     poetry
     pre-commit
     python311Full
