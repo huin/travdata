@@ -7,7 +7,9 @@
   # https://devenv.sh/packages/
   packages = with pkgs; [
     git
+    jdk
     poetry
+    pre-commit
     python311Full
   ];
 
