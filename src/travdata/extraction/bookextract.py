@@ -5,11 +5,11 @@ import contextlib
 import csv
 import dataclasses
 import pathlib
-from typing import Callable, Iterator, Optional
+from typing import Callable, Iterable, Iterator, Optional
 
 from travdata import config, csvutil, filesio
 from travdata.config import cfgerror
-from travdata.extraction import index, tableextract
+from travdata.extraction import ecmastransform, index, tableextract
 from travdata.extraction.pdf import tablereader
 
 
@@ -55,7 +55,7 @@ def _filter_tables(
     out_writer: filesio.ReadWriter,
 ) -> Iterator[_OutputTable]:
     for table in book_group.all_tables():
-        if table.extraction is None:
+        if table.disable_extraction:
             continue
         out_filepath = table.file_stem.with_suffix(".csv")
 
@@ -71,11 +71,20 @@ def _filter_tables(
         yield _OutputTable(out_filepath, table)
 
 
-def _extract_single_table(
+def _init_ecmas_trn(
+    modules: Iterable[pathlib.PurePath],
+    ecmas_trn: ecmastransform.Transformer,
+) -> None:
+    for module_path in modules:
+        ecmas_trn.load_module(module_path)
+
+
+def _extract_single_table(  # pylint: disable=too-many-arguments
     *,
     cfg_reader: filesio.Reader,
     out_writer: filesio.ReadWriter,
     table_reader: tablereader.TableReader,
+    ecmas_trn: ecmastransform.Transformer,
     input_pdf: pathlib.Path,
     output_table: _OutputTable,
 ) -> set[int]:
@@ -85,6 +94,7 @@ def _extract_single_table(
         table=output_table.table,
         pdf_path=input_pdf,
         table_reader=table_reader,
+        ecmas_trn=ecmas_trn,
     )
     with csvutil.open_by_read_writer(out_writer, output_table.out_filepath) as f:
         csv.writer(f).writerows(rows)
@@ -125,6 +135,7 @@ def extract_book(
         ext_cfg.cfg_reader_ctx as cfg_reader,
         ext_cfg.out_writer_ctx as out_writer,
         index.writer(out_writer) as indexer,
+        ecmastransform.transformer(cfg_reader) as ecmas_trn,
     ):
         cfg = config.load_config(cfg_reader)
         try:
@@ -143,6 +154,8 @@ def extract_book(
             key=lambda ft: ft.out_filepath,
         )
 
+        _init_ecmas_trn(cfg.ecma_script_modules, ecmas_trn)
+
         if events.on_progress:
             events.on_progress(Progress(0, len(output_tables)))
 
@@ -155,6 +168,7 @@ def extract_book(
                     cfg_reader=cfg_reader,
                     out_writer=out_writer,
                     table_reader=table_reader,
+                    ecmas_trn=ecmas_trn,
                     input_pdf=ext_cfg.input_pdf,
                     output_table=output_table,
                 )

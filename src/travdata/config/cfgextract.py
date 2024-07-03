@@ -9,13 +9,13 @@ from travdata import yamlutil
 from travdata.config import yamlreg
 
 
-class TableTransform(abc.ABC):
-    """Marker base class for configuration of table transformations."""
+class LegacyTransform(abc.ABC):
+    """Marker base class for configuration of a singular table transformations."""
 
 
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
-class ExpandColumnOnRegex(TableTransform, yamlutil.YamlMappingMixin):
+class ExpandColumnOnRegex(LegacyTransform, yamlutil.YamlMappingMixin):
     """Splits a column by the matches of a regex."""
 
     yaml_tag: ClassVar = "!ExpandColumnOnRegex"
@@ -44,7 +44,7 @@ class ExpandColumnOnRegex(TableTransform, yamlutil.YamlMappingMixin):
 
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
-class PrependRow(TableTransform, yamlutil.YamlSequenceMixin):
+class PrependRow(LegacyTransform, yamlutil.YamlSequenceMixin):
     """Appends given literal row values to the start of a table."""
 
     yaml_tag: ClassVar = "!PrependRow"
@@ -57,7 +57,7 @@ class PrependRow(TableTransform, yamlutil.YamlSequenceMixin):
 
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
-class Transpose(TableTransform, yamlutil.YamlMappingMixin):
+class Transpose(LegacyTransform, yamlutil.YamlMappingMixin):
     """Transposes the table (rows become columns and vice versa)."""
 
     yaml_tag: ClassVar = "!Transpose"
@@ -103,7 +103,7 @@ class EmptyColumn(RowGrouper, yamlutil.YamlScalarMixin):
 
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
-class FoldRows(TableTransform, yamlutil.YamlSequenceMixin):
+class FoldRows(LegacyTransform, yamlutil.YamlSequenceMixin):
     """Folds rows, according to the given sequence of groupings."""
 
     yaml_tag: ClassVar = "!FoldRows"
@@ -112,7 +112,7 @@ class FoldRows(TableTransform, yamlutil.YamlSequenceMixin):
 
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
-class JoinColumns(TableTransform, yamlutil.YamlMappingMixin):
+class JoinColumns(LegacyTransform, yamlutil.YamlMappingMixin):
     """Joins a range of columns."""
 
     yaml_tag: ClassVar = "!JoinColumns"
@@ -123,7 +123,7 @@ class JoinColumns(TableTransform, yamlutil.YamlMappingMixin):
 
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
-class SplitColumn(TableTransform, yamlutil.YamlMappingMixin):
+class SplitColumn(LegacyTransform, yamlutil.YamlMappingMixin):
     """Splits a column on a pattern."""
 
     yaml_tag: ClassVar = "!SplitColumn"
@@ -137,7 +137,7 @@ class SplitColumn(TableTransform, yamlutil.YamlMappingMixin):
 
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
-class WrapRowEveryN(TableTransform, yamlutil.YamlScalarMixin):
+class WrapRowEveryN(LegacyTransform, yamlutil.YamlScalarMixin):
     """Wraps a row every N columns."""
 
     yaml_tag: ClassVar = "!WrapRowEveryN"
@@ -148,10 +148,27 @@ class WrapRowEveryN(TableTransform, yamlutil.YamlScalarMixin):
         return cls(columns=0)
 
 
+class TableTransform(abc.ABC):
+    """Marker base class for configuration of table transforms."""
+
+
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
-class TableExtraction(yamlutil.YamlSequenceMixin):
-    """Configures the specifics of extracting the CSV from the PDF."""
+class LegacyTransformSeq(TableTransform, yamlutil.YamlSequenceMixin):
+    """Legacy table transformation sequence."""
 
-    yaml_tag: ClassVar = "!TableExtraction"
-    transforms: list[TableTransform] = dataclasses.field(default_factory=list)
+    yaml_tag: ClassVar = "!LegacyTransformSeq"
+    transforms: list[LegacyTransform] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
+@yamlreg.YAML.register_class
+class EcmaScriptTransform(TableTransform, yamlutil.YamlMappingMixin):
+    """ECMAScript based table transformation."""
+
+    yaml_tag: ClassVar = "!EcmaScriptTransform"
+    src: str
+
+    @classmethod
+    def yaml_create_empty(cls) -> Self:
+        return cls(src="")

@@ -10,7 +10,7 @@ import testfixtures  # type: ignore[import-untyped]
 from travdata import config, filesio
 from travdata import tabledata
 from travdata.config import cfgextract
-from travdata.extraction import tableextract
+from travdata.extraction import ecmastransform, tableextract
 from .pdf import pdftestutil
 
 
@@ -19,7 +19,7 @@ from .pdf import pdftestutil
     [
         (
             "Base behaviour with default config.",
-            cfgextract.TableExtraction(),
+            cfgextract.LegacyTransformSeq(),
             [
                 [
                     ["header 1", "header 2"],
@@ -33,7 +33,7 @@ from .pdf import pdftestutil
         ),
         (
             "Concatenates input tables.",
-            cfgextract.TableExtraction(),
+            cfgextract.LegacyTransformSeq(),
             [
                 [
                     ["header 1", "header 2"],
@@ -53,7 +53,7 @@ from .pdf import pdftestutil
         ),
         (
             "Adds specified leading row.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.PrependRow(["added header 1", "added header 2"])]
             ),
             [
@@ -70,7 +70,7 @@ from .pdf import pdftestutil
         ),
         (
             "Merges specified header rows, and keeps individual rows thereafter.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.FoldRows(
                         [
@@ -95,7 +95,7 @@ from .pdf import pdftestutil
         ),
         (
             "Merges rows based on configured StaticRowLengths.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.FoldRows(
                         [
@@ -124,7 +124,7 @@ from .pdf import pdftestutil
         ),
         (
             "Merges rows based on configured leading StaticRowLengths and EmptyColumn thereafter.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.FoldRows(
                         [
@@ -155,7 +155,7 @@ from .pdf import pdftestutil
         ),
         (
             "Fold all rows.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.FoldRows([cfgextract.AllRows()])],
             ),
             [
@@ -171,7 +171,7 @@ from .pdf import pdftestutil
         ),
         (
             "Splits a column by the matches of a regex.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.ExpandColumnOnRegex(
                         column=1,
@@ -202,7 +202,7 @@ from .pdf import pdftestutil
         ),
         (
             "Joins a range of columns - from+to set.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.JoinColumns(from_=1, to=3, delim=" ")],
             ),
             [
@@ -226,7 +226,7 @@ from .pdf import pdftestutil
         ),
         (
             "Joins a range of columns - from set.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.JoinColumns(from_=1, delim=" ")],
             ),
             [
@@ -250,7 +250,7 @@ from .pdf import pdftestutil
         ),
         (
             "Joins a range of columns - to set.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.JoinColumns(to=3, delim=" ")],
             ),
             [
@@ -274,7 +274,7 @@ from .pdf import pdftestutil
         ),
         (
             "Joins a range of columns - neither from/to set set.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.JoinColumns(delim=" ")],
             ),
             [
@@ -298,7 +298,7 @@ from .pdf import pdftestutil
         ),
         (
             "Splits a column on a pattern.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.SplitColumn(
                         column=1,
@@ -325,7 +325,7 @@ from .pdf import pdftestutil
         ),
         (
             "Wraps a row every N columns.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.WrapRowEveryN(columns=2),
                 ],
@@ -351,7 +351,7 @@ from .pdf import pdftestutil
         ),
         (
             "Transposes a table.",
-            cfgextract.TableExtraction(
+            cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.Transpose()],
             ),
             [
@@ -367,12 +367,34 @@ from .pdf import pdftestutil
                 ["r1c3", "", "r3c3"],
             ],
         ),
+        (
+            "Uses ECMAScript to transform a table.",
+            cfgextract.EcmaScriptTransform(
+                src="return concatExtTables(extTables);",
+            ),
+            [
+                [
+                    ["r1c1", "r1c2"],
+                    ["r2c1", "r2c2"],
+                ],
+                [
+                    ["r3c1", "r3c2"],
+                    ["r4c1", "r4c2"],
+                ],
+            ],
+            [
+                ["r1c1", "r1c2"],
+                ["r2c1", "r2c2"],
+                ["r3c1", "r3c2"],
+                ["r4c1", "r4c2"],
+            ],
+        ),
     ],
 )
 def test_extract_table(
     record_property,
     name: str,
-    extract_cfg: cfgextract.TableExtraction,
+    extract_cfg: cfgextract.TableTransform,
     tables_in: list[tabledata.TableData],
     expected: tabledata.TableData,
 ) -> None:
@@ -386,10 +408,29 @@ def test_extract_table(
 
     tmpl_path = pathlib.PurePath("foo/bar.tabula-template.json")
     tmpl_content = '{"fake": "json"}'
-    files = {tmpl_path: tmpl_content}
+    ecma_script_module = pathlib.PurePath("lib.js")
+    files = {
+        tmpl_path: tmpl_content,
+        ecma_script_module: """
+            function concatExtTables(extTables) {
+                const result = [];
+                for (const extTable of extTables) {
+                    for (const row of extTable.data) {
+                        result.push(row);
+                    }
+                }
+                return result;
+            }
+        """,
+    }
     pdf_path = pathlib.Path("some.pdf")
     file_stem = pathlib.Path("foo/bar")
-    with filesio.MemReadWriter.new_reader(files) as cfg_reader:
+    with (
+        filesio.MemReadWriter.new_reader(files) as cfg_reader,
+        ecmastransform.transformer(cfg_reader) as ecmas_trn,
+    ):
+        ecmas_trn.load_module(ecma_script_module)
+
         table_reader = pdftestutil.FakeTableReader()
         expect_call = pdftestutil.Call(pdf_path, tmpl_content)
         table_reader.return_tables = {
@@ -399,10 +440,11 @@ def test_extract_table(
             cfg_reader=cfg_reader,
             table=config.Table(
                 file_stem=file_stem,
-                extraction=extract_cfg,
+                transform=extract_cfg,
             ),
             pdf_path=pdf_path,
             table_reader=table_reader,
+            ecmas_trn=ecmas_trn,
         )
     assert actual_pages == {1}
     # Check read_pdf_with_template calls.

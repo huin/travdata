@@ -121,7 +121,7 @@ def main() -> None:
             tags={
                 f"type/spacecraft-{table_name}",
             },
-            extraction=cfgextract.TableExtraction(),
+            transform=cfgextract.LegacyTransformSeq(),
         )
 
     print("## Template tables:")

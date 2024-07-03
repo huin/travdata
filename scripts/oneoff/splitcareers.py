@@ -162,7 +162,7 @@ def add_table(
 ) -> None:
     grp.tables[table_name] = config._YamlTable(
         tags=tags,
-        extraction=cfgextract.TableExtraction(),
+        transform=cfgextract.LegacyTransformSeq(),
     )
     tmpl_filename = (career_dir / table_name).with_suffix(".tabula-template.json")
     with tmpl_filename.open("wt") as f:

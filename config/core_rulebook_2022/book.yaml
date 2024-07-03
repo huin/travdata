@@ -1,10 +1,10 @@
 !Group
 templates:
-  - !TableExtraction &one-row-header
+  - !LegacyTransformSeq &one-row-header
     - !FoldRows
       - !StaticRowCounts [1]
       - !EmptyColumn 0
-  - !TableExtraction &two-row-header
+  - !LegacyTransformSeq &two-row-header
     - !FoldRows
       - !StaticRowCounts [2]
       - !EmptyColumn 0
@@ -12,9 +12,9 @@ groups:
   02-traveller-creation: !Group
     tables:
       ageing: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       background-skills: !Table
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !ExpandColumnOnRegex
             column: 0
             pattern: "([^0-9]+)(.+)"
@@ -24,29 +24,35 @@ groups:
             - SKILL
             - LEVEL
       benefits-of-rank: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       career-summary: !Table
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       characteristic-modifiers: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       draft-selection: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       injuries: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       life-events: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       medical-bills: !Table
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !EmptyColumn 1
       noble-titles: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       pension: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       pre-career-events: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
+      skills: !Table
+        tags: [skills]
+        transform: !EcmaScriptTransform
+          src: "return travdata.concatTableData(travdata.tableData(extTables));"
       skills-package: !Table
-        extraction: !!null
+        tags: [skills-package]
+        transform: !EcmaScriptTransform
+          src: "return travdata.concatTableData(travdata.tableData(extTables));"
     groups:
       careers: !Group
         groups:
@@ -55,313 +61,313 @@ groups:
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-law-enforcement: !Table
                 tags: [rank/law-enforcement, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-intel-corp: !Table
                 tags: [rank/intel-corp, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           02-army: !Group
             tags: [career, career-code/2, career/army]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *two-row-header
+                transform: *two-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-enlisted: !Table
                 tags: [rank/enlisted, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-officer: !Table
                 tags: [rank/officer, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           03-citizen: !Group
             tags: [career, career-code/3, career/citizen]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-corporate: !Table
                 tags: [rank/corporate, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-worker: !Table
                 tags: [rank/worker, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-colonist: !Table
                 tags: [rank/colonist, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           04-drifter: !Group
             tags: [career, career-code/4, career/drifter]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-barbarian: !Table
                 tags: [rank/barbarian, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-wanderer: !Table
                 tags: [rank/wanderer, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-scavenger: !Table
                 tags: [rank/scavenger, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           05-entertainer: !Group
             tags: [career, career-code/5, career/entertainer]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-artist: !Table
                 tags: [rank/artist, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-journalist: !Table
                 tags: [rank/journalist, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-performer: !Table
                 tags: [rank/performer, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           06-marine: !Group
             tags: [career, career-code/6, career/marine]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *two-row-header
+                transform: *two-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-enlisted: !Table
                 tags: [rank/enlisted, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-officer: !Table
                 tags: [rank/officer, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           07-merchant: !Group
             tags: [career, career-code/7, career/merchant]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-merchant-marine: !Table
                 tags: [rank/merchant-marine, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-free-trader: !Table
                 tags: [rank/free-trader, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-broker: !Table
                 tags: [rank/broker, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           08-navy: !Group
             tags: [career, career-code/8, career/navy]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *two-row-header
+                transform: *two-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-enlisted: !Table
                 tags: [rank/enlisted, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-officer: !Table
                 tags: [rank/officer, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           09-noble: !Group
             tags: [career, career-code/9, career/noble]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-adminstrator: !Table
                 tags: [rank/adminstrator, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-diplomat: !Table
                 tags: [rank/diplomat, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-dilettante: !Table
                 tags: [rank/dilettante, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           10-rogue: !Group
             tags: [career, career-code/10, career/rogue]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-thief: !Table
                 tags: [rank/thief, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-enforcer: !Table
                 tags: [rank/enforcer, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-pirate: !Table
                 tags: [rank/pirate, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           11-scholar: !Group
             tags: [career, career-code/11, career/scholar]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-field-researcher: !Table
                 tags: [rank/field-researcher, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-scientist: !Table
                 tags: [rank/scientist, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-physician: !Table
                 tags: [rank/physician, type/career-rank]
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                   - !FoldRows
                     - !StaticRowCounts [1]
                     - !EmptyColumn 0
@@ -373,31 +379,31 @@ groups:
                     - SKILL OR BONUS
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           12-scout: !Group
             tags: [career, career-code/12, career/scout]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks: !Table
                 tags: [rank/None, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                   - !FoldRows
                     - !StaticRowCounts [1]
                     - !EmptyColumn 0
@@ -408,103 +414,103 @@ groups:
                     - MISHAP
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           13-prisoner: !Group
             tags: [career, career-code/13, career/prisoner]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks: !Table
                 tags: [rank/None, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
           x-psion: !Group
             tags: [career, career-code/x, career/psion]
             tables:
               career-progress: !Table
                 tags: [type/career-progress]
-                extraction: *one-row-header
+                transform: *one-row-header
               mustering-out: !Table
                 tags: [type/career-mustering-out]
-                extraction: *one-row-header
+                transform: *one-row-header
               skills-and-training-general: !Table
                 tags: [type/career-skills-and-training-general]
-                extraction: *two-row-header
+                transform: *two-row-header
               skills-and-training-assignment: !Table
                 tags: [type/career-skills-and-training-assignment]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-wild-talent: !Table
                 tags: [rank/wild-talent, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-adept: !Table
                 tags: [rank/adept, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               ranks-psi-warrior: !Table
                 tags: [rank/psi-warrior, type/career-rank]
-                extraction: *one-row-header
+                transform: *one-row-header
               mishap: !Table
                 tags: [type/career-mishap]
-                extraction: *one-row-header
+                transform: *one-row-header
               event: !Table
                 tags: [type/career-event]
-                extraction: *one-row-header
+                transform: *one-row-header
   03-skills-and-tasks: !Group
     tables:
       effect-results: !Table
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !StaticRowCounts [1, 3, 1, 5, 3, 1, 2]
             - !EmptyColumn 0
       task-chain: !Table
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !StaticRowCounts [3, 2, 2, 2, 2, 2, 2]
       task-difficulty: !Table
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       timeframes: !Table
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !StaticRowCounts [1, 2, 2, 3, 2, 4, 3, 2, 2, 2, 2]
   04-combat: !Group
     tables:
       common-modifiers: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       cover: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
   05-encounters-and-dangers: !Group
     tables:
       encounter-distance: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       encounter-modifiers: !Table
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !StaticRowCounts [1, 1, 1, 1, 2, 2]
           - !PrependRow
             - Circumstance
             - Modifier
       range-bands: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
     groups:
       animal: !Group
         tables:
           behaviours: !Table
             tags: [type/animal-behaviour]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !JoinColumns
                 delim: " "
               - !ExpandColumnOnRegex
@@ -520,10 +526,10 @@ groups:
                 - Behaviour
           flight-or-fight: !Table
             tags: [type/animal-flight-or-fight]
-            extraction: *one-row-header
+            transform: *one-row-header
           sizes: !Table
             tags: [type/animal-size]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !EmptyColumn 1
       dangers: !Group
@@ -531,134 +537,134 @@ groups:
         tables:
           disease: !Table
             tags: [danger/disease]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !EmptyColumn 1
           poisons: !Table
             tags: [danger/poison]
-            extraction: *two-row-header
+            transform: *two-row-header
         groups:
           radiation: !Group
             tags: [danger/radiation]
             tables:
               effect-cumulative: !Table
                 tags: [danger/radiation/cumulative-effect]
-                extraction: *two-row-header
+                transform: *two-row-header
               effect-immediate: !Table
                 tags: [danger/radiation/immediate-effect]
-                extraction: *two-row-header
+                transform: *two-row-header
               sources: !Table
                 tags: [danger/radiation/source]
-                extraction: *one-row-header
+                transform: *one-row-header
           temperatures: !Group
             tags: [danger/temperature]
             tables:
               temperatures-cold: !Table
                 tags: [danger/temperature/cold]
-                extraction: *one-row-header
+                transform: *one-row-header
               temperatures-hot: !Table
                 tags: [danger/temperature/hot]
-                extraction: *one-row-header
+                transform: *one-row-header
       other-characters: !Group
         tags: [encounters/other-characters]
         tables:
           allies-and-enemies: !Table
             tags: [encounters/other-characters/role]
-            extraction: *one-row-header
+            transform: *one-row-header
           character-quirks: !Table
             tags: [encounters/other-characters/quirk]
-            extraction: *one-row-header
+            transform: *one-row-header
           experience-levels: !Table
             tags: [encounters/other-characters/experience-level]
-            extraction: *one-row-header
+            transform: *one-row-header
       patrons-and-missions: !Group
         tables:
           random-mission: !Table
-            extraction: *one-row-header
+            transform: *one-row-header
           random-opposition: !Table
-            extraction: *one-row-header
+            transform: *one-row-header
           random-patrons: !Table
-            extraction: *one-row-header
+            transform: *one-row-header
           random-targets: !Table
-            extraction: *one-row-header
+            transform: *one-row-header
       random-encounters: !Group
         tables:
           rural: !Table
             tags: [encounter/rural]
-            extraction: *one-row-header
+            transform: *one-row-header
           starport: !Table
             tags: [encounter/starport]
-            extraction: *one-row-header
+            transform: *one-row-header
           urban: !Table
             tags: [encounter/urban]
-            extraction: *one-row-header
+            transform: *one-row-header
   06-equipment: !Group
     tags: [equipment]
     tables:
       augments: !Table
         tags: [equipment/augment]
-        extraction: *one-row-header
+        transform: *one-row-header
       bugs: !Table
         tags: [equipment/bug]
-        extraction: *one-row-header
+        transform: *one-row-header
       science-kits: !Table
         tags: [equipment/science-kit]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !EmptyColumn 1
       sensors: !Table
         tags: [equipment/sensor]
-        extraction: *one-row-header
+        transform: *one-row-header
       standards-of-living: !Table
         tags: [standard-of-living]
-        extraction: *one-row-header
+        transform: *one-row-header
       survival-gear: !Table
         tags: [equipment/survival-gear]
-        extraction: *one-row-header
+        transform: *one-row-header
       toolkits: !Table
         tags: [equipment/toolkit]
-        extraction: *one-row-header
+        transform: *one-row-header
     groups:
       combat: !Group
         tags: [equipment/combat]
         templates:
-          - !TableExtraction &weapon-table
+          - !LegacyTransformSeq &weapon-table
             - !FoldRows
               - !EmptyColumn 1
         tables:
           armour: !Table
             tags: [equipment/armour]
-            extraction: *one-row-header
+            transform: *one-row-header
           melee-weapons: !Table
             tags: [equipment/weapon, weapon/melee]
-            extraction: *weapon-table
+            transform: *weapon-table
           slug-throwers: !Table
             tags: [equipment/weapon, weapon/slug]
-            extraction: *weapon-table
+            transform: *weapon-table
           energy-weapons: !Table
             tags: [equipment/weapon, weapon/energy]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !StaticRowCounts [2]
                 - !EmptyColumn 1
           grenade-weapons: !Table
             tags: [equipment/weapon, weapon/grenade]
-            extraction: *weapon-table
+            transform: *weapon-table
           heavy-weapons: !Table
             tags: [equipment/weapon, weapon/heavy]
-            extraction: *weapon-table
+            transform: *weapon-table
           explosives: !Table
             tags: [equipment/weapon, weapon/explosive]
-            extraction: *weapon-table
+            transform: *weapon-table
       communication: !Group
         tags: [equipment/communication]
         tables:
           commdot: !Table
             tags: [communication/commdot]
-            extraction: *one-row-header
+            transform: *one-row-header
           laser-transceivers: !Table
             tags: [communication/transceiver, transceiver/laser]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !StaticRowCounts [1]
                 - !EmptyColumn 0
@@ -669,43 +675,43 @@ groups:
                 - COST
           mobile-comms: !Table
             tags: [communication/mobile]
-            extraction: *one-row-header
+            transform: *one-row-header
           radio-transceivers: !Table
             tags: [communication/transceiver, transceiver/radio]
-            extraction: *one-row-header
+            transform: *one-row-header
       computing: !Group
         tags: [equipment/computing]
         tables:
           computer-terminal: !Table
             tags: [computing/computer, computer/terminal]
-            extraction: *one-row-header
+            transform: *one-row-header
           portable-computer: !Table
             tags: [computing/processing, computer/portable]
-            extraction: *one-row-header
+            transform: *one-row-header
           software-package: !Table
             tags: [computing/software-package]
-            extraction: *one-row-header
+            transform: *one-row-header
           software: !Table
             tags: [computing/software]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !EmptyColumn 2
   07-vehicles: !Group
     tables:
       critical-hit-effects: !Table
         tags: [vehicle-critical-hit, critical-hit/effect]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !StaticRowCounts [1, 3, 4, 5, 5, 6, 4, 4, 7, 7]
       critical-hits-location: !Table
         tags: [vehicle-critical-hit, critical-hit/location]
-        extraction: *one-row-header
+        transform: *one-row-header
       speed-bands: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       vehicle-equipment: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       vehicle-weapons: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
     groups:
       vehicles: !Group
         tags: [vehicle]
@@ -713,18 +719,18 @@ groups:
           - tables: &vehicle-tables
               equipment: !Table
                 tags: [type/vehicle-equipment]
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                   - !FoldRows
                     - !AllRows {}
                   - !PrependRow
                     - EQUIPMENT
               spec: !Table
                 tags: [type/vehicle-spec]
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                   - !Transpose {}
               armour: !Table
                 tags: [type/vehicle-armour]
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                   - !WrapRowEveryN 2
                   - !Transpose {}
         groups:
@@ -763,13 +769,13 @@ groups:
     tables:
       common-trader-distances: !Table
         tags: [spacecraft-trading/common-distances]
-        extraction: *one-row-header
+        transform: *one-row-header
       critical-hit-repair: !Table
         tags: [spacecraft-operation/critical-hit-repair]
-        extraction: *one-row-header
+        transform: *one-row-header
       encounter-dm: !Table
         tags: [encounter/space-travel/dm]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !ExpandColumnOnRegex
             column: 0
             pattern: '([A-Z][^()]+)\(([^)]+)\): (.+)'
@@ -783,99 +789,99 @@ groups:
             - DESCRIPTION
       poor-maintenance: !Table
         tags: [spacecraft-operation/poor-maintenance-effect]
-        extraction: *one-row-header
+        transform: *one-row-header
       running-cost-summary: !Table
         tags: [spacecraft-operation/running-cost]
-        extraction: *one-row-header
+        transform: *one-row-header
       salvage: !Table
         tags: [encounter/space-travel/salvage]
-        extraction: *one-row-header
+        transform: *one-row-header
       ship-software: !Table
         tags: [spacecraft-software]
-        extraction: *one-row-header
+        transform: *one-row-header
       space-encounters: !Table
         tags: [encounter/space-travel]
-        extraction: *one-row-header
+        transform: *one-row-header
       transit-times: !Table
         tags: [space-travel/travel-time]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !EmptyColumn 1
       weapon-power: !Table
         tags: [spacecraft-power/require/weapon]
-        extraction: *one-row-header
+        transform: *one-row-header
     groups:
       sensors: !Group
         tables:
           range-bands: !Table
             tags: [spacecraft-sensor/range-band]
-            extraction: *one-row-header
+            transform: *one-row-header
           range-effect: !Table
             tags: [spacecraft-sensor/range-effect]
-            extraction: *one-row-header
+            transform: *one-row-header
           detail: !Table
             tags: [spacecraft-sensor/detail]
-            extraction: *one-row-header
+            transform: *one-row-header
   09-space-combat: !Group
     tags: [space-combat]
     tables:
       missile-flight: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       range-bands: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       ship-movement: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
       turrets: !Table
-        extraction: *one-row-header
+        transform: *one-row-header
     groups:
       spacecraft-attack: !Group
         tags: [spacecraft-attack]
         tables:
           damage-scale: !Table
             tags: [spacecraft-attack/damage-scale]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !StaticRowCounts [2, 2, 2, 2]
           dogfighting-modifiers: !Table
             tags: [spacecraft-attack/dm, spacecraft-attack/dm/dogfight]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !StaticRowCounts [1, 1, 1, 2, 3, 2]
           spacecraft-attack-bonuses: !Table
             tags: [spacecraft-attack/dm, spacecraft-attack/dm/bonus]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !PrependRow ["", "DM"]
               - !FoldRows
                 - !StaticRowCounts [2, 1, 2, 2, 2]
           spacecraft-attack-penalties: !Table
             tags: [spacecraft-attack/dm, spacecraft-attack/dm/penalty]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !PrependRow ["", "DM"]
               - !FoldRows
                 - !EmptyColumn 1
           spacecraft-scale-weapons: !Table
             tags: [spacecraft-attack/weapon]
-            extraction: *one-row-header
+            transform: *one-row-header
       boarding-actions: !Group
         tags: [boarding-actions]
         tables:
           boarding-actions-dm: !Table
             tags: [boarding-actions/dm]
-            extraction: *one-row-header
+            transform: *one-row-header
           boarding-actions-outcome: !Table
             tags: [boarding-actions/outcome]
-            extraction: *one-row-header
+            transform: *one-row-header
       critical-hit: !Group
         tags: [spacecraft-critical-hit]
         tables:
           critical-hit-effects: !Table
             tags: [critical-hit/effect]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !StaticRowCounts [1, 4, 4, 4, 5, 4, 3, 6, 4, 4, 4, 6]
           critical-hit-location: !Table
             tags: [critical-hit/location]
-            extraction: *one-row-header
+            transform: *one-row-header
   10-spacecraft-construction: !Group
     tags: [spacecraft/construction]
     groups:
@@ -884,12 +890,12 @@ groups:
         tables:
           hull-armour: !Table
             tags: [spacecraft-hull/armor]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !EmptyColumn 1
           hull-configuraiton: !Table
             tags: [spacecraft-hull/configuration]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !EmptyColumn 1
       drive: !Group
@@ -897,44 +903,44 @@ groups:
         tables:
           thrust-potential: !Table
             tags: [spacecraft-drive/thrust]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !Transpose {}
           jump-potential: !Table
             tags: [spacecraft-drive/jump]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !Transpose {}
     tables:
       bridge-types: !Table
         tags: [spacecraft-bridge]
-        extraction: *one-row-header
+        transform: *one-row-header
       computers: !Table
         tags: [spacecraft-computer]
-        extraction: *one-row-header
+        transform: *one-row-header
       crew-requirements: !Table
         tags: [spacecraft-crew-requirement]
-        extraction: *one-row-header
+        transform: *one-row-header
       power-plant-type: !Table
         tags: [spacecraft-power-plant]
-        extraction: *one-row-header
+        transform: *one-row-header
       sensors: !Table
         tags: [spacecraft-sensor]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !EmptyColumn 1
       turret-weapons: !Table
         tags: [spacecraft-turret-weapon]
-        extraction: *one-row-header
+        transform: *one-row-header
       turrets-and-fixed-mounts: !Table
         tags: [spacecraft-turret-and-fixed-mount]
-        extraction: *one-row-header
+        transform: *one-row-header
   11-common-spacecraft: !Group
     tables:
       outdated-ships: !Table
         tags: [spacecraft-outdating]
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       spacecraft-quirks: !Table
         tags: [spacecraft-quirks]
-        extraction: *one-row-header
+        transform: *one-row-header
     groups:
       spacecraft: !Group
         tags: [spacecraft]
@@ -943,7 +949,7 @@ groups:
               components: !Table
                 tags:
                 - type/spacecraft-components
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                   - !PrependRow
                     - Type
                     - Component
@@ -952,7 +958,7 @@ groups:
               crew: !Table
                 tags:
                 - type/spacecraft-crew
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                   - !FoldRows
                     - !AllRows {}
                   - !SplitColumn
@@ -970,7 +976,7 @@ groups:
               hull: !Table
                 tags:
                 - type/spacecraft-hull
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                   - !Transpose {}
                   - !ExpandColumnOnRegex
                     column: 0
@@ -980,14 +986,14 @@ groups:
               running-costs: !Table
                 tags:
                 - type/spacecraft-running-costs
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                   - !Transpose {}
                   - !WrapRowEveryN 2
                   - !Transpose {}
               power-requirements: !Table
                 tags:
                 - type/spacecraft-power-requirements
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                   - !Transpose {}
                   - !WrapRowEveryN 2
                   - !PrependRow
@@ -1142,10 +1148,10 @@ groups:
     tables:
       psionic-training: !Table
         tags: [psionic/training]
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       psionic-talents: !Table
         tags: [psionic/talents]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !ExpandColumnOnRegex
             column: 0
             pattern: '([^:]+): (.+)'
@@ -1156,20 +1162,20 @@ groups:
             - Description
       ranges: !Table
         tags: [psionic-power/psionic-ranges]
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       psi-drug-types: !Table
         tags: [psi-drugs/types]
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
     groups:
       power-effects: !Group
         tables:
           telekinesis-pyrokinesis-effects: !Table
             tags: [psionic-power-effect/pyrokinesis]
-            extraction: *one-row-header
+            transform: *one-row-header
       power-requirements: !Group
         tags: [type/psionic-power-requirement]
         templates:
-          - extraction: !TableExtraction &psionic-talent-requirement
+          - transform: !LegacyTransformSeq &psionic-talent-requirement
               - !ExpandColumnOnRegex
                 column: 0
                 pattern: '([^:]+): (.+)'
@@ -1186,116 +1192,116 @@ groups:
             tables:
               regeneration: !Table
                 tags: [psionic-power-requirement/regeneration]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               enhanced-strength: !Table
                 tags: [psionic-power-requirement/enhanced-strength]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               inspiration: !Table
                 tags: [psionic-power-requirement/inspiration]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               suspended-animation: !Table
                 tags: [psionic-power-requirement/suspended-animation]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               enhanced-endurance: !Table
                 tags: [psionic-power-requirement/enhanced-endurance]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               fortitude: !Table
                 tags: [psionic-power-requirement/fortitude]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
           clairvoyance: !Group
             tags: [psionic-power/clairvoyance]
             tables:
               tactical-awareness: !Table
                 tags: [psionic-power-requirement/tactical-awareness]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               clairaudience: !Table
                 tags: [psionic-power-requirement/clairaudience]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               clairvoyance: !Table
                 tags: [psionic-power-requirement/clairvoyance]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               clairsentience: !Table
                 tags: [psionic-power-requirement/clairsentience]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               sense: !Table
                 tags: [psionic-power-requirement/sense]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
           telekinesis: !Group
             tags: [psionic-power/telekinesis]
             tables:
               flight: !Table
                 tags: [psionic-power-requirement/flight]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               telekinesis: !Table
                 tags: [psionic-power-requirement/telekinesis]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               microkinesis: !Table
                 tags: [psionic-power-requirement/microkinesis]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               pyrokinesis: !Table
                 tags: [psionic-power-requirement/pyrokinesis]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               telekinetic-punch: !Table
                 tags: [psionic-power-requirement/telekinetic-punch]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
           telepathy: !Group
             tags: [psionic-power/telepathy]
             tables:
               suggestion: !Table
                 tags: [psionic-power-requirement/suggestion]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               telempathy: !Table
                 tags: [psionic-power-requirement/telempathy]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               assault: !Table
                 tags: [psionic-power-requirement/assault]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               mind-link: !Table
                 tags: [psionic-power-requirement/mind-link]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               read-surface-thoughts: !Table
                 tags: [psionic-power-requirement/read-surface-thoughts]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               probe: !Table
                 tags: [psionic-power-requirement/probe]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               life-detection: !Table
                 tags: [psionic-power-requirement/life-detection]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
               send-thoughts: !Table
                 tags: [psionic-power-requirement/send-thoughts]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
           teleportation: !Group
             tags: [psionic-power/teleportation]
             tables:
               teleportation: !Table
                 tags: [psionic-power-requirement/teleportation]
-                extraction: *psionic-talent-requirement
+                transform: *psionic-talent-requirement
   13-trade: !Group
     tags: [trade]
     tables:
       trade-goods: !Table
         tags: [type/trade-good]
-        extraction: *one-row-header
+        transform: *one-row-header
       mail-dm: !Table
         tags: [mail/basic-dm]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !PrependRow
             - Modifier
             - DM
       passage-and-freight: !Table
         tags: [passage-and-freight]
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
     groups:
       freight: !Group
         tags: [trade/freight]
         tables:
           freight-traffic: !Table
             tags: [freight/traffic]
-            extraction: !TableExtraction []
+            transform: !LegacyTransformSeq []
           cargo-lots: !Table
             tags: [freight/cargo-lots]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !ExpandColumnOnRegex
                 column: 0
                 pattern: '(\w+) [^0-9]+(\d+D(:? x \d+)?).*'
@@ -1306,7 +1312,7 @@ groups:
                 - Tons of freight
           freight-basic-dm: !Table
             tags: [freight/basic-dm]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               # Annoyingly, the last row gets extracted with both columns merged
               # together. Hack to split it.
               - !ExpandColumnOnRegex
@@ -1319,7 +1325,7 @@ groups:
                 - DM
           freight-world-dm: !Table
             tags: [freight/world-dm]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !PrependRow
                 - Modifier
                 - DM
@@ -1328,28 +1334,28 @@ groups:
         tables:
           passenger-basic-dm: !Table
             tags: [passenger/basic-dm]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !PrependRow
                 - Modifier
                 - DM
           passenger-traffic: !Table
             tags: [passenger/traffic]
-            extraction: !TableExtraction []
+            transform: !LegacyTransformSeq []
           passenger-world-dm: !Table
             tags: [passenger/world-dm]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !PrependRow
                 - Modifier
                 - DM
           random-passenger: !Table
             tags: [passenger/random-special]
-            extraction: *one-row-header
+            transform: *one-row-header
       speculative: !Group
         tags: [trade/speculative]
         tables:
           find-supplier-checks: !Table
             tags: [speculative/supplier-basic-dm]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !FoldRows
                 - !StaticRowCounts [2, 3, 2]
               - !ExpandColumnOnRegex
@@ -1365,7 +1371,7 @@ groups:
                 - Time
           find-supplier-starport-dm: !Table
             tags: [speculative/supplier-starport-dm]
-            extraction: !TableExtraction
+            transform: !LegacyTransformSeq
               - !ExpandColumnOnRegex
                 column: 0
                 pattern: '\w+ (\w): (.+)'
@@ -1376,62 +1382,62 @@ groups:
                 - DM
           modified-price: !Table
             tags: [speculative/modified-price]
-            extraction: !TableExtraction []
+            transform: !LegacyTransformSeq []
   14-worldcreation: !Group
     tags: [world-creation]
     tables:
       atmosphere-tech-level-requirement: !Table
         tags: [world-creation/atmosphere-tech-level-requirement]
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       atmosphere: !Table
         tags: [world-creation/atmosphere]
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       crime: !Table
         tags:
           - crime/types
           - world-creation/crime
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       cultural-differences: !Table
         tags: [world-creation/cultural-differences]
-        extraction: *one-row-header
+        transform: *one-row-header
       factions: !Table
         tags: [world-creation/factions]
-        extraction: *one-row-header
+        transform: *one-row-header
       governments: !Table
         tags:
           - type/government-type
           - world-creation/government
-        extraction: *two-row-header
+        transform: *two-row-header
       hydrographics: !Table
         tags: [world-creation/hydrographics]
-        extraction: *two-row-header
+        transform: *two-row-header
       law-and-travellers: !Table
-        extraction: !TableExtraction 
+        transform: !LegacyTransformSeq 
           - !FoldRows
             - !EmptyColumn 1
       law-levels: !Table
         tags:
           - type/law-level
           - world-creation/law-level
-        extraction: *two-row-header
+        transform: *two-row-header
       population: !Table
         tags: [world-creation/population]
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       sentencing: !Table
         tags: [crime/sentencing]
-        extraction: *one-row-header
+        transform: *one-row-header
       size: !Table
         tags: [world-creation/size]
-        extraction: *two-row-header
+        transform: *two-row-header
       starport-class: !Table
         tags: [world-creation/starport-class]
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       starport-facilities: !Table
         tags: [world-creation/starport-facilities]
-        extraction: *one-row-header
+        transform: *one-row-header
       starport-population-dm: !Table
         tags: [world-creation/starport-population-dm]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !ExpandColumnOnRegex
             column: 0
             pattern: '([^ ]+) (?:\w+\s+){5}(.+)'
@@ -1442,10 +1448,10 @@ groups:
             - DM
       tech-level-requirements: !Table
         tags: [world-creation/tech-level-requirements]
-        extraction: !TableExtraction []
+        transform: !LegacyTransformSeq []
       temperature-atmosphere-dm: !Table
         tags: [world-creation/temperature-atmosphere-dm]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !StaticRowCounts [3]
           - !ExpandColumnOnRegex
@@ -1458,7 +1464,7 @@ groups:
             - DM
       temperature-habitable-zone-dm: !Table
         tags: [world-creation/temperature-habitable-zone-dm]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !ExpandColumnOnRegex
             column: 0
             pattern: '([^:]+): (.+)'
@@ -1469,7 +1475,7 @@ groups:
             - DM
       temperature: !Table
         tags: [world-creation/temperature]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !FoldRows
             - !StaticRowCounts [2]
             - !EmptyColumn 1
@@ -1477,10 +1483,10 @@ groups:
         tags:
           - type/trade-code
           - world-creation/trade-codes
-        extraction: *one-row-header
+        transform: *one-row-header
       trade-routes: !Table
         tags: [world-creation/trade-routes]
-        extraction: !TableExtraction
+        transform: !LegacyTransformSeq
           - !ExpandColumnOnRegex
             column: 0
             pattern: '(.+)'
