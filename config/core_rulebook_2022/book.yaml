@@ -45,6 +45,10 @@ groups:
         transform: *one-row-header
       pre-career-events: !Table
         transform: *one-row-header
+      skills: !Table
+        tags: [skills]
+        transform: !EcmaScriptTransform
+          src: "return travdata.concatTableData(travdata.tableData(extTables));"
       skills-package: !Table
         tags: [skills-package]
         transform: !EcmaScriptTransform
