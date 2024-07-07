@@ -46,7 +46,9 @@ groups:
       pre-career-events: !Table
         transform: *one-row-header
       skills-package: !Table
-        disable_extraction: true
+        tags: [skills-package]
+        transform: !EcmaScriptTransform
+          src: "return travdata.concatTableData(travdata.tableData(extTables));"
     groups:
       careers: !Group
         groups:
