@@ -4,11 +4,14 @@
 
 import json
 import pathlib
-from typing import Self
+import sys
+from typing import Any, Self
 
 import STPyV8  # type: ignore[import-untyped]
 
 from travdata import filesio
+from travdata import tabledata
+from travdata.config import cfgerror
 from travdata.extraction.pdf import tablereader
 from travdata.tabledata import TableData
 
@@ -25,7 +28,7 @@ class EcmaScriptTransformer:
         :param cfg_reader: Reader to read modules from.
         """
         self._cfg_reader = cfg_reader
-        self._ctxt = STPyV8.JSContext()
+        self._ctxt = STPyV8.JSContext(_Globals())
 
     def __enter__(self) -> Self:
         self._ctxt.__enter__()
@@ -49,7 +52,7 @@ class EcmaScriptTransformer:
     def transform(
         self,
         ext_tables: list[tablereader.ExtractedTable],
-        expression: str,
+        source: str,
     ) -> TableData:
         """Transforms extracted tables.
 
@@ -58,19 +61,38 @@ class EcmaScriptTransformer:
         transformations.
         :return: Transformed tables.
         """
-        ext_tables_json = json.dumps(ext_tables)
         fn = self._ctxt.eval(
-            f"""\
-(extTablesJson) => {{
+            """\
+(extTablesJson, source) => {
+    const fn = Function("extTables", `"use strict"; ${source}`);
+
     const extTables = JSON.parse(extTablesJson);
-    const result = function (extTables) {{
-        return (
-{expression}
-);
-    }}(extTables);
+    const result = fn(extTables);
     return JSON.stringify(result);
-}}
+}
 """,
         )
-        result_json = fn(ext_tables_json)
-        return json.loads(result_json)
+
+        ext_tables_json = json.dumps(ext_tables)
+        result_json = fn(ext_tables_json, source)
+        if not isinstance(result_json, str):
+            raise cfgerror.ConfigurationError(
+                f"EcmaScriptTransform returned non-string type {type(result_json).__name__}",
+            )
+        result = json.loads(result_json)
+        tabledata.check_table_type(result)
+        return result
+
+
+class _Globals(STPyV8.JSClass):
+    """Provides global ``this`` values for a ``JSContext``."""
+
+    def log(self, *args: Any) -> None:
+        """Logs the given values to stderr."""
+        msg = " ".join(str(arg) for arg in args)
+        print(f"{msg}\n", file=sys.stderr)
+
+    def isPrototypeOf(self, obj):
+        # Required implementation by base class.
+        del obj  # unused
+        return False

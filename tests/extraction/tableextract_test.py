@@ -370,7 +370,7 @@ from .pdf import pdftestutil
         (
             "Uses ECMAScript to transform a table.",
             cfgextract.EcmaScriptTransform(
-                expr="concatExtTables(extTables)",
+                src="return concatExtTables(extTables);",
             ),
             [
                 [

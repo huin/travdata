@@ -57,7 +57,7 @@ def extract_table(
         case cfgextract.EcmaScriptTransform() as cfg:
             table_data = ecmas_trn.transform(
                 ext_tables=ext_tables,
-                expression=cfg.expr,
+                source=cfg.src,
             )
 
         case other:

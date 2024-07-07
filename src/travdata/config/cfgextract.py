@@ -167,8 +167,8 @@ class EcmaScriptTransform(TableTransform, yamlutil.YamlMappingMixin):
     """ECMAScript based table transformation."""
 
     yaml_tag: ClassVar = "!EcmaScriptTransform"
-    expr: str
+    src: str
 
     @classmethod
     def yaml_create_empty(cls) -> Self:
-        return cls(expr="")
+        return cls(src="")

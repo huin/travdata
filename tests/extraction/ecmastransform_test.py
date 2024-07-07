@@ -53,7 +53,7 @@ def trn(cfg_reader: filesio.MemReader) -> Iterator[ecmastransform.EcmaScriptTran
 def test_evaluation(trn: ecmastransform.EcmaScriptTransformer) -> None:
     actual = trn.transform(
         ext_tables=[],
-        expression='[["foo", "bar"]]',
+        source='return [["foo", "bar"]];',
     )
     hc.assert_that(actual, hc.equal_to([["foo", "bar"]]))
 
@@ -68,6 +68,6 @@ def test_transform(trn: ecmastransform.EcmaScriptTransformer) -> None:
     ]
     actual = trn.transform(
         ext_tables=ext_tables,
-        expression="module.concatTableData(module.tableData(extTables))",
+        source="return module.concatTableData(module.tableData(extTables));",
     )
     hc.assert_that(actual, hc.equal_to(t1 + t2))
