@@ -38,10 +38,9 @@ class Table:
     """
 
     file_stem: pathlib.PurePath
+    disable_extraction: bool = False
     tags: set[str] = dataclasses.field(default_factory=set)
-    extraction: Optional[cfgextract.TableExtraction] = dataclasses.field(
-        default_factory=cfgextract.TableExtraction
-    )
+    transform: Optional[cfgextract.TableTransform] = None
 
     @property
     def tabula_template_path(self) -> pathlib.PurePath:
@@ -95,6 +94,7 @@ class Book:
 class Config:
     """Top-level configuration."""
 
+    ecma_script_modules: list[pathlib.PurePath] = dataclasses.field(default_factory=list)
     books: dict[str, Book] = dataclasses.field(default_factory=dict)
 
 
@@ -102,8 +102,9 @@ class Config:
 @yamlreg.YAML.register_class
 class _YamlTable(yamlutil.YamlMappingMixin):
     yaml_tag: ClassVar = "!Table"
+    disable_extraction: bool = False
     tags: set[str] = dataclasses.field(default_factory=set, metadata=yamlutil.SET_METADATA)
-    extraction: Optional[cfgextract.TableExtraction] = None
+    transform: Optional[cfgextract.TableTransform] = None
 
     def prepare(
         self,
@@ -122,8 +123,9 @@ class _YamlTable(yamlutil.YamlMappingMixin):
         tags = self.tags | parent_tags
         return Table(
             file_stem=rel_group_dir / name,
+            disable_extraction=self.disable_extraction,
             tags=tags,
-            extraction=self.extraction,
+            transform=self.transform,
         )
 
 
@@ -132,7 +134,7 @@ class _YamlTable(yamlutil.YamlMappingMixin):
 class _YamlGroup(yamlutil.YamlMappingMixin):
     yaml_tag: ClassVar = "!Group"
     tags: set[str] = dataclasses.field(default_factory=set, metadata=yamlutil.SET_METADATA)
-    templates: Optional[list[cfgextract.TableExtraction]] = None
+    templates: Optional[list[cfgextract.LegacyTransformSeq]] = None
     groups: dict[str, "_YamlGroup"] = dataclasses.field(default_factory=dict)
     tables: dict[str, _YamlTable] = dataclasses.field(default_factory=dict)
 
@@ -202,7 +204,8 @@ class _YamlBook(yamlutil.YamlMappingMixin):
 @yamlreg.YAML.register_class
 class _YamlConfig(yamlutil.YamlMappingMixin):
     yaml_tag: ClassVar = "!Config"
-    books: dict[str, _YamlBook]
+    ecma_script_modules: list[pathlib.PurePath] = dataclasses.field(default_factory=list)
+    books: dict[str, _YamlBook] = dataclasses.field(default_factory=dict)
 
     @classmethod
     def yaml_create_empty(cls) -> Self:
@@ -217,7 +220,7 @@ class _YamlConfig(yamlutil.YamlMappingMixin):
         books: dict[str, Book] = {}
         for book_id, yaml_book in self.books.items():
             books[book_id] = yaml_book.prepare(book_id=book_id)
-        return Config(books=books)
+        return Config(ecma_script_modules=self.ecma_script_modules, books=books)
 
 
 def _prepare_group(

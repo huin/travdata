@@ -20,20 +20,20 @@ _RowGroup: TypeAlias = list[RowData]
 
 
 def perform_transforms(
-    cfg: cfgextract.TableExtraction,
+    transforms: Iterable[cfgextract.LegacyTransform],
     tables: list[tablereader.ExtractedTable],
 ) -> TableData:
     """Transforms the rows based on the given transform configurations."""
     rows: Iterator[RowData] = _table_rows_concat(tables)
 
-    for transform_cfg in cfg.transforms:
+    for transform_cfg in transforms:
         rows = _transform(transform_cfg, rows)
 
     return list(_clean_rows(rows))
 
 
 def _transform(
-    cfg: cfgextract.TableTransform,
+    cfg: cfgextract.LegacyTransform,
     rows: Iterable[RowData],
 ) -> Iterator[RowData]:
     # pylint: disable=too-many-return-statements

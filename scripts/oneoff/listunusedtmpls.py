@@ -74,7 +74,7 @@ def _list_unused_templates(
                         )
                         continue
 
-                    if table_cfg.extraction is None:
+                    if table_cfg.transform is None:
                         _print_error(
                             f"In {grp.rel_dir} table {table_name} has no extraction configured.",
                         )
@@ -108,7 +108,7 @@ def _create_basic_group_yaml(grp_dir: pathlib.Path) -> config._YamlGroup:
             dir_entry_path = pathlib.Path(dir_entry)
             if dir_entry.is_file():
                 grp.tables[dir_entry.name.removesuffix(config.TABULA_TEMPLATE_SUFFIX)] = (
-                    config._YamlTable(extraction=cfgextract.TableExtraction())
+                    config._YamlTable(transform=cfgextract.LegacyTransformSeq())
                 )
             elif dir_entry.is_dir():
                 grp.groups[dir_entry.name] = _create_basic_group_yaml(dir_entry_path)

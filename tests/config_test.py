@@ -22,11 +22,11 @@ groups:
         tables:
             foo: !Table
                 tags: [type/foo]
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                     - !WrapRowEveryN 2
             bar: !Table
                 tags: [type/bar]
-                extraction: !TableExtraction
+                transform: !LegacyTransformSeq
                     - !FoldRows
                         - !StaticRowCounts [1]
                         - !EmptyColumn 3
@@ -49,7 +49,7 @@ groups:
                         "foo": config.Table(
                             file_stem=pathlib.Path(f"{book_name}/grp-a/foo"),
                             tags={"outer", "top", "type/foo"},
-                            extraction=cfgextract.TableExtraction(
+                            transform=cfgextract.LegacyTransformSeq(
                                 transforms=[
                                     cfgextract.WrapRowEveryN(2),
                                 ],
@@ -58,7 +58,7 @@ groups:
                         "bar": config.Table(
                             file_stem=pathlib.Path(f"{book_name}/grp-a/bar"),
                             tags={"outer", "top", "type/bar"},
-                            extraction=cfgextract.TableExtraction(
+                            transform=cfgextract.LegacyTransformSeq(
                                 transforms=[
                                     cfgextract.FoldRows(
                                         [
@@ -72,7 +72,7 @@ groups:
                         "defaults": config.Table(
                             file_stem=pathlib.Path(f"{book_name}/grp-a/defaults"),
                             tags={"outer", "top"},
-                            extraction=None,
+                            transform=None,
                         ),
                     },
                 ),
@@ -93,7 +93,7 @@ groups:
         (
             "ExpectSequenceGotString",
             """
-            !TableExtraction "not a sequence"
+            !LegacyTransformSeq "not a sequence"
             """,
         ),
         (

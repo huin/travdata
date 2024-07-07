@@ -8,16 +8,17 @@
     "!AllRows mapping",
     "!Book mapping",
     "!Config mapping",
+    "!EcmaScriptTransform mapping",
     "!EmptyColumn scalar",
     "!ExpandColumnOnRegex mapping",
     "!FoldRows sequence",
     "!Group mapping",
     "!JoinColumns mapping",
+    "!LegacyTransformSeq sequence",
     "!PrependRow sequence",
     "!SplitColumn mapping",
     "!StaticRowCounts sequence",
     "!Table mapping",
-    "!TableExtraction sequence",
     "!Transpose mapping",
     "!WrapRowEveryN scalar"
   ]
