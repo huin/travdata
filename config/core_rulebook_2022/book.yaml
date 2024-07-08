@@ -48,7 +48,9 @@ groups:
       skills: !Table
         tags: [skills]
         transform: !EcmaScriptTransform
-          src: "return travdata.concatTableData(travdata.tableData(extTables));"
+          src: |
+            const s = skills.parse(extTables);
+            return skills.toCsv(s);
       skills-package: !Table
         tags: [skills-package]
         transform: !EcmaScriptTransform

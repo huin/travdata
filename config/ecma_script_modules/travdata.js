@@ -5,9 +5,10 @@ const travdata = (function () {
    * Registers a function for export. 
    * @param {Function} fn Function to export.
    */
-  function regExport(fn) {
+  function regExport(exports, fn) {
     exports[fn.name] = fn;
   }
+  regExport(exports, regExport);
 
   /**
    * @typedef TableData
@@ -32,7 +33,7 @@ const travdata = (function () {
     }
     return result;
   };
-  regExport(concatTableData);
+  regExport(exports, concatTableData);
 
   /**
    * Returns an array of the `data` property of the given extracted tables.
@@ -46,7 +47,7 @@ const travdata = (function () {
     }
     return tables;
   };
-  regExport(tableData);
+  regExport(exports, tableData);
 
   return exports;
 })();
