@@ -1,8 +1,24 @@
 { pkgs, lib, config, inputs, ... }:
 
+let
+  extra_libs = with pkgs; [
+    stdenv.cc.cc.lib
+  ];
+  jdk = pkgs.zulu.out;
+in
+
 {
   # https://devenv.sh/basics/
   env.GREET = "devenv";
+  env.EXTRA_LIBS = builtins.toString extra_libs;
+  env.JDK = builtins.toString jdk;
+  env.LD_LIBRARY_PATH =
+    builtins.concatStringsSep ":" (
+      builtins.concatLists [
+        [(jdk + "/lib/server")]
+        (builtins.map (path: path + "/lib") extra_libs)
+      ]
+    );
 
   # https://devenv.sh/packages/
   packages = with pkgs; [
