@@ -1,6 +1,7 @@
 !Config
 ecma_script_modules:
   - "ecma_script_modules/travdata.js"
+  - "ecma_script_modules/skills.js"
 books:
   core_rulebook_2022: !Book
     name: Core Rulebook Update 2022
