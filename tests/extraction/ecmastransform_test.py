@@ -45,12 +45,12 @@ const module = function() {
 
 
 @pytest.fixture
-def trn(cfg_reader: filesio.MemReader) -> Iterator[ecmastransform.EcmaScriptTransformer]:
-    with (ecmastransform.EcmaScriptTransformer(cfg_reader=cfg_reader) as trn,):
+def trn(cfg_reader: filesio.MemReader) -> Iterator[ecmastransform.Transformer]:
+    with ecmastransform.transformer(cfg_reader=cfg_reader) as trn:
         yield trn
 
 
-def test_evaluation(trn: ecmastransform.EcmaScriptTransformer) -> None:
+def test_evaluation(trn: ecmastransform.Transformer) -> None:
     actual = trn.transform(
         ext_tables=[],
         source='return [["foo", "bar"]];',
@@ -58,7 +58,7 @@ def test_evaluation(trn: ecmastransform.EcmaScriptTransformer) -> None:
     hc.assert_that(actual, hc.equal_to([["foo", "bar"]]))
 
 
-def test_transform(trn: ecmastransform.EcmaScriptTransformer) -> None:
+def test_transform(trn: ecmastransform.Transformer) -> None:
     trn.load_module(pathlib.PurePath("module.js"))
     t1 = pdftestutil.fake_table_data(num_rows=1)["data"]
     t2 = pdftestutil.fake_table_data(num_rows=2)["data"]

@@ -15,7 +15,7 @@ def extract_table(
     table: config.Table,
     pdf_path: pathlib.Path,
     table_reader: tablereader.TableReader,
-    ecmas_trn: ecmastransform.EcmaScriptTransformer,
+    ecmas_trn: ecmastransform.Transformer,
 ) -> tuple[set[int], TableData]:
     """Extracts a table from the PDF.
 

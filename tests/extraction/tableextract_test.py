@@ -427,7 +427,7 @@ def test_extract_table(
     file_stem = pathlib.Path("foo/bar")
     with (
         filesio.MemReadWriter.new_reader(files) as cfg_reader,
-        ecmastransform.EcmaScriptTransformer(cfg_reader) as ecmas_trn,
+        ecmastransform.transformer(cfg_reader) as ecmas_trn,
     ):
         ecmas_trn.load_module(ecma_script_module)
 
