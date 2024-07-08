@@ -83,7 +83,7 @@ class _EcmaScriptTransformer(Transformer):
         """
         with self._cfg_reader.open_read(path) as r:
             source = r.read()
-        self._ctxt.eval(source=source, name=str(path), line=1, col=1)
+        self._ctxt.eval(source=source, name=str(path), line=0, col=0)
 
     def transform(
         self,
@@ -93,8 +93,8 @@ class _EcmaScriptTransformer(Transformer):
         """Transforms extracted tables.
 
         :param ext_tables: Extracted tables to transform.
-        :param expression: ECMAScript expression that performs the
-        transformations.
+        :param source: ECMAScript code for a function body that performs the
+        transformations and returns the result.
         :return: Transformed tables.
         """
         ext_tables_json = json.dumps(ext_tables)
