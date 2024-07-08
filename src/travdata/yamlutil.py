@@ -7,6 +7,7 @@ import dataclasses
 from typing import Any, ClassVar, Iterator, Self, TypeVar, cast, TYPE_CHECKING
 
 from ruamel import yaml
+from ruamel.yaml import scalarstring
 from travdata import dataclassutil
 from travdata.config import cfgerror
 
@@ -60,6 +61,14 @@ def _yaml_field(cls: type) -> dataclasses.Field:
     return fields[0]
 
 
+def _flatten_value(v: Any) -> Any:
+    match v:
+        case scalarstring.ScalarString() as s:
+            return str(s)
+        case v:
+            return v
+
+
 class YamlMappingMixin:
     """Mixin for classes instantiated by parsing YAML mappings."""
 
@@ -110,6 +119,7 @@ class YamlMappingMixin:
                 raise TypeError(
                     f"required field {field.name} not specified in {cls.yaml_tag}",
                 ) from exc
+            value = _flatten_value(value)
             if fn := field.metadata.get(FROM_YAML):
                 value = fn(value)
             setattr(obj, field.name, value)
