@@ -100,7 +100,7 @@ class _EcmaScriptTransformer(Transformer):
         ext_tables_json = json.dumps(ext_tables)
         try:
             result_json = self._transform_entry(ext_tables_json, source)
-        except (STPyV8.JSError, SyntaxError) as e:
+        except (STPyV8.JSError, SyntaxError, TypeError) as e:
             raise cfgerror.ConfigurationError(str(e)) from e
         if not isinstance(result_json, str):
             raise cfgerror.ConfigurationError(
@@ -108,7 +108,10 @@ class _EcmaScriptTransformer(Transformer):
             )
         result = json.loads(result_json)
 
-        tabledata.check_table_type(result)
+        try:
+            tabledata.check_table_type(result)
+        except TypeError as e:
+            raise cfgerror.ConfigurationError(str(e)) from e
         return result
 
 
