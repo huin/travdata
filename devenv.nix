@@ -3,6 +3,18 @@
 let
   extra_libs = with pkgs; [
     stdenv.cc.cc.lib
+
+    # Needed for the Python Qt based GUI:
+    dbus.lib
+    fontconfig.lib
+    freetype.out
+    glib.out
+    libsForQt5.qt5.qtwayland
+    libglvnd.out
+    libxkbcommon.out
+    wayland
+    xorg.libX11.out
+    zstd.out
   ];
   jdk = pkgs.zulu.out;
 in
