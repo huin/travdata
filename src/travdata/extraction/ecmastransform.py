@@ -98,7 +98,10 @@ class _EcmaScriptTransformer(Transformer):
         :return: Transformed tables.
         """
         ext_tables_json = json.dumps(ext_tables)
-        result_json = self._transform_entry(ext_tables_json, source)
+        try:
+            result_json = self._transform_entry(ext_tables_json, source)
+        except (STPyV8.JSError, SyntaxError) as e:
+            raise cfgerror.ConfigurationError(str(e)) from e
         if not isinstance(result_json, str):
             raise cfgerror.ConfigurationError(
                 f"EcmaScriptTransform returned non-string type {type(result_json).__name__}",
