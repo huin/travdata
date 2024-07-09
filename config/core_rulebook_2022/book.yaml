@@ -51,10 +51,12 @@ groups:
           src: |
             const s = skills.parse(extTables);
             return skills.toCsv(s);
-      skills-package: !Table
-        tags: [skills-package]
+      skill-packages: !Table
+        tags: [skill-packages]
         transform: !EcmaScriptTransform
-          src: "return travdata.concatTableData(travdata.tableData(extTables));"
+          src: |
+            const p = skillpackages.parse(extTables);
+            return skillpackages.toCsv(p);
     groups:
       careers: !Group
         groups:
