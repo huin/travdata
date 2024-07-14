@@ -34,6 +34,7 @@ in
 
   # https://devenv.sh/packages/
   packages = with pkgs; [
+    gdbHostCpuOnly
     git
     jdk
     poetry
