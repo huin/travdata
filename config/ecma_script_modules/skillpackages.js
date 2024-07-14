@@ -18,11 +18,11 @@ const skillpackages = (function () {
     }
 
     function toCsv(packages) {
-        const table = [["Package", "Description", "Skill", "Level"]];
+        const table = [["Package", "Skill", "Level", "Description"]];
         for (const pkg of packages) {
-            table.push([pkg.name, pkg.description]);
+            table.push([pkg.name, "", "", pkg.description]);
             for (const skill of pkg.skills) {
-                table.push(["", "", skill.name, "" + skill.level]);
+                table.push(["", skill.name, "" + skill.level, ""]);
             }
         }
         return table;
