@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """Extracts multiple tables from a PDF."""
 
-import contextlib
+import abc
 import csv
 import dataclasses
 import pathlib
-from typing import Callable, Iterable, Iterator, Optional
+import traceback
+from typing import Callable, Iterable, Iterator, Self
 
 from travdata import config, csvutil, filesio
 from travdata.config import cfgerror
@@ -13,29 +14,23 @@ from travdata.extraction import ecmastransform, index, tableextract
 from travdata.extraction.pdf import tablereader
 
 
-@dataclasses.dataclass
-class Progress:
-    """Progress report from ``extract_book``."""
-
-    completed: int
-    total: int
-
-
 @dataclasses.dataclass(frozen=True)
 class ExtractionConfig:
     """Extraction configuration.
 
-    :field output_dir: Path to top level directory for output.
+    :field cfg_reader_type_path: File IO type and path to use in reading
+    configuration.
+    :field out_writer_type_path: File IO type and path to use in writing output.
     :field input_pdf: Path to PDF file to extract from.
-    :field group: Configuration ``Group`` of tables to extract.
+    :field book_id: ID of book to extract.
     :field overwrite_existing: If true, overwrite existing CSV files.
     :field with_tags: Only extracts tables that have any of these these tags.
     :field without_tags: Only extracts tables that do not include any of these
     tags (takes precedence over with_tags).
     """
 
-    cfg_reader_ctx: contextlib.AbstractContextManager[filesio.Reader]
-    out_writer_ctx: contextlib.AbstractContextManager[filesio.ReadWriter]
+    cfg_reader_type_path: filesio.IOTypePath
+    out_writer_type_path: filesio.IOTypePath
     input_pdf: pathlib.Path
     book_id: str
     overwrite_existing: bool
@@ -101,66 +96,92 @@ def _extract_single_table(  # pylint: disable=too-many-arguments
     return pages
 
 
+class ExtractEvent(abc.ABC):
+    """Abstract marker baseclass for extraction events."""
+
+
+@dataclasses.dataclass(frozen=True)
+class EndedEvent(ExtractEvent):
+    """Reports that extraction has ended. This will be the terminal event."""
+
+    abnormal: bool
+
+
+@dataclasses.dataclass(frozen=True)
+class ErrorEvent(ExtractEvent):
+    """Report of an error during extraction."""
+
+    message: str
+
+
+@dataclasses.dataclass(frozen=True)
+class FileOutputEvent(ExtractEvent):
+    """Report of an output file sucessfully output."""
+
+    path: pathlib.PurePath
+
+
+@dataclasses.dataclass(frozen=True)
+class ProgressEvent(ExtractEvent):
+    """Progress report from ``extract_book``."""
+
+    completed: int
+    total: int
+
+
 @dataclasses.dataclass
-class ExtractEvents:
-    """Extraction event callbacks.
+class _Configs:
+    cfg: config.Config
+    book_cfg: config.Book
+    book_grp: config.Group
 
-    :field on_progress: Called at the start and after each extraction attempt.
-    :field on_error: Called on any errors.
-    :field do_continue: Called at intervals. If it returns False, then no
-    further processing is attempted.
-    """
+    @classmethod
+    def load(cls, cfg_reader: filesio.Reader, book_id: str) -> Self:
+        """Loads configuration from reader."""
+        cfg = config.load_config(cfg_reader)
+        try:
+            book_cfg = cfg.books[book_id]
+        except KeyError as exc:
+            raise cfgerror.ConfigurationError(
+                f"Book {book_id} not found in configuration."
+            ) from exc
 
-    on_progress: Optional[Callable[[Progress], None]] = None
-    on_output: Optional[Callable[[pathlib.PurePath], None]] = None
-    on_error: Optional[Callable[[str], None]] = None
-    do_continue: Optional[Callable[[], bool]] = None
+        book_grp = book_cfg.load_group(cfg_reader)
+
+        return cls(cfg=cfg, book_cfg=book_cfg, book_grp=book_grp)
 
 
-def extract_book(
+def _extract_book_core(
     *,
     table_reader: tablereader.TableReader,
     ext_cfg: ExtractionConfig,
-    events: ExtractEvents,
-) -> None:
-    """Extracts an entire book to CSV.
-
-    :param table_reader: Extractor for individual tables from a PDF.
-    :param cfg: Configuration for extraction.
-    :param events: Event hooks to feed back progress, etc.
-    :raises RuntimeError: If ``cfg.book_cfg.group`` was not set.
-    """
-
+    do_continue: Callable[[], bool],
+) -> Iterator[ExtractEvent]:
     with (
-        ext_cfg.cfg_reader_ctx as cfg_reader,
-        ext_cfg.out_writer_ctx as out_writer,
+        ext_cfg.cfg_reader_type_path.new_reader() as cfg_reader,
+        ext_cfg.out_writer_type_path.new_read_writer() as out_writer,
         index.writer(out_writer) as indexer,
         ecmastransform.transformer(cfg_reader) as ecmas_trn,
     ):
-        cfg = config.load_config(cfg_reader)
         try:
-            book_cfg = cfg.books[ext_cfg.book_id]
-        except KeyError:
-            if events.on_error:
-                events.on_error(
-                    f"Book {ext_cfg.book_id} not found in configuration.",
-                )
+            cfgs = _Configs.load(cfg_reader, ext_cfg.book_id)
+        except cfgerror.ConfigurationError as exc:
+            yield ErrorEvent(
+                message=(f"Error reading configuration: {exc}"),
+            )
             return
 
-        book_group = book_cfg.load_group(cfg_reader)
-
         output_tables = sorted(
-            _filter_tables(ext_cfg, book_group, out_writer),
+            _filter_tables(ext_cfg, cfgs.book_grp, out_writer),
             key=lambda ft: ft.out_filepath,
         )
 
-        _init_ecmas_trn(cfg.ecma_script_modules, ecmas_trn)
+        _init_ecmas_trn(cfgs.cfg.ecma_script_modules, ecmas_trn)
 
-        if events.on_progress:
-            events.on_progress(Progress(0, len(output_tables)))
+        yield ProgressEvent(completed=0, total=len(output_tables))
 
         for i, output_table in enumerate(output_tables, start=1):
-            if events.do_continue and not events.do_continue():
+            if not do_continue():
                 return
 
             try:
@@ -173,21 +194,52 @@ def extract_book(
                     output_table=output_table,
                 )
             except cfgerror.ConfigurationError as exc:
-                if events.on_error:
-                    events.on_error(
+                yield ErrorEvent(
+                    message=(
                         f"Configuration error while processing table "
                         f"{output_table.table.file_stem}: {exc}"
-                    )
+                    ),
+                )
             else:
-                if events.on_output:
-                    events.on_output(output_table.out_filepath)
+                yield FileOutputEvent(output_table.out_filepath)
 
                 indexer.write_entry(
                     output_path=output_table.out_filepath,
                     table=output_table.table,
-                    book_cfg=book_cfg,
+                    book_cfg=cfgs.book_cfg,
                     pages=pages,
                 )
             finally:
-                if events.on_progress:
-                    events.on_progress(Progress(i, len(output_tables)))
+                yield ProgressEvent(completed=i, total=len(output_tables))
+
+
+def extract_book(
+    *,
+    table_reader: tablereader.TableReader,
+    ext_cfg: ExtractionConfig,
+    do_continue: Callable[[], bool],
+) -> Iterator[ExtractEvent]:
+    """Extracts an entire book to CSV.
+
+    :param table_reader: Extractor for individual tables from a PDF.
+    :param ext_cfg: Configuration for extraction.
+    :param do_contiune: Periodically called to check if extraction should
+    continue.
+    :yields: Events about the extraction process.
+    """
+
+    abnormal: bool = False
+    try:
+        yield from _extract_book_core(
+            table_reader=table_reader,
+            ext_cfg=ext_cfg,
+            do_continue=do_continue,
+        )
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        details = "".join(traceback.format_exception(exc))
+        abnormal = True
+        yield ErrorEvent(
+            message=f"Unhandled exception during extraction: {details}",
+        )
+    finally:
+        yield EndedEvent(abnormal=abnormal)

@@ -348,6 +348,21 @@ def _data_dir_for_pyinstaller() -> pathlib.Path:
     return pathlib.Path(getattr(sys, "_MEIPASS"))
 
 
+def config_reader_type_path(
+    args: argparse.Namespace,
+) -> filesio.IOTypePath:
+    """Returns an ``IOTypePath`` for the configuration.
+
+    :param args: Parsed arguments. This must have been generated from a parser
+    that included the argument added by ``add_config_flag``.
+    :return: IOTypePath for creating a ``filesio.Reader`` that will read the
+    configuration.
+    """
+    return filesio.IOTypePath(
+        path=args.config,
+    ).resolve_auto()
+
+
 def config_reader(
     args: argparse.Namespace,
 ) -> contextlib.AbstractContextManager[filesio.Reader]:
@@ -357,9 +372,7 @@ def config_reader(
     that included the argument added by ``add_config_flag``.
     :return: Context manager for a configuration reader.
     """
-    path: pathlib.Path = args.config
-    output_type = filesio.IOType.AUTO.resolve_auto(path)
-    return output_type.new_reader(path)
+    return config_reader_type_path(args).new_reader()
 
 
 def create_config_zip(

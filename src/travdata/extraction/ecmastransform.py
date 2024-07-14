@@ -130,7 +130,9 @@ class _Globals(STPyV8.JSClass):
 
 
 @contextlib.contextmanager
-def transformer(cfg_reader: filesio.Reader) -> Iterator[Transformer]:
+def transformer(
+    cfg_reader: filesio.Reader,
+) -> Iterator[Transformer]:
     """Context manager for an ECMAScript based transformer.
 
     :param cfg_reader: Used to read ECMAScript modules.

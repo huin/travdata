@@ -13,6 +13,7 @@ from typing import Callable, Iterator
 
 from progress import bar as progress  # type: ignore[import-untyped]
 from travdata import config, filesio
+from travdata.cli import cliutil
 from travdata.extraction import bookextract
 from travdata.extraction.pdf import cachingreader, tabulareader
 
@@ -150,18 +151,18 @@ def add_subparser(subparsers) -> None:
 
 
 @contextlib.contextmanager
-def _progress_reporter(no_progress: bool) -> Iterator[Callable[[bookextract.Progress], None]]:
+def _progress_reporter(no_progress: bool) -> Iterator[Callable[[bookextract.ProgressEvent], None]]:
     if no_progress:
         progress_bar = None
 
-        def on_progress(p: bookextract.Progress) -> None:
+        def on_progress(p: bookextract.ProgressEvent) -> None:
             del p  # unused
 
     else:
         progress_bar = progress.Bar("Extracting tables")
         progress_bar.start()
 
-        def on_progress(p: bookextract.Progress) -> None:
+        def on_progress(p: bookextract.ProgressEvent) -> None:
             progress_bar.index = p.completed
             progress_bar.max = p.total
             progress_bar.update()
@@ -173,13 +174,13 @@ def _progress_reporter(no_progress: bool) -> Iterator[Callable[[bookextract.Prog
             progress_bar.finish()
 
 
-def _create_read_writer(
+def _output_io_type_path(
     args: argparse.Namespace,
-) -> contextlib.AbstractContextManager[filesio.ReadWriter]:
-    output: pathlib.Path = args.output
-    output_type: filesio.IOType = args.output_type
-    output_type = output_type.resolve_auto(output)
-    return output_type.new_read_writer(output)
+) -> filesio.IOTypePath:
+    return filesio.IOTypePath(
+        io_type=args.output_type,
+        path=args.output,
+    ).resolve_auto()
 
 
 def run(args: argparse.Namespace) -> int:
@@ -196,17 +197,14 @@ def run(args: argparse.Namespace) -> int:
         return 1
 
     ext_cfg = bookextract.ExtractionConfig(
-        cfg_reader_ctx=config.config_reader(args),
-        out_writer_ctx=_create_read_writer(args),
+        cfg_reader_type_path=config.config_reader_type_path(args),
+        out_writer_type_path=_output_io_type_path(args),
         input_pdf=args.input_pdf,
         book_id=args.book_name,
         overwrite_existing=args.overwrite_existing,
         with_tags=with_tags,
         without_tags=without_tags,
     )
-
-    def on_error(error: str) -> None:
-        print(error, file=sys.stderr)
 
     with (
         tabulareader.TabulaClient(force_subprocess=args.tabula_force_subprocess) as tabula_client,
@@ -216,14 +214,21 @@ def run(args: argparse.Namespace) -> int:
         ) as table_reader,
         _progress_reporter(args.no_progress) as on_progress,
     ):
-        bookextract.extract_book(
+        events = bookextract.extract_book(
             table_reader=table_reader,
             ext_cfg=ext_cfg,
-            events=bookextract.ExtractEvents(
-                on_progress=on_progress,
-                on_error=on_error,
-                do_continue=lambda: True,
-            ),
+            do_continue=lambda: True,
         )
+        for event in events:
+            match event:
+                case bookextract.ProgressEvent() as progress_event:
+                    on_progress(progress_event)
+                case bookextract.ErrorEvent(message=message):
+                    print(message, file=sys.stderr)
+                case bookextract.EndedEvent(abnormal=abnormal):
+                    if abnormal:
+                        return cliutil.EX_SOFTWARE
+                case _:
+                    pass
 
     return 0

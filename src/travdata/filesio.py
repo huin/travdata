@@ -4,6 +4,7 @@
 # pylint: disable=too-few-public-methods
 
 import contextlib
+import dataclasses
 import enum
 import io
 import os
@@ -119,6 +120,29 @@ class IOType(enum.StrEnum):
             return IOType.ZIP
         # Fall back to guessing as directory.
         return IOType.DIR
+
+
+@dataclasses.dataclass(frozen=True)
+class IOTypePath:
+    """Combined IOType and corresponding path."""
+
+    path: pathlib.Path
+    io_type: IOType = IOType.AUTO
+
+    def resolve_auto(self) -> "IOTypePath":
+        """Returns a resolved IOTypePath."""
+        new_type = self.io_type.resolve_auto(self.path)
+        if new_type == self.io_type:
+            return self
+        return IOTypePath(self.path, new_type)
+
+    def new_reader(self) -> contextlib.AbstractContextManager["Reader"]:
+        """Returns a context manager for a ``Reader``."""
+        return self.io_type.new_reader(self.path)
+
+    def new_read_writer(self) -> contextlib.AbstractContextManager["ReadWriter"]:
+        """Returns a context manager for a ``ReadWriter``."""
+        return self.io_type.new_read_writer(self.path)
 
 
 def new_reader(

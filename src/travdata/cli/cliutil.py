@@ -4,8 +4,9 @@
 import os
 
 
-EX_CONFIG = getattr(os, "EX_CONFIG", 2)
-EX_USAGE = getattr(os, "EX_USAGE", 3)
+EX_CONFIG = getattr(os, "EX_CONFIG", 78)
+EX_SOFTWARE = getattr(os, "EX_SOFTWARE", 70)
+EX_USAGE = getattr(os, "EX_USAGE", 64)
 
 
 class CLIError(Exception):

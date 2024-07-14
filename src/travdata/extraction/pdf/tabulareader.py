@@ -3,7 +3,6 @@
 
 import json
 import pathlib
-import tempfile
 from typing import IO, Self, TypeAlias, TypedDict, cast
 
 import jpype  # type: ignore[import-untyped]
@@ -63,17 +62,6 @@ class TabulaClient:
         self._needs_shutdown = False
 
     def __enter__(self) -> Self:
-        # Hack to get tabula initialised from the main thread, otherwise the
-        # application may not quit when multi-threaded (such as in a GUI).
-        with tempfile.NamedTemporaryFile() as tmpfile:
-            tmpfile.write(b"dummy data")
-            tmpfile.flush()
-            try:
-                _ = self._read_pdf(input_path=tmpfile.name, page=1)
-            except Exception:  # pylint: disable=broad-exception-caught
-                # Expected failure due to dummy file not being a real PDF.
-                pass
-
         return self
 
     def __exit__(self, *args) -> None:

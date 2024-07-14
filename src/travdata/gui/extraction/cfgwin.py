@@ -4,7 +4,6 @@
 # Pylint doesn't like QT much.
 # pylint: disable=I1101
 
-import contextlib
 import dataclasses
 import pathlib
 from typing import Callable, Optional
@@ -14,7 +13,6 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from travdata import commontext, config, filesio
 from travdata.config import cfgerror
 from travdata.extraction import bookextract
-from travdata.extraction.pdf import tablereader
 from travdata.gui import qtutil
 from travdata.gui.extraction import runnerwin
 
@@ -26,21 +24,6 @@ class _ExtractionConfigErrors:
     output_dir: Optional[str] = None
 
 
-def _open_config_reader(
-    config_type: filesio.IOType,
-    config_path: pathlib.Path,
-) -> contextlib.AbstractContextManager[filesio.Reader]:
-    config_type = config_type.resolve_auto(config_path)
-    return config_type.new_reader(config_path)
-
-
-def _open_read_writer(
-    path: pathlib.Path,
-) -> contextlib.AbstractContextManager[filesio.ReadWriter]:
-    config_type = filesio.IOType.AUTO.resolve_auto(path)
-    return config_type.new_read_writer(path)
-
-
 @dataclasses.dataclass
 class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
     _cfg: Optional[config.Config] = dataclasses.field(default=None, init=False)
@@ -48,8 +31,7 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
     _cfg_version: Optional[str] = dataclasses.field(default=None, init=False)
 
     # Remaining fields enable building a config.ExtractionConfig.
-    _config_type: filesio.IOType = dataclasses.field(default=filesio.IOType.AUTO, init=False)
-    _config_path: Optional[pathlib.Path] = dataclasses.field(default=None, init=False)
+    _config_path: Optional[pathlib.Path] = None
     input_pdf: Optional[pathlib.Path] = None
     book_id: Optional[str] = None
     output_path: Optional[pathlib.Path] = None
@@ -63,11 +45,6 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
     def config_path(self) -> Optional[pathlib.Path]:
         """Returns the current configuration path."""
         return self._config_path
-
-    @property
-    def config_type(self) -> filesio.IOType:
-        """Returns the current configuration type."""
-        return self._config_type
 
     @property
     def config_error(self) -> Optional[str]:
@@ -96,13 +73,10 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
         self._config_path = path
 
         if self._config_path is None:
-            self._config_type = filesio.IOType.AUTO
             self._cfg = None
         else:
-            self._config_type = filesio.IOType.AUTO.resolve_auto(
-                self._config_path,
-            )
-            with _open_config_reader(self._config_type, self._config_path) as cfg_reader:
+            config_type_path = filesio.IOTypePath(self._config_path).resolve_auto()
+            with config_type_path.new_reader() as cfg_reader:
                 try:
                     cfg = config.load_config(cfg_reader)
                 except filesio.NotFoundError as exc:
@@ -121,19 +95,6 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
         if self._cfg is None or self.book_id not in self._cfg.books:
             self.book_id = None
 
-        return True
-
-    def set_config_type(self, config_type: filesio.IOType) -> bool:
-        """Sets the config type.
-
-        :param config_type: New config type.
-        :return: True if changed.
-        """
-        if self._config_type == config_type:
-            return False
-
-        self.set_config_path(None)
-        self._config_type = config_type
         return True
 
     def build_errors(self) -> _ExtractionConfigErrors:
@@ -167,8 +128,8 @@ class _ExtractionConfigBuilder:  # pylint: disable=too-many-instance-attributes
             return None
 
         return bookextract.ExtractionConfig(
-            cfg_reader_ctx=_open_config_reader(self._config_type, self._config_path),
-            out_writer_ctx=_open_read_writer(self.output_path),
+            cfg_reader_type_path=filesio.IOTypePath(self._config_path).resolve_auto(),
+            out_writer_type_path=filesio.IOTypePath(self.output_path).resolve_auto(),
             input_pdf=self.input_pdf,
             book_id=self.book_id,
             overwrite_existing=False,
@@ -192,7 +153,6 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
     def __init__(
         self,
         thread_pool: QtCore.QThreadPool,
-        table_reader: tablereader.TableReader,
         default_config_path: Optional[pathlib.Path],
     ) -> None:
         super().__init__()
@@ -205,7 +165,6 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         data_usage_text = QtWidgets.QLabel(commontext.DATA_USAGE)
 
         self._thread_pool = thread_pool
-        self._table_reader = table_reader
         self._default_config_path = default_config_path
 
         self._runner = None
@@ -394,14 +353,6 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._refresh_from_state()
 
     @QtCore.Slot()
-    def _toggle_config_type(self, id_: int, state: bool) -> None:
-        if not state:
-            return
-        new_type = filesio.IOType.from_int_id(id_)
-        if self._extract_builder.set_config_type(new_type):
-            self._refresh_from_state()
-
-    @QtCore.Slot()
     def _select_input_pdf(self) -> None:
         def selected(path: pathlib.Path) -> None:
             self._extract_builder.input_pdf = path
@@ -470,7 +421,6 @@ class ExtractionConfigWindow(QtWidgets.QMainWindow):  # pylint: disable=too-many
         self._runner = runnerwin.ExtractionRunnerWindow(
             self._extract,
             self._thread_pool,
-            self._table_reader,
         )
         self._refresh_from_state()
         self._runner.closing.connect(self._runner_closing)
