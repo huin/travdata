@@ -49,13 +49,13 @@ groups:
         tags: [skills]
         transform: !EcmaScriptTransform
           src: |
-            const s = skills.parse(extTables);
+            const s = skills.parse(tables);
             return skills.toCsv(s);
       skill-packages: !Table
         tags: [skill-packages]
         transform: !EcmaScriptTransform
           src: |
-            const p = skillpackages.parse(extTables);
+            const p = skillpackages.parse(tables);
             return skillpackages.toCsv(p);
     groups:
       careers: !Group

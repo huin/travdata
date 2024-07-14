@@ -34,7 +34,7 @@ const skillpackages = (function () {
      * @type {Function}
      */
 
-    function parse(extTables) {
+    function parse(tables) {
         /**
          * @type {Object[]}
          */
@@ -110,7 +110,7 @@ const skillpackages = (function () {
             return stateSkills;
         }
 
-        let table = travdata.concatTableData(travdata.tableData(extTables));
+        let table = travdata.concatTableData(tables);
         let lines = table.map((row) => row.join(" "));
 
         let state = stateFindPkgHeading;

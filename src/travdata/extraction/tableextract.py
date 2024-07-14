@@ -2,6 +2,7 @@
 """Extracts a single table from a PDF."""
 
 import pathlib
+from typing import Iterable, Iterator
 
 from travdata import config, filesio
 from travdata.config import cfgerror, cfgextract
@@ -41,22 +42,24 @@ def extract_table(
 
     pages: set[int] = {t["page"] for t in ext_tables}
 
+    tables = list(_table_data(ext_tables))
+
     match table.transform:
         case None:
             table_data = transforms.perform_transforms(
                 transforms=[],
-                tables=ext_tables,
+                tables=tables,
             )
 
         case cfgextract.LegacyTransformSeq() as cfg:
             table_data = transforms.perform_transforms(
                 transforms=cfg.transforms,
-                tables=ext_tables,
+                tables=tables,
             )
 
         case cfgextract.EcmaScriptTransform() as cfg:
             table_data = ecmas_trn.transform(
-                ext_tables=ext_tables,
+                tables=tables,
                 source=cfg.src,
             )
 
@@ -66,3 +69,10 @@ def extract_table(
             )
 
     return pages, table_data
+
+
+def _table_data(
+    tables: Iterable[tablereader.ExtractedTable],
+) -> Iterator[TableData]:
+    for t in tables:
+        yield t["data"]

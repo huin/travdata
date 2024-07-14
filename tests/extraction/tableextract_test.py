@@ -370,7 +370,7 @@ from .pdf import pdftestutil
         (
             "Uses ECMAScript to transform a table.",
             cfgextract.EcmaScriptTransform(
-                src="return concatExtTables(extTables);",
+                src="return concatExtTables(tables);",
             ),
             [
                 [
@@ -412,10 +412,10 @@ def test_extract_table(
     files = {
         tmpl_path: tmpl_content,
         ecma_script_module: """
-            function concatExtTables(extTables) {
+            function concatExtTables(tables) {
                 const result = [];
-                for (const extTable of extTables) {
-                    for (const row of extTable.data) {
+                for (const table of tables) {
+                    for (const row of table) {
                         result.push(row);
                     }
                 }

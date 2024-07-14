@@ -8,7 +8,6 @@ from typing import Iterable, Iterator, Protocol, TypeAlias
 
 from travdata.config import cfgerror, cfgextract
 from travdata.extraction import parseutil
-from travdata.extraction.pdf import tablereader
 from travdata.tabledata import RowData, TableData
 
 
@@ -21,7 +20,7 @@ _RowGroup: TypeAlias = list[RowData]
 
 def perform_transforms(
     transforms: Iterable[cfgextract.LegacyTransform],
-    tables: list[tablereader.ExtractedTable],
+    tables: list[TableData],
 ) -> TableData:
     """Transforms the rows based on the given transform configurations."""
     rows: Iterator[RowData] = _table_rows_concat(tables)
@@ -262,12 +261,12 @@ def _clean_rows(rows: Iterable[RowData]) -> Iterator[RowData]:
 
 
 def _table_rows_concat(
-    tables: Iterable[tablereader.ExtractedTable],
+    tables: Iterable[TableData],
 ) -> Iterator[RowData]:
-    """Concatenates rows from multiple Tabula tables into a single row iterator.
+    """Concatenates rows from multiple tables into a single row iterator.
 
     :param tables: Tables to concatenate rows from.
     :yield: Rows from the tables.
     """
     for t in tables:
-        yield from t["data"]
+        yield from iter(t)

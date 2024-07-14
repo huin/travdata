@@ -43,8 +43,8 @@ const skills = (function () {
     }
     travdata.regExport(exports, toCsv);
 
-    function parse(extTables) {
-        let table = travdata.concatTableData(travdata.tableData(extTables));
+    function parse(tables) {
+        let table = travdata.concatTableData(tables);
 
         // Normalise some parts that extract bullet markers into two columns,
         // such that we get a single column.

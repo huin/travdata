@@ -12,7 +12,6 @@ import STPyV8  # type: ignore[import-untyped]
 from travdata import filesio
 from travdata import tabledata
 from travdata.config import cfgerror
-from travdata.extraction.pdf import tablereader
 from travdata.tabledata import TableData
 
 
@@ -31,12 +30,12 @@ class Transformer(Protocol):
 
     def transform(
         self,
-        ext_tables: list[tablereader.ExtractedTable],
+        tables: list[TableData],
         source: str,
     ) -> TableData:
         """Transforms extracted tables.
 
-        :param ext_tables: Extracted tables to transform.
+        :param tables: Tables to transform.
         :param expression: ECMAScript expression that performs the
         transformations.
         :return: Transformed tables.
@@ -63,11 +62,11 @@ class _EcmaScriptTransformer(Transformer):
         self._ctxt = ctxt
         self._transform_entry = self._ctxt.eval(
             """\
-(extTablesJson, source) => {
-    const fn = Function("extTables", `"use strict"; ${source}`);
+(tablesJson, source) => {
+    const fn = Function("tables", `"use strict"; ${source}`);
 
-    const extTables = JSON.parse(extTablesJson);
-    const result = fn(extTables);
+    const tables = JSON.parse(tablesJson);
+    const result = fn(tables);
     return JSON.stringify(result);
 }
 """,
@@ -87,20 +86,20 @@ class _EcmaScriptTransformer(Transformer):
 
     def transform(
         self,
-        ext_tables: list[tablereader.ExtractedTable],
+        tables: list[TableData],
         source: str,
     ) -> TableData:
         """Transforms extracted tables.
 
-        :param ext_tables: Extracted tables to transform.
+        :param tables: Tables to transform.
         :param source: ECMAScript code for a function body that performs the
         transformations and returns the result.
         :return: Transformed tables.
         """
-        ext_tables_json = json.dumps(ext_tables)
+        tables_json = json.dumps(tables)
         try:
-            result_json = self._transform_entry(ext_tables_json, source)
-        except (STPyV8.JSError, SyntaxError, TypeError) as e:
+            result_json = self._transform_entry(tables_json, source)
+        except (ReferenceError, STPyV8.JSError, SyntaxError, TypeError) as e:
             raise cfgerror.ConfigurationError(str(e)) from e
         if not isinstance(result_json, str):
             raise cfgerror.ConfigurationError(

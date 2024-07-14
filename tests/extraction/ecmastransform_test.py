@@ -29,14 +29,6 @@ const module = function() {
     return result;
   };
 
-  exports.tableData = function (extTables) {
-    const tables = [];
-    for (const extTable of extTables) {
-      tables.push(extTable.data);
-    }
-    return tables;
-  };
-
   return exports;
 }();
 """,
@@ -52,7 +44,7 @@ def trn(cfg_reader: filesio.MemReader) -> Iterator[ecmastransform.Transformer]:
 
 def test_evaluation(trn: ecmastransform.Transformer) -> None:
     actual = trn.transform(
-        ext_tables=[],
+        tables=[],
         source='return [["foo", "bar"]];',
     )
     hc.assert_that(actual, hc.equal_to([["foo", "bar"]]))
@@ -62,12 +54,9 @@ def test_transform(trn: ecmastransform.Transformer) -> None:
     trn.load_module(pathlib.PurePath("module.js"))
     t1 = pdftestutil.fake_table_data(num_rows=1)["data"]
     t2 = pdftestutil.fake_table_data(num_rows=2)["data"]
-    ext_tables = [
-        pdftestutil.tabula_table_from_simple(1, t1),
-        pdftestutil.tabula_table_from_simple(2, t2),
-    ]
+    tables = [t1, t2]
     actual = trn.transform(
-        ext_tables=ext_tables,
-        source="return module.concatTableData(module.tableData(extTables));",
+        tables=tables,
+        source="return module.concatTableData(tables);",
     )
     hc.assert_that(actual, hc.equal_to(t1 + t2))
