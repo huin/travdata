@@ -3,6 +3,7 @@
 
 import pathlib
 from typing import Iterator
+
 import hamcrest as hc
 import pytest
 
