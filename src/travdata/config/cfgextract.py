@@ -163,10 +163,10 @@ class LegacyTransformSeq(TableTransform, yamlutil.YamlSequenceMixin):
 
 @dataclasses.dataclass
 @yamlreg.YAML.register_class
-class EcmaScriptTransform(TableTransform, yamlutil.YamlMappingMixin):
+class ESTransform(TableTransform, yamlutil.YamlMappingMixin):
     """ECMAScript based table transformation."""
 
-    yaml_tag: ClassVar = "!EcmaScriptTransform"
+    yaml_tag: ClassVar = "!ESTransform"
     src: str
 
     @classmethod

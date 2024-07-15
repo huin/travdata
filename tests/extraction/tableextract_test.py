@@ -10,7 +10,7 @@ import testfixtures  # type: ignore[import-untyped]
 from travdata import config, filesio
 from travdata import tabledata
 from travdata.config import cfgextract
-from travdata.extraction import ecmastransform, tableextract
+from travdata.extraction import estransform, tableextract
 from .pdf import pdftestutil
 
 
@@ -369,7 +369,7 @@ from .pdf import pdftestutil
         ),
         (
             "Uses ECMAScript to transform a table.",
-            cfgextract.EcmaScriptTransform(
+            cfgextract.ESTransform(
                 src="return concatExtTables(tables);",
             ),
             [
@@ -427,7 +427,7 @@ def test_extract_table(
     file_stem = pathlib.Path("foo/bar")
     with (
         filesio.MemReadWriter.new_reader(files) as cfg_reader,
-        ecmastransform.transformer(cfg_reader) as ecmas_trn,
+        estransform.transformer(cfg_reader) as ecmas_trn,
     ):
         ecmas_trn.load_module(ecma_script_module)
 

@@ -10,7 +10,7 @@ from typing import Callable, Iterable, Iterator, Self
 
 from travdata import config, csvutil, filesio
 from travdata.config import cfgerror
-from travdata.extraction import ecmastransform, index, tableextract
+from travdata.extraction import estransform, index, tableextract
 from travdata.extraction.pdf import tablereader
 
 
@@ -68,7 +68,7 @@ def _filter_tables(
 
 def _init_ecmas_trn(
     modules: Iterable[pathlib.PurePath],
-    ecmas_trn: ecmastransform.Transformer,
+    ecmas_trn: estransform.ESTransformer,
 ) -> None:
     for module_path in modules:
         ecmas_trn.load_module(module_path)
@@ -79,7 +79,7 @@ def _extract_single_table(  # pylint: disable=too-many-arguments
     cfg_reader: filesio.Reader,
     out_writer: filesio.ReadWriter,
     table_reader: tablereader.TableReader,
-    ecmas_trn: ecmastransform.Transformer,
+    ecmas_trn: estransform.ESTransformer,
     input_pdf: pathlib.Path,
     output_table: _OutputTable,
 ) -> set[int]:
@@ -161,7 +161,7 @@ def _extract_book_core(
         ext_cfg.cfg_reader_type_path.new_reader() as cfg_reader,
         ext_cfg.out_writer_type_path.new_read_writer() as out_writer,
         index.writer(out_writer) as indexer,
-        ecmastransform.transformer(cfg_reader) as ecmas_trn,
+        estransform.transformer(cfg_reader) as ecmas_trn,
     ):
         try:
             cfgs = _Configs.load(cfg_reader, ext_cfg.book_id)

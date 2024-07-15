@@ -15,7 +15,7 @@ from travdata.config import cfgerror
 from travdata.tabledata import TableData
 
 
-class Transformer(Protocol):
+class ESTransformer(Protocol):
     """Protocol provided for ECMAScript transformations."""
 
     def load_module(
@@ -43,7 +43,7 @@ class Transformer(Protocol):
         ...
 
 
-class _EcmaScriptTransformer(Transformer):
+class _ESTransformer(ESTransformer):
     _cfg_reader: filesio.Reader
     _ctxt: STPyV8.JSContext
     _transform_entry: STPyV8.JSFunction
@@ -103,7 +103,7 @@ class _EcmaScriptTransformer(Transformer):
             raise cfgerror.ConfigurationError(str(e)) from e
         if not isinstance(result_json, str):
             raise cfgerror.ConfigurationError(
-                f"EcmaScriptTransform returned non-string type {type(result_json).__name__}",
+                f"ESTransform returned non-string type {type(result_json).__name__}",
             )
         result = json.loads(result_json)
 
@@ -131,11 +131,11 @@ class _Globals(STPyV8.JSClass):
 @contextlib.contextmanager
 def transformer(
     cfg_reader: filesio.Reader,
-) -> Iterator[Transformer]:
+) -> Iterator[ESTransformer]:
     """Context manager for an ECMAScript based transformer.
 
     :param cfg_reader: Used to read ECMAScript modules.
     :yield: A ``Transformer`` ready for use.
     """
     with STPyV8.JSContext(_Globals()) as ctxt:
-        yield _EcmaScriptTransformer(cfg_reader, ctxt)
+        yield _ESTransformer(cfg_reader, ctxt)

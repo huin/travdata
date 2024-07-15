@@ -8,7 +8,7 @@ import hamcrest as hc
 import pytest
 
 from travdata import filesio
-from travdata.extraction import ecmastransform
+from travdata.extraction import estransform
 from .pdf import pdftestutil
 
 
@@ -38,12 +38,12 @@ const module = function() {
 
 
 @pytest.fixture
-def trn(cfg_reader: filesio.MemReader) -> Iterator[ecmastransform.Transformer]:
-    with ecmastransform.transformer(cfg_reader=cfg_reader) as trn:
+def trn(cfg_reader: filesio.MemReader) -> Iterator[estransform.ESTransformer]:
+    with estransform.transformer(cfg_reader=cfg_reader) as trn:
         yield trn
 
 
-def test_evaluation(trn: ecmastransform.Transformer) -> None:
+def test_evaluation(trn: estransform.ESTransformer) -> None:
     actual = trn.transform(
         tables=[],
         source='return [["foo", "bar"]];',
@@ -51,7 +51,7 @@ def test_evaluation(trn: ecmastransform.Transformer) -> None:
     hc.assert_that(actual, hc.equal_to([["foo", "bar"]]))
 
 
-def test_transform(trn: ecmastransform.Transformer) -> None:
+def test_transform(trn: estransform.ESTransformer) -> None:
     trn.load_module(pathlib.PurePath("module.js"))
     t1 = pdftestutil.fake_table_data(num_rows=1)["data"]
     t2 = pdftestutil.fake_table_data(num_rows=2)["data"]

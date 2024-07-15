@@ -47,13 +47,13 @@ groups:
         transform: *one-row-header
       skills: !Table
         tags: [skills]
-        transform: !EcmaScriptTransform
+        transform: !ESTransform
           src: |
             const s = skills.parse(tables);
             return skills.toCsv(s);
       skill-packages: !Table
         tags: [skill-packages]
-        transform: !EcmaScriptTransform
+        transform: !ESTransform
           src: |
             const p = skillpackages.parse(tables);
             return skillpackages.toCsv(p);

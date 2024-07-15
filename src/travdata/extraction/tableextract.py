@@ -6,7 +6,7 @@ from typing import Iterable, Iterator
 
 from travdata import config, filesio
 from travdata.config import cfgerror, cfgextract
-from travdata.extraction import ecmastransform, transforms
+from travdata.extraction import estransform, transforms
 from travdata.extraction.pdf import tablereader
 from travdata.tabledata import TableData
 
@@ -16,7 +16,7 @@ def extract_table(
     table: config.Table,
     pdf_path: pathlib.Path,
     table_reader: tablereader.TableReader,
-    ecmas_trn: ecmastransform.Transformer,
+    ecmas_trn: estransform.ESTransformer,
 ) -> tuple[set[int], TableData]:
     """Extracts a table from the PDF.
 
@@ -57,7 +57,7 @@ def extract_table(
                 tables=tables,
             )
 
-        case cfgextract.EcmaScriptTransform() as cfg:
+        case cfgextract.ESTransform() as cfg:
             table_data = ecmas_trn.transform(
                 tables=tables,
                 source=cfg.src,

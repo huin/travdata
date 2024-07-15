@@ -8,7 +8,7 @@
     "!AllRows mapping",
     "!Book mapping",
     "!Config mapping",
-    "!EcmaScriptTransform mapping",
+    "!ESTransform mapping",
     "!EmptyColumn scalar",
     "!ExpandColumnOnRegex mapping",
     "!FoldRows sequence",
