@@ -8,7 +8,7 @@ import dataclasses
 import pathlib
 from typing import Iterable, Iterator, Protocol, Self
 
-from travdata import config, csvutil, filesio
+from travdata import csvutil, filesio
 
 
 # Columns/record field names in the output index file.
@@ -46,7 +46,7 @@ class Index:
                 self._tags_to_paths[tag].add(entry.path)
         self._paths = frozenset(paths)
 
-    def paths_with_all_tags(self, tags: Iterable[str]) -> Iterable[pathlib.PurePath]:
+    def paths_with_all_tags(self, tags: Iterable[str]) -> frozenset[pathlib.PurePath]:
         """Returns paths to tables with all of the given tags.
 
         :param tags: Tags to select for.
@@ -83,15 +83,13 @@ class Writer(Protocol):
     def write_entry(
         self,
         output_path: pathlib.PurePath,
-        table: config.Table,
-        book_cfg: config.Book,
+        tags: Iterable[str],
         pages: Iterable[int],
     ) -> None:
         """Write an index entry.
 
-        :param output_path: Path to the table file within the output.
-        :param table: Table being output.
-        :param book_cfg: Book configuration.
+        :param output_path: Path to the file within the output.
+        :param tags: Tags to attach to the entry.
         :param pages: Page numbers that the entry was sourced from.
         """
 
@@ -143,8 +141,7 @@ class _WriterImpl:
     def write_entry(
         self,
         output_path: pathlib.PurePath,
-        table: config.Table,
-        book_cfg: config.Book,
+        tags: Iterable[str],
         pages: Iterable[int],
     ) -> None:
         """Write an index entry."""
@@ -152,8 +149,8 @@ class _WriterImpl:
         self._write_csv.writerow(
             {
                 _INDEX_TABLE_PATH: path,
-                _INDEX_PAGES: ";".join(str(book_cfg.page_offset + page) for page in sorted(pages)),
-                _INDEX_TAGS: ";".join(sorted(table.tags)),
+                _INDEX_PAGES: ";".join(str(page) for page in sorted(pages)),
+                _INDEX_TAGS: ";".join(sorted(tags)),
             }
         )
         self.seen_paths.add(path)

@@ -205,9 +205,8 @@ def _extract_book_core(
 
                 indexer.write_entry(
                     output_path=output_table.out_filepath,
-                    table=output_table.table,
-                    book_cfg=cfgs.book_cfg,
-                    pages=pages,
+                    tags=output_table.table.tags,
+                    pages=[p + cfgs.book_cfg.page_offset for p in pages],
                 )
             finally:
                 yield ProgressEvent(completed=i, total=len(output_tables))
