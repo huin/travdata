@@ -49,18 +49,20 @@ def _worker(
             ):
                 do_continue: bool = True
 
-                events = bookextract.extract_book(
-                    table_reader=table_reader,
-                    ext_cfg=ext_cfg,
-                    do_continue=lambda: do_continue,
-                )
-
-                for event in events:
+                def events(event: bookextract.ExtractEvent) -> None:
+                    nonlocal do_continue
                     if conn.poll():
                         conn.recv()
                         # Currently the only message is implicitly "cancel".
                         do_continue = False
                     conn.send(event)
+
+                bookextract.extract_book(
+                    table_reader=table_reader,
+                    ext_cfg=ext_cfg,
+                    do_continue=lambda: do_continue,
+                    events=events,
+                )
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
             # This most likely catches exceptions from the context managers

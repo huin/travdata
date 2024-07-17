@@ -214,21 +214,28 @@ def run(args: argparse.Namespace) -> int:
         ) as table_reader,
         _progress_reporter(args.no_progress) as on_progress,
     ):
-        events = bookextract.extract_book(
-            table_reader=table_reader,
-            ext_cfg=ext_cfg,
-            do_continue=lambda: True,
-        )
-        for event in events:
+        abnormal = False
+
+        def events(event: bookextract.ExtractEvent) -> None:
+            nonlocal abnormal
             match event:
                 case bookextract.ProgressEvent() as progress_event:
                     on_progress(progress_event)
                 case bookextract.ErrorEvent(message=message):
                     print(message, file=sys.stderr)
-                case bookextract.EndedEvent(abnormal=abnormal):
-                    if abnormal:
-                        return cliutil.EX_SOFTWARE
+                case bookextract.EndedEvent() as ended_event:
+                    abnormal = ended_event.abnormal
                 case _:
                     pass
+
+        bookextract.extract_book(
+            table_reader=table_reader,
+            ext_cfg=ext_cfg,
+            do_continue=lambda: True,
+            events=events,
+        )
+
+    if abnormal:
+        return cliutil.EX_SOFTWARE
 
     return 0

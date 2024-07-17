@@ -156,7 +156,8 @@ def _extract_book_core(
     table_reader: tablereader.TableReader,
     ext_cfg: ExtractionConfig,
     do_continue: Callable[[], bool],
-) -> Iterator[ExtractEvent]:
+    events: Callable[[ExtractEvent], None],
+) -> None:
     with (
         ext_cfg.cfg_reader_type_path.new_reader() as cfg_reader,
         ext_cfg.out_writer_type_path.new_read_writer() as out_writer,
@@ -166,8 +167,10 @@ def _extract_book_core(
         try:
             cfgs = _Configs.load(cfg_reader, ext_cfg.book_id)
         except cfgerror.ConfigurationError as exc:
-            yield ErrorEvent(
-                message=(f"Error reading configuration: {exc}"),
+            events(
+                ErrorEvent(
+                    message=(f"Error reading configuration: {exc}"),
+                )
             )
             return
 
@@ -178,7 +181,7 @@ def _extract_book_core(
 
         _init_ecmas_trn(cfgs.cfg.ecma_script_modules, ecmas_trn)
 
-        yield ProgressEvent(completed=0, total=len(output_tables))
+        events(ProgressEvent(completed=0, total=len(output_tables)))
 
         for i, output_table in enumerate(output_tables, start=1):
             if not do_continue():
@@ -194,14 +197,16 @@ def _extract_book_core(
                     output_table=output_table,
                 )
             except cfgerror.ConfigurationError as exc:
-                yield ErrorEvent(
-                    message=(
-                        f"Configuration error while processing table "
-                        f"{output_table.table.file_stem}: {exc}"
-                    ),
+                events(
+                    ErrorEvent(
+                        message=(
+                            f"Configuration error while processing table "
+                            f"{output_table.table.file_stem}: {exc}"
+                        ),
+                    )
                 )
             else:
-                yield FileOutputEvent(output_table.out_filepath)
+                events(FileOutputEvent(output_table.out_filepath))
 
                 indexer.write_entry(
                     output_path=output_table.out_filepath,
@@ -209,7 +214,7 @@ def _extract_book_core(
                     pages=[p + cfgs.book_cfg.page_offset for p in pages],
                 )
             finally:
-                yield ProgressEvent(completed=i, total=len(output_tables))
+                events(ProgressEvent(completed=i, total=len(output_tables)))
 
 
 def extract_book(
@@ -217,28 +222,32 @@ def extract_book(
     table_reader: tablereader.TableReader,
     ext_cfg: ExtractionConfig,
     do_continue: Callable[[], bool],
-) -> Iterator[ExtractEvent]:
+    events: Callable[[ExtractEvent], None],
+) -> None:
     """Extracts an entire book to CSV.
 
     :param table_reader: Extractor for individual tables from a PDF.
     :param ext_cfg: Configuration for extraction.
     :param do_contiune: Periodically called to check if extraction should
     continue.
-    :yields: Events about the extraction process.
+    :param events: Called with events about the extraction process.
     """
 
     abnormal: bool = False
     try:
-        yield from _extract_book_core(
+        _extract_book_core(
             table_reader=table_reader,
             ext_cfg=ext_cfg,
             do_continue=do_continue,
+            events=events,
         )
     except Exception as exc:  # pylint: disable=broad-exception-caught
         details = "".join(traceback.format_exception(exc))
         abnormal = True
-        yield ErrorEvent(
-            message=f"Unhandled exception during extraction: {details}",
+        events(
+            ErrorEvent(
+                message=f"Unhandled exception during extraction: {details}",
+            )
         )
     finally:
-        yield EndedEvent(abnormal=abnormal)
+        events(EndedEvent(abnormal=abnormal))
