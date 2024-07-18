@@ -26,9 +26,8 @@ class Case:
         return self.name
 
 
-@pytest.mark.parametrize(
-    "case",
-    [
+def make_test_extract_table_cases() -> list[Case]:
+    return [
         Case(
             name="Base behaviour with default config.",
             extract_cfg=cfgextract.LegacyTransformSeq(),
@@ -401,7 +400,12 @@ class Case:
                 ["r4c1", "r4c2"],
             ],
         ),
-    ],
+    ]
+
+
+@pytest.mark.parametrize(
+    "case",
+    make_test_extract_table_cases(),
     ids=Case.test_id,
 )
 def test_extract_table(case: Case) -> None:
