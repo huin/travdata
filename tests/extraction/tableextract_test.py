@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-class-docstring,missing-function-docstring,missing-module-docstring
 
+# pylint fixtures:
+# pylint: disable=redefined-outer-name
+
 import dataclasses
 import pathlib
+from typing import Iterator
 
 import hamcrest as hc
 import pytest
@@ -13,6 +17,39 @@ from travdata import tabledata
 from travdata.config import cfgextract
 from travdata.extraction import estransform, tableextract
 from .pdf import pdftestutil
+
+DUMMY_PDF_PATH = pathlib.Path("some.pdf")
+DUMMY_FILE_STEM = pathlib.Path("foo/bar")
+TMPL_PATH = DUMMY_FILE_STEM.with_suffix(".tabula-template.json")
+TMPL_CONTENT = '{"fake": "json"}'
+ES_MODULE_PATH = pathlib.PurePath("lib.js")
+
+
+@pytest.fixture(scope="module")
+def cfg_reader() -> Iterator[filesio.Reader]:
+    files = {
+        TMPL_PATH: TMPL_CONTENT,
+        ES_MODULE_PATH: """
+            function concatExtTables(tables) {
+                const result = [];
+                for (const table of tables) {
+                    for (const row of table) {
+                        result.push(row);
+                    }
+                }
+                return result;
+            }
+        """,
+    }
+    with filesio.MemReadWriter.new_reader(files) as cfg_reader:
+        yield cfg_reader
+
+
+@pytest.fixture(scope="module")
+def estrn(cfg_reader: filesio.Reader) -> Iterator[estransform.ESTransformer]:
+    with estransform.transformer(cfg_reader) as estrn:
+        estrn.load_module(ES_MODULE_PATH)
+        yield estrn
 
 
 @dataclasses.dataclass(frozen=True)
@@ -408,60 +445,31 @@ def make_test_extract_table_cases() -> list[Case]:
     make_test_extract_table_cases(),
     ids=Case.test_id,
 )
-def test_extract_table(case: Case) -> None:
-    # pylint: disable=too-many-locals
-
-    # Self-check the inputs.
-    for table_in in case.tables_in:
-        tabledata.check_table_type(table_in)
-    tabledata.check_table_type(case.expected)
-
-    tmpl_path = pathlib.PurePath("foo/bar.tabula-template.json")
-    tmpl_content = '{"fake": "json"}'
-    es_module = pathlib.PurePath("lib.js")
-    files = {
-        tmpl_path: tmpl_content,
-        es_module: """
-            function concatExtTables(tables) {
-                const result = [];
-                for (const table of tables) {
-                    for (const row of table) {
-                        result.push(row);
-                    }
-                }
-                return result;
-            }
-        """,
+def test_extract_table(
+    cfg_reader: filesio.Reader,
+    estrn: estransform.ESTransformer,
+    case: Case,
+) -> None:
+    table_reader = pdftestutil.FakeTableReader()
+    table_extractor = tableextract.TableExtractor(
+        cfg_reader=cfg_reader,
+        table_reader=table_reader,
+        estrn=estrn,
+    )
+    expect_call = pdftestutil.Call(DUMMY_PDF_PATH, TMPL_CONTENT)
+    table_reader.return_tables = {
+        expect_call: [pdftestutil.tabula_table_from_simple(1, table) for table in case.tables_in]
     }
-    pdf_path = pathlib.Path("some.pdf")
-    file_stem = pathlib.Path("foo/bar")
-    with (
-        filesio.MemReadWriter.new_reader(files) as cfg_reader,
-        estransform.transformer(cfg_reader) as estrn,
-    ):
-        estrn.load_module(es_module)
-        table_reader = pdftestutil.FakeTableReader()
-        table_extractor = tableextract.TableExtractor(
-            cfg_reader=cfg_reader,
-            table_reader=table_reader,
-            estrn=estrn,
-        )
-        expect_call = pdftestutil.Call(pdf_path, tmpl_content)
-        table_reader.return_tables = {
-            expect_call: [
-                pdftestutil.tabula_table_from_simple(1, table) for table in case.tables_in
-            ]
-        }
-        actual_pages, actual = table_extractor.extract_table(
-            table=config.Table(
-                file_stem=file_stem,
-                transform=case.extract_cfg,
-            ),
-            pdf_path=pdf_path,
-        )
+    actual_pages, actual = table_extractor.extract_table(
+        table=config.Table(
+            file_stem=DUMMY_FILE_STEM,
+            transform=case.extract_cfg,
+        ),
+        pdf_path=DUMMY_PDF_PATH,
+    )
+
     assert actual_pages == {1}
     # Check read_pdf_with_template calls.
     hc.assert_that(table_reader.calls, hc.contains_exactly(hc.equal_to(expect_call)))
     # Check output.
     testfixtures.compare(expected=case.expected, actual=actual)
-    # pylint: enable=too-many-locals
