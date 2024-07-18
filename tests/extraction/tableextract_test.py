@@ -408,10 +408,10 @@ def test_extract_table(
 
     tmpl_path = pathlib.PurePath("foo/bar.tabula-template.json")
     tmpl_content = '{"fake": "json"}'
-    ecma_script_module = pathlib.PurePath("lib.js")
+    es_module = pathlib.PurePath("lib.js")
     files = {
         tmpl_path: tmpl_content,
-        ecma_script_module: """
+        es_module: """
             function concatExtTables(tables) {
                 const result = [];
                 for (const table of tables) {
@@ -427,24 +427,25 @@ def test_extract_table(
     file_stem = pathlib.Path("foo/bar")
     with (
         filesio.MemReadWriter.new_reader(files) as cfg_reader,
-        estransform.transformer(cfg_reader) as ecmas_trn,
+        estransform.transformer(cfg_reader) as estrn,
     ):
-        ecmas_trn.load_module(ecma_script_module)
-
+        estrn.load_module(es_module)
         table_reader = pdftestutil.FakeTableReader()
+        table_extractor = tableextract.TableExtractor(
+            cfg_reader=cfg_reader,
+            table_reader=table_reader,
+            estrn=estrn,
+        )
         expect_call = pdftestutil.Call(pdf_path, tmpl_content)
         table_reader.return_tables = {
             expect_call: [pdftestutil.tabula_table_from_simple(1, table) for table in tables_in]
         }
-        actual_pages, actual = tableextract.extract_table(
-            cfg_reader=cfg_reader,
+        actual_pages, actual = table_extractor.extract_table(
             table=config.Table(
                 file_stem=file_stem,
                 transform=extract_cfg,
             ),
             pdf_path=pdf_path,
-            table_reader=table_reader,
-            ecmas_trn=ecmas_trn,
         )
     assert actual_pages == {1}
     # Check read_pdf_with_template calls.

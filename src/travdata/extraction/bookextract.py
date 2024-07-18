@@ -68,28 +68,23 @@ def _filter_tables(
 
 def _init_ecmas_trn(
     modules: Iterable[pathlib.PurePath],
-    ecmas_trn: estransform.ESTransformer,
+    estrn: estransform.ESTransformer,
 ) -> None:
     for module_path in modules:
-        ecmas_trn.load_module(module_path)
+        estrn.load_module(module_path)
 
 
-def _extract_single_table(  # pylint: disable=too-many-arguments
+def _extract_single_table(
     *,
-    cfg_reader: filesio.Reader,
+    table_extractor: tableextract.TableExtractor,
     out_writer: filesio.ReadWriter,
-    table_reader: tablereader.TableReader,
-    ecmas_trn: estransform.ESTransformer,
     input_pdf: pathlib.Path,
     output_table: _OutputTable,
 ) -> set[int]:
     """Helper wrapper of `extract_table` for `extract_book`, returning page numbers."""
-    pages, rows = tableextract.extract_table(
-        cfg_reader=cfg_reader,
+    pages, rows = table_extractor.extract_table(
         table=output_table.table,
         pdf_path=input_pdf,
-        table_reader=table_reader,
-        ecmas_trn=ecmas_trn,
     )
     with csvutil.open_by_read_writer(out_writer, output_table.out_filepath) as f:
         csv.writer(f).writerows(rows)
@@ -162,7 +157,7 @@ def _extract_book_core(
         ext_cfg.cfg_reader_type_path.new_reader() as cfg_reader,
         ext_cfg.out_writer_type_path.new_read_writer() as out_writer,
         index.writer(out_writer) as indexer,
-        estransform.transformer(cfg_reader) as ecmas_trn,
+        estransform.transformer(cfg_reader) as estrn,
     ):
         try:
             cfgs = _Configs.load(cfg_reader, ext_cfg.book_id)
@@ -179,7 +174,13 @@ def _extract_book_core(
             key=lambda ft: ft.out_filepath,
         )
 
-        _init_ecmas_trn(cfgs.cfg.ecma_script_modules, ecmas_trn)
+        _init_ecmas_trn(cfgs.cfg.ecma_script_modules, estrn)
+
+        table_extractor = tableextract.TableExtractor(
+            cfg_reader=cfg_reader,
+            table_reader=table_reader,
+            estrn=estrn,
+        )
 
         events(ProgressEvent(completed=0, total=len(output_tables)))
 
@@ -189,10 +190,8 @@ def _extract_book_core(
 
             try:
                 pages = _extract_single_table(
-                    cfg_reader=cfg_reader,
+                    table_extractor=table_extractor,
                     out_writer=out_writer,
-                    table_reader=table_reader,
-                    ecmas_trn=ecmas_trn,
                     input_pdf=ext_cfg.input_pdf,
                     output_table=output_table,
                 )

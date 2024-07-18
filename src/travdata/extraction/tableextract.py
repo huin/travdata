@@ -11,64 +11,77 @@ from travdata.extraction.pdf import tablereader
 from travdata.tabledata import TableData
 
 
-def extract_table(
-    cfg_reader: filesio.Reader,
-    table: config.Table,
-    pdf_path: pathlib.Path,
-    table_reader: tablereader.TableReader,
-    ecmas_trn: estransform.ESTransformer,
-) -> tuple[set[int], TableData]:
-    """Extracts a table from the PDF.
+class TableExtractor:
+    """Extracts tables from a PDF."""
 
-    :cfg_reader: Configuration file reader.
-    :param table: Configuration of the table to extract. ``table.extraction``
-    must not be None.
-    :param pdf_path: Path to the PDF to extract from.
-    :param tabula_reader: Used to read the table from the PDF.
-    :param ecmas_trn: Used to perform ECMAScript transforms.
-    :returns: Set of page numbers and iterator over rows from the table.
-    :raises ValueError: ``table.extraction`` is None.
-    """
-    if table.transform is None:
-        raise ValueError(
-            f"extract_table called with table with `None` extraction: {table=}",
-        )
+    _cfg_reader: filesio.Reader
+    _table_reader: tablereader.TableReader
+    _estrn: estransform.ESTransformer
 
-    with cfg_reader.open_read(table.tabula_template_path) as tmpl_file:
-        ext_tables = table_reader.read_pdf_with_template(
-            pdf_path=pdf_path,
-            template_file=tmpl_file,
-        )
+    def __init__(
+        self,
+        cfg_reader: filesio.Reader,
+        table_reader: tablereader.TableReader,
+        estrn: estransform.ESTransformer,
+    ) -> None:
+        """Initialises the ``TableExtractor``."""
+        self._cfg_reader = cfg_reader
+        self._table_reader = table_reader
+        self._estrn = estrn
 
-    pages: set[int] = {t["page"] for t in ext_tables}
+    def extract_table(
+        self,
+        table: config.Table,
+        pdf_path: pathlib.Path,
+    ) -> tuple[set[int], TableData]:
+        """Extracts a table from the PDF.
 
-    tables = list(_table_data(ext_tables))
-
-    match table.transform:
-        case None:
-            table_data = transforms.perform_transforms(
-                transforms=[],
-                tables=tables,
+        :param table: Configuration of the table to extract. ``table.extraction``
+        must not be None.
+        :param pdf_path: Path to the PDF to extract from.
+        :returns: Set of page numbers and iterator over rows from the table.
+        :raises ValueError: ``table.transform`` is None.
+        """
+        if table.transform is None:
+            raise ValueError(
+                f"extract_table called with table with `None` extraction: {table=}",
             )
 
-        case cfgextract.LegacyTransformSeq() as cfg:
-            table_data = transforms.perform_transforms(
-                transforms=cfg.transforms,
-                tables=tables,
+        with self._cfg_reader.open_read(table.tabula_template_path) as tmpl_file:
+            ext_tables = self._table_reader.read_pdf_with_template(
+                pdf_path=pdf_path,
+                template_file=tmpl_file,
             )
 
-        case cfgextract.ESTransform() as cfg:
-            table_data = ecmas_trn.transform(
-                tables=tables,
-                source=cfg.src,
-            )
+        pages: set[int] = {t["page"] for t in ext_tables}
 
-        case other:
-            raise cfgerror.ConfigurationError(
-                f"unhandled Table.transform type: {type(other).__name__}",
-            )
+        tables = list(_table_data(ext_tables))
 
-    return pages, table_data
+        match table.transform:
+            case None:
+                table_data = transforms.perform_transforms(
+                    transforms=[],
+                    tables=tables,
+                )
+
+            case cfgextract.LegacyTransformSeq() as cfg:
+                table_data = transforms.perform_transforms(
+                    transforms=cfg.transforms,
+                    tables=tables,
+                )
+
+            case cfgextract.ESTransform() as cfg:
+                table_data = self._estrn.transform(
+                    tables=tables,
+                    source=cfg.src,
+                )
+
+            case other:
+                raise cfgerror.ConfigurationError(
+                    f"unhandled Table.transform type: {type(other).__name__}",
+                )
+
+        return pages, table_data
 
 
 def _table_data(
