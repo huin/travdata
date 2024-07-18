@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=missing-class-docstring,missing-function-docstring,missing-module-docstring
 
+import dataclasses
 import pathlib
 
 import hamcrest as hc
@@ -14,27 +15,38 @@ from travdata.extraction import estransform, tableextract
 from .pdf import pdftestutil
 
 
+@dataclasses.dataclass(frozen=True)
+class Case:
+    name: str
+    extract_cfg: cfgextract.TableTransform
+    tables_in: list[tabledata.TableData]
+    expected: tabledata.TableData
+
+    def test_id(self) -> str:
+        return self.name
+
+
 @pytest.mark.parametrize(
-    "name,extract_cfg,tables_in,expected",
+    "case",
     [
-        (
-            "Base behaviour with default config.",
-            cfgextract.LegacyTransformSeq(),
-            [
+        Case(
+            name="Base behaviour with default config.",
+            extract_cfg=cfgextract.LegacyTransformSeq(),
+            tables_in=[
                 [
                     ["header 1", "header 2"],
                     ["r1c1", "r1c2"],
                 ],
             ],
-            [
+            expected=[
                 ["header 1", "header 2"],
                 ["r1c1", "r1c2"],
             ],
         ),
-        (
-            "Concatenates input tables.",
-            cfgextract.LegacyTransformSeq(),
-            [
+        Case(
+            name="Concatenates input tables.",
+            extract_cfg=cfgextract.LegacyTransformSeq(),
+            tables_in=[
                 [
                     ["header 1", "header 2"],
                     ["r1c1", "r1c2"],
@@ -44,33 +56,33 @@ from .pdf import pdftestutil
                     ["r3c1", "r3c2"],
                 ],
             ],
-            [
+            expected=[
                 ["header 1", "header 2"],
                 ["r1c1", "r1c2"],
                 ["r2c1", "r2c2"],
                 ["r3c1", "r3c2"],
             ],
         ),
-        (
-            "Adds specified leading row.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Adds specified leading row.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.PrependRow(["added header 1", "added header 2"])]
             ),
-            [
+            tables_in=[
                 [
                     ["r1c1", "r1c2"],
                     ["r2c1", "r2c2"],
                 ],
             ],
-            [
+            expected=[
                 ["added header 1", "added header 2"],
                 ["r1c1", "r1c2"],
                 ["r2c1", "r2c2"],
             ],
         ),
-        (
-            "Merges specified header rows, and keeps individual rows thereafter.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Merges specified header rows, and keeps individual rows thereafter.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.FoldRows(
                         [
@@ -79,7 +91,7 @@ from .pdf import pdftestutil
                     ),
                 ],
             ),
-            [
+            tables_in=[
                 [
                     ["header 1-1", "header 2-1"],
                     ["header 1-2", "header 2-2"],
@@ -87,15 +99,15 @@ from .pdf import pdftestutil
                     ["r2c1", "r2c2"],
                 ],
             ],
-            [
+            expected=[
                 ["header 1-1 header 1-2", "header 2-1 header 2-2"],
                 ["r1c1", "r1c2"],
                 ["r2c1", "r2c2"],
             ],
         ),
-        (
-            "Merges rows based on configured StaticRowLengths.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Merges rows based on configured StaticRowLengths.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.FoldRows(
                         [
@@ -104,7 +116,7 @@ from .pdf import pdftestutil
                     ),
                 ],
             ),
-            [
+            tables_in=[
                 [
                     ["", "header 2-1"],
                     ["header 1", "header 2-2"],
@@ -115,16 +127,16 @@ from .pdf import pdftestutil
                     ["r5c1", "r5c2"],
                 ],
             ],
-            [
+            expected=[
                 ["header 1", "header 2-1 header 2-2"],
                 ["r1c1", "r1c2 r2c2"],
                 ["r3c1 r4c1", "r3c2"],
                 ["r5c1", "r5c2"],
             ],
         ),
-        (
-            "Merges rows based on configured leading StaticRowLengths and EmptyColumn thereafter.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="fold_rows_leading_static_and_empty",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.FoldRows(
                         [
@@ -134,7 +146,7 @@ from .pdf import pdftestutil
                     ),
                 ],
             ),
-            [
+            tables_in=[
                 [
                     ["", "header 2-1"],
                     ["header 1", "header 2-2"],
@@ -145,7 +157,7 @@ from .pdf import pdftestutil
                     ["r5c1", "r5c2"],
                 ],
             ],
-            [
+            expected=[
                 ["header 1", "header 2-1 header 2-2"],
                 ["r1c1", "r1c2 r2c2"],
                 ["r3c1", "r3c2"],
@@ -153,25 +165,25 @@ from .pdf import pdftestutil
                 ["r5c1", "r5c2"],
             ],
         ),
-        (
-            "Fold all rows.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Fold all rows.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.FoldRows([cfgextract.AllRows()])],
             ),
-            [
+            tables_in=[
                 [
                     ["r1c1", "r1c2", "r1c3"],
                     ["r2c1", "r2c2"],
                     ["r3c1", "r3c2", "r3c3"],
                 ],
             ],
-            [
+            expected=[
                 ["r1c1 r2c1 r3c1", "r1c2 r2c2 r3c2", "r1c3 r3c3"],
             ],
         ),
-        (
-            "Splits a column by the matches of a regex.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Splits a column by the matches of a regex.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.ExpandColumnOnRegex(
                         column=1,
@@ -181,7 +193,7 @@ from .pdf import pdftestutil
                     ),
                 ],
             ),
-            [
+            tables_in=[
                 [
                     ["r1c1", "* label 1: text 1", "last col"],
                     ["r2c1", "* label 2: text 2", "last col"],
@@ -191,7 +203,7 @@ from .pdf import pdftestutil
                     [],  # empty row
                 ],
             ],
-            [
+            expected=[
                 ["r1c1", "label 1", "text 1", "last col"],
                 ["r2c1", "label 2", "text 2", "last col"],
                 ["r3c1", "", "continuation text", "last col"],
@@ -200,12 +212,12 @@ from .pdf import pdftestutil
                 [],  # empty row
             ],
         ),
-        (
-            "Joins a range of columns - from+to set.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Joins a range of columns - from+to set.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.JoinColumns(from_=1, to=3, delim=" ")],
             ),
-            [
+            tables_in=[
                 [
                     ["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
                     ["r2c1", "r2c2", "r2c3", "r2c4"],
@@ -215,7 +227,7 @@ from .pdf import pdftestutil
                     [],
                 ],
             ],
-            [
+            expected=[
                 ["r1c1", "r1c2 r1c3", "r1c4", "r1c5"],
                 ["r2c1", "r2c2 r2c3", "r2c4"],
                 ["r3c1", "r3c2 r3c3"],
@@ -224,12 +236,12 @@ from .pdf import pdftestutil
                 [],
             ],
         ),
-        (
-            "Joins a range of columns - from set.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Joins a range of columns - from set.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.JoinColumns(from_=1, delim=" ")],
             ),
-            [
+            tables_in=[
                 [
                     ["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
                     ["r2c1", "r2c2", "r2c3", "r2c4"],
@@ -239,7 +251,7 @@ from .pdf import pdftestutil
                     [],
                 ],
             ],
-            [
+            expected=[
                 ["r1c1", "r1c2 r1c3 r1c4 r1c5"],
                 ["r2c1", "r2c2 r2c3 r2c4"],
                 ["r3c1", "r3c2 r3c3"],
@@ -248,12 +260,12 @@ from .pdf import pdftestutil
                 [],
             ],
         ),
-        (
-            "Joins a range of columns - to set.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Joins a range of columns - to set.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.JoinColumns(to=3, delim=" ")],
             ),
-            [
+            tables_in=[
                 [
                     ["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
                     ["r2c1", "r2c2", "r2c3", "r2c4"],
@@ -263,7 +275,7 @@ from .pdf import pdftestutil
                     [],
                 ],
             ],
-            [
+            expected=[
                 ["r1c1 r1c2 r1c3", "r1c4", "r1c5"],
                 ["r2c1 r2c2 r2c3", "r2c4"],
                 ["r3c1 r3c2 r3c3"],
@@ -272,12 +284,12 @@ from .pdf import pdftestutil
                 [],
             ],
         ),
-        (
-            "Joins a range of columns - neither from/to set set.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Joins a range of columns - neither from/to set set.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.JoinColumns(delim=" ")],
             ),
-            [
+            tables_in=[
                 [
                     ["r1c1", "r1c2", "r1c3", "r1c4", "r1c5"],
                     ["r2c1", "r2c2", "r2c3", "r2c4"],
@@ -287,7 +299,7 @@ from .pdf import pdftestutil
                     [],
                 ],
             ],
-            [
+            expected=[
                 ["r1c1 r1c2 r1c3 r1c4 r1c5"],
                 ["r2c1 r2c2 r2c3 r2c4"],
                 ["r3c1 r3c2 r3c3"],
@@ -296,9 +308,9 @@ from .pdf import pdftestutil
                 [],
             ],
         ),
-        (
-            "Splits a column on a pattern.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Splits a column on a pattern.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.SplitColumn(
                         column=1,
@@ -306,7 +318,7 @@ from .pdf import pdftestutil
                     )
                 ],
             ),
-            [
+            tables_in=[
                 [
                     ["0", "a, b,c"],
                     ["0", "a, b,c", "d"],
@@ -315,7 +327,7 @@ from .pdf import pdftestutil
                     [],
                 ],
             ],
-            [
+            expected=[
                 ["0", "a", "b", "c"],
                 ["0", "a", "b", "c", "d"],
                 ["0", "a"],
@@ -323,14 +335,14 @@ from .pdf import pdftestutil
                 [],
             ],
         ),
-        (
-            "Wraps a row every N columns.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Wraps a row every N columns.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[
                     cfgextract.WrapRowEveryN(columns=2),
                 ],
             ),
-            [
+            tables_in=[
                 [
                     ["r1c1", "r1c2", "r1c3", "r1c4"],
                     ["r2c1", "r2c2", "r2c3", "r2c4", "r2c5"],
@@ -339,7 +351,7 @@ from .pdf import pdftestutil
                     ["r5c1"],
                 ],
             ],
-            [
+            expected=[
                 ["r1c1", "r1c2"],
                 ["r1c3", "r1c4"],
                 ["r2c1", "r2c2"],
@@ -349,30 +361,30 @@ from .pdf import pdftestutil
                 ["r5c1"],
             ],
         ),
-        (
-            "Transposes a table.",
-            cfgextract.LegacyTransformSeq(
+        Case(
+            name="Transposes a table.",
+            extract_cfg=cfgextract.LegacyTransformSeq(
                 transforms=[cfgextract.Transpose()],
             ),
-            [
+            tables_in=[
                 [
                     ["r1c1", "r1c2", "r1c3"],
                     ["r2c1", "r2c2"],
                     ["r3c1", "r3c2", "r3c3"],
                 ],
             ],
-            [
+            expected=[
                 ["r1c1", "r2c1", "r3c1"],
                 ["r1c2", "r2c2", "r3c2"],
                 ["r1c3", "", "r3c3"],
             ],
         ),
-        (
-            "Uses ECMAScript to transform a table.",
-            cfgextract.ESTransform(
+        Case(
+            name="Uses ECMAScript to transform a table.",
+            extract_cfg=cfgextract.ESTransform(
                 src="return concatExtTables(tables);",
             ),
-            [
+            tables_in=[
                 [
                     ["r1c1", "r1c2"],
                     ["r2c1", "r2c2"],
@@ -382,7 +394,7 @@ from .pdf import pdftestutil
                     ["r4c1", "r4c2"],
                 ],
             ],
-            [
+            expected=[
                 ["r1c1", "r1c2"],
                 ["r2c1", "r2c2"],
                 ["r3c1", "r3c2"],
@@ -390,21 +402,15 @@ from .pdf import pdftestutil
             ],
         ),
     ],
+    ids=Case.test_id,
 )
-def test_extract_table(
-    record_property,
-    name: str,
-    extract_cfg: cfgextract.TableTransform,
-    tables_in: list[tabledata.TableData],
-    expected: tabledata.TableData,
-) -> None:
+def test_extract_table(case: Case) -> None:
     # pylint: disable=too-many-locals
-    record_property("name", name)
 
     # Self-check the inputs.
-    for table_in in tables_in:
+    for table_in in case.tables_in:
         tabledata.check_table_type(table_in)
-    tabledata.check_table_type(expected)
+    tabledata.check_table_type(case.expected)
 
     tmpl_path = pathlib.PurePath("foo/bar.tabula-template.json")
     tmpl_content = '{"fake": "json"}'
@@ -438,12 +444,14 @@ def test_extract_table(
         )
         expect_call = pdftestutil.Call(pdf_path, tmpl_content)
         table_reader.return_tables = {
-            expect_call: [pdftestutil.tabula_table_from_simple(1, table) for table in tables_in]
+            expect_call: [
+                pdftestutil.tabula_table_from_simple(1, table) for table in case.tables_in
+            ]
         }
         actual_pages, actual = table_extractor.extract_table(
             table=config.Table(
                 file_stem=file_stem,
-                transform=extract_cfg,
+                transform=case.extract_cfg,
             ),
             pdf_path=pdf_path,
         )
@@ -451,5 +459,5 @@ def test_extract_table(
     # Check read_pdf_with_template calls.
     hc.assert_that(table_reader.calls, hc.contains_exactly(hc.equal_to(expect_call)))
     # Check output.
-    testfixtures.compare(expected=expected, actual=actual)
+    testfixtures.compare(expected=case.expected, actual=actual)
     # pylint: enable=too-many-locals
