@@ -174,7 +174,10 @@ def _extract_book_core(
             key=lambda ft: ft.out_filepath,
         )
 
-        _init_ecmas_trn(cfgs.cfg.ecma_script_modules, estrn)
+        _init_ecmas_trn(
+            modules=cfgs.cfg.ecma_script_modules + cfgs.book_cfg.ecma_script_modules,
+            estrn=estrn,
+        )
 
         table_extractor = tableextract.TableExtractor(
             cfg_reader=cfg_reader,

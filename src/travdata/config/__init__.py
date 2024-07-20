@@ -79,6 +79,7 @@ class Book:
     id_: str
     name: str
     default_filename: str
+    ecma_script_modules: list[pathlib.PurePath] = dataclasses.field(default_factory=list)
     tags: set[str] = dataclasses.field(default_factory=set)
     page_offset: int = 1
     _group: Optional[Group] = None
@@ -173,6 +174,7 @@ class _YamlBook(yamlutil.YamlMappingMixin):
     yaml_tag: ClassVar = "!Book"
     name: str
     default_filename: str
+    ecma_script_modules: list[pathlib.PurePath] = dataclasses.field(default_factory=list)
     tags: set[str] = dataclasses.field(default_factory=set, metadata=yamlutil.SET_METADATA)
     page_offset: int = 1
 
@@ -195,6 +197,7 @@ class _YamlBook(yamlutil.YamlMappingMixin):
             id_=book_id,
             name=self.name,
             default_filename=self.default_filename,
+            ecma_script_modules=self.ecma_script_modules,
             tags=tags,
             page_offset=self.page_offset,
         )

@@ -1,10 +1,11 @@
 !Config
 ecma_script_modules:
   - "ecma_script_modules/travdata.js"
-  - "ecma_script_modules/equipment.js"
-  - "ecma_script_modules/skills.js"
-  - "ecma_script_modules/skillpackages.js"
 books:
   core_rulebook_2022: !Book
     name: Core Rulebook Update 2022
     default_filename: update_2022_core_rulebook.pdf
+    ecma_script_modules:
+      - "core_rulebook_2022/ecma_script_modules/equipment.js"
+      - "core_rulebook_2022/ecma_script_modules/skills.js"
+      - "core_rulebook_2022/ecma_script_modules/skillpackages.js"
