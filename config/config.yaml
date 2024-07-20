@@ -1,6 +1,7 @@
 !Config
 ecma_script_modules:
   - "ecma_script_modules/travdata.js"
+  - "ecma_script_modules/equipment.js"
   - "ecma_script_modules/skills.js"
   - "ecma_script_modules/skillpackages.js"
 books:
