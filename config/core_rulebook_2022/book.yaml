@@ -638,7 +638,9 @@ groups:
         tables:
           armour: !Table
             tags: [equipment/armour]
-            transform: *one-row-header
+            transform: !EcmaScriptTransform
+              src: |
+                return equipment.armour(tables);
           melee-weapons: !Table
             tags: [equipment/weapon, weapon/melee]
             transform: *weapon-table
