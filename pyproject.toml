@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "travdata"
-version = "0.6.1"
+version = "0.6.2"
 description = "Data utility code for Mongoose Traveller TTRPG."
 authors = ["John Beisley <johnbeisleyuk@gmail.com>"]
 keywords = ["traveller", "ttrpg"]
