@@ -8,9 +8,7 @@ import dataclasses
 import pathlib
 from typing import Iterator
 
-import hamcrest as hc
 import pytest
-import testfixtures  # type: ignore[import-untyped]
 
 from travdata import config, filesio
 from travdata import tabledata
@@ -482,6 +480,6 @@ def test_extract_table(
 
     assert actual_pages == {1}
     # Check read_pdf_with_template calls.
-    hc.assert_that(table_reader.calls, hc.contains_exactly(hc.equal_to(EXPECT_CALL)))
+    assert [EXPECT_CALL] == table_reader.calls
     # Check output.
-    testfixtures.compare(expected=case.expected, actual=actual)
+    assert case.expected == actual
