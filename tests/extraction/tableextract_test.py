@@ -22,6 +22,7 @@ DUMMY_PDF_PATH = pathlib.Path("some.pdf")
 DUMMY_FILE_STEM = pathlib.Path("foo/bar")
 TMPL_PATH = DUMMY_FILE_STEM.with_suffix(".tabula-template.json")
 TMPL_CONTENT = '{"fake": "json"}'
+EXPECT_CALL = pdftestutil.Call(DUMMY_PDF_PATH, TMPL_CONTENT)
 ES_MODULE_PATH = pathlib.PurePath("lib.js")
 
 
@@ -43,6 +44,24 @@ def cfg_reader() -> Iterator[filesio.Reader]:
     }
     with filesio.MemReadWriter.new_reader(files) as cfg_reader:
         yield cfg_reader
+
+
+@pytest.fixture
+def table_reader() -> pdftestutil.FakeTableReader:
+    return pdftestutil.FakeTableReader()
+
+
+@pytest.fixture
+def table_extractor(
+    cfg_reader: filesio.Reader,
+    table_reader: pdftestutil.FakeTableReader,
+    estrn: estransform.ESTransformer,
+) -> tableextract.TableExtractor:
+    return tableextract.TableExtractor(
+        cfg_reader=cfg_reader,
+        table_reader=table_reader,
+        estrn=estrn,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -446,19 +465,12 @@ def make_test_extract_table_cases() -> list[Case]:
     ids=Case.test_id,
 )
 def test_extract_table(
-    cfg_reader: filesio.Reader,
-    estrn: estransform.ESTransformer,
+    table_reader: pdftestutil.FakeTableReader,
+    table_extractor: tableextract.TableExtractor,
     case: Case,
 ) -> None:
-    table_reader = pdftestutil.FakeTableReader()
-    table_extractor = tableextract.TableExtractor(
-        cfg_reader=cfg_reader,
-        table_reader=table_reader,
-        estrn=estrn,
-    )
-    expect_call = pdftestutil.Call(DUMMY_PDF_PATH, TMPL_CONTENT)
     table_reader.return_tables = {
-        expect_call: [pdftestutil.tabula_table_from_simple(1, table) for table in case.tables_in]
+        EXPECT_CALL: [pdftestutil.tabula_table_from_simple(1, table) for table in case.tables_in],
     }
     actual_pages, actual = table_extractor.extract_table(
         table=config.Table(
@@ -470,6 +482,6 @@ def test_extract_table(
 
     assert actual_pages == {1}
     # Check read_pdf_with_template calls.
-    hc.assert_that(table_reader.calls, hc.contains_exactly(hc.equal_to(expect_call)))
+    hc.assert_that(table_reader.calls, hc.contains_exactly(hc.equal_to(EXPECT_CALL)))
     # Check output.
     testfixtures.compare(expected=case.expected, actual=actual)
