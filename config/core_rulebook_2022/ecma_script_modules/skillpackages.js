@@ -48,12 +48,11 @@ const skillpackages = (function () {
                 return;
             }
 
-            const skills = [...skillLines
-                .join(" ")
-                .matchAll(/([^,\d]+)(\d+)/g)]
-                .map((match) => {
-                    return { name: match[1].trim(), level: parseInt(match[2]) };
-                });
+            const skills = [
+                ...skillLines.join(" ").matchAll(/([^,\d]+)(\d+)/g),
+            ].map((match) => {
+                return { name: match[1].trim(), level: parseInt(match[2]) };
+            });
             packages.push({
                 name: packageName,
                 description: descLines.join(" "),
