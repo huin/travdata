@@ -94,8 +94,9 @@ const skills = (function () {
         }
 
         /**
-         * @typedef StateFn
-         * @type {Function}
+         * @callback StateFn
+         * @param {string} line
+         * @returns {StateFn}
          */
 
         /**

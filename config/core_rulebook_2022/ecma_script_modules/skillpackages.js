@@ -30,8 +30,9 @@ const skillpackages = (function () {
     travdata.regExport(exports, toCsv);
 
     /**
-     * @typedef StateFn
-     * @type {Function}
+     * @callback StateFn
+     * @param {string} line
+     * @returns {StateFn}
      */
 
     function parse(tables) {
