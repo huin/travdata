@@ -3,9 +3,7 @@
 
 import dataclasses
 import re
-from typing import Any, Optional, TypeVar
-
-T = TypeVar("T")
+from typing import Any, Optional
 
 
 _FULL_RANGE_RX = re.compile("(\\d+)[-\u2013](\\d+)")
