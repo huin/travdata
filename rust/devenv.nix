@@ -1,8 +1,13 @@
 { pkgs, lib, config, inputs, ... }:
 
+let
+  jdk = pkgs.zulu.out;
+in
 {
   # https://devenv.sh/basics/
   env.GREET = "devenv";
+  env.JDK = builtins.toString jdk;
+  env.GSETTINGS_SCHEMA_DIR = "${pkgs.gtk4}/share/gsettings-schemas/gtk4-4.12.5/glib-2.0/schemas/";
 
   # https://devenv.sh/packages/
   packages = [
@@ -28,6 +33,7 @@
   # https://devenv.sh/languages/
   languages.c.enable = true;
   languages.rust.enable = true;
+  languages.rust.channel = "stable";
 
   # https://devenv.sh/pre-commit-hooks/
   # pre-commit.hooks.shellcheck.enable = true;
