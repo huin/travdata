@@ -2,7 +2,7 @@
 
 pub mod groupers;
 mod internal;
-pub mod transform;
+pub mod legacy_transform;
 
 use std::path::Path;
 
@@ -21,7 +21,7 @@ use super::tabulautil;
 #[serde(transparent)]
 /// Configures the specifics of extracting the CSV from the PDF.
 pub struct TableExtraction {
-    pub transforms: Vec<transform::TableTransform>,
+    pub transforms: Vec<legacy_transform::TableTransform>,
 }
 
 /// Extracts a single table into a CSV file.
@@ -45,7 +45,7 @@ pub fn extract_table(
         .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
 
     let table = concat_tables(extracted_tables.tables);
-    let mut table = transform::apply_transforms(&table_cfg.extraction.transforms, table)?;
+    let mut table = legacy_transform::apply_transforms(&table_cfg.extraction.transforms, table)?;
 
     clean_table(&mut table);
 
