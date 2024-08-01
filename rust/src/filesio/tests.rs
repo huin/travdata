@@ -10,7 +10,7 @@ use googletest::{
     matchers::{eq, err, ok, unordered_elements_are},
 };
 use tempfile::{tempdir, TempDir};
-use test_casing::{test_casing, Product};
+use test_casing::test_casing;
 
 use crate::{
     filesio::{check_fully_relative, FilesIoError, NonRelativePathType},
@@ -157,44 +157,7 @@ const IO_TYPES: &[IoType] = &[
     },
 ];
 
-struct Case(&'static str, &'static dyn Fn(&IoType));
-
-impl Debug for Case {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-const COMMON_IO_TESTS: &[Case] = &[
-    // TODO: add tests for non-relative paths.
-    Case("empty_reader_has_no_files", &empty_reader_has_no_files),
-    Case("empty_reader_not_exists", &empty_reader_not_exists),
-    Case(
-        "empty_reader_open_read_returns_not_found_err",
-        &empty_reader_open_read_returns_not_found_err,
-    ),
-    Case("read_writer_reads_own_file", &read_writer_reads_own_file),
-    Case("reads_created_files", &reads_created_files),
-    Case("readers_iter_files", &readers_iter_files),
-    Case("read_writer_overwrites_file", &read_writer_overwrites_file),
-    Case("created_files_exist", &created_files_exist),
-    Case(
-        "discarded_files_do_not_exist",
-        &discarded_files_do_not_exist,
-    ),
-];
-
-/// Checks the `test_casing` count in `io_test`.
-#[test]
-fn io_test_count() {
-    assert_eq!(27, COMMON_IO_TESTS.iter().count() * IO_TYPES.iter().count());
-}
-
-#[test_casing(27, Product((IO_TYPES, COMMON_IO_TESTS)))]
-fn io_test(io_type: &IoType, case: &Case) {
-    case.1(io_type);
-}
-
+#[test_casing(3, IO_TYPES)]
 fn empty_reader_has_no_files(io_type: &IoType) {
     let test_io = io_type.new_env();
     let reader = test_io.make_reader();
@@ -202,12 +165,14 @@ fn empty_reader_has_no_files(io_type: &IoType) {
     assert_that!(actual_files, unordered_elements_are![]);
 }
 
+#[test_casing(3, IO_TYPES)]
 fn empty_reader_not_exists(io_type: &IoType) {
     let test_io = io_type.new_env();
     let reader = test_io.make_reader();
     assert_that!(reader.exists(Path::new("not-exist")), eq(false));
 }
 
+#[test_casing(3, IO_TYPES)]
 fn empty_reader_open_read_returns_not_found_err(io_type: &IoType) {
     let test_io = io_type.new_env();
     let reader = test_io.make_reader();
@@ -219,6 +184,7 @@ fn empty_reader_open_read_returns_not_found_err(io_type: &IoType) {
     );
 }
 
+#[test_casing(3, IO_TYPES)]
 fn read_writer_reads_own_file(io_type: &IoType) {
     let test_io = io_type.new_env();
     let read_writer = test_io.make_read_writer();
@@ -237,6 +203,7 @@ fn read_writer_reads_own_file(io_type: &IoType) {
     read_writer.close().expect("should close");
 }
 
+#[test_casing(3, IO_TYPES)]
 fn reads_created_files(io_type: &IoType) {
     let test_io = io_type.new_env();
     let files: Vec<(&Path, &[u8])> = vec![
@@ -273,6 +240,7 @@ fn reads_created_files(io_type: &IoType) {
     });
 }
 
+#[test_casing(3, IO_TYPES)]
 fn readers_iter_files(io_type: &IoType) {
     let test_io = io_type.new_env();
     let files: Vec<&Path> = vec![
@@ -319,6 +287,7 @@ fn readers_iter_files(io_type: &IoType) {
     });
 }
 
+#[test_casing(3, IO_TYPES)]
 fn read_writer_overwrites_file(io_type: &IoType) {
     let path = Path::new("file.txt");
     let v1 = b"content v1";
@@ -377,6 +346,7 @@ fn read_writer_overwrites_file(io_type: &IoType) {
     }
 }
 
+#[test_casing(3, IO_TYPES)]
 fn created_files_exist(io_type: &IoType) {
     let paths = vec![
         Path::new("file.txt"),
@@ -409,6 +379,7 @@ fn created_files_exist(io_type: &IoType) {
     });
 }
 
+#[test_casing(3, IO_TYPES)]
 fn discarded_files_do_not_exist(io_type: &IoType) {
     let paths = vec![
         Path::new("file.txt"),
