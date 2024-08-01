@@ -1,13 +1,13 @@
 {
     "recommendations": [
-      "asciidoctor.asciidoctor-vscode",
-      "donjayamanne.python-environment-manager",
-      "marvhen.reflow-markdown",
-      "ms-python.black-formatter",
-      "ms-python.mypy-type-checker",
-      "ms-python.python",
-      "njpwerner.autodocstring",
-      "redhat.vscode-yaml",
-      "zeshuaro.vscode-python-poetry"
+        "asciidoctor.asciidoctor-vscode",
+        "donjayamanne.python-environment-manager",
+        "marvhen.reflow-markdown",
+        "ms-python.black-formatter",
+        "ms-python.mypy-type-checker",
+        "ms-python.python",
+        "njpwerner.autodocstring",
+        "redhat.vscode-yaml",
+        "zeshuaro.vscode-python-poetry"
     ]
 }

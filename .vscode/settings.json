@@ -1,25 +1,25 @@
 {
-  "asciidoc.antora.enableAntoraSupport": false,
-  "autoDocstring.docstringFormat": "sphinx-notypes",
-  "python.analysis.typeCheckingMode": "standard",
-  "python.testing.pytestEnabled": true,
-  "reflowMarkdown.preferredLineLength": 80,
-  "yaml.customTags": [
-    "!AllRows mapping",
-    "!Book mapping",
-    "!Config mapping",
-    "!ESTransform mapping",
-    "!EmptyColumn scalar",
-    "!ExpandColumnOnRegex mapping",
-    "!FoldRows sequence",
-    "!Group mapping",
-    "!JoinColumns mapping",
-    "!LegacyTransformSeq sequence",
-    "!PrependRow sequence",
-    "!SplitColumn mapping",
-    "!StaticRowCounts sequence",
-    "!Table mapping",
-    "!Transpose mapping",
-    "!WrapRowEveryN scalar"
-  ]
+    "asciidoc.antora.enableAntoraSupport": false,
+    "autoDocstring.docstringFormat": "sphinx-notypes",
+    "python.analysis.typeCheckingMode": "standard",
+    "python.testing.pytestEnabled": true,
+    "reflowMarkdown.preferredLineLength": 80,
+    "yaml.customTags": [
+        "!AllRows mapping",
+        "!Book mapping",
+        "!Config mapping",
+        "!ESTransform mapping",
+        "!EmptyColumn scalar",
+        "!ExpandColumnOnRegex mapping",
+        "!FoldRows sequence",
+        "!Group mapping",
+        "!JoinColumns mapping",
+        "!LegacyTransformSeq sequence",
+        "!PrependRow sequence",
+        "!SplitColumn mapping",
+        "!StaticRowCounts sequence",
+        "!Table mapping",
+        "!Transpose mapping",
+        "!WrapRowEveryN scalar"
+    ]
 }
