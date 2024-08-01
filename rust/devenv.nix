@@ -1,12 +1,12 @@
 { pkgs, lib, config, inputs, ... }:
 
 let
-  jdk = pkgs.zulu.out;
+  jdk = pkgs.jdk;
 in
 {
   # https://devenv.sh/basics/
   env.GREET = "devenv";
-  env.JDK = builtins.toString jdk;
+  env.JDK = builtins.toString "${jdk.out}/lib/openjdk/lib/server";
   env.GSETTINGS_SCHEMA_DIR = "${pkgs.gtk4}/share/gsettings-schemas/gtk4-4.12.5/glib-2.0/schemas/";
 
   # https://devenv.sh/packages/
@@ -32,6 +32,9 @@ in
 
   # https://devenv.sh/languages/
   languages.c.enable = true;
+  languages.java.enable = true;
+  languages.java.jdk.package = jdk;
+  languages.java.maven.enable = true;
   languages.rust.enable = true;
   languages.rust.channel = "stable";
 
