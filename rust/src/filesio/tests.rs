@@ -44,7 +44,7 @@ struct DirTestEnvironment {
 }
 
 impl DirTestEnvironment {
-    fn new() -> Result<BoxIoTestEnvironment> {
+    fn new_boxed() -> Result<BoxIoTestEnvironment> {
         Ok(Box::new(Self {
             temp_dir: tempdir()?,
         }))
@@ -74,7 +74,7 @@ struct MemTestEnvironment {
 }
 
 impl MemTestEnvironment {
-    fn new() -> Result<BoxIoTestEnvironment> {
+    fn new_boxed() -> Result<BoxIoTestEnvironment> {
         Ok(Box::new(Self {
             handle: MemFilesHandle::default(),
         }))
@@ -100,7 +100,7 @@ struct ZipTestEnvironment {
 }
 
 impl ZipTestEnvironment {
-    fn new() -> Result<BoxIoTestEnvironment> {
+    fn new_boxed() -> Result<BoxIoTestEnvironment> {
         Ok(Box::new(Self {
             temp_dir: tempdir()?,
         }))
@@ -145,15 +145,15 @@ impl Debug for IoType {
 const IO_TYPES: &[IoType] = &[
     IoType {
         name: "Dir",
-        new: &DirTestEnvironment::new,
+        new: &DirTestEnvironment::new_boxed,
     },
     IoType {
         name: "Mem",
-        new: &MemTestEnvironment::new,
+        new: &MemTestEnvironment::new_boxed,
     },
     IoType {
         name: "Zip",
-        new: &ZipTestEnvironment::new,
+        new: &ZipTestEnvironment::new_boxed,
     },
 ];
 
@@ -192,11 +192,11 @@ fn read_writer_reads_own_file(io_type: &IoType) {
     let path = Path::new("file.txt");
     let contents = b"contents";
 
-    let mut w = read_writer.open_write(&path).expect("should open");
+    let mut w = read_writer.open_write(path).expect("should open");
     w.write_all(contents).expect("should write");
     w.commit().expect("should commit");
 
-    let mut r = read_writer.open_read(&path).expect("should open");
+    let mut r = read_writer.open_read(path).expect("should open");
     let actual_contents = read_vec(&mut r).expect("should read");
     assert_that!(&actual_contents, eq(contents));
 
@@ -215,7 +215,7 @@ fn reads_created_files(io_type: &IoType) {
         let read_writer = test_io.make_read_writer();
         for (path, contents) in &files {
             let mut w = read_writer.open_write(path).expect("should open");
-            w.write_all(*contents).expect("should write");
+            w.write_all(contents).expect("should write");
             w.commit().expect("should commit");
         }
 
@@ -428,7 +428,7 @@ const VALID_RELATIVE_PATHS: &[&str] = &[r#"foo"#, r#"foo/bar"#];
 /// Checks the `test_casing` count in `test_is_fully_relative`.
 #[test]
 fn test_is_fully_relative_count() {
-    assert_eq!(2, VALID_RELATIVE_PATHS.iter().count());
+    assert_eq!(2, VALID_RELATIVE_PATHS.len());
 }
 
 #[test_casing(2, VALID_RELATIVE_PATHS)]
@@ -458,7 +458,7 @@ const INVALID_RELATIVE_PATHS: &[(&str, FilesIoError)] = &[
 /// Checks the `test_casing` count in `test_invalid_relative_path`.
 #[test]
 fn test_invalid_relative_path_count() {
-    assert_eq!(4, INVALID_RELATIVE_PATHS.iter().count());
+    assert_eq!(4, INVALID_RELATIVE_PATHS.len());
 }
 
 #[test_casing(4, INVALID_RELATIVE_PATHS)]
@@ -499,7 +499,7 @@ const INVALID_RELATIVE_PATHS_ON_WINDOWS: &[(&str, FilesIoError)] = &[
 /// Checks the `test_casing` count in `test_invalid_relative_path_on_windows`.
 #[test]
 fn test_invalid_relative_path_on_windows_count() {
-    assert_eq!(6, INVALID_RELATIVE_PATHS_ON_WINDOWS.iter().count());
+    assert_eq!(6, INVALID_RELATIVE_PATHS_ON_WINDOWS.len());
 }
 
 #[cfg(target_os = "windows")]
