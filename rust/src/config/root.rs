@@ -26,6 +26,7 @@ pub struct Config {
     pub books: HashMap<String, Book>,
 }
 
+#[allow(dead_code)] // The GUI will use previously unused fields.
 /// Top level information about a book.
 pub struct Book {
     pub id: String,
