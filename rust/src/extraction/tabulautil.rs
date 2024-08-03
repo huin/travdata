@@ -9,6 +9,7 @@ use crate::{filesio::Reader, table::Table};
 #[serde(transparent)]
 pub struct Template(pub Vec<TemplateEntry>);
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct TemplateEntry {
     pub page: i32,
@@ -31,6 +32,7 @@ fn load_tabula_tmpl(cfg_reader: &dyn Reader, path: &path::Path) -> Result<Templa
 #[serde(transparent)]
 pub struct JsonTableSet(pub Vec<JsonTable>);
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct JsonTable {
     pub extraction_method: String,
@@ -47,6 +49,7 @@ pub struct JsonTable {
 #[derive(Deserialize, Debug)]
 pub struct JsonRow(pub Vec<JsonCell>);
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct JsonCell {
     pub top: f32,
@@ -77,8 +80,7 @@ impl TabulaClient {
     /// Reads table(s) from a PDF, based on the Tabula template.
     /// * `cfg_reader` a `Reader` for the configuration.
     /// * `pdf_path` Path to PDF to read from.
-    /// * `template_file` Path to the Tabula template JSON
-    /// file.
+    /// * `template_file` Path to the Tabula template JSON file.
     pub fn read_pdf_with_template(
         &self,
         cfg_reader: &dyn Reader,
