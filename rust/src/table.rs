@@ -4,13 +4,15 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use serde_derive::{Deserialize, Serialize};
 
 use crate::extraction::tabulautil;
 
 #[allow(dead_code)]
 type CsvResult<T> = std::result::Result<T, csv::Error>;
 
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(transparent)]
 pub struct Table(pub Vec<Row>);
 
 impl Table {
@@ -72,7 +74,8 @@ where
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(transparent)]
 pub struct Row(pub Vec<String>);
 
 impl Deref for Row {
