@@ -30,9 +30,9 @@ struct YamlTable {
     #[serde(default = "Default::default")]
     pub tags: HashSet<String>,
     #[serde(default = "default_true")]
-    pub extraction_enabled: bool,
+    pub disable_extraction: bool,
     #[serde(default = "Default::default")]
-    pub extraction: tableextract::TableExtraction,
+    pub transform: Option<tableextract::TableTransform>,
 }
 
 fn default_true() -> bool {
@@ -42,17 +42,17 @@ fn default_true() -> bool {
 impl YamlTable {
     /// Creates a `Table` from `self`.
     ///
-    /// * `name` name of the table within the parent `YamlGroup.tables`.
+    /// * `name` name of the table within the parent [YamlGroup] `.tables`.
     /// * `rel_group_dir` path to the directory of the table's parent
-    /// `YamlGroup`.
-    /// * `parent_tags` tags to inherit from parent `YamlGroup`.
+    ///   [YamlGroup].
+    /// * `parent_tags` tags to inherit from parent [YamlGroup].
     fn prepare(self, name: &str, rel_group_dir: &Path, parent_tags: &HashSet<String>) -> Table {
         let tags = self.tags.union(parent_tags).cloned().collect();
         Table {
             file_stem: rel_group_dir.join(name),
             tags,
-            extraction_enabled: self.extraction_enabled,
-            extraction: self.extraction,
+            disable_extraction: self.disable_extraction,
+            transform: self.transform,
         }
     }
 }
@@ -61,8 +61,8 @@ impl YamlTable {
 pub struct Table {
     pub file_stem: PathBuf,
     pub tags: HashSet<String>,
-    pub extraction_enabled: bool,
-    pub extraction: tableextract::TableExtraction,
+    pub disable_extraction: bool,
+    pub transform: Option<tableextract::TableTransform>,
 }
 
 impl Table {

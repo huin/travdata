@@ -1,5 +1,6 @@
 //! Extracts a single table from a PDF.
 
+mod estransform;
 pub mod groupers;
 mod internal;
 pub mod legacy_transform;
@@ -17,11 +18,24 @@ use crate::table::Table;
 use super::index::IndexWriter;
 use super::tabulautil;
 
+#[derive(Deserialize, Debug)]
+/// Configures transformation of the raw data from Tabula into the output structured data.
+pub enum TableTransform {
+    LegacyTransformSeq(LegacyTransformSeq),
+    ESTransform(ESTransform),
+}
+
 #[derive(Deserialize, Debug, Default)]
 #[serde(transparent)]
 /// Configures the specifics of extracting the CSV from the PDF.
-pub struct TableExtraction {
+pub struct LegacyTransformSeq {
     pub transforms: Vec<legacy_transform::TableTransform>,
+}
+
+#[derive(Deserialize, Debug)]
+/// ECMAScript based table transformation.
+pub struct ESTransform {
+    pub src: String,
 }
 
 /// Extracts a single table into a CSV file.
@@ -34,7 +48,7 @@ pub fn extract_table(
     table_cfg: &config::book::Table,
     input_pdf: &Path,
 ) -> Result<()> {
-    if !table_cfg.extraction_enabled {
+    if table_cfg.disable_extraction {
         return Ok(());
     }
 
@@ -44,8 +58,16 @@ pub fn extract_table(
         .read_pdf_with_template(cfg_reader, input_pdf, &tmpl_path)
         .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
 
-    let table = concat_tables(extracted_tables.tables);
-    let mut table = legacy_transform::apply_transforms(&table_cfg.extraction.transforms, table)?;
+    let mut table = match &table_cfg.transform {
+        None => concat_tables(extracted_tables.tables),
+        Some(TableTransform::LegacyTransformSeq(legacy_transform)) => {
+            let table = concat_tables(extracted_tables.tables);
+            legacy_transform::apply_transforms(&legacy_transform.transforms, table)?
+        }
+        Some(TableTransform::ESTransform(es_transform)) => {
+            todo!("XXX")
+        }
+    };
 
     clean_table(&mut table);
 
