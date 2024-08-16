@@ -244,7 +244,7 @@ file-c,,tag-c;tag-z
         let index = Index::load(&read_writer).expect("should create from reader");
 
         assert_that!(
-            index.paths_with_all_tags(&vec![]),
+            index.paths_with_all_tags(&[]),
             unordered_elements_are![
                 eq(Path::new("file-a")),
                 eq(Path::new("file-b")),
@@ -252,11 +252,11 @@ file-c,,tag-c;tag-z
             ],
         );
         assert_that!(
-            index.paths_with_all_tags(&vec!["tag-a"]),
+            index.paths_with_all_tags(&["tag-a"]),
             unordered_elements_are![eq(Path::new("file-a"))],
         );
         assert_that!(
-            index.paths_with_all_tags(&vec!["tag-d", "tag-z"]),
+            index.paths_with_all_tags(&["tag-d", "tag-z"]),
             unordered_elements_are![eq(Path::new("file-a")), eq(Path::new("file-b"))],
         );
     }

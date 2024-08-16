@@ -267,7 +267,7 @@ mod tests {
     mod apply_transforms {
         use googletest::{expect_that, matchers::eq};
 
-        use crate::extraction::tableextract::{clean_table, TableExtraction};
+        use crate::extraction::tableextract::{clean_table, LegacyTransformSeq};
         use crate::table::Table;
 
         use super::super::apply_transforms;
@@ -585,13 +585,10 @@ mod tests {
             table_in_str: &[&[&str]],
             table_expected_str: &[&[&str]],
         ) {
-            let cfg: TableExtraction = serde_yaml_ng::from_str(cfg_str).unwrap();
+            let cfg: LegacyTransformSeq = serde_yaml_ng::from_str(cfg_str).unwrap();
 
-            let table_in: Table = table_in_str.iter().map(|r| r.into_iter().copied()).into();
-            let table_expected: Table = table_expected_str
-                .iter()
-                .map(|r| r.into_iter().copied())
-                .into();
+            let table_in: Table = table_in_str.iter().map(|r| r.iter().copied()).into();
+            let table_expected: Table = table_expected_str.iter().map(|r| r.iter().copied()).into();
 
             let mut table_out =
                 apply_transforms(&cfg.transforms, table_in).expect("should transform");
