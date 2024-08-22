@@ -1,6 +1,6 @@
 //! Extracts a single table from a PDF.
 
-mod estransform;
+pub mod estransform;
 pub mod groupers;
 mod internal;
 pub mod legacy_transform;
