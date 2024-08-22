@@ -9,9 +9,13 @@ use crate::{
     },
     extraction::tabulautil,
     filesio::{ReadWriter, Reader},
+    table::Table,
 };
 
-use super::{index::IndexWriter, tableextract::extract_table};
+use super::{
+    index::IndexWriter,
+    tableextract::{legacy_transform, TableTransform},
+};
 
 /// Encapsulates the values required to extract tables from book(s).
 pub struct Extractor<'a> {
@@ -107,18 +111,34 @@ impl<'a> Extractor<'a> {
             .collect();
 
         for (i, out_table) in output_tables.iter().enumerate() {
-            let extract_result = extract_table(
-                &self.tabula_client,
-                self.cfg_reader.as_ref(),
-                self.out_writer.as_ref(),
-                &mut self.index_writer,
-                book_cfg,
-                out_table.table_cfg,
-                spec.input_pdf,
-            )
-            .with_context(|| format!("processing table {:?}", out_table.out_filepath));
-            if let Err(err) = extract_result {
-                events.on_error(err);
+            if out_table.table_cfg.disable_extraction {
+                continue;
+            }
+
+            let extract_result = self
+                .extract_table(out_table.table_cfg, spec.input_pdf)
+                .with_context(|| format!("processing table {:?}", out_table.out_filepath));
+
+            match extract_result {
+                Err(err) => {
+                    events.on_error(err);
+                }
+                Ok((table, mut page_numbers)) => {
+                    page_numbers
+                        .iter_mut()
+                        .for_each(|page_number| *page_number += book_cfg.page_offset);
+
+                    let write_result = Self::write_table(
+                        self.out_writer.as_ref(),
+                        &mut self.index_writer,
+                        out_table,
+                        table,
+                        page_numbers,
+                    );
+                    if let Err(err) = write_result {
+                        events.on_error(err);
+                    }
+                }
             }
 
             events.on_progress(&out_table.out_filepath, i + 1, output_tables.len());
@@ -128,6 +148,56 @@ impl<'a> Extractor<'a> {
         }
 
         events.on_end();
+    }
+
+    fn write_table(
+        out_writer: &dyn ReadWriter<'a>,
+        index_writer: &mut IndexWriter,
+        out_table: &OutputTable,
+        table: Table,
+        page_numbers: Vec<i32>,
+    ) -> Result<()> {
+        let csv_path = out_table.table_cfg.file_stem.with_extension("csv");
+        let mut csv_file = out_writer.open_write(&csv_path)?;
+
+        table.write_csv(&mut csv_file)?;
+
+        // Check for error rather than implicitly flushing and ignoring.
+        csv_file.commit().with_context(|| "committing CSV file")?;
+
+        index_writer.add_entry(csv_path, out_table.table_cfg, page_numbers);
+
+        Ok(())
+    }
+
+    /// Extracts a single table into a CSV file.
+    fn extract_table(
+        &self,
+        table_cfg: &config::book::Table,
+        input_pdf: &Path,
+    ) -> Result<(Table, Vec<i32>)> {
+        let tmpl_path = table_cfg.tabula_template_path();
+
+        let extracted_tables = self
+            .tabula_client
+            .read_pdf_with_template(self.cfg_reader.as_ref(), input_pdf, &tmpl_path)
+            .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
+
+        let mut table = match &table_cfg.transform {
+            None => Table::concatenated(extracted_tables.tables),
+            Some(TableTransform::LegacyTransformSeq(legacy_transform)) => {
+                let table = Table::concatenated(extracted_tables.tables);
+                legacy_transform::apply_transforms(&legacy_transform.transforms, table)?
+            }
+            Some(TableTransform::ESTransform(es_transform)) => {
+                todo!("TODO")
+            }
+        };
+
+        table.clean();
+        let page_numbers: Vec<i32> = extracted_tables.source_pages.into_iter().collect();
+
+        Ok((table, page_numbers))
     }
 
     /// Completes any extractions performed. Any extracted data may or may not

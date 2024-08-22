@@ -42,6 +42,26 @@ impl Table {
         drop(csv_writer);
         Ok(())
     }
+
+    /// Concatenates the given tables into a single `Table`.
+    pub fn concatenated(tables: Vec<Table>) -> Table {
+        Table(
+            tables
+                .into_iter()
+                .flat_map(|table| table.0.into_iter())
+                .collect(),
+        )
+    }
+
+    /// Clean leading, trailing, and redundant sequences of whitespace within the
+    /// `Table`, in-place.
+    pub fn clean(&mut self) {
+        for row in self.iter_mut() {
+            for cell in row.iter_mut() {
+                crate::extraction::parseutil::clean_text(cell);
+            }
+        }
+    }
 }
 
 impl Deref for Table {
