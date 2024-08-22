@@ -267,7 +267,7 @@ mod tests {
     mod apply_transforms {
         use googletest::{expect_that, matchers::eq};
 
-        use crate::extraction::tableextract::{clean_table, LegacyTransformSeq};
+        use crate::extraction::tableextract::LegacyTransformSeq;
         use crate::table::Table;
 
         use super::super::apply_transforms;
@@ -592,7 +592,7 @@ mod tests {
 
             let mut table_out =
                 apply_transforms(&cfg.transforms, table_in).expect("should transform");
-            clean_table(&mut table_out);
+            table_out.clean();
 
             expect_that!(table_out, eq(table_expected));
         }

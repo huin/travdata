@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(test)]
 use crate::filesio::Reader;
 use crate::{
-    config::{book::Table, root::Book},
+    config::book::Table,
     filesio::{FileRead, FileWrite, FilesIoError, ReadWriter},
     fmtutil,
 };
@@ -165,28 +165,22 @@ impl<'rw> IndexWriter<'rw> {
     ///
     /// * `output_path` Path to the table file within the output.
     /// * `table` Table being output.
-    /// * `book_cfg` Book configuration.
-    /// * `pages` Page numbers that the entry was sourced from.
+    /// * `page_numbers` Page numbers that the entry was sourced from.
     pub fn add_entry(
         &mut self,
         output_path: PathBuf,
-        book_cfg: &Book,
         table_cfg: &Table,
-        pages: &[i32],
+        mut page_numbers: Vec<i32>,
     ) {
         let mut sorted_tags: Vec<String> = table_cfg.tags.iter().map(String::clone).collect();
         sorted_tags.sort();
 
-        let mut sorted_pages: Vec<i32> = pages
-            .iter()
-            .map(|page| book_cfg.page_offset + page)
-            .collect();
-        sorted_pages.sort();
+        page_numbers.sort();
 
         self.entries.insert(
             output_path,
             WriteRecord {
-                pages: fmtutil::join_display_slice(pages, ITEMS_DELIM),
+                pages: fmtutil::join_display_slice(&page_numbers, ITEMS_DELIM),
                 tags: sorted_tags.join(ITEMS_DELIM),
             },
         );
