@@ -14,12 +14,16 @@ use crate::{
 
 use super::{
     index::IndexWriter,
-    tableextract::{legacy_transform, TableTransform},
+    tableextract::{
+        estransform::{ESScriptOrigin, ESTransformer, TransformFn},
+        legacy_transform, TableTransform,
+    },
 };
 
 /// Encapsulates the values required to extract tables from book(s).
 pub struct Extractor<'a> {
     tabula_client: tabulautil::TabulaClient,
+    estrn: ESTransformer,
     cfg: Config,
     cfg_reader: Box<dyn Reader<'a>>,
     out_writer: Box<dyn ReadWriter<'a>>,
@@ -56,8 +60,11 @@ impl<'a> Extractor<'a> {
         let index_writer =
             IndexWriter::new(out_writer.as_ref()).with_context(|| "opening index for update")?;
 
+        let estrn = ESTransformer::new();
+
         Ok(Self {
             tabula_client,
+            estrn,
             cfg,
             cfg_reader,
             out_writer,
@@ -183,18 +190,30 @@ impl<'a> Extractor<'a> {
             .read_pdf_with_template(self.cfg_reader.as_ref(), input_pdf, &tmpl_path)
             .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
 
-        let mut table = match &table_cfg.transform {
+        let table = match &table_cfg.transform {
             None => Table::concatenated(extracted_tables.tables),
             Some(TableTransform::LegacyTransformSeq(legacy_transform)) => {
-                let table = Table::concatenated(extracted_tables.tables);
-                legacy_transform::apply_transforms(&legacy_transform.transforms, table)?
+                let mut table = Table::concatenated(extracted_tables.tables);
+                table = legacy_transform::apply_transforms(&legacy_transform.transforms, table)?;
+                table.clean();
+                table
             }
             Some(TableTransform::ESTransform(es_transform)) => {
-                todo!("TODO")
+                let func = TransformFn {
+                    function_body: es_transform.src.clone(),
+                    origin: ESScriptOrigin {
+                        resource_name: format!("{:?}", table_cfg.file_stem),
+                        resource_line_offset: 0,
+                        resource_column_offset: 0,
+                        script_id: 0,
+                    },
+                };
+                self.estrn
+                    .transform(func, extracted_tables.tables)
+                    .with_context(|| "applying ESTransform")?
             }
         };
 
-        table.clean();
         let page_numbers: Vec<i32> = extracted_tables.source_pages.into_iter().collect();
 
         Ok((table, page_numbers))

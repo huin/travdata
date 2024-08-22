@@ -91,7 +91,7 @@ impl ESTransformer {
         }
     }
 
-    pub fn transform(&mut self, func: TransformFn, tables: Vec<Table>) -> Result<Table> {
+    pub fn transform(&self, func: TransformFn, tables: Vec<Table>) -> Result<Table> {
         let (result_send, result_recv) = mpsc::channel();
         self.request_send.send(Request::Transform {
             func,
