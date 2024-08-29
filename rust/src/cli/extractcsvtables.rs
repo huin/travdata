@@ -118,7 +118,7 @@ impl ExtractEvents for EventDisplayer {
     }
 
     fn on_error(&mut self, err: anyhow::Error) {
-        eprintln!("Error during extraction: {}.", err);
+        eprintln!("Error during extraction: {:?}.", err);
     }
 
     fn on_end(&mut self) {}
