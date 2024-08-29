@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    io::Read,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{anyhow, Context, Result};
 
@@ -15,7 +18,7 @@ use crate::{
 use super::{
     index::IndexWriter,
     tableextract::{
-        estransform::{ESScriptOrigin, ESTransformer, TransformFn},
+        estransform::{ESScript, ESScriptOrigin, ESTransformer, TransformFn},
         legacy_transform, TableTransform,
     },
 };
@@ -60,7 +63,8 @@ impl<'a> Extractor<'a> {
         let index_writer =
             IndexWriter::new(out_writer.as_ref()).with_context(|| "opening index for update")?;
 
-        let estrn = ESTransformer::new();
+        let mut estrn = ESTransformer::new();
+        run_ecma_scripts(&cfg_reader, &mut estrn, &cfg.ecma_script_modules)?;
 
         Ok(Self {
             tabula_client,
@@ -85,6 +89,16 @@ impl<'a> Extractor<'a> {
                 return;
             }
         };
+
+        if let Err(err) = run_ecma_scripts(
+            &self.cfg_reader,
+            &mut self.estrn,
+            &book_cfg.ecma_script_modules,
+        ) {
+            events.on_error(err.context("running ECMA scripts for book"));
+            events.on_end();
+            return;
+        }
 
         let top_group = match book_cfg.load_group(self.cfg_reader.as_ref()) {
             Ok(top_group) => top_group,
@@ -230,6 +244,43 @@ impl<'a> Extractor<'a> {
             .close()
             .with_context(|| "closing out written files")
     }
+}
+
+fn run_ecma_scripts(
+    cfg_reader: &Box<dyn Reader>,
+    estrn: &mut ESTransformer,
+    script_paths: &[PathBuf],
+) -> Result<()> {
+    for (i, path) in script_paths.iter().enumerate() {
+        let path_str = path.to_str().ok_or_else(|| {
+            anyhow!(
+                "ecma_script_modules[{}] ({:?}) is not a valid UTF-8 path",
+                i,
+                path
+            )
+        })?;
+
+        let mut source = String::new();
+        cfg_reader
+            .open_read(path)
+            .with_context(|| format!("opening ecma_script_modules[{}] ({:?})", i, path))?
+            .read_to_string(&mut source)
+            .with_context(|| format!("reading ecma_script_modules[{}] ({:?})", i, path))?;
+
+        estrn
+            .run_script(ESScript {
+                source,
+                origin: ESScriptOrigin {
+                    resource_name: path_str.to_owned(),
+                    resource_line_offset: 0,
+                    resource_column_offset: 0,
+                    script_id: 0,
+                },
+            })
+            .with_context(|| format!("running ecma_script_modules[{}] ({:?})", i, path))?;
+    }
+
+    Ok(())
 }
 
 struct OutputTable<'cfg> {
