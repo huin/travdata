@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Result};
@@ -23,6 +23,7 @@ pub fn load_config(cfg_reader: &dyn Reader) -> Result<Config> {
 
 /// Top level configuration, read and prepared from a `config.yaml`.
 pub struct Config {
+    pub ecma_script_modules: Vec<PathBuf>,
     pub books: HashMap<String, Book>,
 }
 
@@ -32,6 +33,7 @@ pub struct Book {
     pub id: String,
     pub name: String,
     pub default_filename: String,
+    pub ecma_script_modules: Vec<PathBuf>,
     pub tags: HashSet<String>,
     pub page_offset: i32,
 }
@@ -46,6 +48,7 @@ impl Book {
 /// Top level configuration, read from a `config.yaml`.
 #[derive(Deserialize, Debug)]
 struct YamlConfig {
+    ecma_script_modules: Vec<PathBuf>,
     books: HashMap<String, YamlBook>,
 }
 
@@ -53,6 +56,7 @@ impl YamlConfig {
     /// Creates a `Config` from self.
     fn prepare(self) -> Config {
         Config {
+            ecma_script_modules: self.ecma_script_modules,
             books: self
                 .books
                 .into_iter()
@@ -66,6 +70,8 @@ impl YamlConfig {
 struct YamlBook {
     name: String,
     default_filename: String,
+    #[serde(default)]
+    ecma_script_modules: Vec<PathBuf>,
     #[serde(default)]
     tags: HashSet<String>,
     #[serde(default = "default_i32_one")]
@@ -86,6 +92,7 @@ impl YamlBook {
             id,
             name: self.name,
             default_filename: self.default_filename,
+            ecma_script_modules: self.ecma_script_modules,
             tags,
             page_offset: self.page_offset,
         }
