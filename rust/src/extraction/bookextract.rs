@@ -64,7 +64,7 @@ impl<'a> Extractor<'a> {
             IndexWriter::new(out_writer.as_ref()).with_context(|| "opening index for update")?;
 
         let mut estrn = ESTransformer::new();
-        run_ecma_scripts(&cfg_reader, &mut estrn, &cfg.ecma_script_modules)?;
+        run_ecma_scripts(cfg_reader.as_ref(), &mut estrn, &cfg.ecma_script_modules)?;
 
         Ok(Self {
             tabula_client,
@@ -91,7 +91,7 @@ impl<'a> Extractor<'a> {
         };
 
         if let Err(err) = run_ecma_scripts(
-            &self.cfg_reader,
+            self.cfg_reader.as_ref(),
             &mut self.estrn,
             &book_cfg.ecma_script_modules,
         ) {
@@ -244,7 +244,7 @@ impl<'a> Extractor<'a> {
 }
 
 fn run_ecma_scripts(
-    cfg_reader: &Box<dyn Reader>,
+    cfg_reader: &dyn Reader,
     estrn: &mut ESTransformer,
     script_paths: &[PathBuf],
 ) -> Result<()> {
