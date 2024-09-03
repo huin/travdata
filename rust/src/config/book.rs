@@ -29,14 +29,14 @@ pub fn load_book(
 struct YamlTable {
     #[serde(default = "Default::default")]
     pub tags: HashSet<String>,
-    #[serde(default = "default_true")]
+    #[serde(default = "default_false")]
     pub disable_extraction: bool,
     #[serde(default = "Default::default")]
     pub transform: Option<tableextract::TableTransform>,
 }
 
-fn default_true() -> bool {
-    true
+fn default_false() -> bool {
+    false
 }
 
 impl YamlTable {
