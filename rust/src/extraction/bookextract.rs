@@ -111,6 +111,7 @@ impl<'a> Extractor<'a> {
 
         let output_tables: Vec<OutputTable<'_>> = top_group
             .iter_tables()
+            .filter(|&table_cfg| !table_cfg.disable_extraction)
             .filter(|&table_cfg| {
                 spec.with_tags.is_empty()
                     || spec
@@ -132,10 +133,6 @@ impl<'a> Extractor<'a> {
             .collect();
 
         for (i, out_table) in output_tables.iter().enumerate() {
-            if out_table.table_cfg.disable_extraction {
-                continue;
-            }
-
             let extract_result = self
                 .extract_table(out_table.table_cfg, spec.input_pdf)
                 .with_context(|| format!("processing table {:?}", out_table.out_filepath));
