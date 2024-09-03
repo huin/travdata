@@ -183,7 +183,11 @@ impl<'a> Extractor<'a> {
         // Check for error rather than implicitly flushing and ignoring.
         csv_file.commit().with_context(|| "committing CSV file")?;
 
-        index_writer.add_entry(csv_path, out_table.table_cfg, page_numbers);
+        index_writer.add_entry(
+            csv_path,
+            out_table.table_cfg.tags.iter().map(String::as_ref),
+            page_numbers,
+        );
 
         Ok(())
     }
