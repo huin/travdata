@@ -59,6 +59,9 @@ pub struct Command {
     /// precedence over --with-tag.
     #[arg(long, value_delimiter(','))]
     without_tags: Vec<String>,
+
+    #[arg(long, default_value = "true")]
+    show_progress: bool,
 }
 
 /// Runs the subcommand.
@@ -86,7 +89,7 @@ pub fn run(cmd: &Command) -> Result<()> {
         without_tags: &cmd.without_tags,
     };
 
-    let mut events = EventDisplayer::new();
+    let mut events = EventDisplayer::new(cmd.show_progress);
 
     extractor.extract_book(spec, &mut events);
 
@@ -94,17 +97,25 @@ pub fn run(cmd: &Command) -> Result<()> {
 }
 
 struct EventDisplayer {
+    show_progress: bool,
     progress_bar: Option<ProgressBar>,
 }
 
 impl EventDisplayer {
-    fn new() -> Self {
-        Self { progress_bar: None }
+    fn new(show_progress: bool) -> Self {
+        Self {
+            show_progress,
+            progress_bar: None,
+        }
     }
 }
 
 impl ExtractEvents for EventDisplayer {
     fn on_progress(&mut self, _path: &Path, _completed: usize, total: usize) {
+        if !self.show_progress {
+            return;
+        }
+
         let progress_bar: &mut ProgressBar = match self.progress_bar.as_mut() {
             Some(progress_bar) => progress_bar,
             None => {
@@ -113,7 +124,6 @@ impl ExtractEvents for EventDisplayer {
                 self.progress_bar.as_mut().unwrap()
             }
         };
-
         progress_bar.update();
     }
 
