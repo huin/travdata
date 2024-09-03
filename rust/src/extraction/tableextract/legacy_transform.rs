@@ -27,6 +27,7 @@ pub enum TableTransform {
     JoinColumns(JoinColumns),
     PrependRow(PrependRow),
     Transpose(Transpose),
+    SplitColumn(SplitColumn),
     WrapRowEveryN(WrapRowEveryN),
 }
 
@@ -38,6 +39,7 @@ fn transform(cfg: &TableTransform, table: Table) -> Result<Table> {
         JoinColumns(cfg) => Ok(join_columns(cfg, table)),
         PrependRow(cfg) => Ok(prepend_row(cfg, table)),
         Transpose(_) => Ok(transpose(table)),
+        SplitColumn(cfg) => split_column(cfg, table),
         WrapRowEveryN(cfg) => Ok(wrap_row_every_n(cfg, table)),
     }
 }
@@ -227,10 +229,35 @@ fn transpose(table: Table) -> Table {
 }
 
 #[derive(Deserialize, Debug)]
+/// Splits a column on a pattern.
+pub struct SplitColumn {
+    pub column: usize,
+    pub pattern: String,
+}
+
+#[derive(Deserialize, Debug)]
 #[serde(transparent)]
 /// Wraps a row every N columns.
 pub struct WrapRowEveryN {
     pub num_columns: usize,
+}
+
+fn split_column(cfg: &SplitColumn, mut table: Table) -> Result<Table> {
+    let pattern = regex::Regex::new(&cfg.pattern)?;
+
+    for row in &mut table.0 {
+        if row.0.len() <= cfg.column {
+            continue;
+        }
+        let mut after_split = row.0.split_off(cfg.column);
+        let mut after_split_iter = after_split.drain(0..);
+        let cell = after_split_iter.next().expect("cell must be present");
+        let split_cells = pattern.split(&cell);
+        row.0.extend(split_cells.into_iter().map(str::to_string));
+        row.0.extend(after_split_iter);
+    }
+
+    Ok(table)
 }
 
 fn wrap_row_every_n(cfg: &WrapRowEveryN, table: Table) -> Table {
@@ -529,6 +556,32 @@ mod tests {
                     &["r3c1 r3c2 r3c3"],
                     &["r4c1 r4c2"],
                     &["r5c1"],
+                    &[],
+                ],
+            );
+        }
+
+        #[googletest::test]
+        /// Splits a column on a pattern.
+        fn split_column() {
+            test_apply_transforms_case(
+                r#"
+                - !SplitColumn
+                    column: 1
+                    pattern: ',\s*'
+                "#,
+                &[
+                    &["0", "a, b,c"],
+                    &["0", "a, b,c", "d"],
+                    &["0", "a"],
+                    &["0"],
+                    &[],
+                ],
+                &[
+                    &["0", "a", "b", "c"],
+                    &["0", "a", "b", "c", "d"],
+                    &["0", "a"],
+                    &["0"],
                     &[],
                 ],
             );
