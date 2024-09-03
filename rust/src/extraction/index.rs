@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 #[cfg(test)]
 use crate::filesio::Reader;
 use crate::{
-    config::book::Table,
     filesio::{FileRead, FileWrite, FilesIoError, ReadWriter},
     fmtutil,
 };
@@ -164,15 +163,15 @@ impl<'rw> IndexWriter<'rw> {
     /// Write an index entry.
     ///
     /// * `output_path` Path to the table file within the output.
-    /// * `table` Table being output.
+    /// * `tags` Tags for the table being output.
     /// * `page_numbers` Page numbers that the entry was sourced from.
-    pub fn add_entry(
+    pub fn add_entry<'a>(
         &mut self,
         output_path: PathBuf,
-        table_cfg: &Table,
+        tags: impl Iterator<Item = &'a str>,
         mut page_numbers: Vec<i32>,
     ) {
-        let mut sorted_tags: Vec<String> = table_cfg.tags.iter().map(String::clone).collect();
+        let mut sorted_tags: Vec<String> = tags.map(str::to_string).collect();
         sorted_tags.sort();
 
         page_numbers.sort();
@@ -203,23 +202,22 @@ struct CsvRecord {
 mod tests {
     use std::{io::Write, path::Path};
 
+    use anyhow::Result;
     use googletest::{
         assert_that,
         matchers::{eq, unordered_elements_are},
     };
 
     use crate::{
-        extraction::index::INDEX_PATH,
+        extraction::index::{Index, IndexWriter, INDEX_PATH},
         filesio::{
             mem::{MemFilesHandle, MemReadWriter},
             ReadWriter,
         },
     };
 
-    use super::Index;
-
-    #[test]
-    fn test_index_paths_with_all_tags() {
+    #[googletest::test]
+    fn test_index_paths_with_all_tags() -> Result<()> {
         let read_writer = MemReadWriter::new(MemFilesHandle::default());
 
         let mut w = read_writer
@@ -231,11 +229,10 @@ file-a,,tag-a;tag-d;tag-z
 file-b,,tag-b;tag-d;tag-z
 file-c,,tag-c;tag-z
 ",
-        )
-        .expect("should write");
-        w.commit().expect("should commit");
+        )?;
+        w.commit()?;
 
-        let index = Index::load(&read_writer).expect("should create from reader");
+        let index = Index::load(&read_writer)?;
 
         assert_that!(
             index.paths_with_all_tags(&[]),
@@ -253,10 +250,29 @@ file-c,,tag-c;tag-z
             index.paths_with_all_tags(&["tag-d", "tag-z"]),
             unordered_elements_are![eq(Path::new("file-a")), eq(Path::new("file-b"))],
         );
+
+        Ok(())
     }
 
-    #[test]
-    fn test_writes_new_index() {
-        // TODO
+    #[googletest::test]
+    fn test_writes_new_index() -> Result<()> {
+        let read_writer = MemReadWriter::new(MemFilesHandle::default());
+
+        let mut index_writer = IndexWriter::new(&read_writer)?;
+        index_writer.add_entry(
+            Path::new("foo.csv").to_owned(),
+            ["foo", "bar"].iter().copied(),
+            vec![1, 2],
+        );
+        index_writer.commit()?;
+
+        let index = Index::load(&read_writer)?;
+
+        assert_that!(
+            index.paths_with_all_tags(&["foo", "bar"]),
+            unordered_elements_are![eq(Path::new("foo.csv")),],
+        );
+
+        Ok(())
     }
 }
