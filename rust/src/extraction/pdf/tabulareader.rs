@@ -3,7 +3,7 @@ use std::{collections::HashSet, path};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::{filesio::Reader, table::Table};
+use crate::{extraction::pdf::ExtractedTables, filesio::Reader, table::Table};
 
 #[derive(Deserialize, Debug)]
 #[serde(transparent)]
@@ -57,13 +57,6 @@ pub struct JsonCell {
     pub width: f32,
     pub height: f32,
     pub text: String,
-}
-
-/// Page numbers and tables read from a PDF.
-#[derive(Debug)]
-pub struct ExtractedTables {
-    pub source_pages: HashSet<i32>,
-    pub tables: Vec<Table>,
 }
 
 /// Client wrapper around Tabula.
