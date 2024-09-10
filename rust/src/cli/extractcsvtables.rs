@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use anyhow::{Context, Result};
 use clap::Args;
@@ -89,7 +92,9 @@ pub fn run(cmd: &Command) -> Result<()> {
         without_tags: &cmd.without_tags,
     };
 
-    let mut events = EventDisplayer::new(cmd.show_progress);
+    let continue_intent = Arc::new(AtomicBool::new(true));
+    let mut events = EventDisplayer::new(cmd.show_progress, continue_intent.clone())?;
+    ctrlc::set_handler(move || continue_intent.store(false, std::sync::atomic::Ordering::SeqCst))?;
 
     extractor.extract_book(spec, &mut events);
 
@@ -99,14 +104,16 @@ pub fn run(cmd: &Command) -> Result<()> {
 struct EventDisplayer {
     show_progress: bool,
     progress_bar: Option<ProgressBar>,
+    continue_intent: Arc<AtomicBool>,
 }
 
 impl EventDisplayer {
-    fn new(show_progress: bool) -> Self {
-        Self {
+    fn new(show_progress: bool, continue_intent: Arc<AtomicBool>) -> Result<Self> {
+        Ok(EventDisplayer {
             show_progress,
             progress_bar: None,
-        }
+            continue_intent: continue_intent.clone(),
+        })
     }
 }
 
@@ -134,6 +141,7 @@ impl ExtractEvents for EventDisplayer {
     fn on_end(&mut self) {}
 
     fn do_continue(&self) -> bool {
-        true
+        self.continue_intent
+            .load(std::sync::atomic::Ordering::SeqCst)
     }
 }
