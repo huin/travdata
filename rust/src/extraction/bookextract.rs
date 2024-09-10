@@ -10,7 +10,7 @@ use crate::{
         self,
         root::{load_config, Config},
     },
-    extraction::tabulautil,
+    extraction::pdf::tabulareader,
     filesio::{ReadWriter, Reader},
     table::Table,
 };
@@ -25,7 +25,7 @@ use super::{
 
 /// Encapsulates the values required to extract tables from book(s).
 pub struct Extractor<'a> {
-    tabula_client: tabulautil::TabulaClient,
+    tabula_client: tabulareader::TabulaClient,
     estrn: ESTransformer,
     cfg: Config,
     cfg_reader: Box<dyn Reader<'a>>,
@@ -54,7 +54,7 @@ pub trait ExtractEvents {
 impl<'a> Extractor<'a> {
     /// Create a new [Extractor].
     pub fn new(
-        tabula_client: tabulautil::TabulaClient,
+        tabula_client: tabulareader::TabulaClient,
         cfg_reader: Box<dyn Reader<'a>>,
         out_writer: Box<dyn ReadWriter<'a>>,
     ) -> Result<Self> {

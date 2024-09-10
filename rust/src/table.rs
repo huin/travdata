@@ -6,7 +6,7 @@ use std::{
 use anyhow::{Context, Result};
 use serde_derive::{Deserialize, Serialize};
 
-use crate::extraction::tabulautil;
+use crate::extraction::pdf::tabulareader;
 
 #[allow(dead_code)]
 type CsvResult<T> = std::result::Result<T, csv::Error>;
@@ -78,8 +78,8 @@ impl DerefMut for Table {
     }
 }
 
-impl From<tabulautil::JsonTable> for Table {
-    fn from(value: tabulautil::JsonTable) -> Self {
+impl From<tabulareader::JsonTable> for Table {
+    fn from(value: tabulareader::JsonTable) -> Self {
         Table(value.data.into_iter().map(Into::into).collect())
     }
 }
@@ -112,8 +112,8 @@ impl DerefMut for Row {
     }
 }
 
-impl From<tabulautil::JsonRow> for Row {
-    fn from(value: tabulautil::JsonRow) -> Self {
+impl From<tabulareader::JsonRow> for Row {
+    fn from(value: tabulareader::JsonRow) -> Self {
         Row(value.0.into_iter().map(|cell| cell.text).collect())
     }
 }

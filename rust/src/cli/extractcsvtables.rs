@@ -10,7 +10,7 @@ use simple_bar::ProgressBar;
 use crate::{
     extraction::{
         bookextract::{ExtractEvents, ExtractSpec, Extractor},
-        tabulautil,
+        pdf::tabulareader,
     },
     filesio,
 };
@@ -69,7 +69,7 @@ pub struct Command {
 
 /// Runs the subcommand.
 pub fn run(cmd: &Command) -> Result<()> {
-    let tabula_client = tabulautil::TabulaClient::new(&cmd.tabula_libpath)
+    let tabula_client = tabulareader::TabulaClient::new(&cmd.tabula_libpath)
         .with_context(|| "initialising Tabula")?;
 
     let cfg_type = filesio::IoType::resolve_auto(None, &cmd.config);
