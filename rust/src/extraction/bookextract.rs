@@ -17,6 +17,7 @@ use crate::{
 
 use super::{
     index::IndexWriter,
+    pdf::TableReader,
     tableextract::{
         estransform::{ESScript, ESScriptOrigin, ESTransformer, TransformFn},
         legacy_transform, TableTransform,

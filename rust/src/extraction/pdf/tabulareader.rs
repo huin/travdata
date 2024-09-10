@@ -3,7 +3,11 @@ use std::{collections::HashSet, path};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::{extraction::pdf::ExtractedTables, filesio::Reader, table::Table};
+use crate::{
+    extraction::pdf::{ExtractedTables, TableReader},
+    filesio::Reader,
+    table::Table,
+};
 
 #[derive(Deserialize, Debug)]
 #[serde(transparent)]
@@ -69,12 +73,14 @@ impl TabulaClient {
         let vm = tabula::TabulaVM::new(libpath, false)?;
         Ok(TabulaClient { vm })
     }
+}
 
+impl TableReader for TabulaClient {
     /// Reads table(s) from a PDF, based on the Tabula template.
     /// * `cfg_reader` a `Reader` for the configuration.
     /// * `pdf_path` Path to PDF to read from.
     /// * `template_file` Path to the Tabula template JSON file.
-    pub fn read_pdf_with_template(
+    fn read_pdf_with_template(
         &self,
         cfg_reader: &dyn Reader,
         pdf_path: &path::Path,
