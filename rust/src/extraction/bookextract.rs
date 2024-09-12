@@ -199,11 +199,17 @@ impl<'a> Extractor<'a> {
         table_cfg: &config::book::Table,
         input_pdf: &Path,
     ) -> Result<(Table, Vec<i32>)> {
-        let tmpl_path = table_cfg.tabula_template_path();
+        let mut template_json = String::new();
+        let template_path = table_cfg.tabula_template_path();
+        self.cfg_reader
+            .open_read(&template_path)
+            .with_context(|| format!("opening template file {:?}", template_path))?
+            .read_to_string(&mut template_json)
+            .with_context(|| format!("reading template file {:?}", template_path))?;
 
         let extracted_tables = self
             .tabula_client
-            .read_pdf_with_template(self.cfg_reader.as_ref(), input_pdf, &tmpl_path)
+            .read_pdf_with_template(input_pdf, &template_json)
             .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
 
         let table = match &table_cfg.transform {
