@@ -5,7 +5,6 @@ use serde::Deserialize;
 
 use crate::{
     extraction::pdf::{ExtractedTables, TableReader},
-    filesio::Reader,
     table::Table,
 };
 
@@ -26,9 +25,8 @@ pub struct TemplateEntry {
     pub height: f32,
 }
 
-fn load_tabula_tmpl(cfg_reader: &dyn Reader, path: &path::Path) -> Result<Template> {
-    let tmpl_reader = cfg_reader.open_read(path)?;
-    let tmpl = serde_json::from_reader(tmpl_reader)?;
+fn load_tabula_tmpl(template_json: &str) -> Result<Template> {
+    let tmpl = serde_json::from_str(template_json)?;
     Ok(tmpl)
 }
 
@@ -76,18 +74,13 @@ impl TabulaClient {
 }
 
 impl TableReader for TabulaClient {
-    /// Reads table(s) from a PDF, based on the Tabula template.
-    /// * `cfg_reader` a `Reader` for the configuration.
-    /// * `pdf_path` Path to PDF to read from.
-    /// * `template_file` Path to the Tabula template JSON file.
     fn read_pdf_with_template(
         &self,
-        cfg_reader: &dyn Reader,
         pdf_path: &path::Path,
-        template_file: &path::Path,
+        template_json: &str,
     ) -> Result<ExtractedTables> {
-        let template = load_tabula_tmpl(cfg_reader, template_file)
-            .with_context(|| format!("loading Tabula template in {:?}", template_file))?;
+        let template = load_tabula_tmpl(template_json)
+            .with_context(|| format!("loading Tabula template in {:?}", template_json))?;
         let env = self.vm.attach().with_context(|| "attaching to TabulaVM")?;
 
         let mut source_pages: HashSet<i32> = HashSet::new();
