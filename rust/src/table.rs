@@ -11,7 +11,7 @@ use crate::extraction::pdf::tabulareader;
 #[allow(dead_code)]
 type CsvResult<T> = std::result::Result<T, csv::Error>;
 
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(transparent)]
 pub struct Table(pub Vec<Row>);
 
@@ -94,7 +94,7 @@ where
     }
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(transparent)]
 pub struct Row(pub Vec<String>);
 
