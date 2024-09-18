@@ -309,5 +309,44 @@ mod tests {
         Ok(())
     }
 
-    // TODO: test cache_persistance
+    #[googletest::test]
+    fn cache_persistance() -> Result<()> {
+        let tempdir = tempfile::tempdir()?;
+        let cache_dir = tempdir.path().join("cache");
+
+        let pdf_1 = pdf_1(tempdir.path())?;
+        let mut fake_delegate = FakeTableReader::new();
+
+        let original_tables = ExtractedTables {
+            source_pages: page_number_set(1),
+            tables: vec![fake_table_data(1, 1), fake_table_data(2, 1)],
+        };
+        let expect_call = Call {
+            pdf_path: pdf_1.to_owned(),
+            template_json: TEMPLATE_1.to_owned(),
+        };
+        fake_delegate
+            .return_tables
+            .insert(expect_call.clone(), original_tables.clone());
+
+        let fake_delegate = Arc::new(fake_delegate);
+
+        let first_caching_reader = CachingTableReader::new(fake_delegate.clone(), &cache_dir);
+        let actual_1 = expect_call.do_call(&first_caching_reader)?;
+        drop(first_caching_reader);
+        assert_that!(&actual_1, eq(&original_tables));
+        assert_that!(
+            fake_delegate.calls_snapshot(),
+            eq(vec![expect_call.clone()])
+        );
+
+        let second_caching_reader = CachingTableReader::new(fake_delegate.clone(), &cache_dir);
+        let actual_2 = expect_call.do_call(&second_caching_reader)?;
+        drop(second_caching_reader);
+        assert_that!(&actual_2, eq(&original_tables));
+        // Should not have been called a second time.
+        assert_that!(fake_delegate.calls_snapshot(), len(eq(1)));
+
+        Ok(())
+    }
 }
