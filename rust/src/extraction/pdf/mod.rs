@@ -30,6 +30,19 @@ pub trait TableReader {
     ) -> Result<ExtractedTables>;
 }
 
+impl<T> TableReader for &T
+where
+    T: TableReader,
+{
+    fn read_pdf_with_template(
+        &self,
+        pdf_path: &path::Path,
+        template_json: &str,
+    ) -> Result<ExtractedTables> {
+        T::read_pdf_with_template(self, pdf_path, template_json)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use anyhow::Result;
