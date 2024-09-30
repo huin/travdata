@@ -1,19 +1,10 @@
 use std::{
+    collections::HashSet,
     io::Read,
     path::{Path, PathBuf},
 };
 
 use anyhow::{anyhow, Context, Result};
-
-use crate::{
-    config::{
-        self,
-        root::{load_config, Config},
-    },
-    extraction::pdf::tabulareader,
-    filesio::{ReadWriter, Reader},
-    table::Table,
-};
 
 use super::{
     index::IndexWriter,
@@ -22,6 +13,15 @@ use super::{
         estransform::{ESScript, ESScriptOrigin, ESTransformer, TransformFn},
         legacy_transform, TableTransform,
     },
+};
+use crate::{
+    config::{
+        self,
+        root::{load_config, Config},
+    },
+    extraction::pdf::tabulareader,
+    filesio::{ReadWriter, Reader},
+    table::Table,
 };
 
 /// Encapsulates the values required to extract tables from book(s).
@@ -142,10 +142,11 @@ impl<'a> Extractor<'a> {
                 Err(err) => {
                     events.on_error(err);
                 }
-                Ok((table, mut page_numbers)) => {
-                    page_numbers
-                        .iter_mut()
-                        .for_each(|page_number| *page_number += book_cfg.page_offset);
+                Ok((table, page_numbers_set)) => {
+                    let page_numbers = page_numbers_set
+                        .into_iter()
+                        .map(|page_number| page_number + book_cfg.page_offset)
+                        .collect();
 
                     let write_result = Self::write_table(
                         self.out_writer.as_ref(),
@@ -198,7 +199,7 @@ impl<'a> Extractor<'a> {
         &self,
         table_cfg: &config::book::Table,
         input_pdf: &Path,
-    ) -> Result<(Table, Vec<i32>)> {
+    ) -> Result<(Table, HashSet<i32>)> {
         let mut template_json = String::new();
         let template_path = table_cfg.tabula_template_path();
         self.cfg_reader
@@ -212,10 +213,21 @@ impl<'a> Extractor<'a> {
             .read_pdf_with_template(input_pdf, &template_json)
             .with_context(|| format!("extracting table from PDF {:?}", input_pdf))?;
 
+        let page_numbers: HashSet<i32> = extracted_tables
+            .0
+            .iter()
+            .map(|ext_table| ext_table.page)
+            .collect();
+
+        let tables_iter = extracted_tables
+            .0
+            .into_iter()
+            .map(|ext_table| ext_table.table);
+
         let table = match &table_cfg.transform {
-            None => Table::concatenated(extracted_tables.tables),
+            None => Table::concatenated(tables_iter),
             Some(TableTransform::LegacyTransformSeq(legacy_transform)) => {
-                let mut table = Table::concatenated(extracted_tables.tables);
+                let mut table = Table::concatenated(tables_iter);
                 table = legacy_transform::apply_transforms(&legacy_transform.transforms, table)?;
                 table.clean();
                 table
@@ -231,12 +243,10 @@ impl<'a> Extractor<'a> {
                     },
                 };
                 self.estrn
-                    .transform(func, extracted_tables.tables)
+                    .transform(func, tables_iter.collect())
                     .with_context(|| "applying ESTransform")?
             }
         };
-
-        let page_numbers: Vec<i32> = extracted_tables.source_pages.into_iter().collect();
 
         Ok((table, page_numbers))
     }
