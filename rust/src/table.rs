@@ -44,13 +44,8 @@ impl Table {
     }
 
     /// Concatenates the given tables into a single `Table`.
-    pub fn concatenated(tables: Vec<Table>) -> Table {
-        Table(
-            tables
-                .into_iter()
-                .flat_map(|table| table.0.into_iter())
-                .collect(),
-        )
+    pub fn concatenated<'a>(tables: impl Iterator<Item = Table> + 'a) -> Table {
+        Table(tables.flat_map(|table| table.0.into_iter()).collect())
     }
 
     /// Clean leading, trailing, and redundant sequences of whitespace within the

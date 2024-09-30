@@ -1,12 +1,11 @@
-use std::{collections::HashSet, path};
+use std::path::Path;
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::{
-    extraction::pdf::{ExtractedTables, TableReader},
-    table::Table,
-};
+use crate::extraction::pdf::{ExtractedTables, TableReader};
+
+use super::ExtractedTable;
 
 #[derive(Deserialize, Debug)]
 #[serde(transparent)]
@@ -76,15 +75,14 @@ impl TabulaClient {
 impl TableReader for TabulaClient {
     fn read_pdf_with_template(
         &self,
-        pdf_path: &path::Path,
+        pdf_path: &Path,
         template_json: &str,
     ) -> Result<ExtractedTables> {
         let template = load_tabula_tmpl(template_json)
             .with_context(|| format!("loading Tabula template in {:?}", template_json))?;
         let env = self.vm.attach().with_context(|| "attaching to TabulaVM")?;
 
-        let mut source_pages: HashSet<i32> = HashSet::new();
-        let mut tables: Vec<Table> = Vec::with_capacity(template.0.len());
+        let mut tables: Vec<ExtractedTable> = Vec::with_capacity(template.0.len());
 
         for entry in &template.0 {
             let pages = [entry.page];
@@ -117,16 +115,14 @@ impl TableReader for TabulaClient {
             let result: JsonTableSet = serde_json::from_reader(extracted_file)
                 .with_context(|| "parsing JSON output from Tabula")?;
 
-            source_pages.insert(entry.page);
-
             for json_table in result.0 {
-                tables.push(json_table.into());
+                tables.push(ExtractedTable {
+                    page: entry.page,
+                    table: json_table.into(),
+                });
             }
         }
 
-        Ok(ExtractedTables {
-            source_pages,
-            tables,
-        })
+        Ok(ExtractedTables(tables))
     }
 }
