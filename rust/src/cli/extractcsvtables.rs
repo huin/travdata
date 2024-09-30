@@ -10,7 +10,7 @@ use simple_bar::ProgressBar;
 use crate::{
     extraction::{
         bookextract::{ExtractEvents, ExtractSpec, Extractor},
-        pdf::tabulareader,
+        pdf::{cachingreader::CachingTableReader, tabulareader::TabulaClient, TableReader},
     },
     filesio,
 };
@@ -63,14 +63,33 @@ pub struct Command {
     #[arg(long, value_delimiter(','))]
     without_tags: Vec<String>,
 
+    /// Show a progress bar reflecting overall extraction progress.
     #[arg(long, default_value = "true")]
     show_progress: bool,
+
+    /// Use the table cache.
+    #[arg(long, default_value = "true")]
+    table_cache: bool,
 }
 
 /// Runs the subcommand.
 pub fn run(cmd: &Command) -> Result<()> {
-    let tabula_client = tabulareader::TabulaClient::new(&cmd.tabula_libpath)
-        .with_context(|| "initialising Tabula")?;
+    let tabula_reader =
+        Box::new(TabulaClient::new(&cmd.tabula_libpath).with_context(|| "initialising Tabula")?);
+
+    let mut opt_table_cache: Option<CachingTableReader<&TabulaClient>> = None;
+    let table_reader: &dyn TableReader = if !cmd.table_cache {
+        tabula_reader.as_ref()
+    } else {
+        let xdg_dirs = xdg::BaseDirectories::with_prefix("travdata")?;
+        let tables_cache_path =
+            xdg_dirs.place_cache_file(Path::new("table-cache.json"))?;
+        opt_table_cache = Some(CachingTableReader::load(
+            tabula_reader.as_ref(),
+            tables_cache_path,
+        )?);
+        opt_table_cache.as_ref().unwrap()
+    };
 
     let cfg_type = filesio::IoType::resolve_auto(None, &cmd.config);
     let cfg_reader = cfg_type
@@ -82,7 +101,7 @@ pub fn run(cmd: &Command) -> Result<()> {
         .new_read_writer(&cmd.output)
         .with_context(|| format!("opening output path {:?} as {:?}", cmd.output, output_type))?;
 
-    let mut extractor = Extractor::new(tabula_client, cfg_reader, out_writer)?;
+    let mut extractor = Extractor::new(table_reader, cfg_reader, out_writer)?;
 
     let spec = ExtractSpec {
         book_name: &cmd.book_name,
@@ -98,7 +117,14 @@ pub fn run(cmd: &Command) -> Result<()> {
 
     extractor.extract_book(spec, &mut events);
 
-    extractor.close()
+    extractor.close()?;
+
+    if let Some(table_cache) = opt_table_cache {
+        // TODO: Log failure of the following. Non-fatal to overall operation.
+        _ = table_cache.store();
+    }
+
+    Ok(())
 }
 
 struct EventDisplayer {
