@@ -82,8 +82,7 @@ pub fn run(cmd: &Command) -> Result<()> {
         tabula_reader.as_ref()
     } else {
         let xdg_dirs = xdg::BaseDirectories::with_prefix("travdata")?;
-        let tables_cache_path =
-            xdg_dirs.place_cache_file(Path::new("table-cache.json"))?;
+        let tables_cache_path = xdg_dirs.place_cache_file(Path::new("table-cache.json"))?;
         opt_table_cache = Some(CachingTableReader::load(
             tabula_reader.as_ref(),
             tables_cache_path,
@@ -120,8 +119,9 @@ pub fn run(cmd: &Command) -> Result<()> {
     extractor.close()?;
 
     if let Some(table_cache) = opt_table_cache {
-        // TODO: Log failure of the following. Non-fatal to overall operation.
-        _ = table_cache.store();
+        if let Err(err) = table_cache.store() {
+            log::warn!("Failed to store table cache: {err}");
+        }
     }
 
     Ok(())

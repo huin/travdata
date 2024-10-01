@@ -31,10 +31,14 @@ impl<T> CachingTableReader<T> {
         match Self::read_cache_file(&tables_cache_path) {
             Ok(Some(loaded_cache)) => {
                 tables_cache.load(loaded_cache.entries.into_iter());
+                let num_entries = tables_cache.len();
+                log::debug!("Loaded {num_entries} entries from existing tables cache.");
             }
-            Ok(None) => {}
-            Err(_) => {
-                // TODO: Log this?
+            Ok(None) => {
+                log::info!("Did not find existing tables cache.");
+            }
+            Err(err) => {
+                log::warn!("Failed to read existing tables cache: {err}");
             }
         };
 
@@ -174,6 +178,13 @@ impl TablesCache {
         std::hash::Hasher::write(&mut hash, &pdf_hash.0);
         std::hash::Hasher::write(&mut hash, template_json.as_bytes());
         hash_digest(&mut hash).with_context(|| "generating PDF+template hash")
+    }
+
+    fn len(&self) -> usize {
+        self.tables_cache
+            .lock()
+            .expect("failed to lock tables_cache for len")
+            .len()
     }
 
     fn load(&self, entries: impl Iterator<Item = (HashDigest, ExtractedTables)>) {
