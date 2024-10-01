@@ -118,8 +118,8 @@ impl ESTransformer {
                     result_send,
                 } => {
                     let result: Result<()> = Self::handle_run_script(&mut ctx_scope, script);
-                    if result_send.send(result).is_err() {
-                        // TODO: log this error?
+                    if let Err(err) = result_send.send(result) {
+                        log::error!("Failed to send v8 run script result: {err}");
                     }
                 }
                 Request::Transform {
@@ -128,8 +128,8 @@ impl ESTransformer {
                     result_send,
                 } => {
                     let result = Self::handle_transform(global, &mut ctx_scope, func, tables);
-                    if result_send.send(result).is_err() {
-                        // TODO: log this error?
+                    if let Err(err) = result_send.send(result) {
+                        log::error!("Failed to send v8 transform result: {err}");
                     }
                 }
             }
