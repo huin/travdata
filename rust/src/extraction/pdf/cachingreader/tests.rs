@@ -204,9 +204,9 @@ fn does_not_cache_distinct_reads(distinct_reads: TwoReadsCase) -> Result<()> {
 
     let caching_reader = CachingTableReader::load(fake_delegate, table_cache_path)?;
     let actual_1 = first_expect_call.do_call(&caching_reader)?;
-    assert_that!(actual_1, eq(first_original_tables));
+    assert_that!(actual_1, eq(&first_original_tables));
     let actual_2 = second_expect_call.do_call(&caching_reader)?;
-    assert_that!(actual_2, eq(second_original_tables));
+    assert_that!(actual_2, eq(&second_original_tables));
 
     Ok(())
 }
@@ -302,11 +302,11 @@ fn cache_persistance() -> Result<()> {
     let first_caching_reader =
         CachingTableReader::load(fake_delegate.clone(), table_cache_path.clone())?;
     let actual_1 = expect_call.do_call(&first_caching_reader)?;
-    assert_that!(first_caching_reader.store(), ok(eq(())));
+    assert_that!(first_caching_reader.store(), ok(eq(&())));
     assert_that!(&actual_1, eq(&original_tables));
     assert_that!(
         fake_delegate.calls_snapshot(),
-        eq(vec![expect_call.clone()])
+        eq(&vec![expect_call.clone()])
     );
 
     let second_caching_reader = CachingTableReader::load(fake_delegate.clone(), table_cache_path)?;
