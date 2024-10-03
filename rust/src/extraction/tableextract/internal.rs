@@ -78,11 +78,11 @@ mod tests {
 
     #[googletest::test]
     fn test_intersect_range() {
-        expect_that!(intersect_range(10, None, None), some(eq(0..10)));
-        expect_that!(intersect_range(10, Some(3), Some(5)), some(eq(3..5)));
-        expect_that!(intersect_range(10, None, Some(5)), some(eq(0..5)));
-        expect_that!(intersect_range(10, Some(3), None), some(eq(3..10)));
-        expect_that!(intersect_range(10, Some(3), Some(12)), some(eq(3..10)));
+        expect_that!(intersect_range(10, None, None), some(eq(&(0..10))));
+        expect_that!(intersect_range(10, Some(3), Some(5)), some(eq(&(3..5))));
+        expect_that!(intersect_range(10, None, Some(5)), some(eq(&(0..5))));
+        expect_that!(intersect_range(10, Some(3), None), some(eq(&(3..10))));
+        expect_that!(intersect_range(10, Some(3), Some(12)), some(eq(&(3..10))));
         expect_that!(intersect_range(10, Some(13), Some(15)), none());
         // from == to
         expect_that!(intersect_range(10, Some(3), Some(3)), none());

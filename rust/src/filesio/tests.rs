@@ -178,7 +178,7 @@ fn empty_reader_open_read_returns_not_found_err(io_type: &IoType) {
     let reader = test_io.make_reader();
     assert_that!(
         reader.open_read(Path::new("not-exist")),
-        err(anyhow_downcasts_to::<FilesIoError>(eq(
+        err(anyhow_downcasts_to::<FilesIoError, _>(eq(
             FilesIoError::NotFound
         ))),
     );
@@ -433,7 +433,7 @@ fn test_is_fully_relative_count() {
 
 #[test_casing(2, VALID_RELATIVE_PATHS)]
 fn test_is_fully_relative(path: &str) {
-    assert_that!(check_fully_relative(Path::new(path)), ok(()));
+    assert_that!(check_fully_relative(Path::new(path)), ok(eq(&())));
 }
 
 const INVALID_RELATIVE_PATHS: &[(&str, FilesIoError)] = &[
@@ -465,7 +465,7 @@ fn test_invalid_relative_path_count() {
 fn test_invalid_relative_path(path: &str, expect_error: &FilesIoError) {
     assert_that!(
         check_fully_relative(Path::new(path)),
-        err(anyhow_downcasts_to::<FilesIoError>(eq(*expect_error))),
+        err(anyhow_downcasts_to::<FilesIoError, _>(eq(*expect_error))),
     );
 }
 
@@ -507,7 +507,7 @@ fn test_invalid_relative_path_on_windows_count() {
 fn test_invalid_relative_path_on_windows(path: &str, expect_error: &FilesIoError) {
     assert_that!(
         check_fully_relative(Path::new(path)),
-        err(anyhow_downcasts_to::<FilesIoError>(eq(*expect_error))),
+        err(anyhow_downcasts_to::<FilesIoError, _>(eq(*expect_error))),
     );
 }
 

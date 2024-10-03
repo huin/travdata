@@ -237,18 +237,18 @@ file-c,,tag-c;tag-z
         assert_that!(
             index.paths_with_all_tags(&[]),
             unordered_elements_are![
-                eq(Path::new("file-a")),
-                eq(Path::new("file-b")),
-                eq(Path::new("file-c")),
+                eq(&Path::new("file-a")),
+                eq(&Path::new("file-b")),
+                eq(&Path::new("file-c")),
             ],
         );
         assert_that!(
             index.paths_with_all_tags(&["tag-a"]),
-            unordered_elements_are![eq(Path::new("file-a"))],
+            unordered_elements_are![eq(&Path::new("file-a"))],
         );
         assert_that!(
             index.paths_with_all_tags(&["tag-d", "tag-z"]),
-            unordered_elements_are![eq(Path::new("file-a")), eq(Path::new("file-b"))],
+            unordered_elements_are![eq(&Path::new("file-a")), eq(&Path::new("file-b"))],
         );
 
         Ok(())
@@ -270,7 +270,7 @@ file-c,,tag-c;tag-z
 
         assert_that!(
             index.paths_with_all_tags(&["foo", "bar"]),
-            unordered_elements_are![eq(Path::new("foo.csv")),],
+            unordered_elements_are![eq(&Path::new("foo.csv")),],
         );
 
         Ok(())

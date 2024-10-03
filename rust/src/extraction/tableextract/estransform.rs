@@ -169,7 +169,7 @@ impl ESTransformer {
         func: TransformFn,
         tables: Vec<Table>,
     ) -> Result<Table> {
-        let mut try_catch = v8::TryCatch::new(ctx_scope);
+        let mut try_catch: v8::TryCatch<v8::HandleScope> = v8::TryCatch::new(ctx_scope);
 
         let origin_v8 = func.origin.make_origin(&mut try_catch)?;
         let body_str_v8 = new_v8_string(&mut try_catch, &func.function_body)
@@ -189,13 +189,13 @@ impl ESTransformer {
         .ok_or_else(|| try_catch_to_result(&mut try_catch))
         .with_context(|| "could not compile transform function")?;
 
-        let in_tables_v8 = serde_v8::to_v8(&mut try_catch, &tables)?;
+        let in_tables_v8: v8::Local<'_, v8::Value> = serde_v8::to_v8(try_catch.as_mut(), &tables)?;
 
         let result_v8: v8::Local<'_, v8::Value> = function_v8
             .call(&mut try_catch, global.into(), &[in_tables_v8])
             .ok_or_else(|| try_catch_to_result(&mut try_catch))?;
 
-        let out_table_v8: Table = serde_v8::from_v8(&mut try_catch, result_v8)?;
+        let out_table_v8: Table = serde_v8::from_v8(try_catch.as_mut(), result_v8)?;
 
         Ok(out_table_v8)
     }
@@ -279,7 +279,7 @@ mod test {
     fn test_run_script() {
         let mut estrn = ESTransformer::new();
         let result = estrn.run_script(new_script("const foo = {};"));
-        assert_that!(result, ok(eq(())));
+        assert_that!(result, ok(eq(&())));
     }
 
     #[test]
@@ -318,7 +318,7 @@ mod test {
         );
         assert_that!(
             result,
-            ok(eq(Table(vec![
+            ok(eq(&Table(vec![
                 Row(vec!["t1r1c1".to_string(), "t1r1c2".to_string()]),
                 Row(vec!["t2r1c1".to_string(), "t2r1c2".to_string()]),
             ])))

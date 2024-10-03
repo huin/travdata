@@ -647,7 +647,7 @@ mod tests {
                 apply_transforms(&cfg.transforms, table_in).expect("should transform");
             table_out.clean();
 
-            expect_that!(table_out, eq(table_expected));
+            expect_that!(table_out, eq(&table_expected));
         }
     }
 }

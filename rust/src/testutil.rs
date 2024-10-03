@@ -5,44 +5,44 @@ use std::{
 
 use googletest::{
     description::Description,
-    matcher::{Matcher, MatcherResult},
+    matcher::{Matcher, MatcherBase, MatcherResult},
 };
 
 /// Creates a matcher against an `anyhow::Error` that downcasts to the given
 /// type and matches the inner matcher.
-pub fn anyhow_downcasts_to<E: Display + Debug + Send + Sync + 'static>(
-    inner: impl Matcher<ActualT = E>,
-) -> impl Matcher<ActualT = anyhow::Error> {
-    AnyhowDowncastTo::<E, _> {
+pub fn anyhow_downcasts_to<E, M>(inner: M) -> AnyhowDowncastTo<E, M> {
+    AnyhowDowncastTo::<E, M> {
         inner,
         phantom_e: Default::default(),
     }
 }
 
-struct AnyhowDowncastTo<E, InnerMatcherT> {
-    inner: InnerMatcherT,
+pub struct AnyhowDowncastTo<E, M> {
+    inner: M,
     phantom_e: PhantomData<E>,
 }
 
-impl<E, InnerMatcherT> AnyhowDowncastTo<E, InnerMatcherT> {
+impl<E, M> AnyhowDowncastTo<E, M> {
     fn type_name() -> &'static str {
         std::any::type_name::<E>()
     }
 }
 
-impl<E: Display + Debug + Send + Sync + 'static, InnerMatcherT: Matcher<ActualT = E>> Matcher
-    for AnyhowDowncastTo<E, InnerMatcherT>
-{
-    type ActualT = anyhow::Error;
+impl<E, M> MatcherBase for AnyhowDowncastTo<E, M> {}
 
-    fn matches(&self, actual: &Self::ActualT) -> MatcherResult {
+impl<E, M> Matcher<&anyhow::Error> for AnyhowDowncastTo<E, M>
+where
+    E: Copy + Display + Debug + Send + Sync + 'static,
+    M: Matcher<E>,
+{
+    fn matches(&self, actual: &anyhow::Error) -> MatcherResult {
         actual
             .downcast_ref::<E>()
-            .map(|v| self.inner.matches(v))
+            .map(|v| self.inner.matches(*v))
             .unwrap_or(MatcherResult::NoMatch)
     }
 
-    fn explain_match(&self, actual: &Self::ActualT) -> Description {
+    fn explain_match(&self, actual: &anyhow::Error) -> Description {
         match actual.downcast_ref::<E>() {
             Some(e) => Description::new()
                 .text(format!(
@@ -50,7 +50,7 @@ impl<E: Display + Debug + Send + Sync + 'static, InnerMatcherT: Matcher<ActualT 
                     Self::type_name()
                 ))
                 .text("with value")
-                .nested(self.inner.explain_match(e)),
+                .nested(self.inner.explain_match(*e)),
             None => Description::new().text(format!(
                 "which is not the expected concrete error type {}",
                 Self::type_name()

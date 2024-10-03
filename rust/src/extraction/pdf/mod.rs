@@ -82,7 +82,7 @@ mod test {
 
         let got: ExtractedTables = serde_json::from_str(SERIALIZED)?;
 
-        assert_that!(got, eq(want));
+        assert_that!(got, eq(&want));
 
         Ok(())
     }
