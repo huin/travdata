@@ -21,6 +21,33 @@ enum MainInputMsg {
     SelectOutputIo(SelectedFileIo),
 }
 
+pub struct Init {
+    pub xdg_dirs: xdg::BaseDirectories,
+}
+
+impl Init {
+    /// Get a `&'static str` reference to the filename within the XDG configuration directory.
+    ///
+    /// NOTE: Leaks the [String] that backs the return value, because the Relm4 field that uses it
+    /// ([OpenButtonSettings::recently_opened_files]) requires a `&'static str`, but the value must
+    /// be dynamically generated based on the XDG configuration path.
+    fn xdg_cfg_static_str(&self, filename: &str) -> Option<&'static str> {
+        self.xdg_dirs
+            .place_config_file(filename)
+            .map_err(|e| {
+                log::warn!("Could not create {:?} file: {:?}", filename, e);
+                e
+            })
+            .ok()
+            .and_then(|p: PathBuf| {
+                p.to_str().map(|s: &str| {
+                    let static_str: &'static str = s.to_owned().leak();
+                    static_str
+                })
+            })
+    }
+}
+
 #[allow(dead_code)]
 struct MainModel {
     cfg_dir: Controller<OpenButton>,
@@ -41,7 +68,7 @@ struct MainModel {
 
 #[relm4::component]
 impl SimpleComponent for MainModel {
-    type Init = ();
+    type Init = Init;
 
     type Input = MainInputMsg;
     type Output = ();
@@ -214,10 +241,14 @@ impl SimpleComponent for MainModel {
     }
 
     fn init(
-        _init: Self::Init,
+        init: Self::Init,
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
+        let recent_cfg_dirs = init.xdg_cfg_static_str("recent_cfg_dirs.txt");
+        let recent_cfg_zips = init.xdg_cfg_static_str("recent_cfg_zips.txt");
+        let recent_input_pdfs = init.xdg_cfg_static_str("recent_input_pdfs.txt");
+
         let pdf_filter = gtk::FileFilter::new();
         pdf_filter.set_name(Some("PDF file"));
         pdf_filter.add_pattern("*.pdf");
@@ -239,7 +270,7 @@ impl SimpleComponent for MainModel {
                         filters: vec![],
                     },
                     text: "Select directory",
-                    recently_opened_files: Some(".cfg_dir"),
+                    recently_opened_files: recent_cfg_dirs,
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
@@ -256,7 +287,7 @@ impl SimpleComponent for MainModel {
                         filters: vec![zip_filter.clone()],
                     },
                     text: "Select ZIP",
-                    recently_opened_files: Some(".cfg_zip"),
+                    recently_opened_files: recent_cfg_zips,
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
@@ -278,7 +309,7 @@ impl SimpleComponent for MainModel {
                         filters: vec![pdf_filter.clone()],
                     },
                     text: "Select PDF",
-                    recently_opened_files: Some(".input_pdfs"),
+                    recently_opened_files: recent_input_pdfs,
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), MainInputMsg::SelectInputPdf),
@@ -329,7 +360,7 @@ impl SimpleComponent for MainModel {
 }
 
 /// Runs the GUI thread for the lifetime of the GUI itself.
-pub fn run_gui() {
+pub fn run_gui(init: Init) {
     let app = RelmApp::new("travdata.gui").with_args(Vec::new());
-    app.run::<MainModel>(());
+    app.run::<MainModel>(init);
 }
