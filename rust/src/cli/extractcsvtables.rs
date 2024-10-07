@@ -73,7 +73,7 @@ pub struct Command {
 }
 
 /// Runs the subcommand.
-pub fn run(cmd: &Command) -> Result<()> {
+pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
     let tabula_reader =
         Box::new(TabulaClient::new(&cmd.tabula_libpath).with_context(|| "initialising Tabula")?);
 
@@ -81,7 +81,6 @@ pub fn run(cmd: &Command) -> Result<()> {
     let table_reader: &dyn TableReader = if !cmd.table_cache {
         tabula_reader.as_ref()
     } else {
-        let xdg_dirs = xdg::BaseDirectories::with_prefix("travdata")?;
         let tables_cache_path = xdg_dirs.place_cache_file(Path::new("table-cache.json"))?;
         opt_table_cache = Some(CachingTableReader::load(
             tabula_reader.as_ref(),

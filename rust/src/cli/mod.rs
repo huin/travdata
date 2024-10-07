@@ -24,13 +24,14 @@ enum Command {
 
 pub fn run() -> Result<()> {
     let args = Args::parse();
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("travdata")?;
 
     simplelog::SimpleLogger::init(args.log_level, simplelog::Config::default())
         .with_context(|| "configuring logging")?;
 
     use Command::*;
     match &args.command {
-        ExtractCsvTables(cmd) => extractcsvtables::run(cmd),
-        Gui => gui::run(),
+        ExtractCsvTables(cmd) => extractcsvtables::run(cmd, xdg_dirs),
+        Gui => gui::run(xdg_dirs),
     }
 }
