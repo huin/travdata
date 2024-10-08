@@ -248,6 +248,8 @@ impl SimpleComponent for MainModel {
         let recent_cfg_dirs = init.xdg_cfg_static_str("recent_cfg_dirs.txt");
         let recent_cfg_zips = init.xdg_cfg_static_str("recent_cfg_zips.txt");
         let recent_input_pdfs = init.xdg_cfg_static_str("recent_input_pdfs.txt");
+        let recent_output_dirs = init.xdg_cfg_static_str("recent_output_dirs.txt");
+        let recent_output_zips = init.xdg_cfg_static_str("recent_output_zips.txt");
 
         let pdf_filter = gtk::FileFilter::new();
         pdf_filter.set_name(Some("PDF file"));
@@ -328,7 +330,7 @@ impl SimpleComponent for MainModel {
                         filters: vec![],
                     },
                     text: "Select directory",
-                    recently_opened_files: Some(".output_dir"),
+                    recently_opened_files: recent_output_dirs,
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
@@ -345,7 +347,7 @@ impl SimpleComponent for MainModel {
                         filters: vec![zip_filter],
                     },
                     text: "Select ZIP",
-                    recently_opened_files: Some(".output_zip"),
+                    recently_opened_files: recent_output_zips,
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
