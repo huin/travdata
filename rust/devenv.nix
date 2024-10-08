@@ -1,7 +1,7 @@
 { pkgs, lib, config, inputs, ... }:
 
 let
-  jdk = pkgs.jdk;
+  jdk = pkgs.jdk22_headless;
 in
 {
   # https://devenv.sh/basics/
