@@ -15,7 +15,7 @@ use crate::{commontext, config::root::Config, gui::util};
 use super::util::SelectedFileIo;
 
 #[derive(Debug)]
-enum MainInputMsg {
+enum Input {
     ConfigIo(SelectedFileIo),
     InputPdf(PathBuf),
     OutputIo(SelectedFileIo),
@@ -49,7 +49,7 @@ impl Init {
 }
 
 #[allow(dead_code)]
-struct MainModel {
+struct Model {
     cfg_dir: Controller<OpenButton>,
     cfg_zip: Controller<OpenButton>,
     cfg_io: Option<util::SelectedFileIo>,
@@ -67,10 +67,10 @@ struct MainModel {
 }
 
 #[relm4::component]
-impl SimpleComponent for MainModel {
+impl SimpleComponent for Model {
     type Init = Init;
 
-    type Input = MainInputMsg;
+    type Input = Input;
     type Output = ();
 
     view! {
@@ -234,9 +234,9 @@ impl SimpleComponent for MainModel {
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
-            MainInputMsg::ConfigIo(io) => self.cfg_io = Some(io),
-            MainInputMsg::InputPdf(path) => self.input_pdf = Some(path),
-            MainInputMsg::OutputIo(io) => self.output_io = Some(io),
+            Input::ConfigIo(io) => self.cfg_io = Some(io),
+            Input::InputPdf(path) => self.input_pdf = Some(path),
+            Input::OutputIo(io) => self.output_io = Some(io),
         }
     }
 
@@ -276,7 +276,7 @@ impl SimpleComponent for MainModel {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    MainInputMsg::ConfigIo(SelectedFileIo::for_dir(path))
+                    Input::ConfigIo(SelectedFileIo::for_dir(path))
                 }),
             cfg_zip: OpenButton::builder()
                 .launch(OpenButtonSettings {
@@ -293,7 +293,7 @@ impl SimpleComponent for MainModel {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    MainInputMsg::ConfigIo(SelectedFileIo::for_zip(path))
+                    Input::ConfigIo(SelectedFileIo::for_zip(path))
                 }),
             cfg_io: None,
             cfg: None,
@@ -314,7 +314,7 @@ impl SimpleComponent for MainModel {
                     recently_opened_files: recent_input_pdfs,
                     max_recent_files: 10,
                 })
-                .forward(sender.input_sender(), MainInputMsg::InputPdf),
+                .forward(sender.input_sender(), Input::InputPdf),
             input_pdf: None,
             book_id: None,
 
@@ -334,7 +334,7 @@ impl SimpleComponent for MainModel {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    MainInputMsg::OutputIo(SelectedFileIo::for_dir(path))
+                    Input::OutputIo(SelectedFileIo::for_dir(path))
                 }),
             output_path_zip: OpenButton::builder()
                 .launch(OpenButtonSettings {
@@ -351,7 +351,7 @@ impl SimpleComponent for MainModel {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    MainInputMsg::OutputIo(SelectedFileIo::for_zip(path))
+                    Input::OutputIo(SelectedFileIo::for_zip(path))
                 }),
         };
 
@@ -364,5 +364,5 @@ impl SimpleComponent for MainModel {
 /// Runs the GUI thread for the lifetime of the GUI itself.
 pub fn run_gui(init: Init) {
     let app = RelmApp::new("travdata.gui").with_args(Vec::new());
-    app.run::<MainModel>(init);
+    app.run::<Model>(init);
 }
