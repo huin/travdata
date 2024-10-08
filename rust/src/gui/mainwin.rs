@@ -16,9 +16,9 @@ use super::util::SelectedFileIo;
 
 #[derive(Debug)]
 enum MainInputMsg {
-    SelectConfigIo(SelectedFileIo),
-    SelectInputPdf(PathBuf),
-    SelectOutputIo(SelectedFileIo),
+    ConfigIo(SelectedFileIo),
+    InputPdf(PathBuf),
+    OutputIo(SelectedFileIo),
 }
 
 pub struct Init {
@@ -234,9 +234,9 @@ impl SimpleComponent for MainModel {
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
-            MainInputMsg::SelectConfigIo(io) => self.cfg_io = Some(io),
-            MainInputMsg::SelectInputPdf(path) => self.input_pdf = Some(path),
-            MainInputMsg::SelectOutputIo(io) => self.output_io = Some(io),
+            MainInputMsg::ConfigIo(io) => self.cfg_io = Some(io),
+            MainInputMsg::InputPdf(path) => self.input_pdf = Some(path),
+            MainInputMsg::OutputIo(io) => self.output_io = Some(io),
         }
     }
 
@@ -276,7 +276,7 @@ impl SimpleComponent for MainModel {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    MainInputMsg::SelectConfigIo(SelectedFileIo::for_dir(path))
+                    MainInputMsg::ConfigIo(SelectedFileIo::for_dir(path))
                 }),
             cfg_zip: OpenButton::builder()
                 .launch(OpenButtonSettings {
@@ -293,7 +293,7 @@ impl SimpleComponent for MainModel {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    MainInputMsg::SelectConfigIo(SelectedFileIo::for_zip(path))
+                    MainInputMsg::ConfigIo(SelectedFileIo::for_zip(path))
                 }),
             cfg_io: None,
             cfg: None,
@@ -314,7 +314,7 @@ impl SimpleComponent for MainModel {
                     recently_opened_files: recent_input_pdfs,
                     max_recent_files: 10,
                 })
-                .forward(sender.input_sender(), MainInputMsg::SelectInputPdf),
+                .forward(sender.input_sender(), MainInputMsg::InputPdf),
             input_pdf: None,
             book_id: None,
 
@@ -334,7 +334,7 @@ impl SimpleComponent for MainModel {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    MainInputMsg::SelectOutputIo(SelectedFileIo::for_dir(path))
+                    MainInputMsg::OutputIo(SelectedFileIo::for_dir(path))
                 }),
             output_path_zip: OpenButton::builder()
                 .launch(OpenButtonSettings {
@@ -351,7 +351,7 @@ impl SimpleComponent for MainModel {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    MainInputMsg::SelectOutputIo(SelectedFileIo::for_zip(path))
+                    MainInputMsg::OutputIo(SelectedFileIo::for_zip(path))
                 }),
         };
 
