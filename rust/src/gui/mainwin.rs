@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use gtk::prelude::{BoxExt, FrameExt, GridExt, GtkWindowExt, OrientableExt, WidgetExt};
+use gtk::prelude::{BoxExt, ButtonExt, FrameExt, GridExt, GtkWindowExt, OrientableExt, WidgetExt};
 use relm4::{
     gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmApp,
     RelmWidgetExt, SimpleComponent,
@@ -8,17 +8,22 @@ use relm4::{
 use relm4_components::{
     open_button::{OpenButton, OpenButtonSettings},
     open_dialog::OpenDialogSettings,
+    save_dialog::{SaveDialog, SaveDialogResponse, SaveDialogSettings},
 };
 
-use crate::{commontext, config::root::Config, gui::util};
+use crate::{commontext, config::root::Config, filesio::IoType, gui::util};
 
 use super::util::SelectedFileIo;
 
 #[derive(Debug)]
 enum Input {
     ConfigIo(SelectedFileIo),
+    #[allow(clippy::enum_variant_names)]
     InputPdf(PathBuf),
     OutputIo(SelectedFileIo),
+    OutputDirRequest,
+    OutputZipRequest,
+    Ignore,
 }
 
 pub struct Init {
@@ -61,9 +66,9 @@ struct Model {
     input_pdf: Option<PathBuf>,
     book_id: Option<String>,
 
-    output_path_dir: Controller<OpenButton>,
-    output_path_zip: Controller<OpenButton>,
     output_io: Option<util::SelectedFileIo>,
+    output_dir_dialog: Controller<SaveDialog>,
+    output_zip_dialog: Controller<SaveDialog>,
 }
 
 #[relm4::component]
@@ -205,8 +210,12 @@ impl SimpleComponent for Model {
                             set_homogeneous: true,
                             set_spacing: 5,
 
-                            model.output_path_dir.widget(),
-                            model.output_path_zip.widget(),
+                            gtk::Button::with_label("Output into folder") {
+                                connect_clicked => Input::OutputDirRequest,
+                            },
+                            gtk::Button::with_label("Output into ZIP") {
+                                connect_clicked => Input::OutputZipRequest,
+                            },
                         },
 
                         attach[0, 1, 1, 1] = &gtk::Label {
@@ -237,6 +246,13 @@ impl SimpleComponent for Model {
             Input::ConfigIo(io) => self.cfg_io = Some(io),
             Input::InputPdf(path) => self.input_pdf = Some(path),
             Input::OutputIo(io) => self.output_io = Some(io),
+            Input::OutputDirRequest => self
+                .output_dir_dialog
+                .emit(util::save_dialog_msg(&self.output_io, IoType::Dir)),
+            Input::OutputZipRequest => self
+                .output_zip_dialog
+                .emit(util::save_dialog_msg(&self.output_io, IoType::Zip)),
+            Input::Ignore => {}
         }
     }
 
@@ -248,8 +264,6 @@ impl SimpleComponent for Model {
         let recent_cfg_dirs = init.xdg_cfg_static_str("recent_cfg_dirs.txt");
         let recent_cfg_zips = init.xdg_cfg_static_str("recent_cfg_zips.txt");
         let recent_input_pdfs = init.xdg_cfg_static_str("recent_input_pdfs.txt");
-        let recent_output_dirs = init.xdg_cfg_static_str("recent_output_dirs.txt");
-        let recent_output_zips = init.xdg_cfg_static_str("recent_output_zips.txt");
 
         let pdf_filter = gtk::FileFilter::new();
         pdf_filter.set_name(Some("PDF file"));
@@ -266,7 +280,7 @@ impl SimpleComponent for Model {
                     dialog_settings: OpenDialogSettings {
                         folder_mode: true,
                         cancel_label: "Cancel".to_string(),
-                        accept_label: "Read config from directory".to_string(),
+                        accept_label: "Read config from folder".to_string(),
                         create_folders: false,
                         is_modal: true,
                         filters: vec![],
@@ -319,39 +333,35 @@ impl SimpleComponent for Model {
             book_id: None,
 
             output_io: None,
-            output_path_dir: OpenButton::builder()
-                .launch(OpenButtonSettings {
-                    dialog_settings: OpenDialogSettings {
-                        folder_mode: true,
-                        cancel_label: "Cancel".to_string(),
-                        accept_label: "Choose Output Directory".to_string(),
-                        create_folders: true,
-                        is_modal: true,
-                        filters: vec![],
-                    },
-                    text: "Select directory",
-                    recently_opened_files: recent_output_dirs,
-                    max_recent_files: 10,
+            output_dir_dialog: SaveDialog::builder()
+                .transient_for_native(&root)
+                .launch(SaveDialogSettings {
+                    cancel_label: "Cancel".to_string(),
+                    accept_label: "Choose Output Folder".to_string(),
+                    create_folders: true,
+                    is_modal: true,
+                    filters: vec![],
                 })
-                .forward(sender.input_sender(), |path| {
-                    Input::OutputIo(SelectedFileIo::for_dir(path))
+                .forward(sender.input_sender(), |response| match response {
+                    SaveDialogResponse::Accept(path) => {
+                        Input::OutputIo(SelectedFileIo::for_dir(path))
+                    }
+                    SaveDialogResponse::Cancel => Input::Ignore,
                 }),
-            output_path_zip: OpenButton::builder()
-                .launch(OpenButtonSettings {
-                    dialog_settings: OpenDialogSettings {
-                        folder_mode: false,
-                        cancel_label: "Cancel".to_string(),
-                        accept_label: "Choose Output ZIP".to_string(),
-                        create_folders: true,
-                        is_modal: true,
-                        filters: vec![zip_filter],
-                    },
-                    text: "Select ZIP",
-                    recently_opened_files: recent_output_zips,
-                    max_recent_files: 10,
+            output_zip_dialog: SaveDialog::builder()
+                .transient_for_native(&root)
+                .launch(SaveDialogSettings {
+                    cancel_label: "Cancel".to_string(),
+                    accept_label: "Choose Output ZIP".to_string(),
+                    create_folders: true,
+                    is_modal: true,
+                    filters: vec![zip_filter],
                 })
-                .forward(sender.input_sender(), |path| {
-                    Input::OutputIo(SelectedFileIo::for_zip(path))
+                .forward(sender.input_sender(), |response| match response {
+                    SaveDialogResponse::Accept(path) => {
+                        Input::OutputIo(SelectedFileIo::for_zip(path))
+                    }
+                    SaveDialogResponse::Cancel => Input::Ignore,
                 }),
         };
 
