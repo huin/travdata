@@ -202,7 +202,7 @@ fn check_fully_relative(path: &Path) -> Result<()> {
         .unwrap_or(Ok(()))
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
 pub enum IoType {
     /// Access files stored in a directory.
     Dir,
