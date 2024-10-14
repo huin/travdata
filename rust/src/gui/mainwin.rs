@@ -21,7 +21,6 @@ enum Input {
     #[allow(clippy::enum_variant_names)]
     InputPdf(PathBuf),
     OutputIo(SelectedFileIo),
-    OutputDirRequest,
     OutputZipRequest,
     Ignore,
 }
@@ -67,7 +66,7 @@ struct Model {
     book_id: Option<String>,
 
     output_io: Option<util::SelectedFileIo>,
-    output_dir_dialog: Controller<SaveDialog>,
+    output_dir: Controller<OpenButton>,
     output_zip_dialog: Controller<SaveDialog>,
 }
 
@@ -210,9 +209,7 @@ impl SimpleComponent for Model {
                             set_homogeneous: true,
                             set_spacing: 5,
 
-                            gtk::Button::with_label("Output into folder") {
-                                connect_clicked => Input::OutputDirRequest,
-                            },
+                            model.output_dir.widget(),
                             gtk::Button::with_label("Output into ZIP") {
                                 connect_clicked => Input::OutputZipRequest,
                             },
@@ -246,9 +243,6 @@ impl SimpleComponent for Model {
             Input::ConfigIo(io) => self.cfg_io = Some(io),
             Input::InputPdf(path) => self.input_pdf = Some(path),
             Input::OutputIo(io) => self.output_io = Some(io),
-            Input::OutputDirRequest => self
-                .output_dir_dialog
-                .emit(util::save_dialog_msg(&self.output_io, IoType::Dir)),
             Input::OutputZipRequest => self
                 .output_zip_dialog
                 .emit(util::save_dialog_msg(&self.output_io, IoType::Zip)),
@@ -264,6 +258,7 @@ impl SimpleComponent for Model {
         let recent_cfg_dirs = init.xdg_cfg_static_str("recent_cfg_dirs.txt");
         let recent_cfg_zips = init.xdg_cfg_static_str("recent_cfg_zips.txt");
         let recent_input_pdfs = init.xdg_cfg_static_str("recent_input_pdfs.txt");
+        let recent_output_dirs = init.xdg_cfg_static_str("recent_output_dirs.txt");
 
         let pdf_filter = gtk::FileFilter::new();
         pdf_filter.set_name(Some("PDF file"));
@@ -333,20 +328,22 @@ impl SimpleComponent for Model {
             book_id: None,
 
             output_io: None,
-            output_dir_dialog: SaveDialog::builder()
-                .transient_for_native(&root)
-                .launch(SaveDialogSettings {
-                    cancel_label: "Cancel".to_string(),
-                    accept_label: "Choose Output Folder".to_string(),
-                    create_folders: true,
-                    is_modal: true,
-                    filters: vec![],
+            output_dir: OpenButton::builder()
+                .launch(OpenButtonSettings {
+                    dialog_settings: OpenDialogSettings {
+                        folder_mode: true,
+                        cancel_label: "Cancel".to_string(),
+                        accept_label: "Choose Output Folder".to_string(),
+                        create_folders: false,
+                        is_modal: true,
+                        filters: vec![],
+                    },
+                    text: "Select directory",
+                    recently_opened_files: recent_output_dirs,
+                    max_recent_files: 10,
                 })
-                .forward(sender.input_sender(), |response| match response {
-                    SaveDialogResponse::Accept(path) => {
-                        Input::OutputIo(SelectedFileIo::for_dir(path))
-                    }
-                    SaveDialogResponse::Cancel => Input::Ignore,
+                .forward(sender.input_sender(), |path| {
+                    Input::OutputIo(SelectedFileIo::for_dir(path))
                 }),
             output_zip_dialog: SaveDialog::builder()
                 .transient_for_native(&root)
