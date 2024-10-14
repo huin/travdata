@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use gtk::prelude::{BoxExt, ButtonExt, FrameExt, GridExt, GtkWindowExt, OrientableExt, WidgetExt};
 use relm4::{
@@ -26,30 +26,7 @@ enum Input {
 }
 
 pub struct Init {
-    pub xdg_dirs: xdg::BaseDirectories,
-}
-
-impl Init {
-    /// Get a `&'static str` reference to the filename within the XDG configuration directory.
-    ///
-    /// NOTE: Leaks the [String] that backs the return value, because the Relm4 field that uses it
-    /// ([OpenButtonSettings::recently_opened_files]) requires a `&'static str`, but the value must
-    /// be dynamically generated based on the XDG configuration path.
-    fn xdg_cfg_static_str(&self, filename: &str) -> Option<&'static str> {
-        self.xdg_dirs
-            .place_config_file(filename)
-            .map_err(|e| {
-                log::warn!("Could not create {:?} file: {:?}", filename, e);
-                e
-            })
-            .ok()
-            .and_then(|p: PathBuf| {
-                p.to_str().map(|s: &str| {
-                    let static_str: &'static str = s.to_owned().leak();
-                    static_str
-                })
-            })
-    }
+    pub xdg_dirs: Arc<xdg::BaseDirectories>,
 }
 
 #[allow(dead_code)]
@@ -255,10 +232,10 @@ impl SimpleComponent for Model {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let recent_cfg_dirs = init.xdg_cfg_static_str("recent_cfg_dirs.txt");
-        let recent_cfg_zips = init.xdg_cfg_static_str("recent_cfg_zips.txt");
-        let recent_input_pdfs = init.xdg_cfg_static_str("recent_input_pdfs.txt");
-        let recent_output_dirs = init.xdg_cfg_static_str("recent_output_dirs.txt");
+        let recent_cfg_dirs = util::xdg_cfg_static_str(&init.xdg_dirs, "recent_cfg_dirs.txt");
+        let recent_cfg_zips = util::xdg_cfg_static_str(&init.xdg_dirs, "recent_cfg_zips.txt");
+        let recent_input_pdfs = util::xdg_cfg_static_str(&init.xdg_dirs, "recent_input_pdfs.txt");
+        let recent_output_dirs = util::xdg_cfg_static_str(&init.xdg_dirs, "recent_output_dirs.txt");
 
         let pdf_filter = gtk::FileFilter::new();
         pdf_filter.set_name(Some("PDF file"));
