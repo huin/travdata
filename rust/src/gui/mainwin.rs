@@ -275,7 +275,7 @@ impl SimpleComponent for Model {
                     dialog_settings: OpenDialogSettings {
                         folder_mode: true,
                         cancel_label: "Cancel".to_string(),
-                        accept_label: "Read config from folder".to_string(),
+                        accept_label: "Open".to_string(),
                         create_folders: false,
                         is_modal: true,
                         filters: vec![],
@@ -292,7 +292,7 @@ impl SimpleComponent for Model {
                     dialog_settings: OpenDialogSettings {
                         folder_mode: false,
                         cancel_label: "Cancel".to_string(),
-                        accept_label: "Read config from ZIP".to_string(),
+                        accept_label: "Open".to_string(),
                         create_folders: false,
                         is_modal: true,
                         filters: vec![zip_filter.clone()],
@@ -314,12 +314,12 @@ impl SimpleComponent for Model {
                     dialog_settings: OpenDialogSettings {
                         folder_mode: false,
                         cancel_label: "Cancel".to_string(),
-                        accept_label: "Choose Input PDF".to_string(),
+                        accept_label: "Open".to_string(),
                         create_folders: false,
                         is_modal: true,
                         filters: vec![pdf_filter.clone()],
                     },
-                    text: "Select PDF",
+                    text: "Select Input PDF",
                     recently_opened_files: recent_input_pdfs,
                     max_recent_files: 10,
                 })
@@ -333,12 +333,12 @@ impl SimpleComponent for Model {
                     dialog_settings: OpenDialogSettings {
                         folder_mode: true,
                         cancel_label: "Cancel".to_string(),
-                        accept_label: "Choose Output Folder".to_string(),
+                        accept_label: "Output Folder".to_string(),
                         create_folders: false,
                         is_modal: true,
                         filters: vec![],
                     },
-                    text: "Select directory",
+                    text: "Output Folder",
                     recently_opened_files: recent_output_dirs,
                     max_recent_files: 10,
                 })
@@ -349,7 +349,7 @@ impl SimpleComponent for Model {
                 .transient_for_native(&root)
                 .launch(SaveDialogSettings {
                     cancel_label: "Cancel".to_string(),
-                    accept_label: "Choose Output ZIP".to_string(),
+                    accept_label: "Output ZIP".to_string(),
                     create_folders: true,
                     is_modal: true,
                     filters: vec![zip_filter],
