@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use gtk::prelude::{BoxExt, ButtonExt, FrameExt, GridExt, GtkWindowExt, OrientableExt, WidgetExt};
 use relm4::{
@@ -13,13 +13,11 @@ use relm4_components::{
 
 use crate::{commontext, config::root::Config, filesio::IoType, gui::util};
 
-use super::util::SelectedFileIo;
+use super::{inputpdf, util::SelectedFileIo};
 
 #[derive(Debug)]
 enum Input {
     ConfigIo(SelectedFileIo),
-    #[allow(clippy::enum_variant_names)]
-    InputPdf(PathBuf),
     OutputIo(SelectedFileIo),
     OutputZipRequest,
     Ignore,
@@ -38,9 +36,7 @@ struct Model {
     cfg_error: Option<String>,
     cfg_version: Option<String>,
 
-    input_pdf_open: Controller<OpenButton>,
-    input_pdf: Option<PathBuf>,
-    book_id: Option<String>,
+    input_pdf_selector: Controller<inputpdf::InputPdfSelector>,
 
     output_io: Option<util::SelectedFileIo>,
     output_dir: Controller<OpenButton>,
@@ -124,47 +120,7 @@ impl SimpleComponent for Model {
                     },
                 },
 
-                gtk::Frame {
-                    set_label: Some("Input PDF"),
-
-                    gtk::Grid {
-                        set_margin_start: 5,
-                        set_margin_end: 5,
-                        set_margin_top: 5,
-                        set_margin_bottom: 5,
-                        set_column_spacing: 5,
-                        set_row_spacing: 5,
-
-                        attach[0, 0, 1, 1] = &gtk::Label {
-                            set_label: "Select PDF:",
-                            set_halign: gtk::Align::Start,
-                        },
-                        attach[1, 0, 1, 1] = model.input_pdf_open.widget(),
-
-                        attach[0, 1, 1, 1] = &gtk::Label {
-                            set_label: "Input PDF",
-                            set_halign: gtk::Align::Start,
-                        },
-                        attach[1, 1, 1, 1] = &gtk::Label {
-                            #[watch]
-                            set_label: util::format_opt_path(&model.input_pdf),
-                            set_halign: gtk::Align::Start,
-                        },
-
-                        attach[0, 2, 2, 1] = &gtk::Label {
-                            // Error box.
-                            set_halign: gtk::Align::Start,
-                        },
-
-                        attach[0, 3, 1, 1] = &gtk::Label {
-                            set_label: "Select book:",
-                            set_halign: gtk::Align::Start,
-                        },
-                        attach[1, 3, 1, 1] = &gtk::DropDown {
-                            set_hexpand: true,
-                        },
-                    },
-                },
+                model.input_pdf_selector.widget(),
 
                 gtk::Frame {
                     set_label: Some("Output"),
@@ -218,7 +174,6 @@ impl SimpleComponent for Model {
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
             Input::ConfigIo(io) => self.cfg_io = Some(io),
-            Input::InputPdf(path) => self.input_pdf = Some(path),
             Input::OutputIo(io) => self.output_io = Some(io),
             Input::OutputZipRequest => self
                 .output_zip_dialog
@@ -234,7 +189,6 @@ impl SimpleComponent for Model {
     ) -> ComponentParts<Self> {
         let recent_cfg_dirs = util::xdg_cfg_static_str(&init.xdg_dirs, "recent_cfg_dirs.txt");
         let recent_cfg_zips = util::xdg_cfg_static_str(&init.xdg_dirs, "recent_cfg_zips.txt");
-        let recent_input_pdfs = util::xdg_cfg_static_str(&init.xdg_dirs, "recent_input_pdfs.txt");
         let recent_output_dirs = util::xdg_cfg_static_str(&init.xdg_dirs, "recent_output_dirs.txt");
 
         let pdf_filter = gtk::FileFilter::new();
@@ -286,23 +240,11 @@ impl SimpleComponent for Model {
             cfg_error: None,
             cfg_version: None,
 
-            input_pdf_open: OpenButton::builder()
-                .launch(OpenButtonSettings {
-                    dialog_settings: OpenDialogSettings {
-                        folder_mode: false,
-                        cancel_label: "Cancel".to_string(),
-                        accept_label: "Open".to_string(),
-                        create_folders: false,
-                        is_modal: true,
-                        filters: vec![pdf_filter.clone()],
-                    },
-                    text: "Select Input PDF",
-                    recently_opened_files: recent_input_pdfs,
-                    max_recent_files: 10,
+            input_pdf_selector: inputpdf::InputPdfSelector::builder()
+                .launch(inputpdf::Init {
+                    xdg_dirs: init.xdg_dirs.clone(),
                 })
-                .forward(sender.input_sender(), Input::InputPdf),
-            input_pdf: None,
-            book_id: None,
+                .forward(sender.input_sender(), |_msg| Input::Ignore),
 
             output_io: None,
             output_dir: OpenButton::builder()
