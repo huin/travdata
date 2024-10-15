@@ -14,15 +14,19 @@ use crate::{
     gui::util::{self, SelectedFileIo},
 };
 
+/// Input messages for [ConfigSelector].
 #[derive(Debug)]
 pub enum Input {
+    /// Specifies the currently selected extraction configuration.
     ConfigIo(SelectedFileIo),
 }
 
+/// Initialisation parameters for [ConfigSelector].
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
 }
 
+/// Relm4 component to select Travdata extraction configuration.
 #[allow(dead_code)]
 pub struct ConfigSelector {
     cfg_dir: Controller<OpenButton>,

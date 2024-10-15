@@ -11,16 +11,20 @@ use relm4_components::{
 
 use crate::gui::util;
 
+/// Input messages for [InputPdfSelector].
 #[derive(Debug)]
 pub enum Input {
+    /// Sepecifies the currently selected input PDF file path.
     #[allow(clippy::enum_variant_names)]
     InputPdf(PathBuf),
 }
 
+/// Initialisation parameters for [InputPdfSelector].
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
 }
 
+/// Relm4 component to select an input PDF file for Travdata.
 #[allow(dead_code)]
 pub struct InputPdfSelector {
     input_pdf_open: Controller<OpenButton>,
