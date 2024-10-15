@@ -13,24 +13,28 @@ use crate::{
 
 use super::outputselect;
 
+/// Input messages for [MainWindow].
 #[derive(Debug)]
 enum Input {
+    /// No-op message.
     Ignore,
 }
 
+/// Initialisation parameters for [MainWindow].
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
 }
 
+/// Relm4 window component that acts as the main window for the GUI interface to Travdata.
 #[allow(dead_code)]
-struct Model {
+struct MainWindow {
     cfg_selector: Controller<cfgselect::ConfigSelector>,
     input_pdf_selector: Controller<inputpdf::InputPdfSelector>,
     output_selector: Controller<outputselect::OutputSelector>,
 }
 
 #[relm4::component]
-impl SimpleComponent for Model {
+impl SimpleComponent for MainWindow {
     type Init = Init;
 
     type Input = Input;
@@ -106,5 +110,5 @@ impl SimpleComponent for Model {
 /// Runs the GUI thread for the lifetime of the GUI itself.
 pub fn run_gui(init: Init) {
     let app = RelmApp::new("travdata.gui").with_args(Vec::new());
-    app.run::<Model>(init);
+    app.run::<MainWindow>(init);
 }

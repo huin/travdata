@@ -16,17 +16,23 @@ use crate::{
     gui::util::{self, SelectedFileIo},
 };
 
+/// Input messages for [OutputSelector].
 #[derive(Debug)]
 pub enum Input {
+    /// Specifies the currently selected output destinatiom.
     OutputIo(SelectedFileIo),
+    /// (Internal) Triggers opening the ZIP file selection.
     OutputZipRequest,
+    /// No-op message.
     Ignore,
 }
 
+/// Initialisation parameters for [OutputSelector].
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
 }
 
+/// Relm4 component to select Travdata extraction output destination file/folder.
 #[allow(dead_code)]
 pub struct OutputSelector {
     output_io: Option<util::SelectedFileIo>,
