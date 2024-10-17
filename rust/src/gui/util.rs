@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fmt::Display, path::PathBuf};
 
 use relm4_components::save_dialog::SaveDialogMsg;
 
@@ -27,10 +27,16 @@ impl SelectedFileIo {
     }
 }
 
+impl Display for SelectedFileIo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} {:?}", self.io_type, self.path)
+    }
+}
+
 pub fn format_opt_selected_file_io(opt_selected: &Option<SelectedFileIo>) -> String {
     match opt_selected {
         None => NOT_SELECTED.to_string(),
-        Some(selected) => format!("{:?} {:?}", selected.io_type, selected.path),
+        Some(selected) => format!("{}", selected),
     }
 }
 
