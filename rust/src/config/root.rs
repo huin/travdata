@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Debug,
     path::{Path, PathBuf},
 };
 
@@ -25,6 +26,12 @@ pub fn load_config(cfg_reader: &dyn Reader) -> Result<Config> {
 pub struct Config {
     pub ecma_script_modules: Vec<PathBuf>,
     pub books: HashMap<String, Book>,
+}
+
+impl Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Config(with {} books)", self.books.len())
+    }
 }
 
 #[allow(dead_code)] // The GUI will use previously unused fields.

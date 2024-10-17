@@ -3,6 +3,7 @@ use std::sync::Arc;
 use gtk::prelude::{BoxExt, FrameExt, GridExt, OrientableExt, WidgetExt};
 use relm4::{
     Component, ComponentController, ComponentParts, ComponentSender, Controller, SimpleComponent,
+    WorkerController,
 };
 use relm4_components::{
     open_button::{OpenButton, OpenButtonSettings},
@@ -10,15 +11,19 @@ use relm4_components::{
 };
 
 use crate::{
-    config::root::Config,
+    config::root::{self, Config},
     gui::util::{self, SelectedFileIo},
 };
+
+use super::workers::cfgloader::{self, ConfigLoader};
 
 /// Input messages for [ConfigSelector].
 #[derive(Debug)]
 pub enum Input {
     /// Specifies the currently selected extraction configuration.
     ConfigIo(SelectedFileIo),
+    LoadComplete(SelectedFileIo, root::Config),
+    LoadError(SelectedFileIo, String),
 }
 
 /// Initialisation parameters for [ConfigSelector].
@@ -35,6 +40,7 @@ pub struct ConfigSelector {
     cfg: Option<Config>,
     cfg_error: Option<String>,
     cfg_version: Option<String>,
+    loader: WorkerController<ConfigLoader>,
 }
 
 #[relm4::component(pub)]
@@ -87,12 +93,15 @@ impl SimpleComponent for ConfigSelector {
                     set_halign: gtk::Align::Start,
                 },
                 attach[1, 2, 1, 1] = &gtk::Label {
+                    #[watch]
                     set_label: "<not selected>",
                     set_halign: gtk::Align::Start,
                 },
 
                 attach[0, 3, 2, 1] = &gtk::Label {
                     // Error box.
+                    #[watch]
+                    set_label: model.cfg_error.as_ref().map(String::as_ref).unwrap_or_default(),
                     set_halign: gtk::Align::Start,
                 },
             },
@@ -101,7 +110,16 @@ impl SimpleComponent for ConfigSelector {
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
-            Input::ConfigIo(io) => self.cfg_io = Some(io),
+            Input::ConfigIo(io) => {
+                self.loader.emit(cfgloader::Input::RequestLoadConfig(io));
+            }
+            Input::LoadComplete(io, _cfg) => {
+                self.cfg_io = Some(io);
+                self.cfg_error = None;
+            }
+            Input::LoadError(_io, message) => {
+                self.cfg_error = Some(message);
+            }
         }
     }
 
@@ -157,6 +175,13 @@ impl SimpleComponent for ConfigSelector {
             cfg: None,
             cfg_error: None,
             cfg_version: None,
+            loader: ConfigLoader::builder().detach_worker(()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    cfgloader::Output::LoadComplete(io, cfg) => Input::LoadComplete(io, cfg),
+                    cfgloader::Output::LoadError(io, message) => Input::LoadError(io, message),
+                },
+            ),
         };
 
         let widgets = view_output!();
