@@ -9,12 +9,26 @@ pub enum Input {
     RequestLoadConfig(SelectedFileIo),
 }
 
+#[allow(unused)]
+#[derive(Debug)]
+pub struct LoadComplete {
+    pub io: SelectedFileIo,
+    pub config: root::Config,
+    pub version: Option<String>,
+}
+
+#[allow(unused)]
+#[derive(Debug)]
+pub struct LoadError {
+    pub io: SelectedFileIo,
+    pub message: String,
+}
+
 /// Output messages for [ConfigLoader].
 #[derive(Debug)]
 pub enum Output {
-    // TODO: Include config version.
-    LoadComplete(SelectedFileIo, root::Config),
-    LoadError(SelectedFileIo, String),
+    LoadComplete(LoadComplete),
+    LoadError(LoadError),
 }
 
 /// Worker component for loading root configuration.
@@ -33,10 +47,15 @@ impl Worker for ConfigLoader {
         let Input::RequestLoadConfig(io) = message;
 
         let output = match Self::load_config(&io) {
-            Ok(config) => Output::LoadComplete(io, config),
-            Err(error) => {
-                Output::LoadError(io, format!("Error loading configuration: {:?}", error))
-            }
+            Ok((config, version)) => Output::LoadComplete(LoadComplete {
+                io,
+                config,
+                version,
+            }),
+            Err(error) => Output::LoadError(LoadError {
+                io,
+                message: format!("Error loading configuration: {:?}", error),
+            }),
         };
 
         if let Err(error) = sender.output(output) {
@@ -46,11 +65,15 @@ impl Worker for ConfigLoader {
 }
 
 impl ConfigLoader {
-    fn load_config(file_io: &SelectedFileIo) -> Result<root::Config> {
+    fn load_config(file_io: &SelectedFileIo) -> Result<(root::Config, Option<String>)> {
         let reader = file_io
             .io_type
             .new_reader(&file_io.path)
             .with_context(|| format!("while creating reader for {}", file_io))?;
-        root::load_config(reader.as_ref()).with_context(|| "while reading root configuration")
+        let config = root::load_config(reader.as_ref())
+            .with_context(|| "while reading root configuration")?;
+        let version = root::load_config_version(reader.as_ref())
+            .with_context(|| "while reading configuration verstion")?;
+        Ok((config, version))
     }
 }

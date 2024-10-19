@@ -1,25 +1,46 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
+    io::Read,
     path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-use crate::filesio::Reader;
+use crate::filesio::{FilesIoError, Reader};
 
 use super::book::{load_book, Group};
 
-/// Loads the configuration from the given `path`.
+const ROOT_PATH_STR: &str = "config.yaml";
+const VERSION_PATH_STR: &str = "version.txt";
+
+/// Loads the configuration from `cfg_reader`.
 pub fn load_config(cfg_reader: &dyn Reader) -> Result<Config> {
     let rdr = cfg_reader
-        .open_read(Path::new("config.yaml"))
-        .with_context(|| "opening configuration file")?;
+        .open_read(Path::new(ROOT_PATH_STR))
+        .with_context(|| "opening root configuration file")?;
     let config: YamlConfig =
-        serde_yaml_ng::from_reader(rdr).with_context(|| "parsing configuration file")?;
+        serde_yaml_ng::from_reader(rdr).with_context(|| "parsing root configuration file")?;
 
     Ok(config.prepare())
+}
+
+/// Loads the configuration version `cfg_reader`.
+pub fn load_config_version(cfg_reader: &dyn Reader) -> Result<Option<String>> {
+    let mut rdr = match cfg_reader.open_read(Path::new(VERSION_PATH_STR)) {
+        Ok(rdr) => rdr,
+        Err(error) if FilesIoError::NotFound.eq_anyhow(&error) => {
+            return Ok(None);
+        }
+        Err(error) => {
+            return Err(error).with_context(|| "opening configuration version file");
+        }
+    };
+    let mut version_string = String::new();
+    rdr.read_to_string(&mut version_string)
+        .with_context(|| "reading configuration version file")?;
+    Ok(Some(version_string))
 }
 
 /// Top level configuration, read and prepared from a `config.yaml`.

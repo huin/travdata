@@ -11,7 +11,7 @@ use relm4_components::{
 };
 
 use crate::{
-    config::root::{self, Config},
+    config::root::Config,
     gui::util::{self, SelectedFileIo},
 };
 
@@ -22,8 +22,8 @@ use super::workers::cfgloader::{self, ConfigLoader};
 pub enum Input {
     /// Specifies the currently selected extraction configuration.
     ConfigIo(SelectedFileIo),
-    LoadComplete(SelectedFileIo, root::Config),
-    LoadError(SelectedFileIo, String),
+    LoadComplete(cfgloader::LoadComplete),
+    LoadError(cfgloader::LoadError),
 }
 
 /// Initialisation parameters for [ConfigSelector].
@@ -94,7 +94,12 @@ impl SimpleComponent for ConfigSelector {
                 },
                 attach[1, 2, 1, 1] = &gtk::Label {
                     #[watch]
-                    set_label: "<not selected>",
+                    set_label: model
+                        .cfg_version.as_ref()
+                        .map(String::as_ref)
+                        .unwrap_or_else(
+                            || if model.cfg_io.is_some() {"<unknown>"} else {"<unselected>"}
+                        ),
                     set_halign: gtk::Align::Start,
                 },
 
@@ -113,11 +118,18 @@ impl SimpleComponent for ConfigSelector {
             Input::ConfigIo(io) => {
                 self.loader.emit(cfgloader::Input::RequestLoadConfig(io));
             }
-            Input::LoadComplete(io, _cfg) => {
+            Input::LoadComplete(cfgloader::LoadComplete {
+                io,
+                config: _,
+                version,
+            }) => {
                 self.cfg_io = Some(io);
+                self.cfg_version = version;
                 self.cfg_error = None;
             }
-            Input::LoadError(_io, message) => {
+            Input::LoadError(cfgloader::LoadError { io: _, message }) => {
+                self.cfg_io = None;
+                self.cfg_version = None;
                 self.cfg_error = Some(message);
             }
         }
@@ -178,8 +190,8 @@ impl SimpleComponent for ConfigSelector {
             loader: ConfigLoader::builder().detach_worker(()).forward(
                 sender.input_sender(),
                 |msg| match msg {
-                    cfgloader::Output::LoadComplete(io, cfg) => Input::LoadComplete(io, cfg),
-                    cfgloader::Output::LoadError(io, message) => Input::LoadError(io, message),
+                    cfgloader::Output::LoadComplete(v) => Input::LoadComplete(v),
+                    cfgloader::Output::LoadError(v) => Input::LoadError(v),
                 },
             ),
         };
