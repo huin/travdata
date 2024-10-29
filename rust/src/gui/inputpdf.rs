@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{fmt::Debug, fmt::Display, path::PathBuf, sync::Arc};
 
 use gtk::prelude::{FrameExt, GridExt, WidgetExt};
 use relm4::{
@@ -7,9 +7,10 @@ use relm4::{
 use relm4_components::{
     open_button::{OpenButton, OpenButtonSettings},
     open_dialog::OpenDialogSettings,
+    simple_combo_box::{SimpleComboBox, SimpleComboBoxMsg},
 };
 
-use crate::gui::util;
+use crate::{config::root, gui::util};
 
 /// Input messages for [InputPdfSelector].
 #[derive(Debug)]
@@ -17,6 +18,8 @@ pub enum Input {
     /// Sepecifies the currently selected input PDF file path.
     #[allow(clippy::enum_variant_names)]
     InputPdf(PathBuf),
+    SelectedConfig(Option<Arc<root::Config>>),
+    SelectedBookIndex,
 }
 
 /// Initialisation parameters for [InputPdfSelector].
@@ -28,8 +31,11 @@ pub struct Init {
 #[allow(dead_code)]
 pub struct InputPdfSelector {
     input_pdf_open: Controller<OpenButton>,
+    book_selector: Controller<SimpleComboBox<BookEntry>>,
+
     input_pdf: Option<PathBuf>,
     book_id: Option<String>,
+    config: Option<Arc<root::Config>>,
 }
 
 #[relm4::component(pub)]
@@ -76,9 +82,7 @@ impl SimpleComponent for InputPdfSelector {
                     set_label: "Select book:",
                     set_halign: gtk::Align::Start,
                 },
-                attach[1, 3, 1, 1] = &gtk::DropDown {
-                    set_hexpand: true,
-                },
+                attach[1, 3, 1, 1] = model.book_selector.widget(),
             },
         }
     }
@@ -87,6 +91,35 @@ impl SimpleComponent for InputPdfSelector {
         match message {
             Input::InputPdf(path) => {
                 self.input_pdf = Some(path.clone());
+            }
+            Input::SelectedConfig(config) => {
+                self.config = config;
+                let mut variants = match &self.config {
+                    None => vec![],
+                    Some(config) => config
+                        .books
+                        .values()
+                        .map(|book_cfg| BookEntry {
+                            book_cfg: book_cfg.clone(),
+                        })
+                        .collect(),
+                };
+                variants.sort_by(|a, b| a.book_cfg.name.cmp(&b.book_cfg.name));
+                // TODO: select book ID by default filename if possible.
+                self.book_id = None;
+                self.book_selector
+                    .sender()
+                    .emit(SimpleComboBoxMsg::UpdateData(SimpleComboBox {
+                        variants,
+                        active_index: None,
+                    }));
+            }
+            Input::SelectedBookIndex => {
+                self.book_id = self
+                    .book_selector
+                    .model()
+                    .get_active_elem()
+                    .map(|book_entry| book_entry.book_cfg.id.clone());
             }
         }
     }
@@ -119,12 +152,38 @@ impl SimpleComponent for InputPdfSelector {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), Input::InputPdf),
+            book_selector: SimpleComboBox::builder()
+                .launch(SimpleComboBox {
+                    variants: vec![],
+                    active_index: None,
+                })
+                .forward(sender.input_sender(), |_| Input::SelectedBookIndex),
+
             input_pdf: None,
             book_id: None,
+            config: None,
         };
 
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
+    }
+}
+
+struct BookEntry {
+    book_cfg: Arc<root::Book>,
+}
+
+impl Debug for BookEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BookEntry")
+            .field("book_cfg.id", &self.book_cfg.id)
+            .finish()
+    }
+}
+
+impl Display for BookEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.book_cfg.name)
     }
 }

@@ -8,16 +8,16 @@ use relm4::{
 
 use crate::{
     commontext,
-    gui::{cfgselect, inputpdf},
+    config::root,
+    gui::{cfgselect, inputpdf, outputselect},
 };
-
-use super::outputselect;
 
 /// Input messages for [MainWindow].
 #[derive(Debug)]
 enum Input {
     /// No-op message.
     Ignore,
+    SelectedConfig(Option<Arc<root::Config>>),
 }
 
 /// Initialisation parameters for [MainWindow].
@@ -75,6 +75,10 @@ impl SimpleComponent for MainWindow {
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
             Input::Ignore => {}
+            Input::SelectedConfig(config) => self
+                .input_pdf_selector
+                .sender()
+                .emit(inputpdf::Input::SelectedConfig(config)),
         }
     }
 
@@ -88,7 +92,9 @@ impl SimpleComponent for MainWindow {
                 .launch(cfgselect::Init {
                     xdg_dirs: init.xdg_dirs.clone(),
                 })
-                .forward(sender.input_sender(), |_msg| Input::Ignore),
+                .forward(sender.input_sender(), |msg| match msg {
+                    cfgselect::Output::SelectedConfig(config) => Input::SelectedConfig(config),
+                }),
             input_pdf_selector: inputpdf::InputPdfSelector::builder()
                 .launch(inputpdf::Init {
                     xdg_dirs: init.xdg_dirs.clone(),

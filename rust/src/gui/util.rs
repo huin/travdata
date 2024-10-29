@@ -1,5 +1,6 @@
 use std::{fmt::Display, path::PathBuf};
 
+use relm4::{Component, ComponentSender};
 use relm4_components::save_dialog::SaveDialogMsg;
 
 use crate::filesio::IoType;
@@ -89,4 +90,16 @@ pub fn xdg_cfg_static_str<X: AsRef<xdg::BaseDirectories>>(
                 static_str
             })
         })
+}
+
+/// Sends output message on component, logging if there is a failure. `message_desc` is a human
+/// readable string noun-phrase concisely describing the message to provide context.
+pub fn send_output_or_log<C: Component>(
+    message: C::Output,
+    message_desc: &str,
+    sender: ComponentSender<C>,
+) {
+    if let Err(error) = sender.output(message) {
+        log::error!("Could not send {}: {:?}", message_desc, error);
+    }
 }

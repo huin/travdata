@@ -3,6 +3,7 @@ use std::{
     fmt::Debug,
     io::Read,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use anyhow::{Context, Result};
@@ -46,7 +47,7 @@ pub fn load_config_version(cfg_reader: &dyn Reader) -> Result<Option<String>> {
 /// Top level configuration, read and prepared from a `config.yaml`.
 pub struct Config {
     pub ecma_script_modules: Vec<PathBuf>,
-    pub books: HashMap<String, Book>,
+    pub books: HashMap<String, Arc<Book>>,
 }
 
 impl Debug for Config {
@@ -88,7 +89,7 @@ impl YamlConfig {
             books: self
                 .books
                 .into_iter()
-                .map(|(id, book)| (id.clone(), book.prepare(id)))
+                .map(|(id, book)| (id.clone(), Arc::new(book.prepare(id))))
                 .collect(),
         }
     }

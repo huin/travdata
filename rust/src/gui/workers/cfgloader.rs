@@ -1,7 +1,10 @@
 use anyhow::{Context, Result};
 use relm4::Worker;
 
-use crate::{config::root, gui::util::SelectedFileIo};
+use crate::{
+    config::root,
+    gui::util::{self, SelectedFileIo},
+};
 
 /// Input messages for [ConfigLoader].
 #[derive(Debug)]
@@ -58,9 +61,7 @@ impl Worker for ConfigLoader {
             }),
         };
 
-        if let Err(error) = sender.output(output) {
-            log::error!("Could not send configuration load output: {:?}", error);
-        }
+        util::send_output_or_log(output, "configuration load output", sender);
     }
 }
 

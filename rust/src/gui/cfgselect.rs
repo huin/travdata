@@ -11,7 +11,7 @@ use relm4_components::{
 };
 
 use crate::{
-    config::root::Config,
+    config::root,
     gui::util::{self, SelectedFileIo},
 };
 
@@ -26,6 +26,11 @@ pub enum Input {
     LoadError(cfgloader::LoadError),
 }
 
+#[derive(Debug)]
+pub enum Output {
+    SelectedConfig(Option<Arc<root::Config>>),
+}
+
 /// Initialisation parameters for [ConfigSelector].
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
@@ -37,7 +42,6 @@ pub struct ConfigSelector {
     cfg_dir: Controller<OpenButton>,
     cfg_zip: Controller<OpenButton>,
     cfg_io: Option<util::SelectedFileIo>,
-    cfg: Option<Config>,
     cfg_error: Option<String>,
     cfg_version: Option<String>,
     loader: WorkerController<ConfigLoader>,
@@ -48,7 +52,7 @@ impl SimpleComponent for ConfigSelector {
     type Init = Init;
 
     type Input = Input;
-    type Output = ();
+    type Output = Output;
 
     view! {
         gtk::Frame {
@@ -113,24 +117,35 @@ impl SimpleComponent for ConfigSelector {
         }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             Input::ConfigIo(io) => {
                 self.loader.emit(cfgloader::Input::RequestLoadConfig(io));
             }
             Input::LoadComplete(cfgloader::LoadComplete {
                 io,
-                config: _,
+                config,
                 version,
             }) => {
                 self.cfg_io = Some(io);
                 self.cfg_version = version;
                 self.cfg_error = None;
+                let config = Arc::new(config);
+                util::send_output_or_log(
+                    Output::SelectedConfig(Some(config)),
+                    "selected configuration",
+                    sender,
+                );
             }
             Input::LoadError(cfgloader::LoadError { io: _, message }) => {
                 self.cfg_io = None;
                 self.cfg_version = None;
                 self.cfg_error = Some(message);
+                util::send_output_or_log(
+                    Output::SelectedConfig(None),
+                    "deselected configuration",
+                    sender,
+                );
             }
         }
     }
@@ -184,7 +199,6 @@ impl SimpleComponent for ConfigSelector {
                     Input::ConfigIo(SelectedFileIo::for_zip(path))
                 }),
             cfg_io: None,
-            cfg: None,
             cfg_error: None,
             cfg_version: None,
             loader: ConfigLoader::builder().detach_worker(()).forward(
