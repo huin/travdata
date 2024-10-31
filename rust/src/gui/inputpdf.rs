@@ -1,4 +1,8 @@
-use std::{fmt::Debug, fmt::Display, path::PathBuf, sync::Arc};
+use std::{
+    fmt::{Debug, Display},
+    path::PathBuf,
+    sync::Arc,
+};
 
 use gtk::prelude::{FrameExt, GridExt, WidgetExt};
 use relm4::{
@@ -36,6 +40,38 @@ pub struct InputPdfSelector {
     input_pdf: Option<PathBuf>,
     book_id: Option<String>,
     config: Option<Arc<root::Config>>,
+}
+
+impl InputPdfSelector {
+    fn auto_select_book(&mut self) {
+        let input_pdf_filename_opt: Option<&str> = self
+            .input_pdf
+            .as_ref()
+            .and_then(|p| p.file_name())
+            .and_then(std::ffi::OsStr::to_str);
+        let input_pdf_filename = match input_pdf_filename_opt {
+            Some(input_pdf_filename) => input_pdf_filename,
+            None => return,
+        };
+        let index_opt = self
+            .book_selector
+            .model()
+            .variants
+            .iter()
+            .enumerate()
+            .find_map(|(index, book_entry)| {
+                if book_entry.book_cfg.default_filename == input_pdf_filename {
+                    Some(index)
+                } else {
+                    None
+                }
+            });
+        if let Some(index) = index_opt {
+            self.book_selector
+                .sender()
+                .emit(SimpleComboBoxMsg::SetActiveIdx(index));
+        }
+    }
 }
 
 #[relm4::component(pub)]
@@ -91,6 +127,7 @@ impl SimpleComponent for InputPdfSelector {
         match message {
             Input::InputPdf(path) => {
                 self.input_pdf = Some(path.clone());
+                self.auto_select_book();
             }
             Input::SelectedConfig(config) => {
                 self.config = config;
@@ -105,14 +142,13 @@ impl SimpleComponent for InputPdfSelector {
                         .collect(),
                 };
                 variants.sort_by(|a, b| a.book_cfg.name.cmp(&b.book_cfg.name));
-                // TODO: select book ID by default filename if possible.
-                self.book_id = None;
                 self.book_selector
                     .sender()
                     .emit(SimpleComboBoxMsg::UpdateData(SimpleComboBox {
                         variants,
                         active_index: None,
                     }));
+                self.auto_select_book();
             }
             Input::SelectedBookIndex => {
                 self.book_id = self
