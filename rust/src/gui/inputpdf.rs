@@ -54,23 +54,41 @@ impl InputPdfSelector {
             None => return,
         };
         let index_opt = self
-            .book_selector
-            .model()
-            .variants
-            .iter()
-            .enumerate()
-            .find_map(|(index, book_entry)| {
-                if book_entry.book_cfg.default_filename == input_pdf_filename {
-                    Some(index)
-                } else {
-                    None
-                }
-            });
+            .find_book_entry_index(|book_entry| book_entry.filename_matches(input_pdf_filename));
         if let Some(index) = index_opt {
             self.book_selector
                 .sender()
                 .emit(SimpleComboBoxMsg::SetActiveIdx(index));
+            return;
         }
+
+        let unselected_index_opt =
+            self.find_book_entry_index(|book_entry| book_entry.book_cfg.is_none());
+        if let Some(index) = unselected_index_opt {
+            self.book_selector
+                .sender()
+                .emit(SimpleComboBoxMsg::SetActiveIdx(index));
+        }
+    }
+
+    fn find_book_entry_index<F>(&self, pred: F) -> Option<usize>
+    where
+        F: Fn(&BookEntry) -> bool,
+    {
+        self.book_selector
+            .model()
+            .variants
+            .iter()
+            .enumerate()
+            .find_map(
+                |(index, book_entry)| {
+                    if pred(book_entry) {
+                        Some(index)
+                    } else {
+                        None
+                    }
+                },
+            )
     }
 }
 
@@ -132,30 +150,31 @@ impl SimpleComponent for InputPdfSelector {
             Input::SelectedConfig(config) => {
                 self.config = config;
                 let mut variants = match &self.config {
-                    None => vec![],
-                    Some(config) => config
-                        .books
-                        .values()
-                        .map(|book_cfg| BookEntry {
-                            book_cfg: book_cfg.clone(),
-                        })
+                    None => vec![BookEntry::unselected()],
+                    Some(config) => Some(BookEntry::unselected())
+                        .into_iter()
+                        .chain(config.books.values().map(|book_cfg| BookEntry {
+                            book_cfg: Some(book_cfg.clone()),
+                        }))
                         .collect(),
                 };
-                variants.sort_by(|a, b| a.book_cfg.name.cmp(&b.book_cfg.name));
+                variants.sort_by(|a, b| a.name_opt().cmp(&b.name_opt()));
                 self.book_selector
                     .sender()
                     .emit(SimpleComboBoxMsg::UpdateData(SimpleComboBox {
                         variants,
                         active_index: None,
                     }));
-                self.auto_select_book();
+                // TODO: Find a way to wait for `self.book_selector` to have been updated, then
+                // call `self.auto_select_book()`.
             }
             Input::SelectedBookIndex => {
                 self.book_id = self
                     .book_selector
                     .model()
                     .get_active_elem()
-                    .map(|book_entry| book_entry.book_cfg.id.clone());
+                    .and_then(|book_entry| book_entry.id_opt())
+                    .map(|id| id.to_owned());
             }
         }
     }
@@ -207,19 +226,52 @@ impl SimpleComponent for InputPdfSelector {
 }
 
 struct BookEntry {
-    book_cfg: Arc<root::Book>,
+    book_cfg: Option<Arc<root::Book>>,
+}
+
+impl BookEntry {
+    fn unselected() -> Self {
+        Self { book_cfg: None }
+    }
+
+    fn id_opt(&self) -> Option<&str> {
+        self.book_cfg.as_ref().map(|book_cfg| book_cfg.id.as_ref())
+    }
+
+    fn name_opt(&self) -> Option<&str> {
+        self.book_cfg
+            .as_ref()
+            .map(|book_cfg| book_cfg.name.as_ref())
+    }
+
+    fn filename_matches(&self, filename: &str) -> bool {
+        match &self.book_cfg {
+            Some(book_cfg) => book_cfg.default_filename == filename,
+            None => false,
+        }
+    }
 }
 
 impl Debug for BookEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BookEntry")
-            .field("book_cfg.id", &self.book_cfg.id)
-            .finish()
+        match &self.book_cfg {
+            Some(book_cfg) => f
+                .debug_struct("BookEntry")
+                .field("book_cfg.id", &book_cfg.id)
+                .finish(),
+            None => f
+                .debug_struct("BookEntry")
+                .field("book_cfg", &"None")
+                .finish(),
+        }
     }
 }
 
 impl Display for BookEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.book_cfg.name)
+        match &self.book_cfg {
+            Some(book_cfg) => f.write_str(&book_cfg.name),
+            None => f.write_str("<unselected>"),
+        }
     }
 }
