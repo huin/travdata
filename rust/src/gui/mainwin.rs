@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use gtk::prelude::{BoxExt, GtkWindowExt, OrientableExt, WidgetExt};
 use relm4::{
@@ -9,17 +9,15 @@ use relm4::{
 use crate::{
     commontext,
     config::root,
-    gui::{cfgselect, inputpdf, outputselect, util},
+    gui::{cfgselect, extract, inputpdf, outputselect},
 };
 
 /// Input messages for [MainWindow].
 #[derive(Debug)]
 enum Input {
     /// No-op message.
-    SelectedConfig(Option<Arc<root::Config>>),
-    SelectedInputPdf(Option<PathBuf>),
-    SelectedBookId(Option<String>),
-    SelectedOutputIo(Option<util::SelectedFileIo>),
+    Config(Option<Arc<root::Config>>),
+    ExtractorInput(extract::Input),
 }
 
 /// Initialisation parameters for [MainWindow].
@@ -32,20 +30,7 @@ struct MainWindow {
     cfg_selector: Controller<cfgselect::ConfigSelector>,
     input_pdf_selector: Controller<inputpdf::InputPdfSelector>,
     output_selector: Controller<outputselect::OutputSelector>,
-
-    config: Option<Arc<root::Config>>,
-    input_pdf: Option<PathBuf>,
-    book_id: Option<String>,
-    output_io: Option<util::SelectedFileIo>,
-}
-
-impl MainWindow {
-    fn is_extraction_ready(&self) -> bool {
-        self.config.is_some()
-            && self.input_pdf.is_some()
-            && self.book_id.is_some()
-            && self.output_io.is_some()
-    }
+    extractor: Controller<extract::Extractor>,
 }
 
 #[relm4::component]
@@ -81,29 +66,20 @@ impl SimpleComponent for MainWindow {
                     set_vexpand: true,
                 },
 
-                gtk::Button::with_label("Extract") {
-                    #[watch]
-                    set_sensitive: model.is_extraction_ready(),
-                },
+                model.extractor.widget(),
             }
         }
     }
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
-            Input::SelectedConfig(config) => {
+            Input::ExtractorInput(extractor_input) => {
+                self.extractor.emit(extractor_input);
+            }
+            Input::Config(config) => {
                 self.input_pdf_selector
                     .emit(inputpdf::Input::SelectedConfig(config.clone()));
-                self.config = config;
-            }
-            Input::SelectedInputPdf(input_pdf) => {
-                self.input_pdf = input_pdf;
-            }
-            Input::SelectedBookId(book_id) => {
-                self.book_id = book_id;
-            }
-            Input::SelectedOutputIo(output_io) => {
-                self.output_io = output_io;
+                self.extractor.emit(extract::Input::Config(config));
             }
         }
     }
@@ -119,7 +95,7 @@ impl SimpleComponent for MainWindow {
                     xdg_dirs: init.xdg_dirs.clone(),
                 })
                 .forward(sender.input_sender(), |msg| match msg {
-                    cfgselect::Output::SelectedConfig(config) => Input::SelectedConfig(config),
+                    cfgselect::Output::SelectedConfig(config) => Input::Config(config),
                 }),
             input_pdf_selector: inputpdf::InputPdfSelector::builder()
                 .launch(inputpdf::Init {
@@ -127,9 +103,11 @@ impl SimpleComponent for MainWindow {
                 })
                 .forward(sender.input_sender(), |msg| match msg {
                     inputpdf::Output::SelectedInputPdf(input_pdf) => {
-                        Input::SelectedInputPdf(input_pdf)
+                        Input::ExtractorInput(extract::Input::InputPdf(input_pdf))
                     }
-                    inputpdf::Output::SelectedBookId(book_id) => Input::SelectedBookId(book_id),
+                    inputpdf::Output::SelectedBookId(book_id) => {
+                        Input::ExtractorInput(extract::Input::BookId(book_id))
+                    }
                 }),
             output_selector: outputselect::OutputSelector::builder()
                 .launch(outputselect::Init {
@@ -137,14 +115,10 @@ impl SimpleComponent for MainWindow {
                 })
                 .forward(sender.input_sender(), |msg| match msg {
                     outputselect::Output::SelectedOutputIo(output_io) => {
-                        Input::SelectedOutputIo(output_io)
+                        Input::ExtractorInput(extract::Input::OutputIo(output_io))
                     }
                 }),
-
-            config: None,
-            input_pdf: None,
-            book_id: None,
-            output_io: None,
+            extractor: extract::Extractor::builder().launch(()).detach(),
         };
 
         let widgets = view_output!();
@@ -153,7 +127,7 @@ impl SimpleComponent for MainWindow {
     }
 }
 
-/// Runs the GUI thread for the lifetime of the GUI itself.
+/// Runs in the GUI thread for the lifetime of the GUI itself.
 pub fn run_gui(init: Init) {
     let app = RelmApp::new("travdata.gui").with_args(Vec::new());
     app.run::<MainWindow>(init);
