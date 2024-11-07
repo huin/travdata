@@ -27,6 +27,12 @@ pub enum Input {
     Ignore,
 }
 
+/// Output messages for [OutputSelector].
+#[derive(Debug)]
+pub enum Output {
+    SelectedOutputIo(Option<SelectedFileIo>),
+}
+
 /// Initialisation parameters for [OutputSelector].
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
@@ -45,7 +51,7 @@ impl SimpleComponent for OutputSelector {
     type Init = Init;
 
     type Input = Input;
-    type Output = ();
+    type Output = Output;
 
     view! {
         gtk::Frame {
@@ -87,9 +93,14 @@ impl SimpleComponent for OutputSelector {
         }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
-            Input::OutputIo(io) => self.output_io = Some(io),
+            Input::OutputIo(io) => {
+                self.output_io = Some(io);
+                sender
+                    .output_sender()
+                    .emit(Output::SelectedOutputIo(self.output_io.clone()));
+            }
             Input::OutputZipRequest => self
                 .output_zip_dialog
                 .emit(util::save_dialog_msg(&self.output_io, IoType::Zip)),

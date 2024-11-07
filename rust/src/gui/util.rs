@@ -7,7 +7,7 @@ use crate::filesio::IoType;
 
 const NOT_SELECTED: &str = "<not selected>";
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SelectedFileIo {
     pub io_type: IoType,
     pub path: PathBuf,

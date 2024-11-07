@@ -26,20 +26,27 @@ pub enum Input {
     SelectedBookIndex,
 }
 
+/// Output messages for [InputPdfSelector].
+#[derive(Debug)]
+pub enum Output {
+    SelectedInputPdf(Option<PathBuf>),
+    SelectedBookId(Option<String>),
+}
+
 /// Initialisation parameters for [InputPdfSelector].
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
 }
 
 /// Relm4 component to select an input PDF file for Travdata.
-#[allow(dead_code)]
 pub struct InputPdfSelector {
     input_pdf_open: Controller<OpenButton>,
     book_selector: Controller<SimpleComboBox<BookEntry>>,
 
+    config: Option<Arc<root::Config>>,
+
     input_pdf: Option<PathBuf>,
     book_id: Option<String>,
-    config: Option<Arc<root::Config>>,
 }
 
 impl InputPdfSelector {
@@ -97,7 +104,7 @@ impl SimpleComponent for InputPdfSelector {
     type Init = Init;
 
     type Input = Input;
-    type Output = ();
+    type Output = Output;
 
     view! {
         gtk::Frame {
@@ -141,11 +148,17 @@ impl SimpleComponent for InputPdfSelector {
         }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             Input::InputPdf(path) => {
-                self.input_pdf = Some(path.clone());
+                self.input_pdf = Some(path);
                 self.auto_select_book();
+                sender
+                    .output_sender()
+                    .emit(Output::SelectedInputPdf(self.input_pdf.clone()));
+                sender
+                    .output_sender()
+                    .emit(Output::SelectedBookId(self.book_id.clone()));
             }
             Input::SelectedConfig(config) => {
                 self.config = config;
@@ -175,6 +188,9 @@ impl SimpleComponent for InputPdfSelector {
                     .get_active_elem()
                     .and_then(|book_entry| book_entry.id_opt())
                     .map(|id| id.to_owned());
+                sender
+                    .output_sender()
+                    .emit(Output::SelectedBookId(self.book_id.clone()));
             }
         }
     }
@@ -214,9 +230,10 @@ impl SimpleComponent for InputPdfSelector {
                 })
                 .forward(sender.input_sender(), |_| Input::SelectedBookIndex),
 
+            config: None,
+
             input_pdf: None,
             book_id: None,
-            config: None,
         };
 
         let widgets = view_output!();

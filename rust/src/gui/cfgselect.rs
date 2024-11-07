@@ -26,6 +26,7 @@ pub enum Input {
     LoadError(cfgloader::LoadError),
 }
 
+/// Output messages from [ConfigSelector].
 #[derive(Debug)]
 pub enum Output {
     SelectedConfig(Option<Arc<root::Config>>),
