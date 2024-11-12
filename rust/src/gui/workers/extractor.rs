@@ -130,8 +130,12 @@ impl<'a> MainThreadWorker<'a> {
     /// Should be called from the main thread once the GUI thread has been started.
     /// Blocks until shut down. Consumes `self`.
     pub fn run(self) {
+        let table_reader = self.table_reader;
+        drop(self.request_sender);
+        let request_receiver = self.request_receiver;
+
         loop {
-            let mut work = match self.request_receiver.recv() {
+            let mut work = match request_receiver.recv() {
                 Ok(work) => work,
                 Err(_) => {
                     log::info!("Worker request channel closed; terminating worker loop.");
@@ -139,7 +143,7 @@ impl<'a> MainThreadWorker<'a> {
                 }
             };
 
-            if let Err(err) = work.run(self.table_reader) {
+            if let Err(err) = work.run(table_reader) {
                 work.sender.send(Output::Error { err });
                 work.sender.send(Output::Completed);
             }
