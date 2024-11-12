@@ -1,9 +1,10 @@
 use std::{fmt::Display, path::PathBuf};
 
+use anyhow::Result;
 use relm4::{Component, ComponentSender};
 use relm4_components::save_dialog::SaveDialogMsg;
 
-use crate::filesio::IoType;
+use crate::filesio::{IoType, ReadWriter, Reader};
 
 const NOT_SELECTED: &str = "<not selected>";
 
@@ -25,6 +26,14 @@ impl SelectedFileIo {
             io_type: IoType::Zip,
             path,
         }
+    }
+
+    pub fn new_reader<'s, 'r>(&'s self) -> Result<Box<dyn Reader<'r>>> {
+        self.io_type.new_reader(&self.path)
+    }
+
+    pub fn new_read_writer<'s, 'r>(&'s self) -> Result<Box<dyn ReadWriter<'r>>> {
+        self.io_type.new_read_writer(&self.path)
     }
 }
 

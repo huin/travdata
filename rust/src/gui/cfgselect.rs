@@ -29,7 +29,7 @@ pub enum Input {
 /// Output messages from [ConfigSelector].
 #[derive(Debug)]
 pub enum Output {
-    SelectedConfig(Option<Arc<root::Config>>),
+    SelectedConfig(Option<(SelectedFileIo, Arc<root::Config>)>),
 }
 
 /// Initialisation parameters for [ConfigSelector].
@@ -128,12 +128,12 @@ impl SimpleComponent for ConfigSelector {
                 config,
                 version,
             }) => {
-                self.cfg_io = Some(io);
+                self.cfg_io = Some(io.clone());
                 self.cfg_version = version;
                 self.cfg_error = None;
                 let config = Arc::new(config);
                 util::send_output_or_log(
-                    Output::SelectedConfig(Some(config)),
+                    Output::SelectedConfig(Some((io, config))),
                     "selected configuration",
                     sender,
                 );

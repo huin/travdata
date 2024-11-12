@@ -10,7 +10,7 @@ use simple_bar::ProgressBar;
 use crate::{
     extraction::{
         bookextract::{ExtractEvents, ExtractSpec, Extractor},
-        pdf::{cachingreader::CachingTableReader, tabulareader::TabulaClient, TableReader},
+        pdf::TableReaderArgs,
     },
     filesio,
 };
@@ -36,10 +36,6 @@ pub struct Command {
     /// be included with this program's distribution.
     #[arg(long)]
     config: PathBuf,
-
-    /// Path to Tabula JAR file.
-    #[arg(long)]
-    tabula_libpath: String,
 
     /// Controls how data is written to the output.
     ///
@@ -67,27 +63,14 @@ pub struct Command {
     #[arg(long, default_value = "true")]
     show_progress: bool,
 
-    /// Use the table cache.
-    #[arg(long, default_value = "true")]
-    table_cache: bool,
+    /// Options relating to configuring the table reader.
+    #[command(flatten)]
+    table_reader: TableReaderArgs,
 }
 
 /// Runs the subcommand.
 pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
-    let tabula_reader =
-        Box::new(TabulaClient::new(&cmd.tabula_libpath).with_context(|| "initialising Tabula")?);
-
-    let mut opt_table_cache: Option<CachingTableReader<&TabulaClient>> = None;
-    let table_reader: &dyn TableReader = if !cmd.table_cache {
-        tabula_reader.as_ref()
-    } else {
-        let tables_cache_path = xdg_dirs.place_cache_file(Path::new("table-cache.json"))?;
-        opt_table_cache = Some(CachingTableReader::load(
-            tabula_reader.as_ref(),
-            tables_cache_path,
-        )?);
-        opt_table_cache.as_ref().unwrap()
-    };
+    let table_reader = cmd.table_reader.build(&xdg_dirs)?;
 
     let cfg_type = filesio::IoType::resolve_auto(None, &cmd.config);
     let cfg_reader = cfg_type
@@ -99,7 +82,7 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
         .new_read_writer(&cmd.output)
         .with_context(|| format!("opening output path {:?} as {:?}", cmd.output, output_type))?;
 
-    let mut extractor = Extractor::new(table_reader, cfg_reader, out_writer)?;
+    let mut extractor = Extractor::new(table_reader.as_ref(), cfg_reader, out_writer)?;
 
     let spec = ExtractSpec {
         book_name: &cmd.book_name,
@@ -117,10 +100,8 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
 
     extractor.close()?;
 
-    if let Some(table_cache) = opt_table_cache {
-        if let Err(err) = table_cache.store() {
-            log::warn!("Failed to store table cache: {err}");
-        }
+    if let Err(err) = table_reader.close() {
+        log::warn!("Failed to shut down table reader: {err}");
     }
 
     Ok(())
@@ -167,6 +148,6 @@ impl ExtractEvents for EventDisplayer {
 
     fn do_continue(&self) -> bool {
         self.continue_intent
-            .load(std::sync::atomic::Ordering::SeqCst)
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 }

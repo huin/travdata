@@ -125,4 +125,8 @@ impl TableReader for TabulaClient {
 
         Ok(ExtractedTables(tables))
     }
+
+    fn close(self: Box<Self>) -> Result<()> {
+        Ok(())
+    }
 }

@@ -19,7 +19,7 @@ struct Args {
 #[derive(Subcommand)]
 enum Command {
     ExtractCsvTables(extractcsvtables::Command),
-    Gui,
+    Gui(gui::Command),
 }
 
 pub fn run() -> Result<()> {
@@ -32,6 +32,6 @@ pub fn run() -> Result<()> {
     use Command::*;
     match &args.command {
         ExtractCsvTables(cmd) => extractcsvtables::run(cmd, xdg_dirs),
-        Gui => gui::run(xdg_dirs),
+        Gui(cmd) => gui::run(cmd, xdg_dirs),
     }
 }

@@ -1,10 +1,13 @@
 pub mod cachingreader;
 pub mod tabulareader;
 
-use std::path;
+use std::path::{self, Path};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use cachingreader::CachingTableReader;
+use clap::Args;
 use serde::{Deserialize, Serialize};
+use tabulareader::TabulaClient;
 
 use crate::table::Table;
 
@@ -28,18 +31,37 @@ pub trait TableReader {
         pdf_path: &path::Path,
         template_json: &str,
     ) -> Result<ExtractedTables>;
+
+    /// Shuts down the [TableReader], flushing any resources that it was using.
+    fn close(self: Box<Self>) -> Result<()>;
 }
 
-impl<T> TableReader for &T
-where
-    T: TableReader,
-{
-    fn read_pdf_with_template(
-        &self,
-        pdf_path: &path::Path,
-        template_json: &str,
-    ) -> Result<ExtractedTables> {
-        T::read_pdf_with_template(self, pdf_path, template_json)
+/// CLI arguments relating to [CachableTableReader].
+#[derive(Args, Clone, Debug)]
+pub struct TableReaderArgs {
+    /// Path to Tabula JAR file.
+    #[arg(long)]
+    tabula_libpath: String,
+
+    /// Use the table cache.
+    #[arg(long, default_value = "true")]
+    table_cache: bool,
+}
+
+impl TableReaderArgs {
+    pub fn build(&self, xdg_dirs: &xdg::BaseDirectories) -> Result<Box<dyn TableReader>> {
+        let tabula_reader =
+            TabulaClient::new(&self.tabula_libpath).with_context(|| "initialising Tabula")?;
+
+        if !self.table_cache {
+            return Ok(Box::new(tabula_reader));
+        }
+
+        let tables_cache_path = xdg_dirs.place_cache_file(Path::new("table-cache.json"))?;
+        Ok(Box::new(CachingTableReader::load(
+            tabula_reader,
+            tables_cache_path,
+        )?))
     }
 }
 

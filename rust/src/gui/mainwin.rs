@@ -9,20 +9,23 @@ use relm4::{
 use crate::{
     commontext,
     config::root,
-    gui::{cfgselect, extract, inputpdf, outputselect},
+    gui::{cfgselect, extract, inputpdf, outputselect, util},
 };
+
+use super::workers::{self, extractor};
 
 /// Input messages for [MainWindow].
 #[derive(Debug)]
 enum Input {
     /// No-op message.
-    Config(Option<Arc<root::Config>>),
+    Config(Option<(util::SelectedFileIo, Arc<root::Config>)>),
     ExtractorInput(extract::Input),
 }
 
 /// Initialisation parameters for [MainWindow].
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
+    pub worker_channel: workers::extractor::WorkChannel,
 }
 
 /// Relm4 window component that acts as the main window for the GUI interface to Travdata.
@@ -76,11 +79,18 @@ impl SimpleComponent for MainWindow {
             Input::ExtractorInput(extractor_input) => {
                 self.extractor.emit(extractor_input);
             }
-            Input::Config(config) => {
-                self.input_pdf_selector
-                    .emit(inputpdf::Input::SelectedConfig(config.clone()));
-                self.extractor.emit(extract::Input::Config(config));
-            }
+            Input::Config(config_opt) => match config_opt {
+                Some((cfg_io, config)) => {
+                    self.input_pdf_selector
+                        .emit(inputpdf::Input::SelectedConfig(Some(config)));
+                    self.extractor.emit(extract::Input::ConfigIo(Some(cfg_io)));
+                }
+                None => {
+                    self.input_pdf_selector
+                        .emit(inputpdf::Input::SelectedConfig(None));
+                    self.extractor.emit(extract::Input::ConfigIo(None));
+                }
+            },
         }
     }
 
@@ -95,7 +105,7 @@ impl SimpleComponent for MainWindow {
                     xdg_dirs: init.xdg_dirs.clone(),
                 })
                 .forward(sender.input_sender(), |msg| match msg {
-                    cfgselect::Output::SelectedConfig(config) => Input::Config(config),
+                    cfgselect::Output::SelectedConfig(config_opt) => Input::Config(config_opt),
                 }),
             input_pdf_selector: inputpdf::InputPdfSelector::builder()
                 .launch(inputpdf::Init {
@@ -118,7 +128,11 @@ impl SimpleComponent for MainWindow {
                         Input::ExtractorInput(extract::Input::OutputIo(output_io))
                     }
                 }),
-            extractor: extract::Extractor::builder().launch(()).detach(),
+            extractor: extract::Extractor::builder()
+                .launch(extractor::Init {
+                    worker_channel: init.worker_channel,
+                })
+                .detach(),
         };
 
         let widgets = view_output!();

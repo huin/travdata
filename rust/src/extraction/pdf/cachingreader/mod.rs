@@ -152,6 +152,10 @@ where
 
         Ok(tables)
     }
+
+    fn close(self: Box<Self>) -> Result<()> {
+        self.store()
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
