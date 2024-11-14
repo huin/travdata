@@ -64,11 +64,6 @@ impl SimpleComponent for MainWindow {
                 model.input_pdf_selector.widget(),
                 model.output_selector.widget(),
 
-                gtk::Box {
-                    // Spacer.
-                    set_vexpand: true,
-                },
-
                 model.extractor.widget(),
             }
         }

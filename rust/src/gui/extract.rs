@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use std::{fmt::Write, path::PathBuf};
 
 use anyhow::{anyhow, Result};
-use gtk::prelude::{BoxExt, ButtonExt, OrientableExt, WidgetExt};
+use gtk::prelude::{BoxExt, ButtonExt, OrientableExt, TextBufferExt, WidgetExt};
 use relm4::{
     gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
     SimpleComponent,
@@ -25,7 +25,7 @@ pub enum Input {
     StartExtraction,
     CancelExtraction,
     #[allow(private_interfaces)]
-    Progress(Progress),
+    Progress(extractor::Output),
 }
 
 pub struct Extractor {
@@ -35,6 +35,7 @@ pub struct Extractor {
     out_io: Option<util::SelectedFileIo>,
 
     progress: Option<Progress>,
+    log_buffer: gtk::TextBuffer,
 
     worker: Controller<extractor::ExtractorWorker>,
 }
@@ -76,6 +77,11 @@ impl Extractor {
             out_io,
         })
     }
+
+    fn clear_log_buffer(&mut self) {
+        let (mut start, mut end) = self.log_buffer.bounds();
+        self.log_buffer.delete(&mut start, &mut end);
+    }
 }
 
 #[relm4::component(pub)]
@@ -89,15 +95,6 @@ impl SimpleComponent for Extractor {
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
             set_spacing: 5,
-
-            gtk::ProgressBar {
-                #[watch]
-                set_fraction: if let Some(progress) = model.progress.as_ref() { progress.fraction} else {0.0},
-                #[watch]
-                set_text: if let Some(progress) = model.progress.as_ref() { Some(&progress.text) } else {None},
-                #[watch]
-                set_show_text: model.progress.is_some(),
-            },
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Horizontal,
@@ -121,6 +118,25 @@ impl SimpleComponent for Extractor {
                     },
                 },
             },
+
+            gtk::ProgressBar {
+                #[watch]
+                set_fraction: if let Some(progress) = model.progress.as_ref() { progress.fraction} else {0.0},
+                #[watch]
+                set_text: if let Some(progress) = model.progress.as_ref() { Some(&progress.text) } else {None},
+                #[watch]
+                set_show_text: model.progress.is_some(),
+            },
+
+            gtk::Expander {
+                set_label: Some("Extraction log"),
+
+                gtk::ScrolledWindow {
+                    gtk::TextView::with_buffer(&model.log_buffer) {
+                        set_vexpand: true,
+                    }
+                }
+            },
         }
     }
 
@@ -140,6 +156,12 @@ impl SimpleComponent for Extractor {
             }
             Input::StartExtraction => match self.form_request() {
                 Ok(request) => {
+                    self.clear_log_buffer();
+                    log_message_error(writeln!(self.log_buffer, "Starting extraction..."));
+                    self.progress = Some(Progress {
+                        text: "Starting extraction...".to_string(),
+                        fraction: 0.0,
+                    });
                     self.worker.sender().emit(extractor::Input::Start(request));
                 }
                 Err(err) => {
@@ -149,9 +171,28 @@ impl SimpleComponent for Extractor {
             Input::CancelExtraction => {
                 self.worker.sender().emit(extractor::Input::Cancel);
             }
-            Input::Progress(progress) => {
-                self.progress = Some(progress);
-            }
+            Input::Progress(progress) => match progress {
+                extractor::Output::Progress {
+                    path,
+                    completed,
+                    total,
+                } => {
+                    log_message_error(writeln!(self.log_buffer, "Wrote {:?}", path));
+                    self.progress = Some(Progress {
+                        text: format!("{} / {}", completed, total),
+                        fraction: (completed as f64) / (total as f64),
+                    });
+                }
+                extractor::Output::Error { err } => {
+                    log_message_error(writeln!(self.log_buffer, "Error: {:?}", err));
+                }
+                extractor::Output::Completed => {
+                    self.progress = Some(Progress {
+                        text: "Complete".to_string(),
+                        fraction: 1.0,
+                    });
+                }
+            },
         }
     }
 
@@ -167,26 +208,11 @@ impl SimpleComponent for Extractor {
             out_io: None,
 
             progress: None,
+            log_buffer: gtk::TextBuffer::new(None),
 
-            worker: extractor::ExtractorWorker::builder().launch(init).forward(
-                sender.input_sender(),
-                |msg| match msg {
-                    extractor::Output::Progress {
-                        path: _,
-                        completed,
-                        total,
-                    } => Input::Progress(Progress {
-                        text: format!("{} / {}", completed, total),
-                        fraction: (completed as f64) / (total as f64),
-                    }),
-                    // TODO:Display errors.
-                    extractor::Output::Error { err: _ } => todo!(),
-                    extractor::Output::Completed => Input::Progress(Progress {
-                        text: "Complete".to_string(),
-                        fraction: 1.0,
-                    }),
-                },
-            ),
+            worker: extractor::ExtractorWorker::builder()
+                .launch(init)
+                .forward(sender.input_sender(), Input::Progress),
         };
 
         let widgets = view_output!();
@@ -199,4 +225,13 @@ impl SimpleComponent for Extractor {
 struct Progress {
     text: String,
     fraction: f64,
+}
+
+fn log_message_error(write_result: std::fmt::Result) {
+    if let Err(err) = write_result {
+        log::error!(
+            "Failed to log message to extraction log text view: {:?}",
+            err
+        );
+    }
 }
