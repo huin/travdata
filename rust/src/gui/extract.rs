@@ -187,10 +187,7 @@ impl SimpleComponent for Extractor {
                     log_message_error(writeln!(self.log_buffer, "Error: {:?}", err));
                 }
                 bookextract::ExtractEvent::Completed => {
-                    self.progress = Some(Progress {
-                        text: "Complete".to_string(),
-                        fraction: 1.0,
-                    });
+                    log_message_error(writeln!(self.log_buffer, "Extraction complete."));
                 }
             },
             Input::Progress(extractor::Output::Failure(err)) => {
