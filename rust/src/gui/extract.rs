@@ -7,7 +7,7 @@ use relm4::{
     SimpleComponent,
 };
 
-use crate::gui::util;
+use crate::{extraction::bookextract, gui::util};
 
 use super::workers::extractor;
 
@@ -171,8 +171,8 @@ impl SimpleComponent for Extractor {
             Input::CancelExtraction => {
                 self.worker.sender().emit(extractor::Input::Cancel);
             }
-            Input::Progress(progress) => match progress {
-                extractor::Output::Progress {
+            Input::Progress(extractor::Output::Event(event)) => match event {
+                bookextract::ExtractEvent::Progress {
                     path,
                     completed,
                     total,
@@ -183,16 +183,29 @@ impl SimpleComponent for Extractor {
                         fraction: (completed as f64) / (total as f64),
                     });
                 }
-                extractor::Output::Error { err } => {
+                bookextract::ExtractEvent::Error { err } => {
                     log_message_error(writeln!(self.log_buffer, "Error: {:?}", err));
                 }
-                extractor::Output::Completed => {
+                bookextract::ExtractEvent::Completed => {
                     self.progress = Some(Progress {
                         text: "Complete".to_string(),
                         fraction: 1.0,
                     });
                 }
             },
+            Input::Progress(extractor::Output::Failure(err)) => {
+                log_message_error(writeln!(
+                    self.log_buffer,
+                    "Error starting extraction: {:?}",
+                    err,
+                ));
+                self.progress = Some(Progress {
+                    // Use the [Display] form of the error in the progress bar which should be more
+                    // concise.
+                    text: format!("Error starting extraction: {}", err),
+                    fraction: 0.0,
+                });
+            }
         }
     }
 

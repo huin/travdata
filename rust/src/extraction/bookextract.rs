@@ -42,12 +42,25 @@ pub struct ExtractSpec<'a> {
     pub without_tags: &'a [String],
 }
 
+/// Extraction event emitted to track progress.
+#[derive(Debug)]
+pub enum ExtractEvent {
+    /// Indicates successful progress of extraction of a single output file.
+    Progress {
+        path: PathBuf,
+        completed: usize,
+        total: usize,
+    },
+    /// Indicates error with some portion of the extraction process.
+    Error { err: anyhow::Error },
+    /// Indicates that extraction has completed and that no more events will follow.
+    Completed,
+}
+
 /// Trait to implement to receive notifications about extraction events, or to
 /// cancel extraction early.
 pub trait ExtractEvents {
-    fn on_progress(&mut self, path: &Path, completed: usize, total: usize);
-    fn on_error(&mut self, err: anyhow::Error);
-    fn on_end(&mut self);
+    fn on_event(&mut self, event: ExtractEvent);
     fn do_continue(&self) -> bool;
 }
 
@@ -81,11 +94,13 @@ impl<'a> Extractor<'a> {
         let book_cfg = match self.cfg.books.get(spec.book_name) {
             Some(book_cfg) => book_cfg,
             None => {
-                events.on_error(anyhow!(
-                    "book {:?} does not exist in the configuration",
-                    spec.book_name
-                ));
-                events.on_end();
+                events.on_event(ExtractEvent::Error {
+                    err: anyhow!(
+                        "book {:?} does not exist in the configuration",
+                        spec.book_name
+                    ),
+                });
+                events.on_event(ExtractEvent::Completed);
                 return;
             }
         };
@@ -95,16 +110,18 @@ impl<'a> Extractor<'a> {
             &mut self.estrn,
             &book_cfg.ecma_script_modules,
         ) {
-            events.on_error(err.context("running ECMA scripts for book"));
-            events.on_end();
+            events.on_event(ExtractEvent::Error {
+                err: err.context("running ECMA scripts for book"),
+            });
+            events.on_event(ExtractEvent::Completed);
             return;
         }
 
         let top_group = match book_cfg.load_group(self.cfg_reader.as_ref()) {
             Ok(top_group) => top_group,
             Err(err) => {
-                events.on_error(err);
-                events.on_end();
+                events.on_event(ExtractEvent::Error { err });
+                events.on_event(ExtractEvent::Completed);
                 return;
             }
         };
@@ -139,7 +156,7 @@ impl<'a> Extractor<'a> {
 
             match extract_result {
                 Err(err) => {
-                    events.on_error(err);
+                    events.on_event(ExtractEvent::Error { err });
                 }
                 Ok((table, page_numbers_set)) => {
                     let page_numbers = page_numbers_set
@@ -155,18 +172,22 @@ impl<'a> Extractor<'a> {
                         page_numbers,
                     );
                     if let Err(err) = write_result {
-                        events.on_error(err);
+                        events.on_event(ExtractEvent::Error { err });
                     }
                 }
             }
 
-            events.on_progress(&out_table.out_filepath, i + 1, output_tables.len());
+            events.on_event(ExtractEvent::Progress {
+                path: out_table.out_filepath.clone(),
+                completed: i + 1,
+                total: output_tables.len(),
+            });
             if !events.do_continue() {
                 break;
             }
         }
 
-        events.on_end();
+        events.on_event(ExtractEvent::Completed);
     }
 
     fn write_table(

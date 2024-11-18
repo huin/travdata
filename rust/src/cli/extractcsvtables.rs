@@ -1,5 +1,5 @@
 use std::{
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
 };
 
@@ -9,7 +9,7 @@ use simple_bar::ProgressBar;
 
 use crate::{
     extraction::{
-        bookextract::{ExtractEvents, ExtractSpec, Extractor},
+        bookextract::{self, ExtractEvents, ExtractSpec, Extractor},
         pdf::TableReaderArgs,
     },
     filesio,
@@ -124,27 +124,33 @@ impl EventDisplayer {
 }
 
 impl ExtractEvents for EventDisplayer {
-    fn on_progress(&mut self, _path: &Path, _completed: usize, total: usize) {
-        if !self.show_progress {
-            return;
-        }
+    fn on_event(&mut self, event: bookextract::ExtractEvent) {
+        match event {
+            bookextract::ExtractEvent::Progress {
+                path: _,
+                completed: _,
+                total,
+            } => {
+                if !self.show_progress {
+                    return;
+                }
 
-        let progress_bar: &mut ProgressBar = match self.progress_bar.as_mut() {
-            Some(progress_bar) => progress_bar,
-            None => {
-                let progress_bar = ProgressBar::cargo_style(total as u32, 80, true);
-                self.progress_bar = Some(progress_bar);
-                self.progress_bar.as_mut().unwrap()
+                let progress_bar: &mut ProgressBar = match self.progress_bar.as_mut() {
+                    Some(progress_bar) => progress_bar,
+                    None => {
+                        let progress_bar = ProgressBar::cargo_style(total as u32, 80, true);
+                        self.progress_bar = Some(progress_bar);
+                        self.progress_bar.as_mut().unwrap()
+                    }
+                };
+                progress_bar.update();
             }
-        };
-        progress_bar.update();
+            bookextract::ExtractEvent::Error { err } => {
+                eprintln!("Error during extraction: {:?}.", err);
+            }
+            bookextract::ExtractEvent::Completed => {}
+        }
     }
-
-    fn on_error(&mut self, err: anyhow::Error) {
-        eprintln!("Error during extraction: {:?}.", err);
-    }
-
-    fn on_end(&mut self) {}
 
     fn do_continue(&self) -> bool {
         self.continue_intent

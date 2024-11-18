@@ -3,12 +3,12 @@ use std::{
     sync::{atomic::AtomicBool, mpsc, Arc},
 };
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use relm4::Worker;
 
 use crate::{
     extraction::{bookextract, pdf::TableReader},
-    gui::util::SelectedFileIo,
+    gui::util::{self, SelectedFileIo},
 };
 
 /// Initialisation data for [ExtractorWorker].
@@ -31,7 +31,6 @@ pub enum Input {
     // External:
     Start(Request),
     Cancel,
-
     // Internal:
     Completed,
 }
@@ -39,15 +38,11 @@ pub enum Input {
 /// Output messages for [ExtractorWorker].
 #[derive(Debug)]
 pub enum Output {
-    Progress {
-        path: PathBuf,
-        completed: usize,
-        total: usize,
-    },
-    Error {
-        err: anyhow::Error,
-    },
-    Completed,
+    /// Relays events from [bookextract::ExtractEvent].
+    Event(bookextract::ExtractEvent),
+    /// Indicates a failure to start the extraction process. This will be the only event emitted
+    /// for the work.
+    Failure(anyhow::Error),
 }
 
 pub struct ExtractorWorker {
@@ -76,23 +71,39 @@ impl Worker for ExtractorWorker {
     fn update(&mut self, message: Self::Input, sender: relm4::ComponentSender<Self>) {
         match (message, &mut self.work_handle) {
             (Input::Start(_), Some(_)) => {
-                log::warn!("Cannot start requested extraction. Work already in progress.");
+                util::send_output_or_log(
+                    Output::Failure(anyhow!(
+                        "Cannot start requested extraction. Work already in progress."
+                    )),
+                    "failure to start message",
+                    sender,
+                );
+            }
+            (Input::Start(request), work_handle_opt @ None) => {
+                let work = Work::new(request, sender.clone());
+                *work_handle_opt = Some(work.handle());
+                if let Err(err) = self.worker_channel.sender.send(work) {
+                    util::send_output_or_log(
+                        Output::Failure(anyhow!(
+                            "Could not request extraction - has the worker died? {:?}",
+                            err
+                        )),
+                        "failure to start message",
+                        sender,
+                    );
+                }
             }
             (Input::Cancel, Some(work_handle)) => {
                 work_handle.cancel();
             }
-            (Input::Start(request), work_handle_opt) => {
-                let work = Work::new(request, sender.clone());
-                *work_handle_opt = Some(work.handle());
-                if let Err(err) = self.worker_channel.sender.send(work) {
-                    log::warn!(
-                        "Could not request extraction - has the worker died? {:?}",
-                        err
-                    );
-                }
-            }
             (Input::Cancel, None) => {
-                log::warn!("Received extraction cancelled message, but was not running.");
+                util::send_output_or_log(
+                    Output::Failure(anyhow!(
+                        "Received extraction cancelled message, but was not running."
+                    )),
+                    "failure to cancel message",
+                    sender,
+                );
             }
             (Input::Completed, None) => {
                 log::warn!("Received extraction completed message, but was not running.");
@@ -143,10 +154,7 @@ impl<'a> MainThreadWorker<'a> {
                 }
             };
 
-            if let Err(err) = work.run(table_reader) {
-                work.sender.send(Output::Error { err });
-                work.sender.send(Output::Completed);
-            }
+            work.run(table_reader);
         }
     }
 }
@@ -177,7 +185,13 @@ impl Work {
         }
     }
 
-    fn run(&mut self, table_reader: &dyn TableReader) -> Result<()> {
+    fn run(&mut self, table_reader: &dyn TableReader) {
+        if let Err(err) = self.run_inner(table_reader) {
+            self.sender.send(Output::Failure(err));
+        }
+    }
+
+    fn run_inner(&mut self, table_reader: &dyn TableReader) -> Result<()> {
         let cfg_reader = self
             .request
             .cfg_io
@@ -218,21 +232,13 @@ impl WorkEventSender {
 }
 
 impl bookextract::ExtractEvents for WorkEventSender {
-    fn on_progress(&mut self, path: &std::path::Path, completed: usize, total: usize) {
-        self.send(Output::Progress {
-            path: path.to_owned(),
-            completed,
-            total,
-        });
-    }
-
-    fn on_error(&mut self, err: anyhow::Error) {
-        self.send(Output::Error { err });
-    }
-
-    fn on_end(&mut self) {
-        self.send(Output::Completed);
-        self.component_sender.input(Input::Completed);
+    fn on_event(&mut self, event: bookextract::ExtractEvent) {
+        if let &bookextract::ExtractEvent::Completed = &event {
+            self.component_sender.input(Input::Completed);
+        }
+        if let Err(err) = self.component_sender.output(Output::Event(event)) {
+            log::warn!("Failed to send work event message: {:?}", err);
+        }
     }
 
     fn do_continue(&self) -> bool {
