@@ -145,10 +145,24 @@ impl ExtractEvents for EventDisplayer {
                 };
                 progress_bar.update();
             }
-            bookextract::ExtractEvent::Error { err } => {
-                eprintln!("Error during extraction: {:?}.", err);
+            bookextract::ExtractEvent::Error {
+                err,
+                terminal: false,
+            } => {
+                eprintln!("Error (continuing): {:?}.", err);
             }
-            bookextract::ExtractEvent::Completed => {}
+            bookextract::ExtractEvent::Error {
+                err,
+                terminal: true,
+            } => {
+                eprintln!("Extraction failed: {:?}.", err);
+            }
+            bookextract::ExtractEvent::Completed => {
+                eprintln!("Extraction complete.");
+            }
+            bookextract::ExtractEvent::Cancelled => {
+                eprintln!("Extraction cancelled.");
+            }
         }
     }
 

@@ -52,9 +52,12 @@ pub enum ExtractEvent {
         total: usize,
     },
     /// Indicates error with some portion of the extraction process.
-    Error { err: anyhow::Error },
+    /// If `true`, `terminal` indicates that the error prevents any progress being made.
+    Error { err: anyhow::Error, terminal: bool },
     /// Indicates that extraction has completed and that no more events will follow.
     Completed,
+    /// Indicates that extraction has been cancelled, and than no more events will follow.
+    Cancelled,
 }
 
 /// Trait to implement to receive notifications about extraction events, or to
@@ -99,6 +102,7 @@ impl<'a> Extractor<'a> {
                         "book {:?} does not exist in the configuration",
                         spec.book_name
                     ),
+                    terminal: true,
                 });
                 events.on_event(ExtractEvent::Completed);
                 return;
@@ -112,6 +116,7 @@ impl<'a> Extractor<'a> {
         ) {
             events.on_event(ExtractEvent::Error {
                 err: err.context("running ECMA scripts for book"),
+                terminal: true,
             });
             events.on_event(ExtractEvent::Completed);
             return;
@@ -120,7 +125,10 @@ impl<'a> Extractor<'a> {
         let top_group = match book_cfg.load_group(self.cfg_reader.as_ref()) {
             Ok(top_group) => top_group,
             Err(err) => {
-                events.on_event(ExtractEvent::Error { err });
+                events.on_event(ExtractEvent::Error {
+                    err,
+                    terminal: true,
+                });
                 events.on_event(ExtractEvent::Completed);
                 return;
             }
@@ -156,7 +164,10 @@ impl<'a> Extractor<'a> {
 
             match extract_result {
                 Err(err) => {
-                    events.on_event(ExtractEvent::Error { err });
+                    events.on_event(ExtractEvent::Error {
+                        err,
+                        terminal: false,
+                    });
                 }
                 Ok((table, page_numbers_set)) => {
                     let page_numbers = page_numbers_set
@@ -172,7 +183,10 @@ impl<'a> Extractor<'a> {
                         page_numbers,
                     );
                     if let Err(err) = write_result {
-                        events.on_event(ExtractEvent::Error { err });
+                        events.on_event(ExtractEvent::Error {
+                            err,
+                            terminal: false,
+                        });
                     }
                 }
             }
@@ -183,7 +197,8 @@ impl<'a> Extractor<'a> {
                 total: output_tables.len(),
             });
             if !events.do_continue() {
-                break;
+                events.on_event(ExtractEvent::Cancelled);
+                return;
             }
         }
 

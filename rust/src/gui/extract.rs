@@ -1,7 +1,7 @@
 use std::{fmt::Write, path::PathBuf};
 
 use anyhow::{anyhow, Result};
-use gtk::prelude::{AdjustmentExt, BoxExt, ButtonExt, OrientableExt, TextBufferExt, WidgetExt};
+use gtk::prelude::{BoxExt, ButtonExt, OrientableExt, TextBufferExt, WidgetExt};
 use relm4::{
     gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
     SimpleComponent,
@@ -194,12 +194,26 @@ impl SimpleComponent for Extractor {
                     });
                     self.scroll_to_end_of_log();
                 }
-                bookextract::ExtractEvent::Error { err } => {
-                    log_message_error(writeln!(self.log_buffer, "Error: {:?}", err));
+                bookextract::ExtractEvent::Error {
+                    err,
+                    terminal: false,
+                } => {
+                    log_message_error(writeln!(self.log_buffer, "Extraction failed: {:?}", err));
+                    self.scroll_to_end_of_log();
+                }
+                bookextract::ExtractEvent::Error {
+                    err,
+                    terminal: true,
+                } => {
+                    log_message_error(writeln!(self.log_buffer, "Error (continuing): {:?}", err));
                     self.scroll_to_end_of_log();
                 }
                 bookextract::ExtractEvent::Completed => {
                     log_message_error(writeln!(self.log_buffer, "Extraction complete."));
+                    self.scroll_to_end_of_log();
+                }
+                bookextract::ExtractEvent::Cancelled => {
+                    log_message_error(writeln!(self.log_buffer, "Extraction cancelled."));
                     self.scroll_to_end_of_log();
                 }
             },

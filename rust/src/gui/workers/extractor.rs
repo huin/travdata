@@ -32,7 +32,7 @@ pub enum Input {
     Start(Request),
     Cancel,
     // Internal:
-    Completed,
+    Ended,
 }
 
 /// Output messages for [ExtractorWorker].
@@ -105,10 +105,10 @@ impl Worker for ExtractorWorker {
                     sender,
                 );
             }
-            (Input::Completed, None) => {
+            (Input::Ended, None) => {
                 log::warn!("Received extraction completed message, but was not running.");
             }
-            (Input::Completed, work_handle_opt) => {
+            (Input::Ended, work_handle_opt) => {
                 *work_handle_opt = None;
             }
         }
@@ -234,7 +234,7 @@ impl WorkEventSender {
 impl bookextract::ExtractEvents for WorkEventSender {
     fn on_event(&mut self, event: bookextract::ExtractEvent) {
         if let &bookextract::ExtractEvent::Completed = &event {
-            self.component_sender.input(Input::Completed);
+            self.component_sender.input(Input::Ended);
         }
         if let Err(err) = self.component_sender.output(Output::Event(event)) {
             log::warn!("Failed to send work event message: {:?}", err);
