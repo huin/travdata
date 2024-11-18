@@ -1,7 +1,7 @@
 use std::{fmt::Write, path::PathBuf};
 
 use anyhow::{anyhow, Result};
-use gtk::prelude::{BoxExt, ButtonExt, OrientableExt, TextBufferExt, WidgetExt};
+use gtk::prelude::{AdjustmentExt, BoxExt, ButtonExt, OrientableExt, TextBufferExt, WidgetExt};
 use relm4::{
     gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
     SimpleComponent,
@@ -36,6 +36,7 @@ pub struct Extractor {
 
     progress: Option<Progress>,
     log_buffer: gtk::TextBuffer,
+    scroll: Option<gtk::ScrolledWindow>,
 
     worker: Controller<extractor::ExtractorWorker>,
 }
@@ -81,6 +82,12 @@ impl Extractor {
     fn clear_log_buffer(&mut self) {
         let (mut start, mut end) = self.log_buffer.bounds();
         self.log_buffer.delete(&mut start, &mut end);
+    }
+
+    fn scroll_to_end_of_log(&self) {
+        if let Some(scroll) = &self.scroll {
+            scroll.emit_scroll_child(gtk::ScrollType::End, false);
+        }
     }
 }
 
@@ -131,6 +138,7 @@ impl SimpleComponent for Extractor {
             gtk::Expander {
                 set_label: Some("Extraction log"),
 
+                #[name = "scroll"]
                 gtk::ScrolledWindow {
                     gtk::TextView::with_buffer(&model.log_buffer) {
                         set_vexpand: true,
@@ -158,6 +166,8 @@ impl SimpleComponent for Extractor {
                 Ok(request) => {
                     self.clear_log_buffer();
                     log_message_error(writeln!(self.log_buffer, "Starting extraction..."));
+                    self.scroll_to_end_of_log();
+
                     self.progress = Some(Progress {
                         text: "Starting extraction...".to_string(),
                         fraction: 0.0,
@@ -182,12 +192,15 @@ impl SimpleComponent for Extractor {
                         text: format!("{} / {}", completed, total),
                         fraction: (completed as f64) / (total as f64),
                     });
+                    self.scroll_to_end_of_log();
                 }
                 bookextract::ExtractEvent::Error { err } => {
                     log_message_error(writeln!(self.log_buffer, "Error: {:?}", err));
+                    self.scroll_to_end_of_log();
                 }
                 bookextract::ExtractEvent::Completed => {
                     log_message_error(writeln!(self.log_buffer, "Extraction complete."));
+                    self.scroll_to_end_of_log();
                 }
             },
             Input::Progress(extractor::Output::Failure(err)) => {
@@ -196,6 +209,8 @@ impl SimpleComponent for Extractor {
                     "Error starting extraction: {:?}",
                     err,
                 ));
+                self.scroll_to_end_of_log();
+
                 self.progress = Some(Progress {
                     // Use the [Display] form of the error in the progress bar which should be more
                     // concise.
@@ -211,7 +226,7 @@ impl SimpleComponent for Extractor {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = Self {
+        let mut model = Self {
             cfg_io: None,
             input_pdf: None,
             book_id: None,
@@ -219,6 +234,7 @@ impl SimpleComponent for Extractor {
 
             progress: None,
             log_buffer: gtk::TextBuffer::new(None),
+            scroll: None,
 
             worker: extractor::ExtractorWorker::builder()
                 .launch(init)
@@ -226,6 +242,8 @@ impl SimpleComponent for Extractor {
         };
 
         let widgets = view_output!();
+
+        model.scroll = Some(widgets.scroll.clone());
 
         ComponentParts { model, widgets }
     }
