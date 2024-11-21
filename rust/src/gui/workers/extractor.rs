@@ -214,6 +214,8 @@ impl Work {
         };
         extractor.extract_book(spec, &mut self.sender);
 
+        extractor.close()?;
+
         Ok(())
     }
 }
