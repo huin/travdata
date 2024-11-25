@@ -213,7 +213,7 @@ pub enum IoType {
 impl IoType {
     /// Creates a `Reader` of the given type for the directory or archive at the
     /// given path.
-    pub fn new_reader<'p, 'r>(self, path: &'p Path) -> Result<Box<dyn Reader<'r>>> {
+    pub fn new_reader<'r>(self, path: &Path) -> Result<Box<dyn Reader<'r>>> {
         use IoType::*;
         match self {
             Dir => Ok(Box::new(DirReadWriter::new(path))),
@@ -223,7 +223,7 @@ impl IoType {
 
     /// Creates a `ReadWriter` of the given type for the directory or archive at
     /// the given path.
-    pub fn new_read_writer<'p, 'r>(self, path: &'p Path) -> Result<Box<dyn ReadWriter<'r>>> {
+    pub fn new_read_writer<'r>(self, path: &Path) -> Result<Box<dyn ReadWriter<'r>>> {
         use IoType::*;
         match self {
             Dir => Ok(Box::new(DirReadWriter::new(path))),

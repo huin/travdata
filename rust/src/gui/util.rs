@@ -28,11 +28,11 @@ impl SelectedFileIo {
         }
     }
 
-    pub fn new_reader<'s, 'r>(&'s self) -> Result<Box<dyn Reader<'r>>> {
+    pub fn new_reader<'r>(&self) -> Result<Box<dyn Reader<'r>>> {
         self.io_type.new_reader(&self.path)
     }
 
-    pub fn new_read_writer<'s, 'r>(&'s self) -> Result<Box<dyn ReadWriter<'r>>> {
+    pub fn new_read_writer<'r>(&self) -> Result<Box<dyn ReadWriter<'r>>> {
         self.io_type.new_read_writer(&self.path)
     }
 }
