@@ -78,6 +78,10 @@ impl TableReader for FakeTableReader {
 
         result
     }
+
+    fn close(self: Box<Self>) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl TableReader for Arc<FakeTableReader> {
@@ -88,6 +92,10 @@ impl TableReader for Arc<FakeTableReader> {
     ) -> Result<ExtractedTables> {
         self.as_ref()
             .read_pdf_with_template(pdf_path, template_json)
+    }
+
+    fn close(self: Box<Self>) -> Result<()> {
+        Ok(())
     }
 }
 
