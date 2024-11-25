@@ -1,15 +1,15 @@
 pub mod cachingreader;
 pub mod tabulareader;
 
-use std::path::{self, Path};
+use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use cachingreader::CachingTableReader;
 use clap::Args;
 use serde::{Deserialize, Serialize};
 use tabulareader::TabulaClient;
 
-use crate::table::Table;
+use crate::{distpaths, table::Table};
 
 /// Page numbers and tables read from a PDF.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -28,7 +28,7 @@ pub trait TableReader {
     /// * `template_json` Raw JSON-encoded contents of the Tabula template file.
     fn read_pdf_with_template(
         &self,
-        pdf_path: &path::Path,
+        pdf_path: &Path,
         template_json: &str,
     ) -> Result<ExtractedTables>;
 
@@ -41,7 +41,7 @@ pub trait TableReader {
 pub struct TableReaderArgs {
     /// Path to Tabula JAR file.
     #[arg(long)]
-    tabula_libpath: String,
+    tabula_libpath: Option<String>,
 
     /// Use the table cache.
     #[arg(long, default_value = "true")]
@@ -50,8 +50,16 @@ pub struct TableReaderArgs {
 
 impl TableReaderArgs {
     pub fn build(&self, xdg_dirs: &xdg::BaseDirectories) -> Result<Box<dyn TableReader>> {
+        let tabula_jar_path = self
+            .tabula_libpath
+            .clone()
+            .or_else(distpaths::tabula_jar)
+            .ok_or_else(|| {
+                anyhow!("--tabula-libpath must be specified, as tabula.jar could not be located")
+            })?;
+
         let tabula_reader =
-            TabulaClient::new(&self.tabula_libpath).with_context(|| "initialising Tabula")?;
+            TabulaClient::new(&tabula_jar_path).with_context(|| "initialising Tabula")?;
 
         if !self.table_cache {
             return Ok(Box::new(tabula_reader));

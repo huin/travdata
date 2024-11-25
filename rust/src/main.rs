@@ -3,6 +3,7 @@ use anyhow::Result;
 mod cli;
 mod commontext;
 mod config;
+mod distpaths;
 mod extraction;
 mod filesio;
 mod fmtutil;
