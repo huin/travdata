@@ -37,21 +37,44 @@ impl Call {
     }
 }
 
-struct FakeTableReader {
+struct FakeTableReaderCalls {
     calls: Mutex<Vec<Call>>,
+}
+impl FakeTableReaderCalls {
+    fn new() -> Self {
+        Self {
+            calls: Mutex::new(Vec::new()),
+        }
+    }
+
+    fn add_call(&self, call: Call) {
+        self.calls
+            .lock()
+            .expect("failed to lock `FakeTableReader::calls`")
+            .push(call);
+    }
+
+    fn calls_snapshot(&self) -> Vec<Call> {
+        self.calls.lock().unwrap().clone()
+    }
+}
+
+#[derive(Clone)]
+struct FakeTableReader {
+    calls: Arc<FakeTableReaderCalls>,
     return_tables: HashMap<Call, ExtractedTables>,
 }
 
 impl FakeTableReader {
     fn new() -> Self {
         FakeTableReader {
-            calls: Mutex::new(Vec::new()),
+            calls: Arc::new(FakeTableReaderCalls::new()),
             return_tables: HashMap::new(),
         }
     }
 
-    fn calls_snapshot(&self) -> Vec<Call> {
-        self.calls.lock().unwrap().clone()
+    fn calls(&self) -> Arc<FakeTableReaderCalls> {
+        self.calls.clone()
     }
 }
 
@@ -71,27 +94,9 @@ impl TableReader for FakeTableReader {
         let result =
             tables_opt.ok_or_else(|| anyhow!("could not find `return_tables` for {:?}", call));
 
-        self.calls
-            .lock()
-            .expect("failed to lock `FakeTableReader::calls`")
-            .push(call);
+        self.calls.add_call(call);
 
         result
-    }
-
-    fn close(self: Box<Self>) -> Result<()> {
-        Ok(())
-    }
-}
-
-impl TableReader for Arc<FakeTableReader> {
-    fn read_pdf_with_template(
-        &self,
-        pdf_path: &std::path::Path,
-        template_json: &str,
-    ) -> Result<ExtractedTables> {
-        self.as_ref()
-            .read_pdf_with_template(pdf_path, template_json)
     }
 
     fn close(self: Box<Self>) -> Result<()> {
@@ -276,15 +281,15 @@ fn cache_hit_two_reads(cache_hit_read: TwoReadsCase) -> Result<()> {
     fake_delegate
         .return_tables
         .insert(second_expect_call.clone(), original_tables.clone());
+    let delegate_calls = fake_delegate.calls();
 
-    let fake_delegate = Arc::new(fake_delegate);
-    let caching_reader = CachingTableReader::load(fake_delegate.clone(), table_cache_path)?;
+    let caching_reader = CachingTableReader::load(fake_delegate, table_cache_path)?;
     let actual_1 = first_expect_call.do_call(&caching_reader)?;
     let actual_2 = second_expect_call.do_call(&caching_reader)?;
 
     assert_that!(&actual_1, eq(&original_tables));
     assert_that!(&actual_2, eq(&original_tables));
-    assert_that!(fake_delegate.calls_snapshot(), len(eq(1)));
+    assert_that!(delegate_calls.calls_snapshot(), len(eq(1)));
     Ok(())
 }
 
@@ -304,8 +309,7 @@ fn cache_persistance() -> Result<()> {
     fake_delegate
         .return_tables
         .insert(expect_call.clone(), original_tables.clone());
-
-    let fake_delegate = Arc::new(fake_delegate);
+    let delegate_calls = fake_delegate.calls();
 
     let first_caching_reader =
         CachingTableReader::load(fake_delegate.clone(), table_cache_path.clone())?;
@@ -313,16 +317,16 @@ fn cache_persistance() -> Result<()> {
     assert_that!(first_caching_reader.store(), ok(eq(&())));
     assert_that!(&actual_1, eq(&original_tables));
     assert_that!(
-        fake_delegate.calls_snapshot(),
+        delegate_calls.calls_snapshot(),
         eq(&vec![expect_call.clone()])
     );
 
-    let second_caching_reader = CachingTableReader::load(fake_delegate.clone(), table_cache_path)?;
+    let second_caching_reader = CachingTableReader::load(fake_delegate, table_cache_path)?;
     let actual_2 = expect_call.do_call(&second_caching_reader)?;
     drop(second_caching_reader);
     assert_that!(&actual_2, eq(&original_tables));
     // Should not have been called a second time.
-    assert_that!(fake_delegate.calls_snapshot(), len(eq(1)));
+    assert_that!(delegate_calls.calls_snapshot(), len(eq(1)));
 
     Ok(())
 }
