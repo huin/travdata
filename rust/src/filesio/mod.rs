@@ -253,6 +253,16 @@ impl IoType {
     }
 }
 
+impl Display for IoType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use IoType::*;
+        match self {
+            Dir => f.write_str("folder"),
+            Zip => f.write_str("ZIP file"),
+        }
+    }
+}
+
 /// An [IoType] associated with a [PathBuf].
 #[derive(Clone, Debug)]
 pub struct FileIoPath {
@@ -296,6 +306,6 @@ impl FileIoPath {
 
 impl Display for FileIoPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} {:?}", self.io_type, self.path)
+        write!(f, "{} {:?}", self.io_type, self.path)
     }
 }
