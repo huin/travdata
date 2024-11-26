@@ -4,7 +4,7 @@ use anyhow::Result;
 use relm4::{Component, ComponentSender};
 use relm4_components::save_dialog::SaveDialogMsg;
 
-use crate::filesio::{IoType, ReadWriter, Reader};
+use crate::filesio::{self, IoType, ReadWriter, Reader};
 
 const NOT_SELECTED: &str = "<not selected>";
 
@@ -15,12 +15,18 @@ pub struct SelectedFileIo {
 }
 
 impl SelectedFileIo {
+    pub fn for_auto(path: PathBuf) -> Self {
+        let io_type = filesio::IoType::resolve_auto(None, &path);
+        Self { io_type, path }
+    }
+
     pub fn for_dir(path: PathBuf) -> Self {
         Self {
             io_type: IoType::Dir,
             path,
         }
     }
+
     pub fn for_zip(path: PathBuf) -> Self {
         Self {
             io_type: IoType::Zip,

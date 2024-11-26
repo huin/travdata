@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use gtk::prelude::{BoxExt, GtkWindowExt, OrientableExt, WidgetExt};
 use relm4::{
@@ -25,6 +25,7 @@ enum Input {
 /// Initialisation parameters for [MainWindow].
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
+    pub default_config: Option<PathBuf>,
     pub worker_channel: workers::extractor::WorkChannel,
 }
 
@@ -98,6 +99,7 @@ impl SimpleComponent for MainWindow {
             cfg_selector: cfgselect::ConfigSelector::builder()
                 .launch(cfgselect::Init {
                     xdg_dirs: init.xdg_dirs.clone(),
+                    default_config: init.default_config,
                 })
                 .forward(sender.input_sender(), |msg| match msg {
                     cfgselect::Output::SelectedConfig(config_opt) => Input::Config(config_opt),

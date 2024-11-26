@@ -3,7 +3,7 @@ use std::{sync::Arc, thread};
 use anyhow::Result;
 use clap::Args;
 
-use crate::extraction::pdf::TableReaderArgs;
+use crate::{distpaths, extraction::pdf::TableReaderArgs};
 
 /// Runs a GUI to perform table extractions from PDF files.
 #[derive(Args, Debug)]
@@ -21,6 +21,7 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
 
         let init = crate::gui::mainwin::Init {
             xdg_dirs: Arc::new(xdg_dirs),
+            default_config: distpaths::config_zip(),
             worker_channel: worker.worker_channel(),
         };
         // Run the gui in a non-main thread, as the JVM will likely want to be
