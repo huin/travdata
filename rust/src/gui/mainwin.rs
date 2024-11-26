@@ -9,7 +9,8 @@ use relm4::{
 use crate::{
     commontext,
     config::root,
-    gui::{cfgselect, extract, inputpdf, outputselect, util},
+    filesio::FileIoPath,
+    gui::{cfgselect, extract, inputpdf, outputselect},
 };
 
 use super::workers::{self, extractor};
@@ -18,7 +19,7 @@ use super::workers::{self, extractor};
 #[derive(Debug)]
 enum Input {
     /// No-op message.
-    Config(Option<(util::FileIoPath, Arc<root::Config>)>),
+    Config(Option<(FileIoPath, Arc<root::Config>)>),
     ExtractorInput(extract::Input),
 }
 

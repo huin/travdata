@@ -12,8 +12,8 @@ use relm4_components::{
 };
 
 use crate::{
-    filesio::IoType,
-    gui::util::{self, FileIoPath},
+    filesio::{FileIoPath, IoType},
+    gui::util,
 };
 
 /// Input messages for [OutputSelector].
@@ -41,7 +41,7 @@ pub struct Init {
 /// Relm4 component to select Travdata extraction output destination file/folder.
 #[allow(dead_code)]
 pub struct OutputSelector {
-    output_io: Option<util::FileIoPath>,
+    output_io: Option<FileIoPath>,
     output_dir: Controller<OpenButton>,
     output_zip_dialog: Controller<SaveDialog>,
 }

@@ -7,7 +7,7 @@ use relm4::{
     SimpleComponent,
 };
 
-use crate::{extraction::bookextract, gui::util};
+use crate::{extraction::bookextract, filesio::FileIoPath};
 
 use super::workers::extractor;
 
@@ -15,11 +15,11 @@ use super::workers::extractor;
 #[derive(Debug)]
 pub enum Input {
     // External:
-    ConfigIo(Option<util::FileIoPath>),
+    ConfigIo(Option<FileIoPath>),
     #[allow(clippy::enum_variant_names)]
     InputPdf(Option<PathBuf>),
     BookId(Option<String>),
-    OutputIo(Option<util::FileIoPath>),
+    OutputIo(Option<FileIoPath>),
 
     // Internal:
     StartExtraction,
@@ -29,10 +29,10 @@ pub enum Input {
 }
 
 pub struct Extractor {
-    cfg_io: Option<util::FileIoPath>,
+    cfg_io: Option<FileIoPath>,
     input_pdf: Option<PathBuf>,
     book_id: Option<String>,
-    out_io: Option<util::FileIoPath>,
+    out_io: Option<FileIoPath>,
 
     progress: Option<Progress>,
     log_buffer: gtk::TextBuffer,

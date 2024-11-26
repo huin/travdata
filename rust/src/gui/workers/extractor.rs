@@ -8,7 +8,8 @@ use relm4::Worker;
 
 use crate::{
     extraction::{bookextract, pdf::TableReader},
-    gui::util::{self, FileIoPath},
+    filesio::FileIoPath,
+    gui::util,
 };
 
 /// Initialisation data for [ExtractorWorker].

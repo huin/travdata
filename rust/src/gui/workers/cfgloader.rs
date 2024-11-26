@@ -1,10 +1,7 @@
 use anyhow::{Context, Result};
 use relm4::Worker;
 
-use crate::{
-    config::root,
-    gui::util::{self, FileIoPath},
-};
+use crate::{config::root, filesio::FileIoPath, gui::util};
 
 /// Input messages for [ConfigLoader].
 #[derive(Debug)]

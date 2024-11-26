@@ -10,10 +10,7 @@ use relm4_components::{
     open_dialog::OpenDialogSettings,
 };
 
-use crate::{
-    config::root,
-    gui::util::{self, FileIoPath},
-};
+use crate::{config::root, filesio::FileIoPath, gui::util};
 
 use super::workers::cfgloader::{self, ConfigLoader};
 
@@ -47,7 +44,7 @@ pub struct ConfigSelector {
 
     cfg_dir: Controller<OpenButton>,
     cfg_zip: Controller<OpenButton>,
-    cfg_io: Option<util::FileIoPath>,
+    cfg_io: Option<FileIoPath>,
     cfg_error: Option<String>,
     cfg_version: Option<String>,
     loader: WorkerController<ConfigLoader>,

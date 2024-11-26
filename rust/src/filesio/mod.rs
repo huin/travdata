@@ -252,3 +252,44 @@ impl IoType {
         }
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct FileIoPath {
+    pub io_type: IoType,
+    pub path: PathBuf,
+}
+
+impl FileIoPath {
+    pub fn for_auto(path: PathBuf) -> Self {
+        let io_type = IoType::resolve_auto(None, &path);
+        Self { io_type, path }
+    }
+
+    pub fn for_dir(path: PathBuf) -> Self {
+        Self {
+            io_type: IoType::Dir,
+            path,
+        }
+    }
+
+    pub fn for_zip(path: PathBuf) -> Self {
+        Self {
+            io_type: IoType::Zip,
+            path,
+        }
+    }
+
+    pub fn new_reader<'r>(&self) -> Result<Box<dyn Reader<'r>>> {
+        self.io_type.new_reader(&self.path)
+    }
+
+    pub fn new_read_writer<'r>(&self) -> Result<Box<dyn ReadWriter<'r>>> {
+        self.io_type.new_read_writer(&self.path)
+    }
+}
+
+impl Display for FileIoPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} {:?}", self.io_type, self.path)
+    }
+}
