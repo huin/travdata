@@ -241,6 +241,10 @@ impl SimpleComponent for ConfigSelector {
 
         let widgets = view_output!();
 
+        if model.default_config.is_some() {
+            sender.input(Input::SelectDefault);
+        }
+
         ComponentParts { model, widgets }
     }
 }
