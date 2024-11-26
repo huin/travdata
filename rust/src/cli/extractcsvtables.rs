@@ -30,12 +30,9 @@ pub struct Command {
     /// Whether this is a directory or ZIP file is controlled by --output-type.
     output: PathBuf,
 
-    /// Path to the configuration. This must be either a directory or ZIP file,
-    /// directly containing a config.yaml file, book.yaml files in directories,
-    /// and its required Tabula templates. Some configurations for this should
-    /// be included with this program's distribution.
-    #[arg(long)]
-    config: PathBuf,
+    /// Options relating to the configuration.
+    #[command(flatten)]
+    config: crate::config::ConfigArgs,
 
     /// Controls how data is written to the output.
     ///
@@ -72,10 +69,7 @@ pub struct Command {
 pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
     let table_reader = cmd.table_reader.build(&xdg_dirs)?;
 
-    let cfg_type = filesio::IoType::resolve_auto(None, &cmd.config);
-    let cfg_reader = cfg_type
-        .new_reader(&cmd.config)
-        .with_context(|| format!("opening config path {:?} as {:?}", cmd.config, cfg_type))?;
+    let cfg_reader = cmd.config.new_cfg_reader()?;
 
     let output_type = filesio::IoType::resolve_auto(cmd.output_type, &cmd.output);
     let out_writer = output_type
