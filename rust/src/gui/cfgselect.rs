@@ -2,8 +2,8 @@ use std::{path::PathBuf, sync::Arc};
 
 use gtk::prelude::{BoxExt, ButtonExt, FrameExt, GridExt, OrientableExt, WidgetExt};
 use relm4::{
-    Component, ComponentController, ComponentParts, ComponentSender, Controller, SimpleComponent,
-    WorkerController,
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
+    SimpleComponent, WorkerController,
 };
 use relm4_components::{
     open_button::{OpenButton, OpenButtonSettings},
@@ -86,6 +86,11 @@ impl SimpleComponent for ConfigSelector {
                     model.cfg_zip.widget(),
                     gtk::Button::with_label("Default") {
                         set_sensitive: model.default_config.is_some(),
+                        set_tooltip: if model.default_config.is_some() {
+                                "Select the configuration packaged with this program."
+                            } else {
+                                "Unavailable: could not find configuration packaged with this program."
+                            },
 
                         connect_clicked[sender] => move |_| {
                             sender.input(Input::SelectDefault);
