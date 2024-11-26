@@ -13,14 +13,14 @@ use relm4_components::{
 
 use crate::{
     filesio::IoType,
-    gui::util::{self, SelectedFileIo},
+    gui::util::{self, FileIoPath},
 };
 
 /// Input messages for [OutputSelector].
 #[derive(Debug)]
 pub enum Input {
     /// Specifies the currently selected output destinatiom.
-    OutputIo(SelectedFileIo),
+    OutputIo(FileIoPath),
     /// (Internal) Triggers opening the ZIP file selection.
     OutputZipRequest,
     /// No-op message.
@@ -30,7 +30,7 @@ pub enum Input {
 /// Output messages for [OutputSelector].
 #[derive(Debug)]
 pub enum Output {
-    SelectedOutputIo(Option<SelectedFileIo>),
+    SelectedOutputIo(Option<FileIoPath>),
 }
 
 /// Initialisation parameters for [OutputSelector].
@@ -41,7 +41,7 @@ pub struct Init {
 /// Relm4 component to select Travdata extraction output destination file/folder.
 #[allow(dead_code)]
 pub struct OutputSelector {
-    output_io: Option<util::SelectedFileIo>,
+    output_io: Option<util::FileIoPath>,
     output_dir: Controller<OpenButton>,
     output_zip_dialog: Controller<SaveDialog>,
 }
@@ -137,7 +137,7 @@ impl SimpleComponent for OutputSelector {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    Input::OutputIo(SelectedFileIo::for_dir(path))
+                    Input::OutputIo(FileIoPath::for_dir(path))
                 }),
             output_zip_dialog: SaveDialog::builder()
                 .transient_for_native(&root)
@@ -149,9 +149,7 @@ impl SimpleComponent for OutputSelector {
                     filters: vec![zip_filter],
                 })
                 .forward(sender.input_sender(), |response| match response {
-                    SaveDialogResponse::Accept(path) => {
-                        Input::OutputIo(SelectedFileIo::for_zip(path))
-                    }
+                    SaveDialogResponse::Accept(path) => Input::OutputIo(FileIoPath::for_zip(path)),
                     SaveDialogResponse::Cancel => Input::Ignore,
                 }),
         };

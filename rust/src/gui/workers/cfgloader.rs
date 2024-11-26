@@ -3,19 +3,19 @@ use relm4::Worker;
 
 use crate::{
     config::root,
-    gui::util::{self, SelectedFileIo},
+    gui::util::{self, FileIoPath},
 };
 
 /// Input messages for [ConfigLoader].
 #[derive(Debug)]
 pub enum Input {
-    RequestLoadConfig(SelectedFileIo),
+    RequestLoadConfig(FileIoPath),
 }
 
 #[allow(unused)]
 #[derive(Debug)]
 pub struct LoadComplete {
-    pub io: SelectedFileIo,
+    pub io: FileIoPath,
     pub config: root::Config,
     pub version: Option<String>,
 }
@@ -23,7 +23,7 @@ pub struct LoadComplete {
 #[allow(unused)]
 #[derive(Debug)]
 pub struct LoadError {
-    pub io: SelectedFileIo,
+    pub io: FileIoPath,
     pub message: String,
 }
 
@@ -66,7 +66,7 @@ impl Worker for ConfigLoader {
 }
 
 impl ConfigLoader {
-    fn load_config(file_io: &SelectedFileIo) -> Result<(root::Config, Option<String>)> {
+    fn load_config(file_io: &FileIoPath) -> Result<(root::Config, Option<String>)> {
         let reader = file_io
             .io_type
             .new_reader(&file_io.path)

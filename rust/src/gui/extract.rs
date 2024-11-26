@@ -15,11 +15,11 @@ use super::workers::extractor;
 #[derive(Debug)]
 pub enum Input {
     // External:
-    ConfigIo(Option<util::SelectedFileIo>),
+    ConfigIo(Option<util::FileIoPath>),
     #[allow(clippy::enum_variant_names)]
     InputPdf(Option<PathBuf>),
     BookId(Option<String>),
-    OutputIo(Option<util::SelectedFileIo>),
+    OutputIo(Option<util::FileIoPath>),
 
     // Internal:
     StartExtraction,
@@ -29,10 +29,10 @@ pub enum Input {
 }
 
 pub struct Extractor {
-    cfg_io: Option<util::SelectedFileIo>,
+    cfg_io: Option<util::FileIoPath>,
     input_pdf: Option<PathBuf>,
     book_id: Option<String>,
-    out_io: Option<util::SelectedFileIo>,
+    out_io: Option<util::FileIoPath>,
 
     progress: Option<Progress>,
     log_buffer: gtk::TextBuffer,

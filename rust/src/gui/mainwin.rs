@@ -18,7 +18,7 @@ use super::workers::{self, extractor};
 #[derive(Debug)]
 enum Input {
     /// No-op message.
-    Config(Option<(util::SelectedFileIo, Arc<root::Config>)>),
+    Config(Option<(util::FileIoPath, Arc<root::Config>)>),
     ExtractorInput(extract::Input),
 }
 

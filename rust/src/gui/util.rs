@@ -9,12 +9,12 @@ use crate::filesio::{self, IoType, ReadWriter, Reader};
 const NOT_SELECTED: &str = "<not selected>";
 
 #[derive(Clone, Debug)]
-pub struct SelectedFileIo {
+pub struct FileIoPath {
     pub io_type: IoType,
     pub path: PathBuf,
 }
 
-impl SelectedFileIo {
+impl FileIoPath {
     pub fn for_auto(path: PathBuf) -> Self {
         let io_type = filesio::IoType::resolve_auto(None, &path);
         Self { io_type, path }
@@ -43,13 +43,13 @@ impl SelectedFileIo {
     }
 }
 
-impl Display for SelectedFileIo {
+impl Display for FileIoPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?} {:?}", self.io_type, self.path)
     }
 }
 
-pub fn format_opt_selected_file_io(opt_selected: &Option<SelectedFileIo>) -> String {
+pub fn format_opt_selected_file_io(opt_selected: &Option<FileIoPath>) -> String {
     match opt_selected {
         None => NOT_SELECTED.to_string(),
         Some(selected) => format!("{}", selected),
@@ -59,10 +59,7 @@ pub fn format_opt_selected_file_io(opt_selected: &Option<SelectedFileIo>) -> Str
 /// If the given `opt_selected` is a `Some(SelectedFileIo)` with the given
 /// `SelectedFileIo.io_type == for_io_type`, returns a [SaveDialogMsg::SaveAs],
 /// otherwise [SaveDialogMsg::Save].
-pub fn save_dialog_msg(
-    opt_selected: &Option<SelectedFileIo>,
-    for_io_type: IoType,
-) -> SaveDialogMsg {
+pub fn save_dialog_msg(opt_selected: &Option<FileIoPath>, for_io_type: IoType) -> SaveDialogMsg {
     match opt_selected.as_ref() {
         Some(selected) if selected.io_type == for_io_type => match selected.path.to_str() {
             Some(path_str) => SaveDialogMsg::SaveAs(path_str.to_string()),

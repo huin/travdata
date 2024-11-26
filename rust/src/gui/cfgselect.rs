@@ -12,7 +12,7 @@ use relm4_components::{
 
 use crate::{
     config::root,
-    gui::util::{self, SelectedFileIo},
+    gui::util::{self, FileIoPath},
 };
 
 use super::workers::cfgloader::{self, ConfigLoader};
@@ -23,7 +23,7 @@ pub enum Input {
     /// Specifies to select the default configuration.
     SelectDefault,
     /// Specifies the currently selected extraction configuration.
-    ConfigIo(SelectedFileIo),
+    ConfigIo(FileIoPath),
     LoadComplete(cfgloader::LoadComplete),
     LoadError(cfgloader::LoadError),
 }
@@ -31,7 +31,7 @@ pub enum Input {
 /// Output messages from [ConfigSelector].
 #[derive(Debug)]
 pub enum Output {
-    SelectedConfig(Option<(SelectedFileIo, Arc<root::Config>)>),
+    SelectedConfig(Option<(FileIoPath, Arc<root::Config>)>),
 }
 
 /// Initialisation parameters for [ConfigSelector].
@@ -47,7 +47,7 @@ pub struct ConfigSelector {
 
     cfg_dir: Controller<OpenButton>,
     cfg_zip: Controller<OpenButton>,
-    cfg_io: Option<util::SelectedFileIo>,
+    cfg_io: Option<util::FileIoPath>,
     cfg_error: Option<String>,
     cfg_version: Option<String>,
     loader: WorkerController<ConfigLoader>,
@@ -142,7 +142,7 @@ impl SimpleComponent for ConfigSelector {
                     );
                 }
                 Some(default_config) => {
-                    let io = SelectedFileIo::for_auto(default_config.clone());
+                    let io = FileIoPath::for_auto(default_config.clone());
                     self.loader.emit(cfgloader::Input::RequestLoadConfig(io));
                 }
             },
@@ -208,7 +208,7 @@ impl SimpleComponent for ConfigSelector {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    Input::ConfigIo(SelectedFileIo::for_dir(path))
+                    Input::ConfigIo(FileIoPath::for_dir(path))
                 }),
             cfg_zip: OpenButton::builder()
                 .launch(OpenButtonSettings {
@@ -225,7 +225,7 @@ impl SimpleComponent for ConfigSelector {
                     max_recent_files: 10,
                 })
                 .forward(sender.input_sender(), |path| {
-                    Input::ConfigIo(SelectedFileIo::for_zip(path))
+                    Input::ConfigIo(FileIoPath::for_zip(path))
                 }),
             cfg_io: None,
             cfg_error: None,

@@ -8,7 +8,7 @@ use relm4::Worker;
 
 use crate::{
     extraction::{bookextract, pdf::TableReader},
-    gui::util::{self, SelectedFileIo},
+    gui::util::{self, FileIoPath},
 };
 
 /// Initialisation data for [ExtractorWorker].
@@ -19,10 +19,10 @@ pub struct Init {
 /// Specifies an extraction for [ExtractorWorker] to perform.
 #[derive(Debug)]
 pub struct Request {
-    pub cfg_io: SelectedFileIo,
+    pub cfg_io: FileIoPath,
     pub input_pdf: PathBuf,
     pub book_id: String,
-    pub out_io: SelectedFileIo,
+    pub out_io: FileIoPath,
 }
 
 /// Input messages for [ExtractorWorker].
