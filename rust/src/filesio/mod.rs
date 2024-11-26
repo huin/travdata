@@ -253,6 +253,7 @@ impl IoType {
     }
 }
 
+/// An [IoType] associated with a [PathBuf].
 #[derive(Clone, Debug)]
 pub struct FileIoPath {
     pub io_type: IoType,
@@ -260,11 +261,13 @@ pub struct FileIoPath {
 }
 
 impl FileIoPath {
+    /// Create a [FileIoPath] with automatically selected [IoType].
     pub fn for_auto(path: PathBuf) -> Self {
         let io_type = IoType::resolve_auto(None, &path);
         Self { io_type, path }
     }
 
+    /// Create a [FileIoPath] with type [IoType::Dir].
     pub fn for_dir(path: PathBuf) -> Self {
         Self {
             io_type: IoType::Dir,
@@ -272,6 +275,7 @@ impl FileIoPath {
         }
     }
 
+    /// Create a [FileIoPath] with type [IoType::Zip].
     pub fn for_zip(path: PathBuf) -> Self {
         Self {
             io_type: IoType::Zip,
@@ -279,10 +283,12 @@ impl FileIoPath {
         }
     }
 
+    /// Create a [Reader].
     pub fn new_reader<'r>(&self) -> Result<Box<dyn Reader<'r>>> {
         self.io_type.new_reader(&self.path)
     }
 
+    /// Create a [ReadWriter].
     pub fn new_read_writer<'r>(&self) -> Result<Box<dyn ReadWriter<'r>>> {
         self.io_type.new_read_writer(&self.path)
     }
