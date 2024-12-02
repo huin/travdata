@@ -1790,8 +1790,9 @@ dependencies = [
 
 [[package]]
 name = "tabula"
-version = "0.1.1"
-source = "git+https://github.com/huin/tabula-rs.git#5fe9df99cff2fbdd108e22d4a4c77c4d9fa12289"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "964313f92380a4ae5996ca3530a5106b4610b4c016f1991518b3ae45185bf3c6"
 dependencies = [
  "anyhow",
  "jni",
