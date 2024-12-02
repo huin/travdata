@@ -147,7 +147,9 @@ impl<'rw> IndexWriter<'rw> {
 
     /// Commits entries to the index file.
     pub fn commit(mut self) -> Result<()> {
-        let mut w = csv::Writer::from_writer(&mut self.write_file);
+        let mut w = csv::WriterBuilder::new()
+            .terminator(csv::Terminator::CRLF)
+            .from_writer(&mut self.write_file);
         for (table_path, write_record) in self.entries {
             w.serialize(CsvRecord {
                 table_path,

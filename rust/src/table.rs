@@ -32,7 +32,10 @@ impl Table {
 
     /// Writes the [Table], encoding as CSV.
     pub fn write_csv(&self, w: &mut dyn Write) -> Result<()> {
-        let mut csv_writer = csv::WriterBuilder::new().flexible(true).from_writer(w);
+        let mut csv_writer = csv::WriterBuilder::new()
+            .terminator(csv::Terminator::CRLF)
+            .flexible(true)
+            .from_writer(w);
         for row in &self.0 {
             csv_writer
                 .write_record(&row.0)
