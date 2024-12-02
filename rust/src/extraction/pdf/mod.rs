@@ -19,7 +19,7 @@ pub struct ExtractedTables(pub Vec<ExtractedTable>);
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct ExtractedTable {
     pub page: i32,
-    pub table: Table,
+    pub data: Table,
 }
 
 pub trait TableReader {
@@ -86,14 +86,14 @@ mod test {
         const SERIALIZED: &str = r#"[
             {
                 "page": 1,
-                "table": [
+                "data": [
                     ["t1r1c1", "t1r1c2"],
                     ["t1r2c1", "t1r2c2"]
                 ]
             },
             {
                 "page": 2,
-                "table": [
+                "data": [
                     ["t2r1c1", "t2r1c2"],
                     ["t2r2c1", "t2r2c2"]
                 ]
@@ -102,11 +102,11 @@ mod test {
         let want = ExtractedTables(vec![
             ExtractedTable {
                 page: 1,
-                table: [["t1r1c1", "t1r1c2"], ["t1r2c1", "t1r2c2"]].into(),
+                data: [["t1r1c1", "t1r1c2"], ["t1r2c1", "t1r2c2"]].into(),
             },
             ExtractedTable {
                 page: 2,
-                table: [["t2r1c1", "t2r1c2"], ["t2r2c1", "t2r2c2"]].into(),
+                data: [["t2r1c1", "t2r1c2"], ["t2r2c1", "t2r2c2"]].into(),
             },
         ]);
 

@@ -257,7 +257,7 @@ impl<'a> Extractor<'a> {
         let tables_iter = extracted_tables
             .0
             .into_iter()
-            .map(|ext_table| ext_table.table);
+            .map(|ext_table| ext_table.data);
 
         let table = match &table_cfg.transform {
             None => Table::concatenated(tables_iter),

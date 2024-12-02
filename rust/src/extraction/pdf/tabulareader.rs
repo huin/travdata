@@ -118,7 +118,7 @@ impl TableReader for TabulaClient {
             for json_table in result.0 {
                 tables.push(ExtractedTable {
                     page: entry.page,
-                    table: json_table.into(),
+                    data: json_table.into(),
                 });
             }
         }

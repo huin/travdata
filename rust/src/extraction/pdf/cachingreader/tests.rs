@@ -162,7 +162,7 @@ impl std::fmt::Debug for TwoReadsCase {
 fn fake_table_data(num_rows: usize, num_cols: usize, page: i32) -> ExtractedTable {
     ExtractedTable {
         page,
-        table: Table(
+        data: Table(
             (1..=num_rows)
                 .map(|ri| Row((1..=num_cols).map(|ci| format!("r{}c{}", ri, ci)).collect()))
                 .collect(),
