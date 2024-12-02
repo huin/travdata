@@ -57,8 +57,8 @@ pub struct Command {
     without_tags: Vec<String>,
 
     /// Show a progress bar reflecting overall extraction progress.
-    #[arg(long, default_value = "true")]
-    show_progress: bool,
+    #[arg(long, default_value = "false")]
+    no_progress: bool,
 
     /// Options relating to configuring the table reader.
     #[command(flatten)]
@@ -87,7 +87,7 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
     };
 
     let continue_intent = Arc::new(AtomicBool::new(true));
-    let mut events = EventDisplayer::new(cmd.show_progress, continue_intent.clone())?;
+    let mut events = EventDisplayer::new(!cmd.no_progress, continue_intent.clone())?;
     ctrlc::set_handler(move || continue_intent.store(false, std::sync::atomic::Ordering::SeqCst))?;
 
     extractor.extract_book(spec, &mut events);
