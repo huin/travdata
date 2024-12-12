@@ -409,7 +409,7 @@ groups:
                 tags: [type/career-mishap]
                 transform: !LegacyTransformSeq
                   - !FoldRows
-                    - !StaticRowCounts [1]
+                    - !StaticRowCounts [2]
                     - !EmptyColumn 0
                   # For some reason, header captures spurious data, so leave it
                   # out of the Tabula template, and add it back manually.

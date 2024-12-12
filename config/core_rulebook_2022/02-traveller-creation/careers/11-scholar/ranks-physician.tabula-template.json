@@ -1,7 +1,7 @@
 [
   {
     "page": 44,
-    "extraction_method": "guess",
+    "extraction_method": "stream",
     "x1": 314.0325,
     "x2": 522.8775,
     "y1": 66.1725,
