@@ -2,8 +2,8 @@ use std::{path::PathBuf, sync::Arc};
 
 use gtk::prelude::{BoxExt, GtkWindowExt, OrientableExt, WidgetExt};
 use relm4::{
-    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmApp,
-    RelmWidgetExt, SimpleComponent,
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
+    SimpleComponent,
 };
 
 use crate::{
@@ -17,8 +17,7 @@ use super::workers::{self, extractor};
 
 /// Input messages for [MainWindow].
 #[derive(Debug)]
-enum Input {
-    /// No-op message.
+pub enum Input {
     Config(Option<(FileIoPath, Arc<root::Config>)>),
     ExtractorInput(extract::Input),
 }
@@ -31,14 +30,14 @@ pub struct Init {
 }
 
 /// Relm4 window component that acts as the main window for the GUI interface to Travdata.
-struct MainWindow {
+pub struct MainWindow {
     cfg_selector: Controller<cfgselect::ConfigSelector>,
     input_pdf_selector: Controller<inputpdf::InputPdfSelector>,
     output_selector: Controller<outputselect::OutputSelector>,
     extractor: Controller<extract::Extractor>,
 }
 
-#[relm4::component]
+#[relm4::component(pub)]
 impl SimpleComponent for MainWindow {
     type Init = Init;
 
@@ -137,10 +136,4 @@ impl SimpleComponent for MainWindow {
 
         ComponentParts { model, widgets }
     }
-}
-
-/// Runs in the GUI thread for the lifetime of the GUI itself.
-pub fn run_gui(init: Init) {
-    let app = RelmApp::new("travdata.gui").with_args(Vec::new());
-    app.run::<MainWindow>(init);
 }
