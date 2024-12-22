@@ -25,10 +25,10 @@ in
   '';
 
   # https://devenv.sh/tests/
-  enterTest = ''
-    echo "Running tests"
-    git --version | grep "2.42.0"
-  '';
+  # enterTest = ''
+  #   echo "Running tests"
+  #   git --version | grep "2.42.0"
+  # '';
 
   # https://devenv.sh/languages/
   languages.c.enable = true;
