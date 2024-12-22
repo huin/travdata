@@ -16,7 +16,7 @@ let
     xorg.libX11.out
     zstd.out
   ];
-  jdk = pkgs.zulu.out;
+  jdk = pkgs.jdk23_headless;
 in
 
 {
