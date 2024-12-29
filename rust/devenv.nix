@@ -5,15 +5,19 @@ let
 in
 {
   # https://devenv.sh/basics/
-  env.GREET = "devenv";
-  env.JDK = builtins.toString "${jdk.out}/lib/openjdk/lib/server";
-  env.GSETTINGS_SCHEMA_DIR = "${pkgs.gtk4}/share/gsettings-schemas/gtk4-${pkgs.gtk4.version}/glib-2.0/schemas/";
+  env = {
+    GREET = "devenv";
+    JDK = builtins.toString "${jdk.out}/lib/openjdk/lib/server";
+    GSETTINGS_SCHEMA_DIR = "${pkgs.gtk4}/share/gsettings-schemas/gtk4-${pkgs.gtk4.version}/glib-2.0/schemas/";
+    PDFIUM_DYNAMIC_LIB_PATH = "${pkgs.pdfium-binaries}/lib";
+  };
 
   # https://devenv.sh/packages/
-  packages = [
-    pkgs.git
-    pkgs.gtk4.dev
-    pkgs.pkg-config
+  packages = with pkgs; [
+    git
+    gtk4.dev
+    pkg-config
+    pdfium-binaries
   ];
 
   # https://devenv.sh/scripts/

@@ -1,10 +1,18 @@
-use std::{sync::Arc, thread};
+use std::{
+    sync::{mpsc, Arc},
+    thread,
+};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Args;
 use relm4::RelmApp;
 
-use crate::{distpaths, extraction::pdf::TableReaderArgs, gui::mainwin};
+use crate::{
+    distpaths,
+    extraction::pdf::{pdfiumworker::PdfiumServer, TableReaderArgs},
+    gui::mainwin,
+    mpscutil,
+};
 
 /// Runs a GUI to perform table extractions from PDF files.
 #[derive(Args, Debug)]
@@ -20,12 +28,40 @@ pub struct Command {
 pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
     let table_reader = cmd.table_reader.build(&xdg_dirs)?;
 
-    thread::scope(|s| {
+    let result: Result<()> = thread::scope(|s| {
         let worker = crate::gui::MainThreadWorker::new(table_reader.as_ref());
+
+        // Run the PdfiumServer in its own dedicated thread, to serialise access to the
+        // pdfium_render library.
+        let (pdfium_client_sender, pdfium_client_receiver) = mpsc::sync_channel(0);
+        s.spawn(move || {
+            let pdfium_server = match PdfiumServer::new() {
+                Ok(pdfium_server) => pdfium_server,
+                Err(err) => {
+                    mpscutil::send_or_log_warning(
+                        &pdfium_client_sender,
+                        "PdfiumServer error",
+                        Err(err),
+                    );
+                    return;
+                }
+            };
+            mpscutil::send_or_log_warning(
+                &pdfium_client_sender,
+                "PdfiumClient",
+                Ok(pdfium_server.client()),
+            );
+            pdfium_server.run();
+        });
+
+        let pdfium_client = (pdfium_client_receiver
+            .recv()
+            .with_context(|| "receiving PdfiumClient or error")?)?;
 
         let init = mainwin::Init {
             xdg_dirs: Arc::new(xdg_dirs),
             default_config: distpaths::config_zip(),
+            pdfium_client,
             worker_channel: worker.worker_channel(),
         };
 
@@ -40,12 +76,15 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
             app.run::<mainwin::MainWindow>(init);
         });
 
+        // Run the extraction worker (and the JVM that it uses) in the main thread.
         worker.run();
+
+        Ok(())
     });
 
     if let Err(err) = table_reader.close() {
         log::warn!("Failed to shut down table reader: {err}");
     }
 
-    Ok(())
+    result
 }

@@ -140,10 +140,13 @@ impl<'a> MainThreadWorker<'a> {
     }
 
     /// Should be called from the main thread once the GUI thread has been started.
-    /// Blocks until shut down. Consumes `self`.
+    /// Blocks until its [WorkChannel] is dropped. Consumes `self`.
     pub fn run(self) {
-        let table_reader = self.table_reader;
+        // Ensure that that we terminate the loop below when the [WorkChannel] is dropped
+        // externally.
         drop(self.request_sender);
+
+        let table_reader = self.table_reader;
         let request_receiver = self.request_receiver;
 
         loop {

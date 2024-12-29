@@ -9,8 +9,9 @@ use relm4::{
 use crate::{
     commontext,
     config::root,
+    extraction::pdf::pdfiumworker::PdfiumClient,
     filesio::FileIoPath,
-    gui::{cfgselect, extract, inputpdf, outputselect},
+    gui::{cfgselect, extract, inputpdf, outputselect, pageview},
 };
 
 use super::workers::{self, extractor};
@@ -26,6 +27,7 @@ pub enum Input {
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
     pub default_config: Option<PathBuf>,
+    pub pdfium_client: PdfiumClient,
     pub worker_channel: workers::extractor::WorkChannel,
 }
 
@@ -35,6 +37,10 @@ pub struct MainWindow {
     input_pdf_selector: Controller<inputpdf::InputPdfSelector>,
     output_selector: Controller<outputselect::OutputSelector>,
     extractor: Controller<extract::Extractor>,
+
+    tab_label_extract: gtk::Label,
+    tab_label_edit_config: gtk::Label,
+    page_view: Controller<pageview::PageView>,
 }
 
 #[relm4::component(pub)]
@@ -50,22 +56,31 @@ impl SimpleComponent for MainWindow {
             set_default_width: 300,
             set_default_height: 600,
 
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 5,
-                set_margin_all: 5,
+            gtk::Notebook {
+                append_page[Some(&model.tab_label_extract)] = &gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_spacing: 5,
+                    set_margin_all: 5,
 
-                gtk::Label {
-                    set_label: commontext::DATA_USAGE,
-                    set_halign: gtk::Align::Start,
-                    set_hexpand: true,
+                    gtk::Label {
+                        set_label: commontext::DATA_USAGE,
+                        set_halign: gtk::Align::Start,
+                        set_hexpand: true,
+                    },
+
+                    model.cfg_selector.widget(),
+                    model.input_pdf_selector.widget(),
+                    model.output_selector.widget(),
+
+                    model.extractor.widget(),
                 },
 
-                model.cfg_selector.widget(),
-                model.input_pdf_selector.widget(),
-                model.output_selector.widget(),
-
-                model.extractor.widget(),
+                // TODO: Implement appropriate editing GUI.
+                append_page[Some(&model.tab_label_edit_config)] = &gtk::Box {
+                    set_hexpand: true,
+                    set_vexpand: true,
+                    model.page_view.widget(),
+                },
             }
         }
     }
@@ -73,6 +88,9 @@ impl SimpleComponent for MainWindow {
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
             Input::ExtractorInput(extractor_input) => {
+                if let extract::Input::InputPdf(path) = &extractor_input {
+                    self.page_view.emit(pageview::Input::LoadPdf(path.clone()));
+                }
                 self.extractor.emit(extractor_input);
             }
             Input::Config(config_opt) => match config_opt {
@@ -129,6 +147,11 @@ impl SimpleComponent for MainWindow {
                 .launch(extractor::Init {
                     worker_channel: init.worker_channel,
                 })
+                .detach(),
+            tab_label_extract: gtk::Label::new(Some("Extract")),
+            tab_label_edit_config: gtk::Label::new(Some("Edit Configuration")),
+            page_view: pageview::PageView::builder()
+                .launch(init.pdfium_client)
                 .detach(),
         };
 

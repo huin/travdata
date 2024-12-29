@@ -1,4 +1,5 @@
 pub mod cachingreader;
+pub mod pdfiumworker;
 pub mod tabulareader;
 
 use std::path::Path;
