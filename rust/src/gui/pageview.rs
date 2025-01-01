@@ -35,19 +35,20 @@ pub enum Input {
 pub struct PageView {
     renderer: Rc<Renderer>,
     page_index: u16,
-    /// ID of the loaded PDF, if any.
-    document_id: Option<pdfiumworker::DocumentId>,
+    /// Metadata of the loaded PDF, if any.
+    document_metadata: Option<pdfiumworker::PdfMetadata>,
 
     pdfium_worker: Controller<PdfiumWorker>,
 }
 
 impl PageView {
     fn unload_current_pdf(&mut self) {
-        if let Some(id) = self.document_id {
-            self.pdfium_worker
-                .emit(pdfiumworker::Input::UnloadPdf { id });
+        if let Some(document_metadata) = &self.document_metadata {
+            self.pdfium_worker.emit(pdfiumworker::Input::UnloadPdf {
+                id: document_metadata.id,
+            });
         }
-        self.document_id = None;
+        self.document_metadata = None;
     }
 }
 
@@ -88,12 +89,17 @@ impl SimpleComponent for PageView {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
 
-                    // TODO: Use PDF metadata to know page number range.
                     // TODO: Render selected page.
                     gtk::Label {
                         set_label: "Page",
                     },
                     gtk::SpinButton {
+                        set_digits: 0,
+                        set_snap_to_ticks: true,
+                        set_increments: (1.0, 10.0),
+
+                        #[watch]
+                        set_range: (1.0, model.document_metadata.as_ref().map(|metadata| metadata.num_pages as f64).unwrap_or(1.0)),
                     },
                 },
             }
@@ -112,16 +118,18 @@ impl SimpleComponent for PageView {
                 }
             }
             Input::PdfiumEvent(event) => match event {
-                pdfiumworker::Output::PdfLoaded { id_result: Ok(id) } => {
-                    self.document_id = Some(id);
-                    self.page_index = 0;
+                pdfiumworker::Output::PdfLoaded {
+                    metadata_result: Ok(metadata),
+                } => {
                     self.pdfium_worker.emit(pdfiumworker::Input::RenderPage {
-                        id,
+                        id: metadata.id,
                         page_index: self.page_index,
                     });
+                    self.document_metadata = Some(metadata);
+                    self.page_index = 0;
                 }
                 pdfiumworker::Output::PdfLoaded {
-                    id_result: Err(err),
+                    metadata_result: Err(err),
                 } => {
                     // TODO: Make errors visible in the GUI.
                     log::error!("Failed to load PDF: {:?}", err);
@@ -131,7 +139,12 @@ impl SimpleComponent for PageView {
                     page_index,
                     image_result: Ok(pixbuf_data),
                 } => {
-                    if Some(id) != self.document_id || page_index != self.page_index {
+                    let is_loaded_document = self
+                        .document_metadata
+                        .as_ref()
+                        .map(|metadata| metadata.id == id)
+                        .unwrap_or(false);
+                    if !is_loaded_document || page_index != self.page_index {
                         // Selection has changed since request was made.
                         return;
                     }
@@ -160,7 +173,7 @@ impl SimpleComponent for PageView {
         let model = Self {
             renderer: renderer.clone(),
             page_index: 0,
-            document_id: None,
+            document_metadata: None,
 
             pdfium_worker: pdfiumworker::PdfiumWorker::builder()
                 .launch(init)

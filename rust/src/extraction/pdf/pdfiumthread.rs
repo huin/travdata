@@ -17,6 +17,13 @@ pub struct PdfiumClient {
     request_sender: mpsc::SyncSender<Request>,
 }
 
+/// Information about a loaded PDF.
+#[derive(Debug)]
+pub struct PdfMetadata {
+    pub id: DocumentId,
+    pub num_pages: u16,
+}
+
 impl PdfiumClient {
     /// Unloads a previously loaded PDF.
     pub fn unload_pdf(&self, id: DocumentId) -> Result<()> {
@@ -29,7 +36,7 @@ impl PdfiumClient {
     }
 
     /// Loads a PDF from the given file path.
-    pub fn load_pdf(&self, path: PathBuf) -> Result<DocumentId> {
+    pub fn load_pdf(&self, path: PathBuf) -> Result<PdfMetadata> {
         let (response_sender, response_receiver) = mpsc::sync_channel(0);
         self.request_sender.send(Request::LoadPdf {
             path,
@@ -154,7 +161,7 @@ impl<'lib> ServerState<'lib> {
             .map(|_| ())
     }
 
-    fn load_pdf(&mut self, path: PathBuf) -> Result<DocumentId> {
+    fn load_pdf(&mut self, path: PathBuf) -> Result<PdfMetadata> {
         let id = self.next_id;
         self.next_id.0 = self
             .next_id
@@ -162,11 +169,15 @@ impl<'lib> ServerState<'lib> {
             .checked_add(1)
             .ok_or_else(|| anyhow!("overflowed assigning DocumentIds"))?;
         let document = self.pdfium.load_pdf_from_file(&path, None)?;
+        let metadata = PdfMetadata {
+            id,
+            num_pages: document.pages().len(),
+        };
         let loaded_document = LoadedDocument { path, document };
         self.loaded_documents
             .entry(id)
             .insert_entry(loaded_document);
-        Ok(id)
+        Ok(metadata)
     }
 
     fn render_page(&self, id: DocumentId, page_index: u16) -> Result<PageImage> {
@@ -190,7 +201,7 @@ enum Request {
     },
     LoadPdf {
         path: PathBuf,
-        response_sender: mpsc::SyncSender<Result<DocumentId>>,
+        response_sender: mpsc::SyncSender<Result<PdfMetadata>>,
     },
     RenderPage {
         id: DocumentId,

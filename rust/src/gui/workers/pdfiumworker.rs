@@ -10,6 +10,7 @@ use relm4::Worker;
 use crate::{extraction::pdf::pdfiumthread, gui::util};
 
 pub type DocumentId = pdfiumthread::DocumentId;
+pub type PdfMetadata = pdfiumthread::PdfMetadata;
 
 /// Input messages for [PdfiumWorker].
 #[derive(Debug)]
@@ -26,7 +27,9 @@ pub enum Input {
 #[derive(Debug)]
 pub enum Output {
     /// Requested attempt to load the requested PDF has completed.
-    PdfLoaded { id_result: Result<DocumentId> },
+    PdfLoaded {
+        metadata_result: Result<PdfMetadata>,
+    },
     /// Requested attempt to render a page of the document has completed.
     PageRendered {
         id: DocumentId,
@@ -59,8 +62,12 @@ impl Worker for PdfiumWorker {
                 }
             }
             Input::LoadPdf { path } => {
-                let id_result = self.pdfium_client.load_pdf(path);
-                util::send_output_or_log(Output::PdfLoaded { id_result }, "PdfLoaded", &sender);
+                let metadata_result = self.pdfium_client.load_pdf(path);
+                util::send_output_or_log(
+                    Output::PdfLoaded { metadata_result },
+                    "PdfLoaded",
+                    &sender,
+                );
             }
             Input::RenderPage { id, page_index } => {
                 let result = self.pdfium_client.render_page(id, page_index);
