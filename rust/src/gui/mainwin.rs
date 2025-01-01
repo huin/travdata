@@ -9,7 +9,7 @@ use relm4::{
 use crate::{
     commontext,
     config::root,
-    extraction::pdf::pdfiumworker::PdfiumClient,
+    extraction::pdf::pdfiumthread::PdfiumClient,
     filesio::FileIoPath,
     gui::{cfgselect, extract, inputpdf, outputselect, pageview},
 };

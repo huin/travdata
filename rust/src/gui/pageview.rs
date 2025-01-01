@@ -15,7 +15,7 @@ use relm4::{
     SimpleComponent,
 };
 
-use crate::extraction::pdf::pdfiumworker::PdfiumClient;
+use crate::extraction::pdf::pdfiumthread::PdfiumClient;
 use crate::gui::workers::pdfiumworker;
 
 use super::workers::pdfiumworker::PdfiumWorker;

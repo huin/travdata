@@ -7,9 +7,9 @@ use gtk::{
 };
 use relm4::Worker;
 
-use crate::{extraction::pdf::pdfiumworker, gui::util};
+use crate::{extraction::pdf::pdfiumthread, gui::util};
 
-pub type DocumentId = pdfiumworker::DocumentId;
+pub type DocumentId = pdfiumthread::DocumentId;
 
 /// Input messages for [PdfiumWorker].
 #[derive(Debug)]
@@ -37,11 +37,11 @@ pub enum Output {
 
 /// Relm4 [Worker] component for manipulating PDF documents in a worker thread.
 pub struct PdfiumWorker {
-    pdfium_client: pdfiumworker::PdfiumClient,
+    pdfium_client: pdfiumthread::PdfiumClient,
 }
 
 impl Worker for PdfiumWorker {
-    type Init = pdfiumworker::PdfiumClient;
+    type Init = pdfiumthread::PdfiumClient;
     type Input = Input;
     type Output = Output;
 
@@ -90,8 +90,8 @@ pub struct PixbufData {
     rowstride: i32,
 }
 
-impl From<pdfiumworker::PageImage> for PixbufData {
-    fn from(value: pdfiumworker::PageImage) -> Self {
+impl From<pdfiumthread::PageImage> for PixbufData {
+    fn from(value: pdfiumthread::PageImage) -> Self {
         let width = value.width() as i32;
         let height = value.height() as i32;
         let sample_layout = value.sample_layout();

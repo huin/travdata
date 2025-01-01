@@ -9,7 +9,7 @@ use relm4::RelmApp;
 
 use crate::{
     distpaths,
-    extraction::pdf::{pdfiumworker::PdfiumServer, TableReaderArgs},
+    extraction::pdf::{pdfiumthread::PdfiumServer, TableReaderArgs},
     gui, mpscutil,
 };
 
