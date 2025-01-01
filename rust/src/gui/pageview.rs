@@ -52,15 +52,24 @@ impl SimpleComponent for PageView {
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
 
-                gtk::DrawingArea {
-                    set_cursor_from_name: Some("crosshair"),
+                gtk::ScrolledWindow {
+                    set_hexpand: true,
+                    set_vexpand: true,
+                    set_hscrollbar_policy: gtk::PolicyType::Automatic,
+                    set_vscrollbar_policy: gtk::PolicyType::Automatic,
+                    set_propagate_natural_width: false,
+                    set_propagate_natural_height: false,
 
-                    #[watch]
-                    set_content_width: model.renderer.width(),
-                    #[watch]
-                    set_content_height: model.renderer.height(),
+                    gtk::DrawingArea {
+                        set_cursor_from_name: Some("crosshair"),
 
-                    set_draw_func: move |_drawing_area, cr, _width, _height| renderer.draw(cr),
+                        #[watch]
+                        set_content_width: model.renderer.width(),
+                        #[watch]
+                        set_content_height: model.renderer.height(),
+
+                        set_draw_func: move |_drawing_area, cr, _width, _height| renderer.draw(cr),
+                    }
                 },
 
                 // Page selection.
