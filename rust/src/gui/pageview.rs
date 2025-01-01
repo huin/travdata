@@ -22,9 +22,10 @@ use super::workers::pdfiumworker::PdfiumWorker;
 
 const UNLOADED_SIZE: i32 = 100;
 
+/// Input messages for [PageView].
 #[derive(Debug)]
 pub enum Input {
-    LoadPdf(Option<PathBuf>),
+    SelectPdf { path: Option<PathBuf> },
 
     // Internal:
     PdfiumEvent(pdfiumworker::Output),
@@ -34,9 +35,20 @@ pub enum Input {
 pub struct PageView {
     renderer: Rc<Renderer>,
     page_index: u16,
-    pdf_loaded: bool,
+    /// ID of the loaded PDF, if any.
+    document_id: Option<pdfiumworker::DocumentId>,
 
     pdfium_worker: Controller<PdfiumWorker>,
+}
+
+impl PageView {
+    fn unload_current_pdf(&mut self) {
+        if let Some(id) = self.document_id {
+            self.pdfium_worker
+                .emit(pdfiumworker::Input::UnloadPdf { id });
+        }
+        self.document_id = None;
+    }
 }
 
 #[relm4::component(pub)]
@@ -90,34 +102,47 @@ impl SimpleComponent for PageView {
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
-            Input::LoadPdf(path_opt) => {
-                self.pdf_loaded = false;
-                self.renderer.set_page_pixbuf(None);
-                match path_opt {
-                    Some(path) => {
-                        self.pdfium_worker.emit(pdfiumworker::Input::LoadPdf(path));
-                    }
-                    None => {
-                        self.pdfium_worker.emit(pdfiumworker::Input::UnloadPdf);
-                    }
+            Input::SelectPdf { path: path_opt } => {
+                self.unload_current_pdf();
+
+                if let Some(path) = path_opt {
+                    self.pdfium_worker
+                        .emit(pdfiumworker::Input::LoadPdf { path });
+                    self.renderer.set_page_pixbuf(None);
                 }
             }
             Input::PdfiumEvent(event) => match event {
-                pdfiumworker::Output::PdfLoaded(Ok(_metadata)) => {
-                    self.pdf_loaded = true;
+                pdfiumworker::Output::PdfLoaded { id_result: Ok(id) } => {
+                    self.document_id = Some(id);
                     self.page_index = 0;
-                    self.pdfium_worker
-                        .emit(pdfiumworker::Input::RenderPage(self.page_index));
+                    self.pdfium_worker.emit(pdfiumworker::Input::RenderPage {
+                        id,
+                        page_index: self.page_index,
+                    });
                 }
-                pdfiumworker::Output::PdfLoaded(Err(err)) => {
+                pdfiumworker::Output::PdfLoaded {
+                    id_result: Err(err),
+                } => {
                     // TODO: Make errors visible in the GUI.
                     log::error!("Failed to load PDF: {:?}", err);
                 }
-                pdfiumworker::Output::PageRendered(Ok(pixbuf_data)) => {
+                pdfiumworker::Output::PageRendered {
+                    id,
+                    page_index,
+                    image_result: Ok(pixbuf_data),
+                } => {
+                    if Some(id) != self.document_id || page_index != self.page_index {
+                        // Selection has changed since request was made.
+                        return;
+                    }
                     self.renderer
                         .set_page_pixbuf(Some(pdfiumworker::NewPixbuf::from(pixbuf_data).0));
                 }
-                pdfiumworker::Output::PageRendered(Err(err)) => {
+                pdfiumworker::Output::PageRendered {
+                    id: _,
+                    page_index: _,
+                    image_result: Err(err),
+                } => {
                     // TODO: Make errors visible in the GUI.
                     log::error!("Failed to load PDF: {:?}", err);
                 }
@@ -135,7 +160,7 @@ impl SimpleComponent for PageView {
         let model = Self {
             renderer: renderer.clone(),
             page_index: 0,
-            pdf_loaded: false,
+            document_id: None,
 
             pdfium_worker: pdfiumworker::PdfiumWorker::builder()
                 .launch(init)

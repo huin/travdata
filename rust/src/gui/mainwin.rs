@@ -88,9 +88,12 @@ impl SimpleComponent for MainWindow {
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
             Input::ExtractorInput(extractor_input) => {
+                // Update page view if the event relates to PDF selection.
                 if let extract::Input::InputPdf(path) = &extractor_input {
-                    self.page_view.emit(pageview::Input::LoadPdf(path.clone()));
+                    let path = path.clone();
+                    self.page_view.emit(pageview::Input::SelectPdf { path });
                 }
+
                 self.extractor.emit(extractor_input);
             }
             Input::Config(config_opt) => match config_opt {

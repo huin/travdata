@@ -7,30 +7,41 @@ use gtk::{
 };
 use relm4::Worker;
 
-use crate::{
-    extraction::pdf::pdfiumworker::{PageImage, PdfMetadata, PdfiumClient},
-    gui::util,
-};
+use crate::{extraction::pdf::pdfiumworker, gui::util};
 
+pub type DocumentId = pdfiumworker::DocumentId;
+
+/// Input messages for [PdfiumWorker].
 #[derive(Debug)]
 pub enum Input {
-    UnloadPdf,
-    LoadPdf(PathBuf),
-    RenderPage(u16),
+    /// Requests that the identified document is unloaded.
+    UnloadPdf { id: DocumentId },
+    /// Requests loading the PDF at the given file path.
+    LoadPdf { path: PathBuf },
+    /// Requests rendering a page of the identified document.
+    RenderPage { id: DocumentId, page_index: u16 },
 }
 
+/// Output messages for [PdfiumWorker].
 #[derive(Debug)]
 pub enum Output {
-    PdfLoaded(Result<PdfMetadata>),
-    PageRendered(Result<PixbufData>),
+    /// Requested attempt to load the requested PDF has completed.
+    PdfLoaded { id_result: Result<DocumentId> },
+    /// Requested attempt to render a page of the document has completed.
+    PageRendered {
+        id: DocumentId,
+        page_index: u16,
+        image_result: Result<PixbufData>,
+    },
 }
 
+/// Relm4 [Worker] component for manipulating PDF documents in a worker thread.
 pub struct PdfiumWorker {
-    pdfium_client: PdfiumClient,
+    pdfium_client: pdfiumworker::PdfiumClient,
 }
 
 impl Worker for PdfiumWorker {
-    type Init = PdfiumClient;
+    type Init = pdfiumworker::PdfiumClient;
     type Input = Input;
     type Output = Output;
 
@@ -42,19 +53,23 @@ impl Worker for PdfiumWorker {
 
     fn update(&mut self, message: Self::Input, sender: relm4::ComponentSender<Self>) {
         match message {
-            Input::UnloadPdf => {
-                if let Err(err) = self.pdfium_client.unload_pdf() {
+            Input::UnloadPdf { id } => {
+                if let Err(err) = self.pdfium_client.unload_pdf(id) {
                     log::warn!("Error unloading PDF: {:?}", err);
                 }
             }
-            Input::LoadPdf(path) => {
-                let result = self.pdfium_client.load_pdf(path);
-                util::send_output_or_log(Output::PdfLoaded(result), "PdfLoaded", &sender);
+            Input::LoadPdf { path } => {
+                let id_result = self.pdfium_client.load_pdf(path);
+                util::send_output_or_log(Output::PdfLoaded { id_result }, "PdfLoaded", &sender);
             }
-            Input::RenderPage(page_index) => {
-                let result = self.pdfium_client.render_page(page_index);
+            Input::RenderPage { id, page_index } => {
+                let result = self.pdfium_client.render_page(id, page_index);
                 util::send_output_or_log(
-                    Output::PageRendered(result.map(PixbufData::from)),
+                    Output::PageRendered {
+                        id,
+                        page_index,
+                        image_result: result.map(PixbufData::from),
+                    },
                     "PageRendered",
                     &sender,
                 );
@@ -75,8 +90,8 @@ pub struct PixbufData {
     rowstride: i32,
 }
 
-impl From<PageImage> for PixbufData {
-    fn from(value: PageImage) -> Self {
+impl From<pdfiumworker::PageImage> for PixbufData {
+    fn from(value: pdfiumworker::PageImage) -> Self {
         let width = value.width() as i32;
         let height = value.height() as i32;
         let sample_layout = value.sample_layout();
