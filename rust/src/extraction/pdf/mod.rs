@@ -38,7 +38,7 @@ pub trait TableReader {
 }
 
 /// CLI arguments relating to [CachableTableReader].
-#[derive(Args, Clone, Debug)]
+#[derive(Args, Clone, Debug, Default)]
 pub struct TableReaderArgs {
     /// Path to Tabula JAR file.
     #[arg(long)]

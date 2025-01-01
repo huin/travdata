@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// Runs a GUI to perform table extractions from PDF files.
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Default)]
 pub struct Command {
     /// Options relating to configuring the table reader.
     #[command(flatten)]

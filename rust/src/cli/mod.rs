@@ -9,7 +9,7 @@ mod gui;
 #[derive(Parser)]
 struct Args {
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
 
     /// Logging level.
     #[arg(long, default_value = "Warn")]
@@ -22,6 +22,12 @@ enum Command {
     Gui(gui::Command),
 }
 
+impl Default for Command {
+    fn default() -> Self {
+        Self::Gui(gui::Command::default())
+    }
+}
+
 pub fn run() -> Result<()> {
     let args = Args::parse();
     let xdg_dirs = xdg::BaseDirectories::with_prefix("travdata")?;
@@ -29,8 +35,10 @@ pub fn run() -> Result<()> {
     simplelog::SimpleLogger::init(args.log_level, simplelog::Config::default())
         .with_context(|| "configuring logging")?;
 
+    let cmd = args.command.unwrap_or_default();
+
     use Command::*;
-    match &args.command {
+    match &cmd {
         ExtractCsvTables(cmd) => extractcsvtables::run(cmd, xdg_dirs),
         Gui(cmd) => gui::run(cmd, xdg_dirs),
     }
