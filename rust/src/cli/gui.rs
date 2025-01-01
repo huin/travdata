@@ -10,8 +10,7 @@ use relm4::RelmApp;
 use crate::{
     distpaths,
     extraction::pdf::{pdfiumworker::PdfiumServer, TableReaderArgs},
-    gui::mainwin,
-    mpscutil,
+    gui, mpscutil,
 };
 
 /// Runs a GUI to perform table extractions from PDF files.
@@ -58,7 +57,7 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
             .recv()
             .with_context(|| "receiving PdfiumClient or error")?)?;
 
-        let init = mainwin::Init {
+        let init = gui::mainwin::Init {
             xdg_dirs: Arc::new(xdg_dirs),
             default_config: distpaths::config_zip(),
             pdfium_client,
@@ -73,7 +72,8 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
             gtk_args.extend(cmd.gtk_options.clone());
 
             let app = RelmApp::new("travdata.gui").with_args(gtk_args);
-            app.run::<mainwin::MainWindow>(init);
+            gui::install_stylesheet();
+            app.run::<gui::mainwin::MainWindow>(init);
         });
 
         // Run the extraction worker (and the JVM that it uses) in the main thread.
