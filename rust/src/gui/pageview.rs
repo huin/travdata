@@ -29,6 +29,7 @@ pub enum Input {
 
     // Internal:
     PdfiumEvent(pdfiumworker::Output),
+    SpinnerSelectPage(u16),
 }
 
 /// Relm4 component that views a PDF page preview.
@@ -39,6 +40,7 @@ pub struct PageView {
     document_metadata: Option<pdfiumworker::PdfMetadata>,
 
     pdfium_worker: Controller<PdfiumWorker>,
+    drawing_area: Option<gtk::DrawingArea>,
 }
 
 impl PageView {
@@ -49,6 +51,12 @@ impl PageView {
             });
         }
         self.document_metadata = None;
+    }
+
+    fn queue_redraw_drawing_area(&self) {
+        if let Some(drawing_area) = &self.drawing_area {
+            drawing_area.queue_draw();
+        }
     }
 }
 
@@ -73,6 +81,7 @@ impl SimpleComponent for PageView {
                     set_propagate_natural_width: false,
                     set_propagate_natural_height: false,
 
+                    #[name = "drawing_area"]
                     gtk::DrawingArea {
                         set_cursor_from_name: Some("crosshair"),
 
@@ -89,7 +98,6 @@ impl SimpleComponent for PageView {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
 
-                    // TODO: Render selected page.
                     gtk::Label {
                         set_label: "Page",
                     },
@@ -100,6 +108,10 @@ impl SimpleComponent for PageView {
 
                         #[watch]
                         set_range: (1.0, model.document_metadata.as_ref().map(|metadata| metadata.num_pages as f64).unwrap_or(1.0)),
+
+                        connect_value_changed => move |spin_button| {
+                            sender.input(Input::SpinnerSelectPage(spin_button.value_as_int() as u16 -1));
+                        },
                     },
                 },
             }
@@ -117,49 +129,63 @@ impl SimpleComponent for PageView {
                     self.renderer.set_page_pixbuf(None);
                 }
             }
-            Input::PdfiumEvent(event) => match event {
-                pdfiumworker::Output::PdfLoaded {
-                    metadata_result: Ok(metadata),
-                } => {
-                    self.pdfium_worker.emit(pdfiumworker::Input::RenderPage {
-                        id: metadata.id,
-                        page_index: self.page_index,
-                    });
-                    self.document_metadata = Some(metadata);
-                    self.page_index = 0;
+            Input::PdfiumEvent(event) => {
+                match event {
+                    pdfiumworker::Output::PdfLoaded {
+                        metadata_result: Ok(metadata),
+                    } => {
+                        self.pdfium_worker.emit(pdfiumworker::Input::RenderPage {
+                            id: metadata.id,
+                            page_index: self.page_index,
+                        });
+                        self.document_metadata = Some(metadata);
+                        self.page_index = 0;
+                    }
+                    pdfiumworker::Output::PdfLoaded {
+                        metadata_result: Err(err),
+                    } => {
+                        // TODO: Make errors visible in the GUI.
+                        log::error!("Failed to load PDF: {:?}", err);
+                    }
+                    pdfiumworker::Output::PageRendered {
+                        id,
+                        page_index,
+                        image_result: Ok(pixbuf_data),
+                    } => {
+                        let is_loaded_document = self
+                            .document_metadata
+                            .as_ref()
+                            .map(|metadata| metadata.id == id)
+                            .unwrap_or(false);
+                        if !is_loaded_document || page_index != self.page_index {
+                            // Selection has changed since request was made.
+                            return;
+                        }
+                        self.renderer
+                            .set_page_pixbuf(Some(pdfiumworker::NewPixbuf::from(pixbuf_data).0));
+                        self.queue_redraw_drawing_area();
+                    }
+                    pdfiumworker::Output::PageRendered {
+                        id: _,
+                        page_index: _,
+                        image_result: Err(err),
+                    } => {
+                        // TODO: Make errors visible in the GUI.
+                        log::error!("Failed to load PDF: {:?}", err);
+                    }
                 }
-                pdfiumworker::Output::PdfLoaded {
-                    metadata_result: Err(err),
-                } => {
-                    // TODO: Make errors visible in the GUI.
-                    log::error!("Failed to load PDF: {:?}", err);
-                }
-                pdfiumworker::Output::PageRendered {
-                    id,
-                    page_index,
-                    image_result: Ok(pixbuf_data),
-                } => {
-                    let is_loaded_document = self
-                        .document_metadata
-                        .as_ref()
-                        .map(|metadata| metadata.id == id)
-                        .unwrap_or(false);
-                    if !is_loaded_document || page_index != self.page_index {
-                        // Selection has changed since request was made.
+            }
+            Input::SpinnerSelectPage(page_index) => {
+                self.page_index = page_index;
+                let id = match &self.document_metadata {
+                    Some(metadata) => metadata.id,
+                    None => {
                         return;
                     }
-                    self.renderer
-                        .set_page_pixbuf(Some(pdfiumworker::NewPixbuf::from(pixbuf_data).0));
-                }
-                pdfiumworker::Output::PageRendered {
-                    id: _,
-                    page_index: _,
-                    image_result: Err(err),
-                } => {
-                    // TODO: Make errors visible in the GUI.
-                    log::error!("Failed to load PDF: {:?}", err);
-                }
-            },
+                };
+                self.pdfium_worker
+                    .emit(pdfiumworker::Input::RenderPage { id, page_index });
+            }
         }
     }
 
@@ -170,7 +196,7 @@ impl SimpleComponent for PageView {
     ) -> ComponentParts<Self> {
         let renderer = Rc::new(Renderer::new());
 
-        let model = Self {
+        let mut model = Self {
             renderer: renderer.clone(),
             page_index: 0,
             document_metadata: None,
@@ -178,9 +204,13 @@ impl SimpleComponent for PageView {
             pdfium_worker: pdfiumworker::PdfiumWorker::builder()
                 .launch(init)
                 .forward(sender.input_sender(), Input::PdfiumEvent),
+            drawing_area: None,
         };
 
         let widgets = view_output!();
+
+        model.drawing_area = Some(widgets.drawing_area.clone());
+
         ComponentParts { model, widgets }
     }
 }
