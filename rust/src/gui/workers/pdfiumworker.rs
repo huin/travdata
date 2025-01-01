@@ -79,6 +79,8 @@ impl From<PageImage> for PixbufData {
     fn from(value: PageImage) -> Self {
         let width = value.width() as i32;
         let height = value.height() as i32;
+        let sample_layout = value.sample_layout();
+        let rowstride = sample_layout.height_stride as i32;
         let buffer = value.into_raw();
         Self {
             data: Bytes::from_owned(buffer),
@@ -87,7 +89,7 @@ impl From<PageImage> for PixbufData {
             bits_per_sample: 8,
             width,
             height,
-            rowstride: 3 * width,
+            rowstride,
         }
     }
 }
