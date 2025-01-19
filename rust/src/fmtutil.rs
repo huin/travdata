@@ -14,7 +14,7 @@ struct DisplayJoin<'c, 's, T> {
     separator: &'s str,
 }
 
-impl<'c, 's, T> Display for DisplayJoin<'c, 's, T>
+impl<T> Display for DisplayJoin<'_, '_, T>
 where
     T: Display,
 {
