@@ -3,27 +3,23 @@ use gtk::{
     gio,
     prelude::{Cast, CastNone, GObjectPropertyExpressionExt, ListItemExt, ListModelExt, WidgetExt},
 };
-use relm4::{ComponentParts, ComponentSender, SimpleComponent};
+use relm4::{Component, ComponentParts, ComponentSender};
 
 mod datamodel;
 
-pub struct ExtractionList {
-    list_view: gtk::ListView,
-}
+pub struct ExtractionList {}
 
-#[relm4::component(pub)]
-impl SimpleComponent for ExtractionList {
-    type Init = ();
+impl Component for ExtractionList {
+    type CommandOutput = ();
     type Input = ();
     type Output = ();
+    type Init = ();
+    type Root = gtk::ListView;
+    type Widgets = gtk::ListView;
 
-    view! {
-        gtk::ScrolledWindow {
-            container_add: &model.list_view,
-        }
+    fn init_root() -> Self::Root {
+        gtk::ListView::default()
     }
-
-    fn update(&mut self, _message: Self::Input, _sender: ComponentSender<Self>) {}
 
     fn init(
         _init: Self::Init,
@@ -52,11 +48,13 @@ impl SimpleComponent for ExtractionList {
 
         let selection_model = gtk::SingleSelection::new(Some(list_model.clone()));
 
-        let list_view = gtk::ListView::new(Some(selection_model), Some(factory));
-        list_view.set_hexpand(true);
-        list_view.set_vexpand(true);
+        root.set_model(Some(&selection_model));
+        root.set_factory(Some(&factory));
 
-        list_view.connect_activate(move |list_view, position| {
+        root.set_hexpand(true);
+        root.set_vexpand(true);
+
+        root.connect_activate(move |list_view, position| {
             let model = list_view.model().expect("The model must exist.");
             let item_data = model
                 .item(position)
@@ -66,10 +64,11 @@ impl SimpleComponent for ExtractionList {
             log::warn!("Activated item {}.", item_data.name());
         });
 
-        let model = Self { list_view };
+        let model = ExtractionList {};
 
-        let widgets = view_output!();
-
-        ComponentParts { model, widgets }
+        ComponentParts {
+            model,
+            widgets: root,
+        }
     }
 }

@@ -81,7 +81,9 @@ impl SimpleComponent for MainWindow {
                 },
 
                 append_page[Some(&model.tab_label_template)] = &gtk::Box {
-                    model.extraction_list.widget(),
+                    gtk::ScrolledWindow {
+                        container_add: model.extraction_list.widget(),
+                    },
                 },
 
                 // TODO: Implement appropriate editing GUI.
