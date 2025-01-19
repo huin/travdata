@@ -14,7 +14,10 @@ use crate::{
     gui::{cfgselect, extract, inputpdf, outputselect, pageview},
 };
 
-use super::workers::{self, extractor};
+use super::{
+    extractionlist,
+    workers::{self, extractor},
+};
 
 /// Input messages for [MainWindow].
 #[derive(Debug)]
@@ -39,7 +42,9 @@ pub struct MainWindow {
     extractor: Controller<extract::Extractor>,
 
     tab_label_extract: gtk::Label,
+    tab_label_template: gtk::Label,
     tab_label_edit_config: gtk::Label,
+    extraction_list: Controller<extractionlist::ExtractionList>,
     page_view: Controller<pageview::PageView>,
 }
 
@@ -73,6 +78,10 @@ impl SimpleComponent for MainWindow {
                     model.output_selector.widget(),
 
                     model.extractor.widget(),
+                },
+
+                append_page[Some(&model.tab_label_template)] = &gtk::Box {
+                    model.extraction_list.widget(),
                 },
 
                 // TODO: Implement appropriate editing GUI.
@@ -151,8 +160,14 @@ impl SimpleComponent for MainWindow {
                     worker_channel: init.worker_channel,
                 })
                 .detach(),
+
             tab_label_extract: gtk::Label::new(Some("Extract")),
+            tab_label_template: gtk::Label::new(Some("Template")),
             tab_label_edit_config: gtk::Label::new(Some("Edit Configuration")),
+
+            extraction_list: extractionlist::ExtractionList::builder()
+                .launch(())
+                .detach(),
             page_view: pageview::PageView::builder()
                 .launch(init.pdfium_client)
                 .detach(),
