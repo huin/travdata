@@ -5,6 +5,7 @@ mod inputpdf;
 pub mod mainwin;
 mod outputselect;
 mod pageview;
+mod treelist;
 mod util;
 mod workers;
 pub use workers::extractor::MainThreadWorker;

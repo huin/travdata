@@ -15,7 +15,7 @@ use crate::{
 };
 
 use super::{
-    extractionlist,
+    extractionlist, treelist,
     workers::{self, extractor},
 };
 
@@ -42,8 +42,10 @@ pub struct MainWindow {
     extractor: Controller<extract::Extractor>,
 
     tab_label_extract: gtk::Label,
-    tab_label_template: gtk::Label,
+    tab_label_tree_list: gtk::Label,
+    tab_label_list: gtk::Label,
     tab_label_edit_config: gtk::Label,
+    tree_list: Controller<treelist::TreeList>,
     extraction_list: Controller<extractionlist::ExtractionList>,
     page_view: Controller<pageview::PageView>,
 }
@@ -80,7 +82,13 @@ impl SimpleComponent for MainWindow {
                     model.extractor.widget(),
                 },
 
-                append_page[Some(&model.tab_label_template)] = &gtk::Box {
+                append_page[Some(&model.tab_label_tree_list)] = &gtk::Box {
+                    gtk::ScrolledWindow {
+                        container_add: model.tree_list.widget(),
+                    },
+                },
+
+                append_page[Some(&model.tab_label_list)] = &gtk::Box {
                     gtk::ScrolledWindow {
                         container_add: model.extraction_list.widget(),
                     },
@@ -164,9 +172,11 @@ impl SimpleComponent for MainWindow {
                 .detach(),
 
             tab_label_extract: gtk::Label::new(Some("Extract")),
-            tab_label_template: gtk::Label::new(Some("Template")),
+            tab_label_tree_list: gtk::Label::new(Some("Tree list")),
+            tab_label_list: gtk::Label::new(Some("List")),
             tab_label_edit_config: gtk::Label::new(Some("Edit Configuration")),
 
+            tree_list: treelist::TreeList::builder().launch(()).detach(),
             extraction_list: extractionlist::ExtractionList::builder()
                 .launch(())
                 .detach(),
