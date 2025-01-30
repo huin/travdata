@@ -106,6 +106,17 @@ fn expander_column() -> gtk::ColumnViewColumn {
         list_item
             .property_expression("item")
             .bind(&expander, "list-row", glib::Object::NONE);
+
+        let label = gtk::Label::new(None);
+        label.set_halign(gtk::Align::Start);
+        expander.set_child(Some(&label));
+
+        // Bind `list_item->item->name` to `label->label`.
+        list_item
+            .property_expression("item")
+            .chain_property::<gtk::TreeListRow>("item")
+            .chain_property::<TreeItemData>("name")
+            .bind(&label, "label", gtk::Widget::NONE);
     });
     gtk::ColumnViewColumn::builder()
         .title("")
@@ -117,6 +128,7 @@ fn name_column() -> gtk::ColumnViewColumn {
     let factory = gtk::SignalListItemFactory::new();
     factory.connect_setup(move |_factory, list_item| {
         let label = gtk::Label::new(None);
+        label.set_halign(gtk::Align::Start);
         let list_item = list_item
             .downcast_ref::<gtk::ListItem>()
             .expect("Needs to be `gtk::ListItem`");
