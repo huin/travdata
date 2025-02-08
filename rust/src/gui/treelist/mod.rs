@@ -1,11 +1,11 @@
-use datamodel::item::TreeItemData;
+mod item;
+
 use gtk::{
     gio, glib,
     prelude::{Cast, CastNone, GObjectPropertyExpressionExt, ListItemExt, ListModelExt, WidgetExt},
 };
+use item::TreeItemData;
 use relm4::{Component, ComponentParts, ComponentSender};
-
-mod datamodel;
 
 pub struct TreeList {}
 
