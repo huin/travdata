@@ -158,7 +158,7 @@ impl SimpleComponent for ConfigSelector {
                 util::send_output_or_log(
                     Output::SelectedConfig(Some((io, config))),
                     "selected configuration",
-                    sender,
+                    &sender,
                 );
             }
             Input::LoadError(cfgloader::LoadError { io: _, message }) => {
@@ -168,7 +168,7 @@ impl SimpleComponent for ConfigSelector {
                 util::send_output_or_log(
                     Output::SelectedConfig(None),
                     "deselected configuration",
-                    sender,
+                    &sender,
                 );
             }
         }

@@ -58,7 +58,7 @@ impl Worker for ConfigLoader {
             }),
         };
 
-        util::send_output_or_log(output, "configuration load output", sender);
+        util::send_output_or_log(output, "configuration load output", &sender);
     }
 }
 

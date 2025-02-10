@@ -67,7 +67,7 @@ pub fn xdg_cfg_static_str<X: AsRef<xdg::BaseDirectories>>(
 pub fn send_output_or_log<C: Component>(
     message: C::Output,
     message_desc: &str,
-    sender: ComponentSender<C>,
+    sender: &ComponentSender<C>,
 ) {
     if let Err(error) = sender.output(message) {
         log::error!("Could not send {}: {:?}", message_desc, error);

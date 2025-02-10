@@ -77,7 +77,7 @@ impl Worker for ExtractorWorker {
                         "Cannot start requested extraction. Work already in progress."
                     )),
                     "failure to start message",
-                    sender,
+                    &sender,
                 );
             }
             (Input::Start(request), work_handle_opt @ None) => {
@@ -90,7 +90,7 @@ impl Worker for ExtractorWorker {
                             err
                         )),
                         "failure to start message",
-                        sender,
+                        &sender,
                     );
                 }
             }
@@ -103,7 +103,7 @@ impl Worker for ExtractorWorker {
                         "Received extraction cancelled message, but was not running."
                     )),
                     "failure to cancel message",
-                    sender,
+                    &sender,
                 );
             }
             (Input::Ended, None) => {
