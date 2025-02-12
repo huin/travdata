@@ -26,7 +26,7 @@ pub fn load_book(
 }
 
 #[derive(Deserialize, Debug)]
-struct YamlTable {
+pub struct YamlTable {
     #[serde(default = "Default::default")]
     pub tags: HashSet<String>,
     #[serde(default = "default_false")]
@@ -73,7 +73,7 @@ impl Table {
 }
 
 #[derive(Deserialize, Debug)]
-struct YamlGroup {
+pub struct YamlGroup {
     #[serde(default = "Default::default")]
     pub tags: HashSet<String>,
     #[serde(default = "Default::default")]

@@ -1,6 +1,8 @@
 mod cfgselect;
+mod components;
 mod extract;
 mod extractionlist;
+mod gobjects;
 mod inputpdf;
 pub mod mainwin;
 mod outputselect;
