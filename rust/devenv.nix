@@ -15,7 +15,9 @@ in
   # https://devenv.sh/packages/
   packages = with pkgs; [
     git
+    gtk4.debug
     gtk4.dev
+    gtk4.devdoc
     pkg-config
     pdfium-binaries
   ];
