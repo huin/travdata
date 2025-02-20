@@ -5,12 +5,14 @@ use std::{
 
 use anyhow::{Context, Result};
 use clap::Args;
+use gtk::Application;
 use relm4::RelmApp;
 
 use crate::{
     distpaths,
     extraction::pdf::{pdfiumthread::PdfiumServer, TableReaderArgs},
-    gui, mpscutil,
+    gui::{self, mainmenu},
+    mpscutil,
 };
 
 /// Runs a GUI to perform table extractions from PDF files.
@@ -71,8 +73,13 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
             let mut gtk_args = vec![program_invocation];
             gtk_args.extend(cmd.gtk_options.clone());
 
-            let app = RelmApp::new("travdata.gui").with_args(gtk_args);
-            gui::install_stylesheet();
+            let gtk_app = Application::builder()
+                .application_id("github.com/huin/travdata")
+                .register_session(true)
+                .build();
+            mainmenu::install_on_startup(&gtk_app);
+            gui::install_css_on_startup(&gtk_app);
+            let app = RelmApp::from_app(gtk_app.clone()).with_args(gtk_args);
             app.run::<gui::mainwin::MainWindow>(init);
         });
 

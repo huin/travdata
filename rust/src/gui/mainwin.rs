@@ -1,10 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
-use gtk::prelude::{BoxExt, GtkWindowExt, OrientableExt, WidgetExt};
-use relm4::{
-    Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
-    SimpleComponent,
-};
+use gtk::prelude::*;
+use relm4::prelude::*;
 
 use crate::{
     commontext,
@@ -15,15 +12,18 @@ use crate::{
 };
 
 use super::{
-    extractionlist, treelist,
+    extractionlist, mainmenu, treelist,
     workers::{self, extractor},
 };
 
 /// Input messages for [MainWindow].
 #[derive(Debug)]
 pub enum Input {
+    // Internal:
     Config(Option<(FileIoPath, Arc<root::Config>)>),
+    #[allow(clippy::enum_variant_names)]
     ExtractorInput(extract::Input),
+    MainMenuAction(mainmenu::Action),
 }
 
 /// Initialisation parameters for [MainWindow].
@@ -36,6 +36,7 @@ pub struct Init {
 
 /// Relm4 window component that acts as the main window for the GUI interface to Travdata.
 pub struct MainWindow {
+    // main_menu: Controller<mainmenu::MainMenu>,
     cfg_selector: Controller<cfgselect::ConfigSelector>,
     input_pdf_selector: Controller<inputpdf::InputPdfSelector>,
     output_selector: Controller<outputselect::OutputSelector>,
@@ -58,10 +59,11 @@ impl SimpleComponent for MainWindow {
     type Output = ();
 
     view! {
-        gtk::Window {
+        window = gtk::ApplicationWindow {
             set_title: Some("Travdata"),
             set_default_width: 300,
             set_default_height: 600,
+            set_show_menubar: true,
 
             gtk::Notebook {
                 append_page[Some(&model.tab_label_extract)] = &gtk::Box {
@@ -127,6 +129,9 @@ impl SimpleComponent for MainWindow {
                     self.extractor.emit(extract::Input::ConfigIo(None));
                 }
             },
+            Input::MainMenuAction(action) => {
+                self.handle_menu_action(action);
+            }
         }
     }
 
@@ -187,6 +192,28 @@ impl SimpleComponent for MainWindow {
 
         let widgets = view_output!();
 
+        {
+            let sender = sender.clone();
+            mainmenu::init_for_widget(&widgets.window, move |action| {
+                sender.input(Input::MainMenuAction(action));
+            });
+        }
+
         ComponentParts { model, widgets }
+    }
+}
+
+impl MainWindow {
+    fn handle_menu_action(&mut self, action: mainmenu::Action) {
+        use mainmenu::Action::*;
+        match action {
+            FileQuit => {
+                relm4::main_application().quit();
+            }
+            action => {
+                // TODO: Handle the other actions.
+                log::warn!("Unimplemented menu action: {:?}.", action);
+            }
+        }
     }
 }
