@@ -1,3 +1,5 @@
+//! Defines (de)serialisation of extracton templates from various format versions.
+
 mod v0_6;
 
 use anyhow::Result;

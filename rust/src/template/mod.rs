@@ -1,3 +1,5 @@
+//! Defines the internal representation of extraction templates.
+
 #![allow(dead_code)]
 
 mod serialised;
