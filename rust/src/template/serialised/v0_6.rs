@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
 
 use crate::{extraction::tableextract, filesio, template};
@@ -163,19 +163,12 @@ pub struct Loader {
     root: Root,
 }
 
-pub struct PreloadData {
-    pub book_ids: Vec<String>,
-}
+impl Loader {
+    pub fn matches_version(version: &str) -> bool {
+        version == "0.6" || version.starts_with("0.6.")
+    }
 
-pub struct LoadArg {
-    pub book_id: String,
-}
-
-impl super::VersionLoader for Loader {
-    type PreloadData = PreloadData;
-    type LoadArg = LoadArg;
-
-    fn preload(file_io: &dyn filesio::Reader) -> Result<Self> {
+    pub fn preload(file_io: &dyn filesio::Reader) -> Result<Self> {
         let rdr = file_io
             .open_read(Path::new(ROOT_PATH_STR))
             .with_context(|| "opening root configuration file")?;
@@ -184,20 +177,47 @@ impl super::VersionLoader for Loader {
 
         Ok(Self { root })
     }
+}
 
-    fn preload_data(&self) -> Self::PreloadData {
-        let book_ids: Vec<String> = self.root.books.keys().cloned().collect();
-        Self::PreloadData { book_ids }
+impl super::PreloadedTemplate for Loader {
+    fn default_load_arg(&self) -> Option<super::LoadArg> {
+        let mut iter = self.root.books.keys();
+        if let Some(first_key) = iter.next() {
+            if iter.next().is_none() {
+                Some(super::LoadArg {
+                    book_id: Some(first_key.clone()),
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
-    fn load(self, file_io: &dyn filesio::Reader, arg: Self::LoadArg) -> Result<template::Book> {
+    fn preload_data(&self) -> super::PreloadData {
+        let book_ids: Vec<String> = self.root.books.keys().cloned().collect();
+        super::PreloadData {
+            book_ids: Some(book_ids),
+        }
+    }
+
+    fn load(&self, file_io: &dyn filesio::Reader, arg: super::LoadArg) -> Result<template::Book> {
+        let book_id = match arg {
+            super::LoadArg {
+                book_id: Some(book_id),
+            } => book_id,
+            _ => {
+                bail!("missing book ID");
+            }
+        };
         let raw_book = self
             .root
             .books
-            .get(&arg.book_id)
-            .ok_or_else(|| anyhow!("book ID {:?} not found in configuration", arg.book_id))?;
+            .get(&book_id)
+            .ok_or_else(|| anyhow!("book ID {:?} not found in configuration", book_id))?;
 
-        let rel_book_dir: PathBuf = arg.book_id.as_str().into();
+        let rel_book_dir: PathBuf = book_id.as_str().into();
         let config_path = rel_book_dir.join("book.yaml");
 
         let mut scripts = Vec::with_capacity(
@@ -212,7 +232,7 @@ impl super::VersionLoader for Loader {
             let group_file = file_io.open_read(&config_path).with_context(|| {
                 format!(
                     "opening book configuration {:?} from file {:?}",
-                    arg.book_id, &config_path,
+                    book_id, &config_path,
                 )
             })?;
             let raw_group: Group = serde_yaml_ng::from_reader(group_file)
