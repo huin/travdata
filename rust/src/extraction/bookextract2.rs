@@ -325,7 +325,7 @@ fn collect_output_tables_from_group<'tmpl>(
 
     for (child_table_name, child_table) in group.tables.iter() {
         let mut table_path = out_path.join(child_table_name);
-        table_path.set_extension(".csv");
+        table_path.set_extension("csv");
         collect_output_table(
             out_writer,
             child_table,
