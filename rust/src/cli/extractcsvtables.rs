@@ -9,19 +9,17 @@ use simple_bar::ProgressBar;
 
 use crate::{
     extraction::{
-        bookextract::{self, ExtractEvents, ExtractSpec, Extractor},
+        bookextract2::{self, ExtractEvents, ExtractSpec, Extractor},
         pdf::TableReaderArgs,
     },
     filesio,
+    template::loadarg,
 };
 
 /// Extracts data tables from the Mongoose Traveller 2022 core rules PDF as CSV
 /// files.
 #[derive(Args, Debug)]
 pub struct Command {
-    /// Path to the configuration.
-    book_name: String,
-
     /// Path to input PDF.
     input_pdf: PathBuf,
 
@@ -30,9 +28,9 @@ pub struct Command {
     /// Whether this is a directory or ZIP file is controlled by --output-type.
     output: PathBuf,
 
-    /// Options relating to the configuration.
+    /// Options relating to the extraction template.
     #[command(flatten)]
-    config: crate::config::ConfigArgs,
+    template: loadarg::TemplateArgs,
 
     /// Controls how data is written to the output.
     ///
@@ -67,19 +65,17 @@ pub struct Command {
 
 /// Runs the subcommand.
 pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
-    let table_reader = cmd.table_reader.build(&xdg_dirs)?;
+    let tmpl = cmd.template.load_template()?;
 
-    let cfg_reader = cmd.config.new_cfg_reader()?;
+    let table_reader = cmd.table_reader.build(&xdg_dirs)?;
+    let extractor = Extractor::new(tmpl, table_reader.as_ref())?;
 
     let output_type = filesio::IoType::resolve_auto(cmd.output_type, &cmd.output);
     let out_writer = output_type
         .new_read_writer(&cmd.output)
         .with_context(|| format!("opening output path {:?} as {:?}", cmd.output, output_type))?;
 
-    let mut extractor = Extractor::new(table_reader.as_ref(), cfg_reader, out_writer)?;
-
     let spec = ExtractSpec {
-        book_name: &cmd.book_name,
         input_pdf: &cmd.input_pdf,
         overwrite_existing: cmd.overwrite_existing,
         with_tags: &cmd.with_tags,
@@ -90,9 +86,9 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
     let mut events = EventDisplayer::new(!cmd.no_progress, continue_intent.clone())?;
     ctrlc::set_handler(move || continue_intent.store(false, std::sync::atomic::Ordering::SeqCst))?;
 
-    extractor.extract_book(spec, &mut events);
+    extractor.extract_book(spec, &mut events, out_writer.as_ref());
 
-    extractor.close()?;
+    out_writer.close()?;
 
     if let Err(err) = table_reader.close() {
         log::warn!("Failed to shut down table reader: {err}");
@@ -118,9 +114,9 @@ impl EventDisplayer {
 }
 
 impl ExtractEvents for EventDisplayer {
-    fn on_event(&mut self, event: bookextract::ExtractEvent) {
+    fn on_event(&mut self, event: bookextract2::ExtractEvent) {
         match event {
-            bookextract::ExtractEvent::Progress {
+            bookextract2::ExtractEvent::Progress {
                 path: _,
                 completed: _,
                 total,
@@ -139,22 +135,22 @@ impl ExtractEvents for EventDisplayer {
                 };
                 progress_bar.update();
             }
-            bookextract::ExtractEvent::Error {
+            bookextract2::ExtractEvent::Error {
                 err,
                 terminal: false,
             } => {
                 eprintln!("Error (continuing): {:?}.", err);
             }
-            bookextract::ExtractEvent::Error {
+            bookextract2::ExtractEvent::Error {
                 err,
                 terminal: true,
             } => {
                 eprintln!("Extraction failed: {:?}.", err);
             }
-            bookextract::ExtractEvent::Completed => {
+            bookextract2::ExtractEvent::Completed => {
                 eprintln!("Extraction complete.");
             }
-            bookextract::ExtractEvent::Cancelled => {
+            bookextract2::ExtractEvent::Cancelled => {
                 eprintln!("Extraction cancelled.");
             }
         }
