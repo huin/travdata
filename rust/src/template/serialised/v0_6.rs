@@ -96,7 +96,7 @@ impl Group {
             .tables
             .into_iter()
             .map(|(k, v)| {
-                let table_path = path.join(format!("{}.json", k));
+                let table_path = path.join(format!("{}.tabula-template.json", k));
                 v.load(table_path, file_io)
                     .with_context(|| format!("in table {:?}", k))
                     .map(|table| (k, table))
