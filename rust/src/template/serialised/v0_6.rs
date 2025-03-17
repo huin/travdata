@@ -9,7 +9,10 @@ use std::{
 use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
 
-use crate::{extraction::tableextract, filesio, template};
+use crate::{
+    extraction::{pdf::tabulatmpl, tableextract},
+    filesio, template,
+};
 
 const ROOT_PATH_STR: &str = "config.yaml";
 
@@ -44,7 +47,7 @@ struct Table {
 
 impl Table {
     fn load(self, path: PathBuf, file_io: &dyn filesio::Reader) -> Result<template::Table> {
-        let template: TabulaTemplate = serde_json::from_reader(
+        let template: tabulatmpl::Template = serde_json::from_reader(
             file_io
                 .open_read(&path)
                 .with_context(|| format!("opening template file {:?}", path))?,
@@ -53,15 +56,7 @@ impl Table {
         let portions = template
             .0
             .into_iter()
-            .map(|entry| template::TablePortion {
-                key: None,
-                extraction_method: entry.extraction_method.load(),
-                page: entry.page,
-                left: entry.x1,
-                top: entry.y1,
-                right: entry.x2,
-                bottom: entry.y2,
-            })
+            .map(template::TablePortion::from)
             .collect();
 
         Ok(template::Table {
@@ -70,41 +65,6 @@ impl Table {
             transform: self.transform,
         })
     }
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(transparent)]
-struct TabulaTemplate(pub Vec<TabulaTemplateEntry>);
-
-#[derive(Clone, Copy, Deserialize, Debug)]
-#[serde(rename_all = "lowercase")]
-enum TabulaExtractionMethod {
-    Guess,
-    Lattice,
-    Stream,
-}
-
-impl TabulaExtractionMethod {
-    fn load(self) -> template::TabulaExtractionMethod {
-        match self {
-            Self::Guess => template::TabulaExtractionMethod::Guess,
-            Self::Lattice => template::TabulaExtractionMethod::Lattice,
-            Self::Stream => template::TabulaExtractionMethod::Stream,
-        }
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Deserialize, Debug)]
-struct TabulaTemplateEntry {
-    pub page: i32,
-    pub extraction_method: TabulaExtractionMethod,
-    pub x1: f32,
-    pub x2: f32,
-    pub y1: f32,
-    pub y2: f32,
-    pub width: f32,
-    pub height: f32,
 }
 
 /// Top and intermediate level of hierarchy, defined in `book.yaml`, in a directory` adjacent to
@@ -243,7 +203,11 @@ impl super::PreloadedTemplate for Loader {
                 .with_context(|| "in root group")?
         };
 
-        Ok(template::Book { scripts, group })
+        Ok(template::Book {
+            scripts,
+            group,
+            page_offset: raw_book.page_offset,
+        })
     }
 }
 

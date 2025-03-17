@@ -1,6 +1,7 @@
 pub mod cachingreader;
 pub mod pdfiumthread;
 pub mod tabulareader;
+pub mod tabulatmpl;
 
 use std::path::Path;
 
@@ -10,7 +11,7 @@ use clap::Args;
 use serde::{Deserialize, Serialize};
 use tabulareader::TabulaClient;
 
-use crate::{distpaths, table::Table};
+use crate::{distpaths, table::Table, template};
 
 /// Page numbers and tables read from a PDF.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -31,7 +32,31 @@ pub trait TableReader {
         &self,
         pdf_path: &Path,
         template_json: &str,
-    ) -> Result<ExtractedTables>;
+    ) -> Result<ExtractedTables> {
+        // TODO: Remove this method from the trait in favour of `read_table_portion`.
+
+        let tab_tmpl = tabulatmpl::Template::from_json(template_json)
+            .with_context(|| format!("loading Tabula template in {:?}", template_json))?;
+
+        let mut tables: Vec<ExtractedTable> = Vec::with_capacity(tab_tmpl.0.len());
+
+        for tab_entry in tab_tmpl.0 {
+            let table_portion: template::TablePortion = tab_entry.into();
+            let table = self.read_table_portion(pdf_path, &table_portion)?;
+            tables.push(table);
+        }
+
+        Ok(ExtractedTables(tables))
+    }
+
+    /// Reads table(s) from a PDF, based on the Tabula template.
+    /// * `pdf_path` Path to PDF to read from.
+    /// * `table_portion` region of the PDF to extract.
+    fn read_table_portion(
+        &self,
+        pdf_path: &Path,
+        table_portion: &template::TablePortion,
+    ) -> Result<ExtractedTable>;
 
     /// Shuts down the [TableReader], flushing any resources that it was using.
     fn close(self: Box<Self>) -> Result<()>;

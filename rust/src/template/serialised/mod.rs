@@ -18,6 +18,7 @@ pub struct PreloadData {
 }
 
 /// Parameters to completing the file load.
+#[derive(Default)]
 pub struct LoadArg {
     /// [PreloadData::book_ids] is a [Option::Some], then this must be a [Option::Some] containing
     /// one of the values from it. Otherwise it must be [Option::None].

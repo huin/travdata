@@ -7,27 +7,29 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use borsh::BorshSerialize;
 use serde::{Deserialize, Serialize};
 
-use crate::extraction::pdf::{ExtractedTables, TableReader};
+use super::{ExtractedTable, TableReader};
+use crate::extraction::pdf::template;
 
 #[cfg(test)]
 mod tests;
 
 const MAX_FILE_HASH_LRU: usize = 100;
 const MAX_TABLES_LRU: usize = 1000;
-const PERSIST_CACHE_VERSION: &str = "1";
+const PERSIST_CACHE_VERSION: &str = "2";
 
 pub struct CachingTableReader<T> {
     delegate: T,
     tables_cache_path: PathBuf,
-    tables_cache: TablesCache,
+    tables_cache: TableCache,
     file_hashes_cache: FileHashesCache,
 }
 
 impl<T> CachingTableReader<T> {
     pub fn load(delegate: T, tables_cache_path: PathBuf) -> Result<Self> {
-        let tables_cache = TablesCache::new();
+        let tables_cache = TableCache::new();
         match Self::read_cache_file(&tables_cache_path) {
             Ok(Some(loaded_cache)) => {
                 tables_cache.load(loaded_cache.entries.into_iter());
@@ -38,7 +40,7 @@ impl<T> CachingTableReader<T> {
                 log::info!("Did not find existing tables cache.");
             }
             Err(err) => {
-                log::warn!("Failed to read existing tables cache: {err}");
+                log::warn!("Failed to read existing table cache: {err}");
             }
         };
 
@@ -130,27 +132,37 @@ impl<T> TableReader for CachingTableReader<T>
 where
     T: TableReader,
 {
-    fn read_pdf_with_template(
+    fn read_table_portion(
         &self,
         pdf_path: &Path,
-        template_json: &str,
-    ) -> anyhow::Result<ExtractedTables> {
+        table_portion: &template::TablePortion,
+    ) -> Result<ExtractedTable> {
         let pdf_hash = self.hash_file(pdf_path)?;
-        let key = TablesCache::key(&pdf_hash, template_json)?;
 
-        if let Some(tables) = self.tables_cache.get(&key) {
-            // Cache hit.
-            return Ok(tables);
+        let hash_src = TablePortionHashSource {
+            pdf_hash,
+            extraction_method: table_portion.extraction_method,
+            page: table_portion.page,
+            left: table_portion.rect.left.to_f32(),
+            top: table_portion.rect.top.to_f32(),
+            right: table_portion.rect.right.to_f32(),
+            bottom: table_portion.rect.bottom.to_f32(),
+        };
+
+        let key = TableCache::key(&hash_src)?;
+
+        match self.tables_cache.get(&key) {
+            Some(table) => {
+                // Cache hit.
+                Ok(table)
+            }
+            None => {
+                // Cache miss
+                let table = self.delegate.read_table_portion(pdf_path, table_portion)?;
+                self.tables_cache.put(key, table.clone());
+                Ok(table)
+            }
         }
-
-        // Cache miss
-        let tables = self
-            .delegate
-            .read_pdf_with_template(pdf_path, template_json)?;
-
-        self.tables_cache.put(key, tables.clone());
-
-        Ok(tables)
     }
 
     fn close(self: Box<Self>) -> Result<()> {
@@ -161,14 +173,14 @@ where
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct PersistantCache {
     version: String,
-    entries: HashMap<HashDigest, ExtractedTables>,
+    entries: HashMap<HashDigest, ExtractedTable>,
 }
 
-struct TablesCache {
-    tables_cache: Mutex<lru::LruCache<HashDigest, ExtractedTables>>,
+struct TableCache {
+    tables_cache: Mutex<lru::LruCache<HashDigest, ExtractedTable>>,
 }
 
-impl TablesCache {
+impl TableCache {
     fn new() -> Self {
         Self {
             tables_cache: Mutex::new(lru::LruCache::new(
@@ -177,11 +189,14 @@ impl TablesCache {
         }
     }
 
-    fn key(pdf_hash: &HashDigest, template_json: &str) -> Result<HashDigest> {
+    fn key(table_hash_src: &TablePortionHashSource) -> Result<HashDigest> {
         let mut hash = HashAlgo::default();
-        std::hash::Hasher::write(&mut hash, &pdf_hash.0);
-        std::hash::Hasher::write(&mut hash, template_json.as_bytes());
-        hash_digest(&mut hash).with_context(|| "generating PDF+template hash")
+
+        table_hash_src
+            .serialize(&mut hash)
+            .with_context(|| "hashing table portion arguments")?;
+
+        hash_digest(&mut hash).with_context(|| "generating hash digest")
     }
 
     fn len(&self) -> usize {
@@ -191,36 +206,36 @@ impl TablesCache {
             .len()
     }
 
-    fn load(&self, entries: impl Iterator<Item = (HashDigest, ExtractedTables)>) {
+    fn load(&self, entries: impl Iterator<Item = (HashDigest, ExtractedTable)>) {
         let mut guard = self
             .tables_cache
             .lock()
-            .expect("failed to lock tables_cache for load_tables");
+            .expect("failed to lock tables_cache for load");
         for entry in entries {
             guard.put(entry.0, entry.1);
         }
     }
 
-    fn dump(self) -> HashMap<HashDigest, ExtractedTables> {
+    fn dump(self) -> HashMap<HashDigest, ExtractedTable> {
         self.tables_cache
             .into_inner()
-            .expect("failed to lock tables_cache for dump_tables")
+            .expect("failed to lock tables_cache for dump")
             .into_iter()
             .collect()
     }
 
-    fn get(&self, hash: &HashDigest) -> Option<ExtractedTables> {
+    fn get(&self, hash: &HashDigest) -> Option<ExtractedTable> {
         self.tables_cache
             .lock()
-            .expect("failed to lock tables_cache for get_tables")
+            .expect("failed to lock tables_cache for get")
             .get(hash)
             .cloned()
     }
 
-    fn put(&self, hash: HashDigest, tables: ExtractedTables) {
+    fn put(&self, hash: HashDigest, tables: ExtractedTable) {
         self.tables_cache
             .lock()
-            .expect("failed to lock tables_cache for put_tables")
+            .expect("failed to lock tables_cache for put")
             .put(hash, tables);
     }
 }
@@ -261,11 +276,26 @@ impl FileHashesCache {
     }
 }
 
+/// Internal struct used to generate a hash for a cache key for a table portion within a specific
+/// PDF file.
+#[derive(BorshSerialize)]
+struct TablePortionHashSource {
+    pdf_hash: HashDigest,
+    extraction_method: template::TabulaExtractionMethod,
+    page: i32,
+    left: f32,
+    top: f32,
+    right: f32,
+    bottom: f32,
+}
+
 type HashAlgo = sha::sha256::Sha256;
 
 const HASH_DIGEST_LEN: usize = 32;
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, Deserialize, Serialize)]
+#[derive(
+    BorshSerialize, Copy, Clone, Debug, Default, Eq, PartialEq, Hash, Deserialize, Serialize,
+)]
 #[serde(try_from = "String", into = "OwnString")]
 struct HashDigest([u8; HASH_DIGEST_LEN]);
 

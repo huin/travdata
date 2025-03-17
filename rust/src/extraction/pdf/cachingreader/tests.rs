@@ -14,8 +14,9 @@ use test_casing::test_casing;
 
 use super::{CachingTableReader, HashAlgo, HashDigest};
 use crate::{
-    extraction::pdf::{ExtractedTable, ExtractedTables, TableReader},
+    extraction::pdf::{ExtractedTable, TableReader},
     table::{Row, Table},
+    template,
 };
 
 #[test]
@@ -28,12 +29,12 @@ fn hash_digest_length_is_correct() {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 struct Call {
     pdf_path: PathBuf,
-    template_json: String,
+    table_portion: template::TablePortion,
 }
 
 impl Call {
-    fn do_call(&self, reader: &dyn TableReader) -> Result<ExtractedTables> {
-        reader.read_pdf_with_template(&self.pdf_path, &self.template_json)
+    fn do_call(&self, reader: &dyn TableReader) -> Result<ExtractedTable> {
+        reader.read_table_portion(&self.pdf_path, &self.table_portion)
     }
 }
 
@@ -62,14 +63,14 @@ impl FakeTableReaderCalls {
 #[derive(Clone)]
 struct FakeTableReader {
     calls: Arc<FakeTableReaderCalls>,
-    return_tables: HashMap<Call, ExtractedTables>,
+    return_table: HashMap<Call, ExtractedTable>,
 }
 
 impl FakeTableReader {
     fn new() -> Self {
         FakeTableReader {
             calls: Arc::new(FakeTableReaderCalls::new()),
-            return_tables: HashMap::new(),
+            return_table: HashMap::new(),
         }
     }
 
@@ -79,20 +80,20 @@ impl FakeTableReader {
 }
 
 impl TableReader for FakeTableReader {
-    fn read_pdf_with_template(
+    fn read_table_portion(
         &self,
-        pdf_path: &std::path::Path,
-        template_json: &str,
-    ) -> anyhow::Result<ExtractedTables> {
+        pdf_path: &Path,
+        table_portion: &template::TablePortion,
+    ) -> Result<ExtractedTable> {
         let call = Call {
             pdf_path: pdf_path.to_owned(),
-            template_json: template_json.to_owned(),
+            table_portion: table_portion.clone(),
         };
 
-        let tables_opt = self.return_tables.get(&call).cloned();
+        let tables_opt = self.return_table.get(&call).cloned();
 
         let result =
-            tables_opt.ok_or_else(|| anyhow!("could not find `return_tables` for {:?}", call));
+            tables_opt.ok_or_else(|| anyhow!("could not find `return_table` for {:?}", call));
 
         self.calls.add_call(call);
 
@@ -126,13 +127,34 @@ fn get_table_cache_path(tempdir: &Path) -> PathBuf {
     tempdir.join("table-cache.json")
 }
 
-const TEMPLATE_1: &str = "\"template 1\"";
-const TEMPLATE_2: &str = "\"template 2\"";
+const TABLE_PORTION_1: template::TablePortion = template::TablePortion {
+    key: None,
+    extraction_method: template::TabulaExtractionMethod::Lattice,
+    page: 1,
+    rect: template::PDFRect {
+        left: template::PDFPoints::from_quantised(5),
+        top: template::PDFPoints::from_quantised(30),
+        right: template::PDFPoints::from_quantised(20),
+        bottom: template::PDFPoints::from_quantised(10),
+    },
+};
+
+const TABLE_PORTION_2: template::TablePortion = template::TablePortion {
+    key: None,
+    extraction_method: template::TabulaExtractionMethod::Stream,
+    page: 2,
+    rect: template::PDFRect {
+        left: template::PDFPoints::from_quantised(15),
+        top: template::PDFPoints::from_quantised(40),
+        right: template::PDFPoints::from_quantised(30),
+        bottom: template::PDFPoints::from_quantised(20),
+    },
+};
 
 struct TwoReadsCase {
     name: &'static str,
-    first_template_json: &'static str,
-    second_template_json: &'static str,
+    first_table_portion: template::TablePortion,
+    second_table_portion: template::TablePortion,
     first_pdf: &'static dyn Fn(&Path) -> Result<PathBuf>,
     second_pdf: &'static dyn Fn(&Path) -> Result<PathBuf>,
 }
@@ -141,14 +163,14 @@ impl TwoReadsCase {
     fn first_call(&self, tempdir_path: &Path) -> Result<Call> {
         Ok(Call {
             pdf_path: (self.first_pdf)(tempdir_path)?,
-            template_json: self.first_template_json.to_owned(),
+            table_portion: self.first_table_portion.clone(),
         })
     }
 
     fn second_call(&self, tempdir_path: &Path) -> Result<Call> {
         Ok(Call {
             pdf_path: (self.second_pdf)(tempdir_path)?,
-            template_json: self.second_template_json.to_owned(),
+            table_portion: self.second_table_portion.clone(),
         })
     }
 }
@@ -173,22 +195,22 @@ fn fake_table_data(num_rows: usize, num_cols: usize, page: i32) -> ExtractedTabl
 const DISTINCT_READS_CASES: [TwoReadsCase; 3] = [
     TwoReadsCase {
         name: "same_template_different_pdf",
-        first_template_json: TEMPLATE_1,
-        second_template_json: TEMPLATE_1,
+        first_table_portion: TABLE_PORTION_1,
+        second_table_portion: TABLE_PORTION_1,
         first_pdf: &pdf_1,
         second_pdf: &pdf_2,
     },
     TwoReadsCase {
         name: "different_template_same_pdf",
-        first_template_json: TEMPLATE_1,
-        second_template_json: TEMPLATE_2,
+        first_table_portion: TABLE_PORTION_1,
+        second_table_portion: TABLE_PORTION_2,
         first_pdf: &pdf_1,
         second_pdf: &pdf_1,
     },
     TwoReadsCase {
         name: "different_template_different_pdf",
-        first_template_json: TEMPLATE_1,
-        second_template_json: TEMPLATE_2,
+        first_table_portion: TABLE_PORTION_1,
+        second_table_portion: TABLE_PORTION_2,
         first_pdf: &pdf_1,
         second_pdf: &pdf_2,
     },
@@ -203,23 +225,23 @@ fn does_not_cache_distinct_reads(distinct_reads: TwoReadsCase) -> Result<()> {
     let table_cache_path = get_table_cache_path(tempdir.path());
     let mut fake_delegate = FakeTableReader::new();
 
-    let first_original_tables = ExtractedTables(vec![fake_table_data(1, 1, 1)]);
+    let first_original_table = fake_table_data(1, 1, 1);
     let first_expect_call = distinct_reads.first_call(tempdir.path())?;
     fake_delegate
-        .return_tables
-        .insert(first_expect_call.clone(), first_original_tables.clone());
+        .return_table
+        .insert(first_expect_call.clone(), first_original_table.clone());
 
-    let second_original_tables = ExtractedTables(vec![fake_table_data(2, 2, 2)]);
+    let second_original_table = fake_table_data(2, 2, 2);
     let second_expect_call = distinct_reads.second_call(tempdir.path())?;
     fake_delegate
-        .return_tables
-        .insert(second_expect_call.clone(), second_original_tables.clone());
+        .return_table
+        .insert(second_expect_call.clone(), second_original_table.clone());
 
     let caching_reader = CachingTableReader::load(fake_delegate, table_cache_path)?;
     let actual_1 = first_expect_call.do_call(&caching_reader)?;
-    assert_that!(actual_1, eq(&first_original_tables));
+    assert_that!(actual_1, eq(&first_original_table));
     let actual_2 = second_expect_call.do_call(&caching_reader)?;
-    assert_that!(actual_2, eq(&second_original_tables));
+    assert_that!(actual_2, eq(&second_original_table));
 
     Ok(())
 }
@@ -227,37 +249,37 @@ fn does_not_cache_distinct_reads(distinct_reads: TwoReadsCase) -> Result<()> {
 const CACHE_HIT_TWO_READS_CASES: [TwoReadsCase; 5] = [
     TwoReadsCase {
         name: "same_template_1_same_pdf_path_1",
-        first_template_json: TEMPLATE_1,
-        second_template_json: TEMPLATE_1,
+        first_table_portion: TABLE_PORTION_1,
+        second_table_portion: TABLE_PORTION_1,
         first_pdf: &pdf_1,
         second_pdf: &pdf_1,
     },
     TwoReadsCase {
         name: "same_template_1_same_pdf_path_2",
-        first_template_json: TEMPLATE_1,
-        second_template_json: TEMPLATE_1,
+        first_table_portion: TABLE_PORTION_1,
+        second_table_portion: TABLE_PORTION_1,
         first_pdf: &pdf_2,
         second_pdf: &pdf_2,
     },
     TwoReadsCase {
         name: "same_template_2_same_pdf_path_1",
-        first_template_json: TEMPLATE_2,
-        second_template_json: TEMPLATE_2,
+        first_table_portion: TABLE_PORTION_2,
+        second_table_portion: TABLE_PORTION_2,
         first_pdf: &pdf_1,
         second_pdf: &pdf_1,
     },
     TwoReadsCase {
         name: "same_template_2_same_pdf_path_2",
-        first_template_json: TEMPLATE_2,
-        second_template_json: TEMPLATE_2,
+        first_table_portion: TABLE_PORTION_2,
+        second_table_portion: TABLE_PORTION_2,
         first_pdf: &pdf_2,
         second_pdf: &pdf_2,
     },
     // Support hashing the PDF and getting a hit on a copy of the PDF at a different path.
     TwoReadsCase {
         name: "same_template_1_same_pdf_content",
-        first_template_json: TEMPLATE_1,
-        second_template_json: TEMPLATE_1,
+        first_table_portion: TABLE_PORTION_1,
+        second_table_portion: TABLE_PORTION_1,
         first_pdf: &pdf_1,
         second_pdf: &pdf_1_copy,
     },
@@ -270,25 +292,25 @@ fn cache_hit_two_reads(cache_hit_read: TwoReadsCase) -> Result<()> {
     let tempdir = tempfile::tempdir()?;
     let table_cache_path = get_table_cache_path(tempdir.path());
     let mut fake_delegate = FakeTableReader::new();
-    let original_tables = ExtractedTables(vec![fake_table_data(1, 1, 1)]);
+    let original_table = fake_table_data(1, 1, 1);
 
     let first_expect_call = cache_hit_read.first_call(tempdir.path())?;
     fake_delegate
-        .return_tables
-        .insert(first_expect_call.clone(), original_tables.clone());
+        .return_table
+        .insert(first_expect_call.clone(), original_table.clone());
     // This may or may not be a duplicate of first_expect_call.
     let second_expect_call = cache_hit_read.second_call(tempdir.path())?;
     fake_delegate
-        .return_tables
-        .insert(second_expect_call.clone(), original_tables.clone());
+        .return_table
+        .insert(second_expect_call.clone(), original_table.clone());
     let delegate_calls = fake_delegate.calls();
 
     let caching_reader = CachingTableReader::load(fake_delegate, table_cache_path)?;
     let actual_1 = first_expect_call.do_call(&caching_reader)?;
     let actual_2 = second_expect_call.do_call(&caching_reader)?;
 
-    assert_that!(&actual_1, eq(&original_tables));
-    assert_that!(&actual_2, eq(&original_tables));
+    assert_that!(&actual_1, eq(&original_table));
+    assert_that!(&actual_2, eq(&original_table));
     assert_that!(delegate_calls.calls_snapshot(), len(eq(1)));
     Ok(())
 }
@@ -301,21 +323,21 @@ fn cache_persistance() -> Result<()> {
     let pdf_1 = pdf_1(tempdir.path())?;
     let mut fake_delegate = FakeTableReader::new();
 
-    let original_tables = ExtractedTables(vec![fake_table_data(1, 1, 1)]);
+    let original_table = fake_table_data(1, 1, 1);
     let expect_call = Call {
         pdf_path: pdf_1.to_owned(),
-        template_json: TEMPLATE_1.to_owned(),
+        table_portion: TABLE_PORTION_1,
     };
     fake_delegate
-        .return_tables
-        .insert(expect_call.clone(), original_tables.clone());
+        .return_table
+        .insert(expect_call.clone(), original_table.clone());
     let delegate_calls = fake_delegate.calls();
 
     let first_caching_reader =
         CachingTableReader::load(fake_delegate.clone(), table_cache_path.clone())?;
     let actual_1 = expect_call.do_call(&first_caching_reader)?;
     assert_that!(first_caching_reader.store(), ok(eq(&())));
-    assert_that!(&actual_1, eq(&original_tables));
+    assert_that!(&actual_1, eq(&original_table));
     assert_that!(
         delegate_calls.calls_snapshot(),
         eq(&vec![expect_call.clone()])
@@ -324,7 +346,7 @@ fn cache_persistance() -> Result<()> {
     let second_caching_reader = CachingTableReader::load(fake_delegate, table_cache_path)?;
     let actual_2 = expect_call.do_call(&second_caching_reader)?;
     drop(second_caching_reader);
-    assert_that!(&actual_2, eq(&original_tables));
+    assert_that!(&actual_2, eq(&original_table));
     // Should not have been called a second time.
     assert_that!(delegate_calls.calls_snapshot(), len(eq(1)));
 
