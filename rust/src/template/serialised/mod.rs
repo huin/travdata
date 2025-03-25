@@ -2,23 +2,63 @@
 
 mod v0_6;
 
-use std::{io::Read, path::Path};
+use std::{fmt::Display, io::Read, path::Path};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 
 use crate::{filesio, template};
 
 const VERSION_PATH_STR: &str = "version.txt";
 
+/// Set of template format versions supported. Acceptable as an argument for [preload]'s
+/// `assume_version` parameter.
+pub const VERSIONS_SUPPORTED: &[&str] = &["0.6"];
+
+/// Concrete error type returned by [preload] for some specific error cases that may be
+/// recoverable.
+#[derive(Debug)]
+pub enum PreloadError {
+    UnknownVersion,
+}
+
+impl PreloadError {
+    pub fn is_unknown_version(&self) -> bool {
+        matches!(self, Self::UnknownVersion)
+    }
+}
+
+impl Display for PreloadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use PreloadError::*;
+        match self {
+            UnknownVersion => write!(f, "unknown template format version"),
+        }
+    }
+}
+
 /// Data known from preloading the extraction template, which provides information for supplying
 /// specifying [LoadArgs].
+#[derive(Debug)]
 pub struct PreloadData {
     /// Set of book identifiers found in the preloaded data, if the format supports multiple books.
-    pub book_ids: Option<Vec<String>>,
+    pub book_ids: Option<Vec<BookIdName>>,
+}
+
+/// Summary descriptor for a book extraction template that can be loaded.
+#[derive(Debug)]
+pub struct BookIdName {
+    pub id: String,
+    pub name: String,
+}
+
+impl Display for BookIdName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.name)
+    }
 }
 
 /// Parameters to completing the file load.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct LoadArg {
     /// [PreloadData::book_ids] is a [Option::Some], then this must be a [Option::Some] containing
     /// one of the values from it. Otherwise it must be [Option::None].
@@ -27,7 +67,7 @@ pub struct LoadArg {
 
 /// Preloaded extraction template data that may or may not need further data prior to calling
 /// [PreloadedTemplate::load].
-pub trait PreloadedTemplate {
+pub trait PreloadedTemplate: std::fmt::Debug + Send {
     /// Returns an acceptable parameter for [VersionLoader::load] if there is a single possible
     /// option. Otherwise returns `None` to indicate that specific argument must be provided.
     fn default_load_arg(&self) -> Option<LoadArg>;
@@ -52,7 +92,7 @@ pub fn preload(
     } else if let Some(version) = &found_version {
         version
     } else {
-        bail!("unknown version for extraction template");
+        return Err(anyhow!(PreloadError::UnknownVersion));
     };
 
     if v0_6::Loader::matches_version(version) {

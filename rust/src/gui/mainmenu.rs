@@ -14,6 +14,7 @@ pub enum Action {
     TemplateNew,
     TemplateOpen,
     TemplateSave,
+    TemplateImportDir,
     TemplateImportZip,
     TemplateExportZip,
     HelpAbout,
@@ -26,6 +27,7 @@ new_stateless_action!(TemplateNew, MenuActionGroup, "template_new");
 new_stateless_action!(TemplateOpen, MenuActionGroup, "template_open");
 new_stateless_action!(TemplateSave, MenuActionGroup, "template_save");
 new_stateless_action!(TemplateImportZip, MenuActionGroup, "template_import_zip");
+new_stateless_action!(TemplateImportDir, MenuActionGroup, "template_import_dir");
 new_stateless_action!(TemplateExportZip, MenuActionGroup, "template_export_zip");
 new_stateless_action!(HelpAbout, MenuActionGroup, "help_about");
 
@@ -48,7 +50,10 @@ pub fn install_on_startup(app: &Application) {
                     "Save" => TemplateSave,
                 },
                 section! {
+                    "Import from folder..." => TemplateImportDir,
                     "Import from ZIP..." => TemplateImportZip,
+                },
+                section! {
                     "Export to ZIP..." => TemplateExportZip,
                 },
             },
@@ -78,6 +83,7 @@ where
     r.stateless(TemplateNew, Action::TemplateNew);
     r.stateless(TemplateOpen, Action::TemplateOpen);
     r.stateless(TemplateSave, Action::TemplateSave);
+    r.stateless(TemplateImportDir, Action::TemplateImportDir);
     r.stateless(TemplateImportZip, Action::TemplateImportZip);
     r.stateless(TemplateExportZip, Action::TemplateExportZip);
     r.stateless(HelpAbout, Action::HelpAbout);

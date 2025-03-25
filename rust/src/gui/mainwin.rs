@@ -9,9 +9,11 @@ use crate::{
     extraction::pdf::pdfiumthread::PdfiumClient,
     filesio::FileIoPath,
     gui::{cfgselect, extract, inputpdf, outputselect, pageview},
+    template,
 };
 
 use super::{
+    components::{errordialog, tmplimport},
     extractionlist, mainmenu, treelist,
     workers::{self, extractor},
 };
@@ -20,7 +22,10 @@ use super::{
 #[derive(Debug)]
 pub enum Input {
     // Internal:
-    Config(Option<(FileIoPath, Arc<root::Config>)>),
+    Noop,
+    ShowError(String),
+    ImportConfig(Option<(FileIoPath, Arc<root::Config>)>),
+    ImportTemplate(template::Book),
     #[allow(clippy::enum_variant_names)]
     ExtractorInput(extract::Input),
     MainMenuAction(mainmenu::Action),
@@ -37,7 +42,9 @@ pub struct Init {
 /// Relm4 window component that acts as the main window for the GUI interface to Travdata.
 pub struct MainWindow {
     // main_menu: Controller<mainmenu::MainMenu>,
+    error_msg_dialog: Controller<errordialog::ErrorDialog>,
     cfg_selector: Controller<cfgselect::ConfigSelector>,
+    tmpl_importer: Controller<tmplimport::TemplateImporter>,
     input_pdf_selector: Controller<inputpdf::InputPdfSelector>,
     output_selector: Controller<outputselect::OutputSelector>,
     extractor: Controller<extract::Extractor>,
@@ -70,6 +77,8 @@ impl SimpleComponent for MainWindow {
                     set_orientation: gtk::Orientation::Vertical,
                     set_spacing: 5,
                     set_margin_all: 5,
+
+                    model.tmpl_importer.widget(),
 
                     gtk::Label {
                         set_label: commontext::DATA_USAGE,
@@ -108,6 +117,11 @@ impl SimpleComponent for MainWindow {
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
+            Input::Noop => {}
+            Input::ShowError(message) => {
+                self.error_msg_dialog
+                    .emit(errordialog::Input::ShowErrorMessage(message));
+            }
             Input::ExtractorInput(extractor_input) => {
                 // Update page view if the event relates to PDF selection.
                 if let extract::Input::InputPdf(path) = &extractor_input {
@@ -117,7 +131,11 @@ impl SimpleComponent for MainWindow {
 
                 self.extractor.emit(extractor_input);
             }
-            Input::Config(config_opt) => match config_opt {
+            Input::ImportTemplate(tmpl) => {
+                // TODO
+                log::info!("TODO use the `tmpl`: {:?}", tmpl);
+            }
+            Input::ImportConfig(config_opt) => match config_opt {
                 Some((cfg_io, config)) => {
                     self.input_pdf_selector
                         .emit(inputpdf::Input::SelectedConfig(Some(config)));
@@ -141,14 +159,30 @@ impl SimpleComponent for MainWindow {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = Self {
+            error_msg_dialog: errordialog::ErrorDialog::builder()
+                .transient_for(&root)
+                .launch(())
+                .forward(sender.input_sender(), |_| Input::Noop),
             cfg_selector: cfgselect::ConfigSelector::builder()
                 .launch(cfgselect::Init {
                     xdg_dirs: init.xdg_dirs.clone(),
                     default_config: init.default_config,
                 })
                 .forward(sender.input_sender(), |msg| match msg {
-                    cfgselect::Output::SelectedConfig(config_opt) => Input::Config(config_opt),
+                    cfgselect::Output::SelectedConfig(config_opt) => {
+                        Input::ImportConfig(config_opt)
+                    }
                 }),
+            tmpl_importer: tmplimport::TemplateImporter::builder().launch(()).forward(
+                sender.input_sender(),
+                |msg| {
+                    use tmplimport::Output::*;
+                    match msg {
+                        TemplateImported(tmpl) => Input::ImportTemplate(tmpl),
+                        Error(message) => Input::ShowError(message),
+                    }
+                },
+            ),
             input_pdf_selector: inputpdf::InputPdfSelector::builder()
                 .launch(inputpdf::Init {
                     xdg_dirs: init.xdg_dirs.clone(),
@@ -209,6 +243,14 @@ impl MainWindow {
         match action {
             FileQuit => {
                 relm4::main_application().quit();
+            }
+            TemplateImportDir => {
+                self.tmpl_importer
+                    .emit(tmplimport::Input::RequestImportFromDir);
+            }
+            TemplateImportZip => {
+                self.tmpl_importer
+                    .emit(tmplimport::Input::RequestImportFromZip);
             }
             action => {
                 // TODO: Handle the other actions.

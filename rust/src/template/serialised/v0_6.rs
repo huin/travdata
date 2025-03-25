@@ -119,6 +119,7 @@ fn default_false() -> bool {
     false
 }
 
+#[derive(Debug)]
 pub struct Loader {
     root: Root,
 }
@@ -156,7 +157,15 @@ impl super::PreloadedTemplate for Loader {
     }
 
     fn preload_data(&self) -> super::PreloadData {
-        let book_ids: Vec<String> = self.root.books.keys().cloned().collect();
+        let book_ids: Vec<super::BookIdName> = self
+            .root
+            .books
+            .iter()
+            .map(|(id, book)| super::BookIdName {
+                id: id.clone(),
+                name: book.name.clone(),
+            })
+            .collect();
         super::PreloadData {
             book_ids: Some(book_ids),
         }

@@ -12,6 +12,7 @@ use borsh::BorshSerialize;
 use crate::extraction::tableextract;
 
 /// Extraction template for a single book.
+#[derive(Debug)]
 pub struct Book {
     /// Scripts providing helper code for code in [Table]`.transform`.
     pub scripts: Vec<Script>,
@@ -22,6 +23,7 @@ pub struct Book {
 }
 
 /// Provides code for the v8 VM isolate.
+#[derive(Debug)]
 pub struct Script {
     /// Identifying name of the script, often the basis of a filename.
     pub name: String,
@@ -32,6 +34,7 @@ pub struct Script {
 /// Hierarchy of content to extract from a [Book]. The hierarchy has two effects:
 /// - Tag inheritance, identifying extracted content (for filtering and in the output).
 /// - Output directory structure for extracted data.
+#[derive(Debug)]
 pub struct Group {
     /// Set of tags defined on the group and all its descendent [Table]s.
     pub tags: HashSet<String>,
@@ -42,6 +45,7 @@ pub struct Group {
 }
 
 /// Template for extracting a single table.
+#[derive(Debug)]
 pub struct Table {
     /// Set of tags defined on the table (not including those from the parent [Group].
     pub tags: HashSet<String>,
