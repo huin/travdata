@@ -41,7 +41,6 @@ pub struct Init {
 
 /// Relm4 window component that acts as the main window for the GUI interface to Travdata.
 pub struct MainWindow {
-    // main_menu: Controller<mainmenu::MainMenu>,
     error_msg_dialog: Controller<errordialog::ErrorDialog>,
     cfg_selector: Controller<cfgselect::ConfigSelector>,
     tmpl_importer: Controller<tmplimport::TemplateImporter>,
