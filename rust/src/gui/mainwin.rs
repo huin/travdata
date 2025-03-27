@@ -5,10 +5,8 @@ use relm4::prelude::*;
 
 use crate::{
     commontext,
-    config::root,
     extraction::pdf::pdfiumthread::PdfiumClient,
-    filesio::FileIoPath,
-    gui::{cfgselect, extract, inputpdf, outputselect, pageview},
+    gui::{extract, inputpdf, outputselect, pageview},
     template,
 };
 
@@ -24,7 +22,6 @@ pub enum Input {
     // Internal:
     Noop,
     ShowError(String),
-    ImportConfig(Option<(FileIoPath, Arc<root::Config>)>),
     ImportTemplate(template::Book),
     #[allow(clippy::enum_variant_names)]
     ExtractorInput(extract::Input),
@@ -42,7 +39,6 @@ pub struct Init {
 /// Relm4 window component that acts as the main window for the GUI interface to Travdata.
 pub struct MainWindow {
     error_msg_dialog: Controller<errordialog::ErrorDialog>,
-    cfg_selector: Controller<cfgselect::ConfigSelector>,
     tmpl_importer: Controller<tmplimport::TemplateImporter>,
     input_pdf_selector: Controller<inputpdf::InputPdfSelector>,
     output_selector: Controller<outputselect::OutputSelector>,
@@ -85,7 +81,6 @@ impl SimpleComponent for MainWindow {
                         set_hexpand: true,
                     },
 
-                    model.cfg_selector.widget(),
                     model.input_pdf_selector.widget(),
                     model.output_selector.widget(),
 
@@ -131,21 +126,8 @@ impl SimpleComponent for MainWindow {
                 self.extractor.emit(extractor_input);
             }
             Input::ImportTemplate(tmpl) => {
-                // TODO
-                log::info!("TODO use the `tmpl`: {:?}", tmpl);
+                self.extractor.emit(extract::Input::Template(Some(tmpl)));
             }
-            Input::ImportConfig(config_opt) => match config_opt {
-                Some((cfg_io, config)) => {
-                    self.input_pdf_selector
-                        .emit(inputpdf::Input::SelectedConfig(Some(config)));
-                    self.extractor.emit(extract::Input::ConfigIo(Some(cfg_io)));
-                }
-                None => {
-                    self.input_pdf_selector
-                        .emit(inputpdf::Input::SelectedConfig(None));
-                    self.extractor.emit(extract::Input::ConfigIo(None));
-                }
-            },
             Input::MainMenuAction(action) => {
                 self.handle_menu_action(action);
             }
@@ -162,16 +144,6 @@ impl SimpleComponent for MainWindow {
                 .transient_for(&root)
                 .launch(())
                 .forward(sender.input_sender(), |_| Input::Noop),
-            cfg_selector: cfgselect::ConfigSelector::builder()
-                .launch(cfgselect::Init {
-                    xdg_dirs: init.xdg_dirs.clone(),
-                    default_config: init.default_config,
-                })
-                .forward(sender.input_sender(), |msg| match msg {
-                    cfgselect::Output::SelectedConfig(config_opt) => {
-                        Input::ImportConfig(config_opt)
-                    }
-                }),
             tmpl_importer: tmplimport::TemplateImporter::builder().launch(()).forward(
                 sender.input_sender(),
                 |msg| {
@@ -189,9 +161,6 @@ impl SimpleComponent for MainWindow {
                 .forward(sender.input_sender(), |msg| match msg {
                     inputpdf::Output::SelectedInputPdf(input_pdf) => {
                         Input::ExtractorInput(extract::Input::InputPdf(input_pdf))
-                    }
-                    inputpdf::Output::SelectedBookId(book_id) => {
-                        Input::ExtractorInput(extract::Input::BookId(book_id))
                     }
                 }),
             output_selector: outputselect::OutputSelector::builder()

@@ -19,7 +19,7 @@ pub fn apply_transforms(transforms: &[TableTransform], table: Table) -> Result<T
     Ok(rows)
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 /// Supported table transformation operations.
 pub enum TableTransform {
     ExpandColumnOnRegex(ExpandColumnOnRegex),
@@ -44,7 +44,7 @@ fn transform(cfg: &TableTransform, table: Table) -> Result<Table> {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 /// Splits a column by the matches of a regex.
 pub struct ExpandColumnOnRegex {
     pub column: usize,
@@ -108,7 +108,7 @@ fn expand_column_on_regex(cfg: &ExpandColumnOnRegex, mut table: Table) -> Result
     Ok(table)
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(transparent)]
 /// Folds rows, according to the given sequence of groupings.
 pub struct FoldRows {
@@ -160,7 +160,7 @@ fn fold_rows(cfg: &FoldRows, table: Table) -> Table {
     table_out
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 /// Joins a range of columns.
 pub struct JoinColumns {
     #[serde(default = "Default::default")]
@@ -192,7 +192,7 @@ fn join_columns(cfg: &JoinColumns, mut table: Table) -> Table {
     table
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(transparent)]
 /// Appends given literal row values to the start of a table.
 pub struct PrependRow(pub Vec<String>);
@@ -202,7 +202,7 @@ fn prepend_row(cfg: &PrependRow, mut table: Table) -> Table {
     table
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 /// Transposes the table (rows become columns and vice versa).
 pub struct Transpose {}
 
@@ -228,14 +228,14 @@ fn transpose(table: Table) -> Table {
     out_table
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 /// Splits a column on a pattern.
 pub struct SplitColumn {
     pub column: usize,
     pub pattern: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(transparent)]
 /// Wraps a row every N columns.
 pub struct WrapRowEveryN {

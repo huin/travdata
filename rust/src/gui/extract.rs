@@ -7,7 +7,7 @@ use relm4::{
     SimpleComponent,
 };
 
-use crate::{extraction::bookextract, filesio::FileIoPath};
+use crate::{extraction::bookextract2, filesio::FileIoPath, template};
 
 use super::workers::extractor;
 
@@ -15,10 +15,9 @@ use super::workers::extractor;
 #[derive(Debug)]
 pub enum Input {
     // External:
-    ConfigIo(Option<FileIoPath>),
+    Template(Option<template::Book>),
     #[allow(clippy::enum_variant_names)]
     InputPdf(Option<PathBuf>),
-    BookId(Option<String>),
     OutputIo(Option<FileIoPath>),
 
     // Internal:
@@ -29,9 +28,8 @@ pub enum Input {
 }
 
 pub struct Extractor {
-    cfg_io: Option<FileIoPath>,
+    tmpl: Option<template::Book>,
     input_pdf: Option<PathBuf>,
-    book_id: Option<String>,
     out_io: Option<FileIoPath>,
 
     progress: Option<Progress>,
@@ -43,27 +41,19 @@ pub struct Extractor {
 
 impl Extractor {
     fn is_extraction_ready(&self) -> bool {
-        self.cfg_io.is_some()
-            && self.input_pdf.is_some()
-            && self.book_id.is_some()
-            && self.out_io.is_some()
+        self.tmpl.is_some() && self.input_pdf.is_some() && self.out_io.is_some()
     }
 
     fn form_request(&self) -> Result<extractor::Request> {
-        let cfg_io = self
-            .cfg_io
+        let tmpl = self
+            .tmpl
             .as_ref()
-            .ok_or_else(|| anyhow!("Config is not set."))?
+            .ok_or_else(|| anyhow!("Extraction template is not set."))?
             .clone();
         let input_pdf = self
             .input_pdf
             .as_ref()
             .ok_or_else(|| anyhow!("Input PDF is not set."))?
-            .clone();
-        let book_id = self
-            .book_id
-            .as_ref()
-            .ok_or_else(|| anyhow!("Book ID is not set."))?
             .clone();
         let out_io = self
             .out_io
@@ -72,9 +62,8 @@ impl Extractor {
             .clone();
 
         Ok(extractor::Request {
-            cfg_io,
+            tmpl,
             input_pdf,
-            book_id,
             out_io,
         })
     }
@@ -150,14 +139,11 @@ impl SimpleComponent for Extractor {
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
-            Input::ConfigIo(cfg_io) => {
-                self.cfg_io = cfg_io;
+            Input::Template(tmpl) => {
+                self.tmpl = tmpl;
             }
             Input::InputPdf(input_pdf) => {
                 self.input_pdf = input_pdf;
-            }
-            Input::BookId(book_id) => {
-                self.book_id = book_id;
             }
             Input::OutputIo(output_io) => {
                 self.out_io = output_io;
@@ -182,7 +168,7 @@ impl SimpleComponent for Extractor {
                 self.worker.sender().emit(extractor::Input::Cancel);
             }
             Input::Progress(extractor::Output::Event(event)) => match event {
-                bookextract::ExtractEvent::Progress {
+                bookextract2::ExtractEvent::Progress {
                     path,
                     completed,
                     total,
@@ -194,25 +180,25 @@ impl SimpleComponent for Extractor {
                     });
                     self.scroll_to_end_of_log();
                 }
-                bookextract::ExtractEvent::Error {
+                bookextract2::ExtractEvent::Error {
                     err,
                     terminal: false,
                 } => {
                     log_message_error(writeln!(self.log_buffer, "Extraction failed: {:?}", err));
                     self.scroll_to_end_of_log();
                 }
-                bookextract::ExtractEvent::Error {
+                bookextract2::ExtractEvent::Error {
                     err,
                     terminal: true,
                 } => {
                     log_message_error(writeln!(self.log_buffer, "Error (continuing): {:?}", err));
                     self.scroll_to_end_of_log();
                 }
-                bookextract::ExtractEvent::Completed => {
+                bookextract2::ExtractEvent::Completed => {
                     log_message_error(writeln!(self.log_buffer, "Extraction complete."));
                     self.scroll_to_end_of_log();
                 }
-                bookextract::ExtractEvent::Cancelled => {
+                bookextract2::ExtractEvent::Cancelled => {
                     log_message_error(writeln!(self.log_buffer, "Extraction cancelled."));
                     self.scroll_to_end_of_log();
                 }
@@ -241,9 +227,8 @@ impl SimpleComponent for Extractor {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let mut model = Self {
-            cfg_io: None,
+            tmpl: None,
             input_pdf: None,
-            book_id: None,
             out_io: None,
 
             progress: None,

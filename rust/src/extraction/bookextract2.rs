@@ -21,7 +21,7 @@ use crate::{filesio::ReadWriter, table::Table, template};
 pub struct Extractor<'a> {
     tabula_client: &'a dyn TableReader,
     estrn: ESTransformer,
-    tmpl: template::Book,
+    tmpl: &'a template::Book,
 }
 
 /// Specifies a book's tables to be extracted by [Extractor::extract_book].
@@ -76,7 +76,7 @@ pub trait ExtractEvents {
 
 impl<'a> Extractor<'a> {
     /// Create a new [Extractor].
-    pub fn new(tmpl: template::Book, tabula_client: &'a dyn TableReader) -> Result<Self> {
+    pub fn new(tmpl: &'a template::Book, tabula_client: &'a dyn TableReader) -> Result<Self> {
         let mut estrn = ESTransformer::new();
         run_ecma_scripts(&mut estrn, &tmpl.scripts)?;
 

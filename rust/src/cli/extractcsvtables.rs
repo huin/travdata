@@ -68,7 +68,7 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
     let tmpl = cmd.template.load_template()?;
 
     let table_reader = cmd.table_reader.build(&xdg_dirs)?;
-    let extractor = Extractor::new(tmpl, table_reader.as_ref())?;
+    let extractor = Extractor::new(&tmpl, table_reader.as_ref())?;
 
     let output_type = filesio::IoType::resolve_auto(cmd.output_type, &cmd.output);
     let out_writer = output_type

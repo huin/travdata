@@ -7,9 +7,10 @@ use anyhow::{anyhow, Context, Result};
 use relm4::Worker;
 
 use crate::{
-    extraction::{bookextract, pdf::TableReader},
+    extraction::{bookextract2, pdf::TableReader},
     filesio::FileIoPath,
     gui::util,
+    template,
 };
 
 /// Initialisation data for [ExtractorWorker].
@@ -20,9 +21,8 @@ pub struct Init {
 /// Specifies an extraction for [ExtractorWorker] to perform.
 #[derive(Debug)]
 pub struct Request {
-    pub cfg_io: FileIoPath,
+    pub tmpl: template::Book,
     pub input_pdf: PathBuf,
-    pub book_id: String,
     pub out_io: FileIoPath,
 }
 
@@ -39,8 +39,8 @@ pub enum Input {
 /// Output messages for [ExtractorWorker].
 #[derive(Debug)]
 pub enum Output {
-    /// Relays events from [bookextract::ExtractEvent].
-    Event(bookextract::ExtractEvent),
+    /// Relays events from [bookextract2::ExtractEvent].
+    Event(bookextract2::ExtractEvent),
     /// Indicates a failure to start the extraction process. This will be the only event emitted
     /// for the work.
     Failure(anyhow::Error),
@@ -196,29 +196,21 @@ impl Work {
     }
 
     fn run_inner(&mut self, table_reader: &dyn TableReader) -> Result<()> {
-        let cfg_reader = self
-            .request
-            .cfg_io
-            .new_reader()
-            .with_context(|| "Opening configuration reader.")?;
         let out_writer = self
             .request
             .out_io
             .new_read_writer()
             .with_context(|| "Opening output writer.")?;
-        let mut extractor = bookextract::Extractor::new(table_reader, cfg_reader, out_writer)
+        let extractor = bookextract2::Extractor::new(&self.request.tmpl, table_reader)
             .with_context(|| "Preparing extractor.")?;
 
-        let spec = bookextract::ExtractSpec {
-            book_name: &self.request.book_id,
+        let spec = bookextract2::ExtractSpec {
             input_pdf: &self.request.input_pdf,
             overwrite_existing: true,
             with_tags: &[],
             without_tags: &[],
         };
-        extractor.extract_book(spec, &mut self.sender);
-
-        extractor.close()?;
+        extractor.extract_book(spec, &mut self.sender, out_writer.as_ref());
 
         Ok(())
     }
@@ -237,9 +229,9 @@ impl WorkEventSender {
     }
 }
 
-impl bookextract::ExtractEvents for WorkEventSender {
-    fn on_event(&mut self, event: bookextract::ExtractEvent) {
-        if let &bookextract::ExtractEvent::Completed = &event {
+impl bookextract2::ExtractEvents for WorkEventSender {
+    fn on_event(&mut self, event: bookextract2::ExtractEvent) {
+        if let &bookextract2::ExtractEvent::Completed = &event {
             self.component_sender.input(Input::Ended);
         }
         if let Err(err) = self.component_sender.output(Output::Event(event)) {

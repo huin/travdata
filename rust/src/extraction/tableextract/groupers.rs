@@ -6,7 +6,7 @@ use crate::table::Row;
 
 use super::internal::RowIterator;
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 /// Suported configuring row grouping operations.
 pub enum RowGrouper {
     AllRows(AllRows),
@@ -23,7 +23,7 @@ pub fn group_rows(cfg: &RowGrouper, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 /// Specifies to group all remaining rows.
 pub struct AllRows {}
 
@@ -31,7 +31,7 @@ fn all_rows(rows: &mut Box<RowIterator>) -> Vec<Vec<Row>> {
     vec![rows.collect()]
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(transparent)]
 /// Specifies to group rows by when a given column is empty.
 pub struct EmptyColumn {
@@ -59,7 +59,7 @@ fn empty_column(cfg: &EmptyColumn, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>>
     groups
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(transparent)]
 /// Specifies explicit input row counts for output grouped rows.
 pub struct StaticRowCounts {
