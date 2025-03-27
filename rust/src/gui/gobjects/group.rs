@@ -1,6 +1,6 @@
 use gtk::{gio, glib};
 
-use crate::config::book;
+use crate::template;
 
 glib::wrapper! {
     pub struct GroupGObject(ObjectSubclass<imp::GroupGObject>);
@@ -11,12 +11,12 @@ impl GroupGObject {
         glib::Object::builder().property("name", name).build()
     }
 
-    pub fn root_list_store_from_yaml_group(yaml_group: &book::YamlGroup) -> gio::ListStore {
-        yaml_group
+    pub fn root_list_store_from_group(group: &template::Group) -> gio::ListStore {
+        group
             .groups
             .iter()
-            .map(|(name, yaml_group)| {
-                let group_list_store = Self::root_list_store_from_yaml_group(yaml_group);
+            .map(|(name, group)| {
+                let group_list_store = Self::root_list_store_from_group(group);
                 GroupGObject::new_with_groups(name, group_list_store)
             })
             .collect()

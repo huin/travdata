@@ -5,19 +5,19 @@ use gtk::{
 use relm4::{Component, ComponentParts, ComponentSender};
 
 use crate::{
-    config::book,
     gui::{gobjects::group::GroupGObject, util},
+    template,
 };
 
 /// Initialisation data for [GroupTreeList].
 pub struct Init {
-    pub yaml_group: Option<book::YamlGroup>,
+    pub group: Option<template::Group>,
 }
 
 /// Input messages for [GroupTreeList].
 #[derive(Debug)]
 pub enum Input {
-    LoadRootGroup(Option<book::YamlGroup>),
+    LoadRootGroup(Option<template::Group>),
 }
 
 /// Output messages for [GroupTreeList].
@@ -26,9 +26,9 @@ pub enum Output {
     ActivatedRow(GroupGObject),
 }
 
-/// Component to view a hierarchy of [book::YamlGroup].
+/// Component to view a hierarchy of [template::Group].
 ///
-/// It emits [GroupGObject] values that are copies of the original [book::YamlGroup].
+/// It emits [GroupGObject] values that are copies of the original [template::Group].
 pub struct GroupTreeList {}
 
 impl Component for GroupTreeList {
@@ -51,7 +51,7 @@ impl Component for GroupTreeList {
         root.set_hexpand(true);
         root.set_vexpand(true);
 
-        let selection_model = create_model(init.yaml_group);
+        let selection_model = create_model(init.group);
         root.set_model(Some(&selection_model));
 
         let expander_col = expander_column();
@@ -97,9 +97,9 @@ impl Component for GroupTreeList {
     }
 }
 
-fn create_model(yaml_group: Option<book::YamlGroup>) -> gtk::SingleSelection {
-    let root_model = match yaml_group {
-        Some(yaml_group) => GroupGObject::root_list_store_from_yaml_group(&yaml_group),
+fn create_model(group: Option<template::Group>) -> gtk::SingleSelection {
+    let root_model = match group {
+        Some(group) => GroupGObject::root_list_store_from_group(&group),
         None => gio::ListStore::new::<GroupGObject>(),
     };
     let tree_model = gtk::TreeListModel::new(root_model, false, false, |item| {
