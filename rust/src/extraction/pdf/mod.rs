@@ -34,6 +34,8 @@ pub trait TableReader {
         table_portion: &template::TablePortion,
     ) -> Result<ExtractedTable>;
 
+    // TODO: Add a batch read function, and make use of it in [crate::bookextract].
+
     /// Shuts down the [TableReader], flushing any resources that it was using.
     fn close(self: Box<Self>) -> Result<()>;
 }
