@@ -7,7 +7,7 @@ use relm4::{
     SimpleComponent,
 };
 
-use crate::{extraction::bookextract2, filesio::FileIoPath, template};
+use crate::{extraction::bookextract, filesio::FileIoPath, template};
 
 use super::workers::extractor;
 
@@ -168,7 +168,7 @@ impl SimpleComponent for Extractor {
                 self.worker.sender().emit(extractor::Input::Cancel);
             }
             Input::Progress(extractor::Output::Event(event)) => match event {
-                bookextract2::ExtractEvent::Progress {
+                bookextract::ExtractEvent::Progress {
                     path,
                     completed,
                     total,
@@ -180,25 +180,25 @@ impl SimpleComponent for Extractor {
                     });
                     self.scroll_to_end_of_log();
                 }
-                bookextract2::ExtractEvent::Error {
+                bookextract::ExtractEvent::Error {
                     err,
                     terminal: false,
                 } => {
                     log_message_error(writeln!(self.log_buffer, "Extraction failed: {:?}", err));
                     self.scroll_to_end_of_log();
                 }
-                bookextract2::ExtractEvent::Error {
+                bookextract::ExtractEvent::Error {
                     err,
                     terminal: true,
                 } => {
                     log_message_error(writeln!(self.log_buffer, "Error (continuing): {:?}", err));
                     self.scroll_to_end_of_log();
                 }
-                bookextract2::ExtractEvent::Completed => {
+                bookextract::ExtractEvent::Completed => {
                     log_message_error(writeln!(self.log_buffer, "Extraction complete."));
                     self.scroll_to_end_of_log();
                 }
-                bookextract2::ExtractEvent::Cancelled => {
+                bookextract::ExtractEvent::Cancelled => {
                     log_message_error(writeln!(self.log_buffer, "Extraction cancelled."));
                     self.scroll_to_end_of_log();
                 }

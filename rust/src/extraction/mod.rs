@@ -1,4 +1,4 @@
-pub mod bookextract2;
+pub mod bookextract;
 mod index;
 pub mod parseutil;
 pub mod pdf;

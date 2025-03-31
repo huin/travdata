@@ -7,7 +7,7 @@ use anyhow::{anyhow, Context, Result};
 use relm4::Worker;
 
 use crate::{
-    extraction::{bookextract2, pdf::TableReader},
+    extraction::{bookextract, pdf::TableReader},
     filesio::FileIoPath,
     gui::util,
     template,
@@ -39,8 +39,8 @@ pub enum Input {
 /// Output messages for [ExtractorWorker].
 #[derive(Debug)]
 pub enum Output {
-    /// Relays events from [bookextract2::ExtractEvent].
-    Event(bookextract2::ExtractEvent),
+    /// Relays events from [bookextract::ExtractEvent].
+    Event(bookextract::ExtractEvent),
     /// Indicates a failure to start the extraction process. This will be the only event emitted
     /// for the work.
     Failure(anyhow::Error),
@@ -201,10 +201,10 @@ impl Work {
             .out_io
             .new_read_writer()
             .with_context(|| "Opening output writer.")?;
-        let extractor = bookextract2::Extractor::new(&self.request.tmpl, table_reader)
+        let extractor = bookextract::Extractor::new(&self.request.tmpl, table_reader)
             .with_context(|| "Preparing extractor.")?;
 
-        let spec = bookextract2::ExtractSpec {
+        let spec = bookextract::ExtractSpec {
             input_pdf: &self.request.input_pdf,
             overwrite_existing: true,
             with_tags: &[],
@@ -229,9 +229,9 @@ impl WorkEventSender {
     }
 }
 
-impl bookextract2::ExtractEvents for WorkEventSender {
-    fn on_event(&mut self, event: bookextract2::ExtractEvent) {
-        if let &bookextract2::ExtractEvent::Completed = &event {
+impl bookextract::ExtractEvents for WorkEventSender {
+    fn on_event(&mut self, event: bookextract::ExtractEvent) {
+        if let &bookextract::ExtractEvent::Completed = &event {
             self.component_sender.input(Input::Ended);
         }
         if let Err(err) = self.component_sender.output(Output::Event(event)) {

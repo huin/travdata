@@ -9,7 +9,7 @@ use simple_bar::ProgressBar;
 
 use crate::{
     extraction::{
-        bookextract2::{self, ExtractEvents, ExtractSpec, Extractor},
+        bookextract::{self, ExtractEvents, ExtractSpec, Extractor},
         pdf::TableReaderArgs,
     },
     filesio,
@@ -114,9 +114,9 @@ impl EventDisplayer {
 }
 
 impl ExtractEvents for EventDisplayer {
-    fn on_event(&mut self, event: bookextract2::ExtractEvent) {
+    fn on_event(&mut self, event: bookextract::ExtractEvent) {
         match event {
-            bookextract2::ExtractEvent::Progress {
+            bookextract::ExtractEvent::Progress {
                 path: _,
                 completed: _,
                 total,
@@ -135,22 +135,22 @@ impl ExtractEvents for EventDisplayer {
                 };
                 progress_bar.update();
             }
-            bookextract2::ExtractEvent::Error {
+            bookextract::ExtractEvent::Error {
                 err,
                 terminal: false,
             } => {
                 eprintln!("Error (continuing): {:?}.", err);
             }
-            bookextract2::ExtractEvent::Error {
+            bookextract::ExtractEvent::Error {
                 err,
                 terminal: true,
             } => {
                 eprintln!("Extraction failed: {:?}.", err);
             }
-            bookextract2::ExtractEvent::Completed => {
+            bookextract::ExtractEvent::Completed => {
                 eprintln!("Extraction complete.");
             }
-            bookextract2::ExtractEvent::Cancelled => {
+            bookextract::ExtractEvent::Cancelled => {
                 eprintln!("Extraction cancelled.");
             }
         }
