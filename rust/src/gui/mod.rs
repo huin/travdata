@@ -1,6 +1,8 @@
 mod components;
 mod extract;
 mod extractionlist;
+// TODO: Enable when need editor.
+#[allow(dead_code)]
 mod gobjects;
 mod inputpdf;
 mod main;
