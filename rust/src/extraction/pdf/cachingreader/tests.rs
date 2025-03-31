@@ -128,7 +128,6 @@ fn get_table_cache_path(tempdir: &Path) -> PathBuf {
 }
 
 const TABLE_PORTION_1: template::TablePortion = template::TablePortion {
-    key: None,
     extraction_method: template::TabulaExtractionMethod::Lattice,
     page: 1,
     rect: template::PDFRect {
@@ -140,7 +139,6 @@ const TABLE_PORTION_1: template::TablePortion = template::TablePortion {
 };
 
 const TABLE_PORTION_2: template::TablePortion = template::TablePortion {
-    key: None,
     extraction_method: template::TabulaExtractionMethod::Stream,
     page: 2,
     rect: template::PDFRect {

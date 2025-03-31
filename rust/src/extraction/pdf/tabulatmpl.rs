@@ -73,7 +73,6 @@ impl From<template::TablePortion> for TemplateEntry {
 impl From<TemplateEntry> for template::TablePortion {
     fn from(value: TemplateEntry) -> Self {
         Self {
-            key: None,
             extraction_method: value.extraction_method.into(),
             page: value.page,
             rect: template::PDFRect {

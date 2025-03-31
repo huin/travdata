@@ -59,9 +59,6 @@ pub struct Table {
 /// Single raw region of tabular data to extract.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct TablePortion {
-    /// Optional key to include to identify the portion when being processed by the
-    /// [Table] `transform` function.
-    pub key: Option<String>,
     pub extraction_method: TabulaExtractionMethod,
     /// Zero-based index of the page to extract data from.
     pub page: i32,
