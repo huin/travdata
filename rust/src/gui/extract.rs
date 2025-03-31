@@ -158,7 +158,9 @@ impl SimpleComponent for Extractor {
                         text: "Starting extraction...".to_string(),
                         fraction: 0.0,
                     });
-                    self.worker.sender().emit(extractor::Input::Start(request));
+                    self.worker
+                        .sender()
+                        .emit(extractor::Input::Start(Box::new(request)));
                 }
                 Err(err) => {
                     log::warn!("Could not start start extraction: {:?}", err);

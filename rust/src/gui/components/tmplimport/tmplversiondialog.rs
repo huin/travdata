@@ -66,7 +66,7 @@ impl SimpleComponent for TemplateVersionDialog {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let variants = serialised::VERSIONS_SUPPORTED.iter().map(|s| *s).collect();
+        let variants = serialised::VERSIONS_SUPPORTED.to_vec();
 
         let model = TemplateVersionDialog {
             hidden: true,

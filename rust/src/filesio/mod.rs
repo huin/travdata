@@ -43,13 +43,13 @@ impl<'a> FileRead<'a> {
     }
 }
 
-impl<'a> Debug for FileRead<'a> {
+impl Debug for FileRead<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.delegate.fmt(f)
     }
 }
 
-impl<'a> Read for FileRead<'a> {
+impl Read for FileRead<'_> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         self.delegate.read(buf)
     }
@@ -79,13 +79,13 @@ impl<'a> FileWrite<'a> {
     }
 }
 
-impl<'a> Debug for FileWrite<'a> {
+impl Debug for FileWrite<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.delegate.fmt(f)
     }
 }
 
-impl<'a> Write for FileWrite<'a> {
+impl Write for FileWrite<'_> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.delegate.write(buf)
     }

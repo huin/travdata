@@ -109,7 +109,7 @@ impl Read for ZipFileRead {
     }
 }
 
-impl<'a> FileReadImpl<'a> for ZipFileRead {}
+impl FileReadImpl<'_> for ZipFileRead {}
 
 pub struct ZipReadWriter {
     dest_path: PathBuf,

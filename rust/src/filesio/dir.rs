@@ -101,8 +101,8 @@ impl<'a> ReadWriter<'a> for DirReadWriter {
     }
 }
 
-impl<'a> FileReadImpl<'a> for File {}
-impl<'a> FileWriteImpl<'a> for AtomicWriteFile {
+impl FileReadImpl<'_> for File {}
+impl FileWriteImpl<'_> for AtomicWriteFile {
     fn commit(self: Box<Self>) -> Result<()> {
         (*self).commit()?;
         Ok(())

@@ -30,7 +30,7 @@ pub struct Request {
 #[derive(Debug)]
 pub enum Input {
     // External:
-    Start(Request),
+    Start(Box<Request>),
     Cancel,
     // Internal:
     Ended,
@@ -168,12 +168,15 @@ pub struct WorkChannel {
 }
 
 struct Work {
-    request: Request,
+    request: Box<Request>,
     sender: WorkEventSender,
 }
 
 impl Work {
-    fn new(request: Request, component_sender: relm4::ComponentSender<ExtractorWorker>) -> Self {
+    fn new(
+        request: Box<Request>,
+        component_sender: relm4::ComponentSender<ExtractorWorker>,
+    ) -> Self {
         Self {
             request,
             sender: WorkEventSender {

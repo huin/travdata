@@ -80,7 +80,7 @@ impl Worker for TemplateLoader {
 
         let output: Output = match output_result {
             Ok(output) => output,
-            Err(err) => Output::LoadError(err.into()),
+            Err(err) => Output::LoadError(err),
         };
 
         util::send_output_or_log(output, "template load output", &sender);
