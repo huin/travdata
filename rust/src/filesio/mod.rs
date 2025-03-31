@@ -271,12 +271,6 @@ pub struct FileIoPath {
 }
 
 impl FileIoPath {
-    /// Create a [FileIoPath] with automatically selected [IoType].
-    pub fn for_auto(path: PathBuf) -> Self {
-        let io_type = IoType::resolve_auto(None, &path);
-        Self { io_type, path }
-    }
-
     /// Create a [FileIoPath] with type [IoType::Dir].
     pub fn for_dir(path: PathBuf) -> Self {
         Self {

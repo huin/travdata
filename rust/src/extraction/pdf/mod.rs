@@ -27,30 +27,6 @@ pub struct ExtractedTable {
 pub trait TableReader {
     /// Reads table(s) from a PDF, based on the Tabula template.
     /// * `pdf_path` Path to PDF to read from.
-    /// * `template_json` Raw JSON-encoded contents of the Tabula template file.
-    fn read_pdf_with_template(
-        &self,
-        pdf_path: &Path,
-        template_json: &str,
-    ) -> Result<ExtractedTables> {
-        // TODO: Remove this method from the trait in favour of `read_table_portion`.
-
-        let tab_tmpl = tabulatmpl::Template::from_json(template_json)
-            .with_context(|| format!("loading Tabula template in {:?}", template_json))?;
-
-        let mut tables: Vec<ExtractedTable> = Vec::with_capacity(tab_tmpl.0.len());
-
-        for tab_entry in tab_tmpl.0 {
-            let table_portion: template::TablePortion = tab_entry.into();
-            let table = self.read_table_portion(pdf_path, &table_portion)?;
-            tables.push(table);
-        }
-
-        Ok(ExtractedTables(tables))
-    }
-
-    /// Reads table(s) from a PDF, based on the Tabula template.
-    /// * `pdf_path` Path to PDF to read from.
     /// * `table_portion` region of the PDF to extract.
     fn read_table_portion(
         &self,

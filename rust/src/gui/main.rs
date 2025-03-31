@@ -9,7 +9,6 @@ use gtk::Application;
 use relm4::RelmApp;
 
 use crate::{
-    distpaths,
     extraction::pdf::pdfiumthread::{PdfiumClient, PdfiumServer},
     gui::{self, mainmenu, workers},
     mpscutil,
@@ -35,7 +34,6 @@ pub fn run(
             gtk_options,
             gui::mainwin::Init {
                 xdg_dirs: Arc::new(xdg_dirs),
-                default_config: distpaths::config_zip(),
                 pdfium_client,
                 worker_channel: worker.worker_channel(),
             },

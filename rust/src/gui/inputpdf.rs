@@ -1,8 +1,4 @@
-use std::{
-    fmt::{Debug, Display},
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{path::PathBuf, sync::Arc};
 
 use gtk::prelude::{FrameExt, GridExt, WidgetExt};
 use relm4::{
@@ -13,7 +9,7 @@ use relm4_components::{
     open_dialog::OpenDialogSettings,
 };
 
-use crate::{config::root, gui::util};
+use crate::gui::util;
 
 /// Input messages for [InputPdfSelector].
 #[derive(Debug)]
@@ -130,56 +126,5 @@ impl SimpleComponent for InputPdfSelector {
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
-    }
-}
-
-struct BookEntry {
-    book_cfg: Option<Arc<root::Book>>,
-}
-
-impl BookEntry {
-    fn unselected() -> Self {
-        Self { book_cfg: None }
-    }
-
-    fn id_opt(&self) -> Option<&str> {
-        self.book_cfg.as_ref().map(|book_cfg| book_cfg.id.as_ref())
-    }
-
-    fn name_opt(&self) -> Option<&str> {
-        self.book_cfg
-            .as_ref()
-            .map(|book_cfg| book_cfg.name.as_ref())
-    }
-
-    fn filename_matches(&self, filename: &str) -> bool {
-        match &self.book_cfg {
-            Some(book_cfg) => book_cfg.default_filename == filename,
-            None => false,
-        }
-    }
-}
-
-impl Debug for BookEntry {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.book_cfg {
-            Some(book_cfg) => f
-                .debug_struct("BookEntry")
-                .field("book_cfg.id", &book_cfg.id)
-                .finish(),
-            None => f
-                .debug_struct("BookEntry")
-                .field("book_cfg", &"None")
-                .finish(),
-        }
-    }
-}
-
-impl Display for BookEntry {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.book_cfg {
-            Some(book_cfg) => f.write_str(&book_cfg.name),
-            None => f.write_str("<unselected>"),
-        }
     }
 }

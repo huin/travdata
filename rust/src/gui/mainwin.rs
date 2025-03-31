@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use gtk::prelude::*;
 use relm4::prelude::*;
@@ -31,7 +31,6 @@ pub enum Input {
 /// Initialisation parameters for [MainWindow].
 pub struct Init {
     pub xdg_dirs: Arc<xdg::BaseDirectories>,
-    pub default_config: Option<PathBuf>,
     pub pdfium_client: PdfiumClient,
     pub worker_channel: workers::extractor::WorkChannel,
 }

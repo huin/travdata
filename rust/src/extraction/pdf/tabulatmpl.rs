@@ -1,4 +1,3 @@
-use anyhow::Result;
 use serde::Deserialize;
 
 use crate::template;
@@ -6,13 +5,6 @@ use crate::template;
 #[derive(Deserialize, Debug)]
 #[serde(transparent)]
 pub struct Template(pub Vec<TemplateEntry>);
-
-impl Template {
-    pub fn from_json(template_json: &str) -> Result<Self> {
-        let tmpl = serde_json::from_str(template_json)?;
-        Ok(tmpl)
-    }
-}
 
 #[derive(Clone, Copy, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
