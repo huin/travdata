@@ -14,6 +14,12 @@ pub enum TableTransform {
     ESTransform(ESTransform),
 }
 
+impl Default for TableTransform {
+    fn default() -> Self {
+        TableTransform::LegacyTransformSeq(LegacyTransformSeq::default())
+    }
+}
+
 #[derive(Clone, Deserialize, Debug, Default)]
 #[serde(transparent)]
 /// Configures the specifics of extracting the CSV from the PDF.
