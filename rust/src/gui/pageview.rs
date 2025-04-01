@@ -6,13 +6,12 @@ use anyhow::Result;
 use gtk::cairo;
 use gtk::gdk::RGBA;
 use gtk::gdk_pixbuf::Pixbuf;
-use gtk::glib::property::PropertySet;
 use gtk::prelude::{
     DrawingAreaExt, DrawingAreaExtManual, FrameExt, GdkCairoContextExt, OrientableExt, WidgetExt,
 };
 use relm4::{
-    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
-    SimpleComponent,
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, SimpleComponent,
+    gtk,
 };
 
 use crate::extraction::pdf::pdfiumthread::PdfiumClient;
@@ -227,7 +226,8 @@ impl Renderer {
     }
 
     fn set_page_pixbuf(&self, page_pixbuf: Option<Pixbuf>) {
-        self.page_pixbuf.set(page_pixbuf);
+        let mut guard = self.page_pixbuf.lock().unwrap();
+        *guard = page_pixbuf;
     }
 
     fn width(&self) -> i32 {
