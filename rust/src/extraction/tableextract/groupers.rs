@@ -42,7 +42,7 @@ fn empty_column(cfg: &EmptyColumn, rows: &mut Box<RowIterator>) -> Vec<Vec<Row>>
     let mut groups: Vec<Vec<Row>> = Vec::new();
     let mut group: Vec<Row> = Vec::new();
     for row in rows {
-        if row.0.get(cfg.column_index).map_or(true, String::is_empty) {
+        if row.0.get(cfg.column_index).is_none_or(String::is_empty) {
             // Cell is empty or absent - continues the group:
             group.push(row);
         } else {
