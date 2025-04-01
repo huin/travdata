@@ -157,6 +157,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "atree"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "132573478eb9ff973c6f75d0ed425ac12da77d266506483345f46743ecc83a98"
+
+[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2933,6 +2939,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "atomic-write-file",
+ "atree",
  "borsh",
  "clap",
  "csv",
@@ -2959,6 +2966,7 @@ dependencies = [
  "tabula",
  "tempfile",
  "test-casing",
+ "undo",
  "v8",
  "walkdir",
  "xdg",
@@ -2970,6 +2978,16 @@ name = "typenum"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
+
+[[package]]
+name = "undo"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1dfbb202cb07dd2a685c765aa040db18d8a0dbe7079cf57c275833521f67653"
+dependencies = [
+ "serde",
+ "slab",
+]
 
 [[package]]
 name = "unicode-ident"

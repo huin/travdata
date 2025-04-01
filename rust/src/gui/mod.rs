@@ -10,6 +10,7 @@ mod mainmenu;
 mod mainwin;
 mod outputselect;
 mod pageview;
+mod tmplmodel;
 mod treelist;
 mod util;
 mod workers;
