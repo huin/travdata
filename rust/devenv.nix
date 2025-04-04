@@ -22,12 +22,8 @@ in
     pdfium-binaries
   ];
 
-  # https://devenv.sh/scripts/
-  scripts.hello.exec = "echo hello from $GREET";
-
   enterShell = ''
-    hello
-    git --version
+    echo "pdfium-binaries version is ${pkgs.pdfium-binaries.version}."
   '';
 
   # https://devenv.sh/tests/

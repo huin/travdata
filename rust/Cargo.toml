@@ -39,10 +39,13 @@ version = "3.4.1"
 features = ["std"]
 
 [dependencies.pdfium-render]
+# TODO: Check if we need to use feature thread_safe. For now we're serialising
+# access into a single worker thread.
 version = "0.8.29"
-# Check if we need to use feature thread_safe. For now we're serialising access
-# into a single worker thread.
-features = ["image", "static"]
+default-features = false
+# Select the matching pdfium_xxxx feature for the build being linked against.
+# Match the image_xxx feature against the `image` crate being used.
+features = ["image_025", "pdfium_6721", "static"]
 
 [dependencies.simplelog]
 version = "0.12.2"
