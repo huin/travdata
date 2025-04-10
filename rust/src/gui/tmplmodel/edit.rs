@@ -1,3 +1,5 @@
+use std::mem::swap;
+
 use super::*;
 
 /// A discrete change to an open [Document].
@@ -63,5 +65,47 @@ impl undo::Edit for Edit {
         }
 
         Ok(())
+    }
+
+    fn merge(&mut self, mut other: Self) -> undo::Merged<Self>
+    where
+        Self: Sized,
+    {
+        // TODO: Decide if implementing `merge` is worth the trouble.
+        use Edit::*;
+
+        match (self, &mut other) {
+            (
+                SetTableName {
+                    table,
+                    new_name,
+                    old_name,
+                },
+                SetTableName {
+                    table: new_table,
+                    new_name: new_new_name,
+                    old_name: _,
+                },
+            ) if table == new_table && new_new_name != old_name => {
+                swap(new_name, new_new_name);
+                undo::Merged::Yes
+            }
+            (
+                SetGroupName {
+                    group,
+                    new_name,
+                    old_name,
+                },
+                SetGroupName {
+                    group: new_group,
+                    new_name: new_new_name,
+                    old_name: _,
+                },
+            ) if group == new_group && new_new_name != old_name => {
+                swap(new_name, new_new_name);
+                undo::Merged::Yes
+            }
+            _ => undo::Merged::No(other),
+        }
     }
 }
