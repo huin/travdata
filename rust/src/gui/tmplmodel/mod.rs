@@ -47,6 +47,10 @@ impl DocumentRc {
         self.get_mut_doc().redo()
     }
 
+    pub fn get_book(&self) -> Book {
+        Book { doc: self.clone() }
+    }
+
     pub fn new_table(&self, table_data: TableData) -> Table {
         let mut doc = self.get_mut_doc();
         let token = doc.state.allocs.new_table(table_data);
@@ -110,7 +114,7 @@ impl Document {
 
 pub struct DocumentState {
     allocs: DocumentAllocs,
-    book: Book,
+    book: BookData,
 }
 
 impl DocumentState {
@@ -121,7 +125,7 @@ impl DocumentState {
             tags: HashSet::new(),
             tables: Vec::new(),
         });
-        let book = Book::new(root_group);
+        let book = BookData::new(root_group);
 
         Self { allocs, book }
     }
@@ -180,25 +184,35 @@ impl DocumentAllocs {
     }
 }
 
+#[derive(Clone)]
 pub struct Book {
+    doc: DocumentRc,
+}
+
+impl Book {
+    pub fn get_root_group(&self) -> Group {
+        Group {
+            doc: self.doc.clone(),
+            token: self.doc.get_doc().state.book.root_group,
+        }
+    }
+}
+
+struct BookData {
     scripts: Vec<template::Script>,
     root_group: GroupToken,
 }
 
-impl Book {
+impl BookData {
     fn new(root_group: GroupToken) -> Self {
         Self {
             scripts: Vec::new(),
             root_group,
         }
     }
-
-    pub fn get_root_group(&self) -> GroupToken {
-        self.root_group
-    }
 }
 
-impl std::fmt::Debug for Book {
+impl std::fmt::Debug for BookData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Book").finish()
     }

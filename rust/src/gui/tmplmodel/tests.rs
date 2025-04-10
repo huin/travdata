@@ -34,6 +34,20 @@ fn test_undo_redo() -> Result<()> {
 }
 
 #[googletest::test]
+fn test_book() -> Result<()> {
+    let doc = DocumentRc::new();
+    let book = doc.get_book();
+    let group = book.get_root_group();
+
+    assert_that!(group.get_name()?, eq("root"));
+
+    group.edit_name("new root name".to_string())?;
+    assert_that!(group.get_name()?, eq("new root name"));
+
+    Ok(())
+}
+
+#[googletest::test]
 fn test_edit_table_name() -> Result<()> {
     let doc = DocumentRc::new();
 
