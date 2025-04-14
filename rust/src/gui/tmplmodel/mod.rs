@@ -11,9 +11,9 @@ use std::{
     rc::Rc,
 };
 
-use crate::{extraction::tableextract, template};
+use crate::{clock, extraction::tableextract, template};
 
-use edit::Edit;
+use edit::{Edit, TimestampedEdit};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct GroupToken(atree::Token);
@@ -27,8 +27,13 @@ pub struct TablePortionToken(atree::Token);
 pub struct DocumentRc(Rc<RefCell<Document>>);
 
 impl DocumentRc {
+    pub fn new_with_clock(clock: Rc<dyn clock::Clock>) -> Self {
+        DocumentRc(Rc::new(RefCell::new(Document::new(clock))))
+    }
+
     pub fn new() -> Self {
-        DocumentRc(Rc::new(RefCell::new(Document::new())))
+        let clock = clock::RealClock::new();
+        DocumentRc(Rc::new(RefCell::new(Document::new(Rc::new(clock)))))
     }
 
     fn get_doc(&self) -> Ref<Document> {
@@ -81,22 +86,24 @@ impl std::fmt::Debug for DocumentRc {
 pub struct Document {
     state: DocumentState,
 
+    clock: Rc<dyn clock::Clock>,
+
     /// Linear history of edits, acting as an undo/redo history.
-    edits: undo::Record<Edit, ()>,
+    edits: undo::Record<TimestampedEdit, ()>,
 }
 
 impl Document {
-    fn new() -> Self {
-        let state = DocumentState::new();
-
+    fn new(clock: Rc<dyn clock::Clock>) -> Self {
         Self {
-            state,
+            state: DocumentState::new(),
+            clock,
             edits: Default::default(),
         }
     }
 
     fn apply_edit(&mut self, edit: Edit) -> Result<(), EditError> {
-        self.edits.edit(&mut self.state, edit)
+        let ts_edit = TimestampedEdit::new(self.clock.as_ref().now(), edit);
+        self.edits.edit(&mut self.state, ts_edit)
     }
 
     fn undo(&mut self) -> Result<(), EditError> {

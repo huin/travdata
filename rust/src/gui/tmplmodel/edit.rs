@@ -1,6 +1,74 @@
 use std::mem::swap;
 
+use crate::clock;
+
 use super::*;
+
+/// Maximum time delta between edits that can be merged into a single edit.
+static MAX_MERGE_EDIT_TIME_DELTA: std::sync::Mutex<chrono::TimeDelta> =
+    std::sync::Mutex::<chrono::TimeDelta>::new(chrono::TimeDelta::seconds(10));
+
+pub fn set_max_merge_edit_time_delta(td: chrono::TimeDelta) {
+    let mut td_guard = MAX_MERGE_EDIT_TIME_DELTA.lock().unwrap();
+    *td_guard = td;
+}
+
+pub fn get_max_merge_edit_time_delta() -> chrono::TimeDelta {
+    *MAX_MERGE_EDIT_TIME_DELTA.lock().unwrap()
+}
+
+/// An edit that includes a timestamp.
+///
+/// It will only allow a merge if the timestamps of two [TimestampedEdit]s are within
+/// [get_max_merge_edit_time_delta] of each other.
+pub struct TimestampedEdit {
+    ts: clock::Timestamp,
+    edit: Edit,
+}
+
+impl TimestampedEdit {
+    pub fn new(ts: clock::Timestamp, edit: Edit) -> Self {
+        Self { ts, edit }
+    }
+}
+
+impl undo::Edit for TimestampedEdit {
+    type Target = DocumentState;
+
+    type Output = Result<(), EditError>;
+
+    fn edit(&mut self, target: &mut Self::Target) -> Self::Output {
+        self.edit.edit(target)
+    }
+
+    fn undo(&mut self, target: &mut Self::Target) -> Self::Output {
+        self.edit.undo(target)
+    }
+
+    fn merge(&mut self, other: Self) -> undo::Merged<Self>
+    where
+        Self: Sized,
+    {
+        use undo::Merged::*;
+
+        if other.ts - self.ts > get_max_merge_edit_time_delta() {
+            return No(other);
+        }
+
+        let TimestampedEdit {
+            ts: other_ts,
+            edit: other_edit,
+        } = other;
+        match self.edit.merge(other_edit) {
+            Yes => Yes,
+            No(other_edit) => No(TimestampedEdit {
+                ts: other_ts,
+                edit: other_edit,
+            }),
+            Annul => Annul,
+        }
+    }
+}
 
 /// A discrete change to an open [Document].
 pub enum Edit {
