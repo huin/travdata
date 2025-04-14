@@ -23,11 +23,11 @@ pub fn get_max_merge_edit_time_delta() -> chrono::TimeDelta {
 /// [get_max_merge_edit_time_delta] of each other.
 pub struct TimestampedEdit {
     ts: clock::Timestamp,
-    edit: Edit,
+    edit: EditDocumentState,
 }
 
 impl TimestampedEdit {
-    pub fn new(ts: clock::Timestamp, edit: Edit) -> Self {
+    pub fn new(ts: clock::Timestamp, edit: EditDocumentState) -> Self {
         Self { ts, edit }
     }
 }
@@ -59,53 +59,105 @@ impl undo::Edit for TimestampedEdit {
             ts: other_ts,
             edit: other_edit,
         } = other;
-        match self.edit.merge(other_edit) {
-            Yes => Yes,
-            No(other_edit) => No(TimestampedEdit {
-                ts: other_ts,
-                edit: other_edit,
-            }),
-            Annul => Annul,
-        }
+        map_merge(self.edit.merge(other_edit), |other_edit| TimestampedEdit {
+            ts: other_ts,
+            edit: other_edit,
+        })
     }
 }
 
-/// A discrete change to an open [Document].
-pub enum Edit {
-    SetGroupName {
-        group: GroupToken,
-        new_name: String,
-        old_name: String,
-    },
-    SetTableName {
-        table: TableToken,
-        new_name: String,
-        old_name: String,
-    },
+/// A discrete change to an open [DocumentState].
+pub enum EditDocumentState {
+    Group { group: GroupToken, edit: EditGroup },
+    Table { table: TableToken, edit: EditTable },
 }
 
-impl undo::Edit for Edit {
+impl undo::Edit for EditDocumentState {
     type Target = DocumentState;
 
     type Output = Result<(), EditError>;
 
     fn edit(&mut self, target: &mut Self::Target) -> Self::Output {
-        use Edit::*;
+        use EditDocumentState::*;
 
-        match &self {
-            SetGroupName {
-                group,
-                new_name,
-                old_name: _,
-            } => {
-                target.allocs.get_mut_group(*group)?.name = new_name.clone();
+        match self {
+            Group { group, edit } => {
+                let group = target.allocs.get_mut_group(*group)?;
+                edit.edit(group)
             }
-            SetTableName {
-                table,
-                new_name,
-                old_name: _,
-            } => {
-                target.allocs.get_mut_table(*table)?.name = new_name.clone();
+            Table { table, edit } => {
+                let table = target.allocs.get_mut_table(*table)?;
+                edit.edit(table)
+            }
+        }
+    }
+
+    fn undo(&mut self, target: &mut Self::Target) -> Self::Output {
+        use EditDocumentState::*;
+
+        match self {
+            Group { group, edit } => {
+                let group = target.allocs.get_mut_group(*group)?;
+                edit.undo(group)
+            }
+            Table { table, edit } => {
+                let table = target.allocs.get_mut_table(*table)?;
+                edit.undo(table)
+            }
+        }
+    }
+
+    fn merge(&mut self, other: Self) -> undo::Merged<Self>
+    where
+        Self: Sized,
+    {
+        use EditDocumentState::*;
+
+        match (self, other) {
+            (
+                Group { group, edit },
+                Group {
+                    group: other_group,
+                    edit: other_edit,
+                },
+            ) if group == &other_group => map_merge(edit.merge(other_edit), |other_edit| {
+                EditDocumentState::Group {
+                    group: other_group,
+                    edit: other_edit,
+                }
+            }),
+            (
+                Table { table, edit },
+                Table {
+                    table: other_table,
+                    edit: other_edit,
+                },
+            ) if table == &other_table => map_merge(edit.merge(other_edit), |other_edit| {
+                EditDocumentState::Table {
+                    table: other_table,
+                    edit: other_edit,
+                }
+            }),
+            (_, other) => undo::Merged::No(other),
+        }
+    }
+}
+
+pub enum EditGroup {
+    SetName { new_name: String, old_name: String },
+}
+
+impl undo::Edit for EditGroup {
+    type Target = GroupData;
+
+    type Output = Result<(), EditError>;
+
+    fn edit(&mut self, target: &mut Self::Target) -> Self::Output {
+        use EditGroup::*;
+
+        match self {
+            SetName { new_name, .. } => {
+                target.name = new_name.clone();
             }
         }
 
@@ -113,22 +165,11 @@ impl undo::Edit for Edit {
     }
 
     fn undo(&mut self, target: &mut Self::Target) -> Self::Output {
-        use Edit::*;
+        use EditGroup::*;
 
-        match &self {
-            SetGroupName {
-                group,
-                new_name: _,
-                old_name,
-            } => {
-                target.allocs.get_mut_group(*group)?.name = old_name.clone();
-            }
-            SetTableName {
-                table,
-                new_name: _,
-                old_name,
-            } => {
-                target.allocs.get_mut_table(*table)?.name = old_name.clone();
+        match self {
+            SetName { old_name, .. } => {
+                target.name = old_name.clone();
             }
         }
 
@@ -139,41 +180,92 @@ impl undo::Edit for Edit {
     where
         Self: Sized,
     {
-        // TODO: Decide if implementing `merge` is worth the trouble.
-        use Edit::*;
+        use EditGroup::*;
 
         match (self, &mut other) {
             (
-                SetTableName {
-                    table,
-                    new_name,
-                    old_name,
+                SetName {
+                    new_name: self_new_name,
+                    ..
                 },
-                SetTableName {
-                    table: new_table,
-                    new_name: new_new_name,
-                    old_name: _,
+                SetName {
+                    new_name: other_new_name,
+                    ..
                 },
-            ) if table == new_table && new_new_name != old_name => {
-                swap(new_name, new_new_name);
+            ) => {
+                swap(other_new_name, self_new_name);
                 undo::Merged::Yes
             }
-            (
-                SetGroupName {
-                    group,
-                    new_name,
-                    old_name,
-                },
-                SetGroupName {
-                    group: new_group,
-                    new_name: new_new_name,
-                    old_name: _,
-                },
-            ) if group == new_group && new_new_name != old_name => {
-                swap(new_name, new_new_name);
-                undo::Merged::Yes
-            }
-            _ => undo::Merged::No(other),
         }
+    }
+}
+
+pub enum EditTable {
+    SetName { new_name: String, old_name: String },
+}
+
+impl undo::Edit for EditTable {
+    type Target = TableData;
+
+    type Output = Result<(), EditError>;
+
+    fn edit(&mut self, target: &mut Self::Target) -> Self::Output {
+        use EditTable::*;
+
+        match self {
+            SetName { new_name, .. } => {
+                target.name = new_name.clone();
+            }
+        }
+
+        Ok(())
+    }
+
+    fn undo(&mut self, target: &mut Self::Target) -> Self::Output {
+        use EditTable::*;
+
+        match self {
+            SetName { old_name, .. } => {
+                target.name = old_name.clone();
+            }
+        }
+
+        Ok(())
+    }
+
+    fn merge(&mut self, mut other: Self) -> undo::Merged<Self>
+    where
+        Self: Sized,
+    {
+        use EditTable::*;
+
+        match (self, &mut other) {
+            (
+                SetName {
+                    new_name: self_new_name,
+                    ..
+                },
+                SetName {
+                    new_name: other_new_name,
+                    ..
+                },
+            ) => {
+                swap(other_new_name, self_new_name);
+                undo::Merged::Yes
+            }
+        }
+    }
+}
+
+fn map_merge<T, U, F>(child: undo::Merged<T>, f: F) -> undo::Merged<U>
+where
+    F: FnOnce(T) -> U,
+{
+    use undo::Merged::*;
+
+    match child {
+        Yes => Yes,
+        No(child_edit) => No(f(child_edit)),
+        Annul => Annul,
     }
 }
