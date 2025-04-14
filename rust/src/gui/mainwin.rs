@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     components::{errordialog, tmplimport},
-    extractionlist, mainmenu, treelist,
+    extractionlist, mainmenu, tmplmodel, treelist,
     workers::{self, extractor},
 };
 
@@ -22,6 +22,7 @@ pub enum Input {
     // Internal:
     Noop,
     ShowError(String),
+    NewTemplate,
     ImportTemplate(template::Book),
     #[allow(clippy::enum_variant_names)]
     ExtractorInput(extract::Input),
@@ -50,6 +51,8 @@ pub struct MainWindow {
     tree_list: Controller<treelist::TreeList>,
     extraction_list: Controller<extractionlist::ExtractionList>,
     page_view: Controller<pageview::PageView>,
+
+    document: tmplmodel::DocumentRc,
 }
 
 #[relm4::component(pub)]
@@ -108,7 +111,7 @@ impl SimpleComponent for MainWindow {
         }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             Input::Noop => {}
             Input::ShowError(message) => {
@@ -124,11 +127,15 @@ impl SimpleComponent for MainWindow {
 
                 self.extractor.emit(extractor_input);
             }
+            Input::NewTemplate => {
+                // TODO: Confirm if there are unsaved changes.
+                self.document = tmplmodel::DocumentRc::new();
+            }
             Input::ImportTemplate(tmpl) => {
                 self.extractor.emit(extract::Input::Template(Some(tmpl)));
             }
             Input::MainMenuAction(action) => {
-                self.handle_menu_action(action);
+                self.handle_menu_action(action, &sender);
             }
         }
     }
@@ -189,6 +196,8 @@ impl SimpleComponent for MainWindow {
             page_view: pageview::PageView::builder()
                 .launch(init.pdfium_client)
                 .detach(),
+
+            document: tmplmodel::DocumentRc::new(),
         };
 
         let widgets = view_output!();
@@ -205,12 +214,17 @@ impl SimpleComponent for MainWindow {
 }
 
 impl MainWindow {
-    fn handle_menu_action(&mut self, action: mainmenu::Action) {
+    fn handle_menu_action(
+        &mut self,
+        action: mainmenu::Action,
+        sender: &ComponentSender<MainWindow>,
+    ) {
         use mainmenu::Action::*;
         match action {
             FileQuit => {
                 relm4::main_application().quit();
             }
+            TemplateNew => sender.input(Input::NewTemplate),
             TemplateImportDir => {
                 self.tmpl_importer
                     .emit(tmplimport::Input::RequestImportFromDir);
