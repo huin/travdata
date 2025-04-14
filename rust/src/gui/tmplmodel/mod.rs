@@ -13,8 +13,6 @@ use std::{
 
 use crate::{clock, extraction::tableextract, template};
 
-use edit::{Edit, TimestampedEdit};
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct GroupToken(atree::Token);
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -89,7 +87,7 @@ pub struct Document {
     clock: Rc<dyn clock::Clock>,
 
     /// Linear history of edits, acting as an undo/redo history.
-    edits: undo::Record<TimestampedEdit, ()>,
+    edits: undo::Record<edit::TimestampedEdit, ()>,
 }
 
 impl Document {
@@ -101,8 +99,8 @@ impl Document {
         }
     }
 
-    fn apply_edit(&mut self, edit: Edit) -> Result<(), EditError> {
-        let ts_edit = TimestampedEdit::new(self.clock.as_ref().now(), edit);
+    fn apply_edit(&mut self, edit: edit::EditDocumentState) -> Result<(), EditError> {
+        let ts_edit = edit::TimestampedEdit::new(self.clock.as_ref().now(), edit);
         self.edits.edit(&mut self.state, ts_edit)
     }
 
@@ -252,10 +250,9 @@ impl Group {
     pub fn edit_name(&self, new_name: String) -> Result<(), EditError> {
         let mut doc = self.doc.get_mut_doc();
         let old_name = doc.state.allocs.get_group(self.token)?.name.clone();
-        doc.apply_edit(Edit::SetGroupName {
+        doc.apply_edit(edit::EditDocumentState::Group {
             group: self.token,
-            new_name,
-            old_name,
+            edit: edit::EditGroup::SetName { new_name, old_name },
         })?;
         Ok(())
     }
@@ -289,10 +286,9 @@ impl Table {
     pub fn edit_name(&self, new_name: String) -> Result<(), EditError> {
         let mut doc = self.doc.get_mut_doc();
         let old_name = doc.state.allocs.get_table(self.token)?.name.clone();
-        doc.apply_edit(Edit::SetTableName {
+        doc.apply_edit(edit::EditDocumentState::Table {
             table: self.token,
-            new_name,
-            old_name,
+            edit: edit::EditTable::SetName { new_name, old_name },
         })?;
         Ok(())
     }
