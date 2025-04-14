@@ -1,6 +1,7 @@
 use anyhow::Result;
 
 mod cli;
+mod clock;
 mod commontext;
 mod distpaths;
 mod extraction;
