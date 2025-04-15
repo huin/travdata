@@ -4,6 +4,7 @@
 
 pub mod loadarg;
 pub mod serialised;
+pub mod validate;
 
 use std::collections::{HashMap, HashSet};
 
