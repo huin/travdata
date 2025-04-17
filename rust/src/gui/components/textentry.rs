@@ -48,7 +48,16 @@ impl Component for TextEntry {
     }
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>, _root: &Self::Root) {
+        let notify_id = match &self.notify_id {
+            Some(notify_id) => notify_id,
+            None => {
+                log::warn!("Received new text for TextEntry, but notify_id is not set.");
+                return;
+            }
+        };
+        self.buffer.block_signal(notify_id);
         self.buffer.set_text(message);
+        self.buffer.unblock_signal(notify_id);
     }
 
     fn shutdown(&mut self, _widgets: &mut Self::Widgets, _output: relm4::Sender<Self::Output>) {
