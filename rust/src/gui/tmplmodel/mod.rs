@@ -337,3 +337,10 @@ impl std::fmt::Display for EditError {
         }
     }
 }
+
+// TODO: One idea for interning strings:
+//
+// interned_strings: HashSet<Weak<str>>
+//
+// fn get_or_intern_string<S>(&mut self, s: S)
+//   where S: Into<String> + AsRef<str> { todo!() }
