@@ -19,6 +19,7 @@ pub enum Input {
     SetGroup(Option<tmplmodel::Group>),
     // Internal:
     Edit(Edit),
+    // TODO: Receive events for outside changes to the group (such as from undo/redo).
 }
 
 #[derive(Debug)]
