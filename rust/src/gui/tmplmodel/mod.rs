@@ -258,6 +258,23 @@ impl Group {
     }
 }
 
+impl std::fmt::Debug for Group {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let doc = self.doc.get_doc();
+        let name = doc
+            .state
+            .allocs
+            .get_group(self.token)
+            .map(|group| group.name.as_str())
+            .unwrap_or("<unknown>");
+        f.debug_struct("Group")
+            .field("doc", &self.doc)
+            .field("token", &self.token)
+            .field("name", &&name)
+            .finish()
+    }
+}
+
 #[derive(Default)]
 pub struct TableData {
     pub name: String,
@@ -291,6 +308,23 @@ impl Table {
             edit: edit::EditTable::SetName { new_name, old_name },
         })?;
         Ok(())
+    }
+}
+
+impl std::fmt::Debug for Table {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let doc = self.doc.get_doc();
+        let name = doc
+            .state
+            .allocs
+            .get_table(self.token)
+            .map(|table| table.name.as_str())
+            .unwrap_or("<unknown>");
+        f.debug_struct("Table")
+            .field("doc", &self.doc)
+            .field("token", &self.token)
+            .field("name", &&name)
+            .finish()
     }
 }
 
