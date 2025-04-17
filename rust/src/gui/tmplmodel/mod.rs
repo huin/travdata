@@ -81,7 +81,7 @@ impl std::fmt::Debug for DocumentRc {
     }
 }
 
-pub struct Document {
+struct Document {
     state: DocumentState,
 
     clock: Rc<dyn clock::Clock>,
