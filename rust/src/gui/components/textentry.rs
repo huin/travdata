@@ -11,8 +11,12 @@ pub struct TextEntry {
 
 impl Component for TextEntry {
     type CommandOutput = ();
-    type Init = String;
-    type Input = String;
+    /// [Option::Some] sets the current value and makes it editable, [Option::None] clears the text
+    /// entry and makes the text entry insensitive.
+    type Init = Option<String>;
+    /// Same behaviour as per [Component::Init].
+    type Input = Option<String>;
+    /// Value set via user action.
     type Output = String;
     type Root = gtk::Entry;
     type Widgets = gtk::Entry;
@@ -27,7 +31,8 @@ impl Component for TextEntry {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let buffer = root.buffer();
-        buffer.set_text(init);
+
+        set(&buffer, &root, init);
         let notify_id = buffer.connect_text_notify(move |buffer| {
             let s = buffer.text().to_string();
             util::send_output_or_log(s, "text entry content", &sender);
@@ -47,7 +52,7 @@ impl Component for TextEntry {
         relm4::ComponentBuilder::<Self>::default()
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>, _root: &Self::Root) {
+    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>, root: &Self::Root) {
         let notify_id = match &self.notify_id {
             Some(notify_id) => notify_id,
             None => {
@@ -56,13 +61,26 @@ impl Component for TextEntry {
             }
         };
         self.buffer.block_signal(notify_id);
-        self.buffer.set_text(message);
+        set(&self.buffer, root, message);
         self.buffer.unblock_signal(notify_id);
     }
 
     fn shutdown(&mut self, _widgets: &mut Self::Widgets, _output: relm4::Sender<Self::Output>) {
         if let Some(notify_id) = self.notify_id.take() {
             self.buffer.disconnect(notify_id);
+        }
+    }
+}
+
+fn set(buffer: &gtk::EntryBuffer, entry: &gtk::Entry, value: Option<String>) {
+    match value {
+        Some(value) => {
+            buffer.set_text(value);
+            entry.set_sensitive(true);
+        }
+        None => {
+            buffer.set_text("");
+            entry.set_sensitive(false);
         }
     }
 }
