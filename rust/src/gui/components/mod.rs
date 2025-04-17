@@ -1,3 +1,4 @@
+pub mod editgroup;
 pub mod errordialog;
 // TODO: Enable when need editor.
 #[allow(dead_code)]

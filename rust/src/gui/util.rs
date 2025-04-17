@@ -73,3 +73,21 @@ pub fn send_output_or_log<C: Component>(
         log::error!("Could not send {}: {:?}", message_desc, error);
     }
 }
+
+/// Sends an error message on component output, logging both the failure to send and the edit error
+/// itself.
+pub fn send_if_error_or_log<C: Component, F>(
+    result: anyhow::Result<()>,
+    to_error_message: F,
+    sender: &ComponentSender<C>,
+) where
+    F: FnOnce(String) -> C::Output,
+{
+    if let Err(error) = result {
+        send_output_or_log(
+            to_error_message(format!("{:?}", error)),
+            "sending error message",
+            sender,
+        );
+    }
+}
