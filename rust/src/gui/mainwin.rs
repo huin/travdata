@@ -11,7 +11,7 @@ use crate::{
 };
 
 use super::{
-    components::{errordialog, tmplimport},
+    components::{editgroup, errordialog, tmplimport},
     extractionlist, mainmenu, tmplmodel, treelist,
     workers::{self, extractor},
 };
@@ -48,9 +48,11 @@ pub struct MainWindow {
     tab_label_tree_list: gtk::Label,
     tab_label_list: gtk::Label,
     tab_label_edit_config: gtk::Label,
+    tab_label_group_edit: gtk::Label,
     tree_list: Controller<treelist::TreeList>,
     extraction_list: Controller<extractionlist::ExtractionList>,
     page_view: Controller<pageview::PageView>,
+    edit_group: Controller<editgroup::EditGroup>,
 
     document: tmplmodel::DocumentRc,
 }
@@ -107,6 +109,8 @@ impl SimpleComponent for MainWindow {
                     set_vexpand: true,
                     model.page_view.widget(),
                 },
+
+                append_page[Some(&model.tab_label_group_edit)] = model.edit_group.widget(),
             }
         }
     }
@@ -130,6 +134,11 @@ impl SimpleComponent for MainWindow {
             Input::NewTemplate => {
                 // TODO: Confirm if there are unsaved changes.
                 self.document = tmplmodel::DocumentRc::new();
+
+                // Edit the root group for now.
+                let group = self.document.get_book().get_root_group();
+                self.edit_group
+                    .emit(editgroup::Input::SetGroup(Some(group)));
             }
             Input::ImportTemplate(tmpl) => {
                 self.extractor.emit(extract::Input::Template(Some(tmpl)));
@@ -188,6 +197,7 @@ impl SimpleComponent for MainWindow {
             tab_label_tree_list: gtk::Label::new(Some("Tree list")),
             tab_label_list: gtk::Label::new(Some("List")),
             tab_label_edit_config: gtk::Label::new(Some("Edit Configuration")),
+            tab_label_group_edit: gtk::Label::new(Some("Edit Group")),
 
             tree_list: treelist::TreeList::builder().launch(()).detach(),
             extraction_list: extractionlist::ExtractionList::builder()
@@ -196,6 +206,12 @@ impl SimpleComponent for MainWindow {
             page_view: pageview::PageView::builder()
                 .launch(init.pdfium_client)
                 .detach(),
+            edit_group: editgroup::EditGroup::builder().launch(()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    editgroup::Output::Error(message) => Input::ShowError(message),
+                },
+            ),
 
             document: tmplmodel::DocumentRc::new(),
         };
