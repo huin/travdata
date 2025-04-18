@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 mod edit;
+mod subscribers;
 #[cfg(test)]
 mod tests;
 
