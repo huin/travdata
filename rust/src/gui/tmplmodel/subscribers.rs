@@ -11,7 +11,7 @@ impl<E> Subscription<E> {
 
 /// Manages subscriptions to events from a single subject.
 pub struct SubjectSubscriptions<E> {
-    subscriptions: HashMap<ListenerID, BoxedListener<E>>,
+    subscriptions: HashMap<ListenerID, ListenerSubscription<E>>,
 
     // ID allocation:
     listener_ids: IDPool<ListenerID>,
@@ -42,7 +42,7 @@ impl<E> SubjectSubscriptions<E> {
         &mut self,
         listener: impl Fn(&E) + 'static,
     ) -> Option<Subscription<E>> {
-        let listener_key = self.checked_add_subscription(Box::new(listener))?;
+        let listener_key = self.checked_add_subscription(ListenerSubscription::new(listener))?;
         Some(Subscription::new(listener_key))
     }
 
@@ -53,10 +53,30 @@ impl<E> SubjectSubscriptions<E> {
         self.subscriptions.remove(&subscription.0);
     }
 
+    /// Temporarily stops events propagating to the given subscription. Any events emitted until
+    /// the subscription is unpaused using [SubjectSubscriptions::unblock_subscription] will never
+    /// be sent to the given subscription.
+    pub fn block_subscription(&mut self, subscription: &Subscription<E>) {
+        if let Some(sub) = self.subscriptions.get_mut(&subscription.0) {
+            sub.blocked = true;
+        }
+    }
+
+    /// Resumes events propagating to the given subscription after a call to
+    /// [SubjectSubscriptions::block_subscription].
+    pub fn unblock_subscription(&mut self, subscription: &Subscription<E>) {
+        if let Some(sub) = self.subscriptions.get_mut(&subscription.0) {
+            sub.blocked = false;
+        }
+    }
+
     /// Sends the event to all subscribers of the subject.
     pub fn emit(&self, event: &E) {
-        for listener in self.subscriptions.values() {
-            listener(event);
+        for subscription in self.subscriptions.values() {
+            if subscription.blocked {
+                continue;
+            }
+            (subscription.listener)(event);
         }
     }
 
@@ -64,9 +84,12 @@ impl<E> SubjectSubscriptions<E> {
         !self.subscriptions.is_empty()
     }
 
-    fn checked_add_subscription(&mut self, listener: Box<dyn Fn(&E)>) -> Option<ListenerID> {
+    fn checked_add_subscription(
+        &mut self,
+        subscription: ListenerSubscription<E>,
+    ) -> Option<ListenerID> {
         let listener_id = self.listener_ids.checked_take_id()?;
-        self.subscriptions.insert(listener_id, listener);
+        self.subscriptions.insert(listener_id, subscription);
         Some(listener_id)
     }
 }
@@ -159,6 +182,23 @@ where
         }
     }
 
+    /// Temporarily stops events propagating to the given subscription. Any events emitted until
+    /// the subscription is unpaused using [MultiSubjectSubscriptions::unblock_subscription] will
+    /// never be sent to the given subscription.
+    pub fn block_subscription(&mut self, subscription: &SubjectSubscription<S, E>) {
+        if let Some(sub) = self.subject_subscriptions.get_mut(&subscription.subject) {
+            sub.block_subscription(&subscription.subscription);
+        }
+    }
+
+    /// Resumes events propagating to the given subscription after a call to
+    /// [MultiSubjectSubscriptions::block_subscription].
+    pub fn unblock_subscription(&mut self, subscription: &SubjectSubscription<S, E>) {
+        if let Some(sub) = self.subject_subscriptions.get_mut(&subscription.subject) {
+            sub.unblock_subscription(&subscription.subscription);
+        }
+    }
+
     /// Sends the event to all subscribers of the subject.
     pub fn emit(&self, subject: &S, event: &E) {
         if let Some(subscriptions) = self.subject_subscriptions.get(subject) {
@@ -230,7 +270,19 @@ where
 }
 
 /// A boxed closure for listening to events from subjects.
-type BoxedListener<E> = Box<dyn Fn(&E)>;
+struct ListenerSubscription<E> {
+    listener: Box<dyn Fn(&E)>,
+    blocked: bool,
+}
+
+impl<E> ListenerSubscription<E> {
+    fn new(listener: impl Fn(&E) + 'static) -> Self {
+        Self {
+            listener: Box::new(listener),
+            blocked: false,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -248,8 +300,8 @@ mod tests {
 
     #[derive(Debug, Eq, PartialEq)]
     struct SubjectEvent {
-        subject: char,
-        listener: u8,
+        subject: &'static str,
+        listener: &'static str,
         event: Event,
     }
 
@@ -265,15 +317,23 @@ mod tests {
             }
         }
 
-        fn listener(&self, subject: char, listener: u8) -> impl Fn(&Event) + 'static {
+        fn listener(
+            &self,
+            subject: &'static str,
+            listener: &'static str,
+        ) -> impl Fn(&Event) + 'static {
             let store = self.clone();
             move |event: &Event| {
-                store.events.borrow_mut().push(SubjectEvent {
-                    subject,
-                    listener,
-                    event: event.clone(),
-                });
+                store.record(subject, listener, event);
             }
+        }
+
+        fn record(&self, subject: &'static str, listener: &'static str, event: &Event) {
+            self.events.borrow_mut().push(SubjectEvent {
+                subject,
+                listener,
+                event: event.clone(),
+            });
         }
 
         fn take_events(&self) -> Vec<SubjectEvent> {
@@ -286,10 +346,10 @@ mod tests {
         let mut subscribers = SubjectSubscriptions::<Event>::new();
         let events = ReceivedEventStore::new();
 
-        let subject = 'a';
+        let subject = "a";
 
-        subscribers.subscribe(events.listener(subject, 1));
-        subscribers.subscribe(events.listener(subject, 2));
+        subscribers.subscribe(events.listener(subject, "1"));
+        subscribers.subscribe(events.listener(subject, "2"));
 
         subscribers.emit(&Event::Foo);
 
@@ -298,12 +358,12 @@ mod tests {
             unordered_elements_are![
                 &SubjectEvent {
                     subject,
-                    listener: 1,
+                    listener: "1",
                     event: Event::Foo
                 },
                 &SubjectEvent {
                     subject,
-                    listener: 2,
+                    listener: "2",
                     event: Event::Foo
                 },
             ],
@@ -312,45 +372,84 @@ mod tests {
 
     #[gtest]
     fn test_subject_subscriptions_stops_sending_when_unsubscribed() {
+        let subject = "a";
         let mut subscribers = SubjectSubscriptions::<Event>::new();
         let events = ReceivedEventStore::new();
 
-        let subject = 'a';
-
-        subscribers.subscribe(events.listener(subject, 1));
-        let subscription_2 = subscribers.subscribe(events.listener(subject, 2));
+        subscribers.subscribe(events.listener(subject, "1"));
+        let subscription_2 = subscribers.subscribe(events.listener(subject, "2"));
 
         subscribers.unsubscribe(&subscription_2);
 
         subscribers.emit(&Event::Foo);
-
         expect_that!(
             events.take_events(),
             elements_are![&SubjectEvent {
                 subject,
-                listener: 1,
+                listener: "1",
                 event: Event::Foo
             }],
         );
     }
 
     #[gtest]
-    fn test_multi_subject_subscriptions_sends_events() {
-        let subject_a = 'a';
-        let subject_b = 'b';
-
-        let mut subscribers = MultiSubjectSubscriptions::<char, Event>::new();
+    fn test_blocked_subscription() {
+        let subject = "a";
+        let mut subscribers = SubjectSubscriptions::<Event>::new();
         let events = ReceivedEventStore::new();
 
-        let subscription_a_1 = subscribers.subscribe(&subject_a, events.listener(subject_a, 1));
-        let subscription_b_2 = subscribers.subscribe(&subject_b, events.listener(subject_b, 2));
+        subscribers.subscribe(events.listener(subject, "1"));
+        let subscription_2 = subscribers.subscribe(events.listener(subject, "2"));
+
+        subscribers.block_subscription(&subscription_2);
+
+        subscribers.emit(&Event::Foo);
+        expect_that!(
+            events.take_events(),
+            elements_are![&SubjectEvent {
+                subject,
+                listener: "1",
+                event: Event::Foo
+            }],
+        );
+
+        subscribers.unblock_subscription(&subscription_2);
+
+        subscribers.emit(&Event::Foo);
+        expect_that!(
+            events.take_events(),
+            unordered_elements_are![
+                &SubjectEvent {
+                    subject,
+                    listener: "1",
+                    event: Event::Foo
+                },
+                &SubjectEvent {
+                    subject,
+                    listener: "2",
+                    event: Event::Foo
+                }
+            ],
+        );
+    }
+
+    #[gtest]
+    fn test_multi_subject_subscriptions_sends_events() {
+        let subject_a = "a";
+        let subject_b = "b";
+
+        let mut subscribers = MultiSubjectSubscriptions::<&'static str, Event>::new();
+        let events = ReceivedEventStore::new();
+
+        let subscription_a_1 = subscribers.subscribe(&subject_a, events.listener(subject_a, "1"));
+        let subscription_b_2 = subscribers.subscribe(&subject_b, events.listener(subject_b, "2"));
 
         subscribers.emit(&subject_a, &Event::Foo);
         expect_that!(
             events.take_events(),
             elements_are![eq(&SubjectEvent {
                 subject: subject_a,
-                listener: 1,
+                listener: "1",
                 event: Event::Foo,
             }),],
         );
@@ -362,12 +461,12 @@ mod tests {
             elements_are![
                 eq(&SubjectEvent {
                     subject: subject_b,
-                    listener: 2,
+                    listener: "2",
                     event: Event::Bar,
                 }),
                 eq(&SubjectEvent {
                     subject: subject_b,
-                    listener: 2,
+                    listener: "2",
                     event: Event::Foo,
                 }),
             ],
