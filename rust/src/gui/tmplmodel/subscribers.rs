@@ -11,13 +11,13 @@ impl<E> Subscription<E> {
 
 /// Manages subscriptions to events from a single subject.
 pub struct SubjectSubscriptions<E> {
-    state: RefCell<SubjectSubscriptionsState<E>>,
+    state: Rc<RefCell<SubjectSubscriptionsState<E>>>,
 }
 
 impl<E> SubjectSubscriptions<E> {
     pub fn new() -> Self {
         Self {
-            state: RefCell::new(SubjectSubscriptionsState::new()),
+            state: Rc::new(RefCell::new(SubjectSubscriptionsState::new())),
         }
     }
 
@@ -210,14 +210,16 @@ where
 
     /// Sends the event to all subscribers of the subject.
     pub fn emit(&self, subject: &S, event: &E) {
-        if let Some(subscriptions) = self.state.borrow().snapshot_for_emit(subject) {
-            subscriptions.emit(event);
+        if let Some(snapshot) = self.state.borrow().snapshot_for_emit(subject) {
+            for listener in snapshot {
+                listener(event);
+            }
         }
     }
 }
 
 struct MultiSubjectSubscriptionsState<S, E> {
-    subject_subscriptions: HashMap<S, Rc<SubjectSubscriptions<E>>>,
+    subject_subscriptions: HashMap<S, SubjectSubscriptions<E>>,
 }
 
 impl<S, E> MultiSubjectSubscriptionsState<S, E>
@@ -251,7 +253,7 @@ where
         let subscription = self
             .subject_subscriptions
             .entry(subject.clone())
-            .or_insert_with(|| Rc::new(SubjectSubscriptions::new()))
+            .or_insert_with(SubjectSubscriptions::new)
             .checked_subscribe(listener)?;
 
         Some(SubjectSubscription {
@@ -289,8 +291,10 @@ where
         }
     }
 
-    fn snapshot_for_emit(&self, subject: &S) -> Option<Rc<SubjectSubscriptions<E>>> {
-        self.subject_subscriptions.get(subject).cloned()
+    fn snapshot_for_emit(&self, subject: &S) -> Option<Vec<ListenerRc<E>>> {
+        self.subject_subscriptions
+            .get(subject)
+            .map(|subscriptions| subscriptions.state.borrow().snapshot_for_emit())
     }
 }
 
