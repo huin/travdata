@@ -80,7 +80,10 @@ impl<E> Subscriptions<E> {
     /// Like [Self::subscribe], but returns [Option::None] instead of panicing if there are too
     /// many subscribers in existance.
     pub fn checked_subscribe(&self, listener: impl Fn(&E) + 'static) -> Option<Subscription<E>> {
-        let id = self.state.borrow_mut().checked_subscribe(listener)?;
+        let id = self
+            .state
+            .borrow_mut()
+            .checked_subscribe(Listener::new(listener))?;
         Some(Subscription::new(self, id))
     }
 
@@ -88,7 +91,7 @@ impl<E> Subscriptions<E> {
     pub fn emit(&self, event: &E) {
         let snapshot = self.state.borrow().snapshot_for_emit();
         for listener in snapshot {
-            listener(event);
+            listener.0(event);
         }
     }
 
@@ -112,7 +115,7 @@ impl<E> SubscriptionsState<E> {
         }
     }
 
-    fn checked_subscribe(&mut self, listener: impl Fn(&E) + 'static) -> Option<ListenerID> {
+    fn checked_subscribe(&mut self, listener: Listener<E>) -> Option<ListenerID> {
         self.checked_add_subscription(SubscriptionState::new(listener))
     }
 
@@ -134,7 +137,7 @@ impl<E> SubscriptionsState<E> {
         }
     }
 
-    fn snapshot_for_emit(&self) -> Vec<ListenerRc<E>> {
+    fn snapshot_for_emit(&self) -> Vec<Listener<E>> {
         self.subscriptions
             .values()
             .filter(|subscription| !subscription.blocked)
@@ -267,7 +270,7 @@ where
         topic: &T,
         listener: impl Fn(&E) + 'static,
     ) -> Option<TopicSubscription<T, E>> {
-        let listener_subscription = SubscriptionState::new(listener);
+        let listener_subscription = SubscriptionState::new(Listener::new(listener));
         let id = self
             .state
             .borrow_mut()
@@ -283,7 +286,7 @@ where
 
         if let Some(snapshot) = snapshot {
             for listener in snapshot {
-                listener(event);
+                listener.0(event);
             }
         }
     }
@@ -363,7 +366,7 @@ where
         }
     }
 
-    fn snapshot_for_emit(&self, topic: &T) -> Option<Vec<ListenerRc<E>>> {
+    fn snapshot_for_emit(&self, topic: &T) -> Option<Vec<Listener<E>>> {
         self.topic_subscriptions
             .get(topic)
             .map(|subscriptions| subscriptions.state.borrow().snapshot_for_emit())
@@ -433,18 +436,41 @@ where
 }
 
 /// Reference counted closure for listening to events from topics.
-type ListenerRc<E> = Rc<dyn Fn(&E)>;
+struct Listener<E>(Rc<dyn Fn(&E)>);
+
+impl<E> Listener<E> {
+    /// Creates a new reference counted listener.
+    fn new(listener: impl Fn(&E) + 'static) -> Self {
+        Self(Rc::new(listener))
+    }
+}
+
+impl<E> Clone for Listener<E> {
+    fn clone(&self) -> Self {
+        // Implement [Clone] explicitly, as using derive wants `E` to be [Clone] as well.
+        Self(self.0.clone())
+    }
+}
+
+impl<E, F> From<F> for Listener<E>
+where
+    F: Fn(&E) + 'static,
+{
+    fn from(value: F) -> Self {
+        Self::new(value)
+    }
+}
 
 /// A boxed closure for listening to events from topics.
 struct SubscriptionState<E> {
-    listener: ListenerRc<E>,
+    listener: Listener<E>,
     blocked: bool,
 }
 
 impl<E> SubscriptionState<E> {
-    fn new(listener: impl Fn(&E) + 'static) -> Self {
+    fn new(listener: Listener<E>) -> Self {
         Self {
-            listener: Rc::new(listener),
+            listener,
             blocked: false,
         }
     }
