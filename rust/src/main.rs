@@ -13,6 +13,7 @@ mod table;
 mod template;
 #[cfg(test)]
 mod testutil;
+mod util;
 
 fn main() -> Result<()> {
     cli::run()
