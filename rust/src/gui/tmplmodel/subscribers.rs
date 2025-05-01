@@ -7,23 +7,23 @@ use std::{
 
 /// A reference token unique to a single listening closure.
 pub struct Subscription<E> {
-    state: Weak<RefCell<SubjectSubscriptionsState<E>>>,
+    state: Weak<RefCell<SubscriptionsState<E>>>,
     id: ListenerID,
 }
 
 impl<E> Subscription<E> {
-    fn new(subscriptions: &SubjectSubscriptions<E>, id: ListenerID) -> Self {
+    fn new(subscriptions: &Subscriptions<E>, id: ListenerID) -> Self {
         Self {
             state: Rc::downgrade(&subscriptions.state),
             id,
         }
     }
 
-    /// Unsubscribes the [Subscription] previously created via [SubjectSubscriptions::subscribe] or
-    /// [SubjectSubscriptions::checked_subscribe] such that the listener's resources are freed and
-    /// will no longer receive events.
+    /// Unsubscribes the [Subscription] previously created via [Subscriptions::subscribe] or
+    /// [Subscriptions::checked_subscribe] such that the listener's resources are freed and will no
+    /// longer receive events.
     pub fn unsubscribe(self) {
-        // Implicitly lean on [Drop::drop].
+        drop(self);
     }
 
     /// Temporarily stops events propagating to the subscription. Any events emitted until the
@@ -54,21 +54,21 @@ impl<E> Drop for Subscription<E> {
     }
 }
 
-/// Manages subscriptions to events from a single subject.
-pub struct SubjectSubscriptions<E> {
-    state: Rc<RefCell<SubjectSubscriptionsState<E>>>,
+/// Manages subscriptions to events from a single topic.
+pub struct Subscriptions<E> {
+    state: Rc<RefCell<SubscriptionsState<E>>>,
 }
 
-impl<E> SubjectSubscriptions<E> {
+impl<E> Subscriptions<E> {
     pub fn new() -> Self {
         Self {
-            state: Rc::new(RefCell::new(SubjectSubscriptionsState::new())),
+            state: Rc::new(RefCell::new(SubscriptionsState::new())),
         }
     }
 
-    /// Subscribes to events from the given subject. The returned [Subscription] must be cleaned up
-    /// by calling [Self::unsubscribe] later if the listener no longer wants to receive events
-    /// relating to the subject.
+    /// Subscribes to events from the given topic. The returned [Subscription] must be cleaned up
+    /// by calling [Subscription::unsubscribe] later if the listener no longer wants to receive
+    /// events relating to the topic.
     ///
     /// This method will panic if too many subscribers have been created. A maximum of [ID::MAX]
     /// can exist at any given time.
@@ -84,7 +84,7 @@ impl<E> SubjectSubscriptions<E> {
         Some(Subscription::new(self, id))
     }
 
-    /// Sends the event to all subscribers of the subject.
+    /// Sends the event to all subscribers of the topic.
     pub fn emit(&self, event: &E) {
         let snapshot = self.state.borrow().snapshot_for_emit();
         for listener in snapshot {
@@ -97,14 +97,14 @@ impl<E> SubjectSubscriptions<E> {
     }
 }
 
-struct SubjectSubscriptionsState<E> {
-    subscriptions: HashMap<ListenerID, ListenerSubscription<E>>,
+struct SubscriptionsState<E> {
+    subscriptions: HashMap<ListenerID, SubscriptionState<E>>,
 
     // ID allocation:
     listener_ids: IDPool<ListenerID>,
 }
 
-impl<E> SubjectSubscriptionsState<E> {
+impl<E> SubscriptionsState<E> {
     fn new() -> Self {
         Self {
             subscriptions: HashMap::new(),
@@ -113,12 +113,12 @@ impl<E> SubjectSubscriptionsState<E> {
     }
 
     fn checked_subscribe(&mut self, listener: impl Fn(&E) + 'static) -> Option<ListenerID> {
-        self.checked_add_subscription(ListenerSubscription::new(listener))
+        self.checked_add_subscription(SubscriptionState::new(listener))
     }
 
     /// Returns the unsubscribed listener so that it can be dropped outside of the caller's
     /// [std::cell::RefMut], in case the `Drop` impl also performs the same borrow.
-    fn remove_subscription(&mut self, id: ListenerID) -> Option<ListenerSubscription<E>> {
+    fn remove_subscription(&mut self, id: ListenerID) -> Option<SubscriptionState<E>> {
         self.subscriptions.remove(&id)
     }
 
@@ -148,7 +148,7 @@ impl<E> SubjectSubscriptionsState<E> {
 
     fn checked_add_subscription(
         &mut self,
-        subscription: ListenerSubscription<E>,
+        subscription: SubscriptionState<E>,
     ) -> Option<ListenerID> {
         let listener_id = self.listener_ids.checked_take_id()?;
         self.subscriptions.insert(listener_id, subscription);
@@ -156,66 +156,60 @@ impl<E> SubjectSubscriptionsState<E> {
     }
 }
 
-/// A reference token unique to a single listening closure on a single subject.
-pub struct SubjectSubscription<S, E>
+/// A reference token unique to a single listening closure on a single topic.
+pub struct TopicSubscription<T, E>
 where
-    S: Clone + Eq + Hash,
+    T: Clone + Eq + Hash,
 {
-    state: Weak<RefCell<MultiSubjectSubscriptionsState<S, E>>>,
-    subject: S,
+    state: Weak<RefCell<MultiTopicSubscriptionsState<T, E>>>,
+    topic: T,
     id: ListenerID,
 }
 
-impl<S, E> SubjectSubscription<S, E>
+impl<T, E> TopicSubscription<T, E>
 where
-    S: Clone + Eq + Hash,
+    T: Clone + Eq + Hash,
 {
-    fn new(subscriptions: &MultiSubjectSubscriptions<S, E>, subject: &S, id: ListenerID) -> Self {
+    fn new(subscriptions: &MultiTopicSubscriptions<T, E>, topic: &T, id: ListenerID) -> Self {
         Self {
             state: Rc::downgrade(&subscriptions.state),
-            subject: subject.clone(),
+            topic: topic.clone(),
             id,
         }
     }
 
-    /// Unsubscribes a [SubjectSubscription] previously created via
-    /// [MultiSubjectSubscriptions::subscribe] or [MultiSubjectSubscriptions::checked_subscribe]
-    /// such that the listener's resources are freed and will no longer receive events.
+    /// Unsubscribes a [TopicSubscription] previously created via
+    /// [MultiTopicSubscriptions::subscribe] or [MultiTopicSubscriptions::checked_subscribe] such
+    /// that the listener's resources are freed and will no longer receive events.
     pub fn unsubscribe(self) {
         // Implicitly lean on [Drop::drop].
     }
 
     /// Temporarily stops events propagating to the given subscription. Any events emitted until
-    /// the subscription is unpaused using [Self::unblock_subscription] will never be sent to this
-    /// subscription.
-    pub fn block_subscription(&self) {
+    /// the subscription is unpaused using [Self::unblock] will never be sent to this subscription.
+    pub fn block(&self) {
         if let Some(state) = self.state.upgrade() {
-            state
-                .borrow_mut()
-                .block_subscription(&self.subject, self.id);
+            state.borrow_mut().block_subscription(&self.topic, self.id);
         }
     }
 
-    /// Resumes events propagating to the given subscription after a call to
-    /// [Self::block_subscription].
-    pub fn unblock_subscription(&self) {
+    /// Resumes events propagating to the given subscription after a call to [Self::block].
+    pub fn unblock(&self) {
         if let Some(state) = self.state.upgrade() {
             state
                 .borrow_mut()
-                .unblock_subscription(&self.subject, self.id);
+                .unblock_subscription(&self.topic, self.id);
         }
     }
 }
 
-impl<S, E> Drop for SubjectSubscription<S, E>
+impl<T, E> Drop for TopicSubscription<T, E>
 where
-    S: Clone + Eq + Hash,
+    T: Clone + Eq + Hash,
 {
     fn drop(&mut self) {
         if let Some(state) = self.state.upgrade() {
-            let listener = state
-                .borrow_mut()
-                .remove_subscription(&self.subject, self.id);
+            let listener = state.borrow_mut().remove_subscription(&self.topic, self.id);
 
             // Dropped outside of the borrow_mut statement in case the listener's [Drop] impl
             // itself results in a similar `state.borrow*` of the same `state`.
@@ -224,49 +218,45 @@ where
     }
 }
 
-/// Manages subjects and listeners subscribed to events on those subjects.
+/// Manages topics and listeners subscribed to events on those topics.
 ///
 /// This written with the assumption that there are relatively few subscriptions that exist at any
 /// given time.
 ///
 /// Type parameters:
-/// - `S` an identifier/reference to the subject. Should be relatively small in memory, cloneable.
+/// - `T` an identifier/reference to the topic. Should be relatively small in memory, cloneable.
 /// - `E` event types emitted to listeners.
-pub struct MultiSubjectSubscriptions<S, E> {
-    state: Rc<RefCell<MultiSubjectSubscriptionsState<S, E>>>,
+pub struct MultiTopicSubscriptions<T, E> {
+    state: Rc<RefCell<MultiTopicSubscriptionsState<T, E>>>,
 }
 
-impl<S, E> MultiSubjectSubscriptions<S, E>
+impl<T, E> MultiTopicSubscriptions<T, E>
 where
-    S: Clone + Eq + Hash,
+    T: Clone + Eq + Hash,
 {
-    /// Creates an empty [MultiSubjectSubscriptions].
+    /// Creates an empty [MultiTopicSubscriptions].
     pub fn new() -> Self {
         Self {
-            state: Rc::new(RefCell::new(MultiSubjectSubscriptionsState::new())),
+            state: Rc::new(RefCell::new(MultiTopicSubscriptionsState::new())),
         }
     }
 
     /// This does not notify the subscribers, they simply will not receive any further messages.
-    pub fn remove_subject(&self, subject: &S) {
-        let subscriptions = self.state.borrow_mut().remove_subject(subject);
+    pub fn remove_topic(&self, topic: &T) {
+        let subscriptions = self.state.borrow_mut().remove_topic(topic);
         // Dropped outside of the borrow_mut statement in case a listener's [Drop] impl itself
         // results in a similar `self.state.borrow*`.
         drop(subscriptions);
     }
 
-    /// Subscribes to events from the given subject. The returned [Subscription] must be cleaned up
+    /// Subscribes to events from the given topic. The returned [Subscription] must be cleaned up
     /// by calling [Self::unsubscribe] later if the listener no longer wants to receive events
-    /// relating to the subject.
+    /// relating to the topic.
     ///
     /// This method will panic if too many subscribers have been created. A maximum of [ID::MAX]
     /// can exist at any given time.
-    pub fn subscribe(
-        &self,
-        subject: &S,
-        listener: impl Fn(&E) + 'static,
-    ) -> SubjectSubscription<S, E> {
-        self.checked_subscribe(subject, listener)
+    pub fn subscribe(&self, topic: &T, listener: impl Fn(&E) + 'static) -> TopicSubscription<T, E> {
+        self.checked_subscribe(topic, listener)
             .expect("ran out of listener IDs")
     }
 
@@ -274,22 +264,22 @@ where
     /// subscribers in existance.
     pub fn checked_subscribe(
         &self,
-        subject: &S,
+        topic: &T,
         listener: impl Fn(&E) + 'static,
-    ) -> Option<SubjectSubscription<S, E>> {
-        let listener_subscription = ListenerSubscription::new(listener);
+    ) -> Option<TopicSubscription<T, E>> {
+        let listener_subscription = SubscriptionState::new(listener);
         let id = self
             .state
             .borrow_mut()
-            .checked_subscribe(subject, listener_subscription)?;
+            .checked_subscribe(topic, listener_subscription)?;
 
-        Some(SubjectSubscription::new(self, subject, id))
+        Some(TopicSubscription::new(self, topic, id))
     }
 
-    /// Sends the event to all subscribers of the subject.
-    pub fn emit(&self, subject: &S, event: &E) {
+    /// Sends the event to all subscribers of the topic.
+    pub fn emit(&self, topic: &T, event: &E) {
         // Capture snapshot here to avoid borrow()ing for too long.
-        let snapshot = self.state.borrow().snapshot_for_emit(subject);
+        let snapshot = self.state.borrow().snapshot_for_emit(topic);
 
         if let Some(snapshot) = snapshot {
             for listener in snapshot {
@@ -299,33 +289,33 @@ where
     }
 }
 
-struct MultiSubjectSubscriptionsState<S, E> {
-    subject_subscriptions: HashMap<S, SubjectSubscriptions<E>>,
+struct MultiTopicSubscriptionsState<T, E> {
+    topic_subscriptions: HashMap<T, Subscriptions<E>>,
 }
 
-impl<S, E> MultiSubjectSubscriptionsState<S, E>
+impl<T, E> MultiTopicSubscriptionsState<T, E>
 where
-    S: Clone + Eq + Hash,
+    T: Clone + Eq + Hash,
 {
     fn new() -> Self {
         Self {
-            subject_subscriptions: HashMap::new(),
+            topic_subscriptions: HashMap::new(),
         }
     }
 
-    fn remove_subject(&mut self, subject: &S) -> Option<SubjectSubscriptions<E>> {
-        self.subject_subscriptions.remove(subject)
+    fn remove_topic(&mut self, topic: &T) -> Option<Subscriptions<E>> {
+        self.topic_subscriptions.remove(topic)
     }
 
     fn checked_subscribe(
         &mut self,
-        subject: &S,
-        listener_subscription: ListenerSubscription<E>,
+        topic: &T,
+        listener_subscription: SubscriptionState<E>,
     ) -> Option<ListenerID> {
         let subscriptions = self
-            .subject_subscriptions
-            .entry(subject.clone())
-            .or_insert_with(SubjectSubscriptions::new);
+            .topic_subscriptions
+            .entry(topic.clone())
+            .or_insert_with(Subscriptions::new);
 
         subscriptions
             .state
@@ -337,26 +327,26 @@ where
     /// [std::cell::RefMut], in case the `Drop` impl also performs the same borrow.
     fn remove_subscription(
         &mut self,
-        subject: &S,
+        topic: &T,
         listener_id: ListenerID,
-    ) -> Option<ListenerSubscription<E>> {
-        // The subscription entry not being present indicates that the entire subject was removed,
+    ) -> Option<SubscriptionState<E>> {
+        // The subscription entry not being present indicates that the entire topic was removed,
         // and therefore so was the requested subscription.
-        let subscriptions = self.subject_subscriptions.get(subject)?;
+        let subscriptions = self.topic_subscriptions.get(topic)?;
 
         let subscription = subscriptions
             .state
             .borrow_mut()
             .remove_subscription(listener_id);
         if !subscriptions.has_subscriptions() {
-            self.subject_subscriptions.remove(subject);
+            self.topic_subscriptions.remove(topic);
         }
 
         subscription
     }
 
-    fn block_subscription(&mut self, subject: &S, listener_id: ListenerID) {
-        if let Some(subscriptions) = self.subject_subscriptions.get_mut(subject) {
+    fn block_subscription(&mut self, topic: &T, listener_id: ListenerID) {
+        if let Some(subscriptions) = self.topic_subscriptions.get_mut(topic) {
             subscriptions
                 .state
                 .borrow_mut()
@@ -364,8 +354,8 @@ where
         }
     }
 
-    fn unblock_subscription(&mut self, subject: &S, listener_id: ListenerID) {
-        if let Some(subscriptions) = self.subject_subscriptions.get_mut(subject) {
+    fn unblock_subscription(&mut self, topic: &T, listener_id: ListenerID) {
+        if let Some(subscriptions) = self.topic_subscriptions.get_mut(topic) {
             subscriptions
                 .state
                 .borrow_mut()
@@ -373,9 +363,9 @@ where
         }
     }
 
-    fn snapshot_for_emit(&self, subject: &S) -> Option<Vec<ListenerRc<E>>> {
-        self.subject_subscriptions
-            .get(subject)
+    fn snapshot_for_emit(&self, topic: &T) -> Option<Vec<ListenerRc<E>>> {
+        self.topic_subscriptions
+            .get(topic)
             .map(|subscriptions| subscriptions.state.borrow().snapshot_for_emit())
     }
 }
@@ -442,15 +432,16 @@ where
     }
 }
 
+/// Reference counted closure for listening to events from topics.
 type ListenerRc<E> = Rc<dyn Fn(&E)>;
 
-/// A boxed closure for listening to events from subjects.
-struct ListenerSubscription<E> {
+/// A boxed closure for listening to events from topics.
+struct SubscriptionState<E> {
     listener: ListenerRc<E>,
     blocked: bool,
 }
 
-impl<E> ListenerSubscription<E> {
+impl<E> SubscriptionState<E> {
     fn new(listener: impl Fn(&E) + 'static) -> Self {
         Self {
             listener: Rc::new(listener),
@@ -474,70 +465,70 @@ mod tests {
     }
 
     #[derive(Debug, Eq, PartialEq)]
-    struct SubjectEvent {
-        subject: &'static str,
+    struct TopicEvent {
+        topic: &'static str,
         listener: &'static str,
         event: Event,
     }
 
     #[derive(Clone)]
     struct ReceivedEventStore {
-        events: Rc<RefCell<Vec<SubjectEvent>>>,
+        events: Rc<RefCell<Vec<TopicEvent>>>,
     }
 
     impl ReceivedEventStore {
         fn new() -> Self {
             Self {
-                events: Rc::new(RefCell::new(Vec::<SubjectEvent>::new())),
+                events: Rc::new(RefCell::new(Vec::<TopicEvent>::new())),
             }
         }
 
         fn listener(
             &self,
-            subject: &'static str,
+            topic: &'static str,
             listener: &'static str,
         ) -> impl Fn(&Event) + 'static {
             let store = self.clone();
             move |event: &Event| {
-                store.record(subject, listener, event);
+                store.record(topic, listener, event);
             }
         }
 
-        fn record(&self, subject: &'static str, listener: &'static str, event: &Event) {
-            self.events.as_ref().borrow_mut().push(SubjectEvent {
-                subject,
+        fn record(&self, topic: &'static str, listener: &'static str, event: &Event) {
+            self.events.as_ref().borrow_mut().push(TopicEvent {
+                topic,
                 listener,
                 event: event.clone(),
             });
         }
 
-        fn take_events(&self) -> Vec<SubjectEvent> {
+        fn take_events(&self) -> Vec<TopicEvent> {
             self.events.as_ref().borrow_mut().drain(..).collect()
         }
     }
 
     #[gtest]
-    fn test_subject_subscriptions_sends_events_to_multiple_listeners() {
-        let subscribers = SubjectSubscriptions::<Event>::new();
+    fn test_subscriptions_sends_events_to_multiple_listeners() {
+        let subscribers = Subscriptions::<Event>::new();
         let events = ReceivedEventStore::new();
 
-        let subject = "a";
+        let topic = "a";
 
-        let subscription_1 = subscribers.subscribe(events.listener(subject, "1"));
-        let subscription_2 = subscribers.subscribe(events.listener(subject, "2"));
+        let subscription_1 = subscribers.subscribe(events.listener(topic, "1"));
+        let subscription_2 = subscribers.subscribe(events.listener(topic, "2"));
 
         subscribers.emit(&Event::Foo);
 
         expect_that!(
             events.take_events(),
             unordered_elements_are![
-                &SubjectEvent {
-                    subject,
+                &TopicEvent {
+                    topic,
                     listener: "1",
                     event: Event::Foo
                 },
-                &SubjectEvent {
-                    subject,
+                &TopicEvent {
+                    topic,
                     listener: "2",
                     event: Event::Foo
                 },
@@ -549,21 +540,21 @@ mod tests {
     }
 
     #[gtest]
-    fn test_subject_subscriptions_stops_sending_when_unsubscribed() {
-        let subject = "a";
-        let subscribers = SubjectSubscriptions::<Event>::new();
+    fn test_subscriptions_stops_sending_when_unsubscribed() {
+        let topic = "a";
+        let subscribers = Subscriptions::<Event>::new();
         let events = ReceivedEventStore::new();
 
-        let subscription_1 = subscribers.subscribe(events.listener(subject, "1"));
-        let subscription_2 = subscribers.subscribe(events.listener(subject, "2"));
+        let subscription_1 = subscribers.subscribe(events.listener(topic, "1"));
+        let subscription_2 = subscribers.subscribe(events.listener(topic, "2"));
 
         subscription_2.unsubscribe();
 
         subscribers.emit(&Event::Foo);
         expect_that!(
             events.take_events(),
-            elements_are![&SubjectEvent {
-                subject,
+            elements_are![&TopicEvent {
+                topic,
                 listener: "1",
                 event: Event::Foo
             }],
@@ -574,20 +565,20 @@ mod tests {
 
     #[gtest]
     fn test_blocked_subscription() {
-        let subject = "a";
-        let subscribers = SubjectSubscriptions::<Event>::new();
+        let topic = "a";
+        let subscribers = Subscriptions::<Event>::new();
         let events = ReceivedEventStore::new();
 
-        let subscription_1 = subscribers.subscribe(events.listener(subject, "1"));
-        let subscription_2 = subscribers.subscribe(events.listener(subject, "2"));
+        let subscription_1 = subscribers.subscribe(events.listener(topic, "1"));
+        let subscription_2 = subscribers.subscribe(events.listener(topic, "2"));
 
         subscription_2.block();
 
         subscribers.emit(&Event::Foo);
         expect_that!(
             events.take_events(),
-            elements_are![&SubjectEvent {
-                subject,
+            elements_are![&TopicEvent {
+                topic,
                 listener: "1",
                 event: Event::Foo
             }],
@@ -599,13 +590,13 @@ mod tests {
         expect_that!(
             events.take_events(),
             unordered_elements_are![
-                &SubjectEvent {
-                    subject,
+                &TopicEvent {
+                    topic,
                     listener: "1",
                     event: Event::Foo
                 },
-                &SubjectEvent {
-                    subject,
+                &TopicEvent {
+                    topic,
                     listener: "2",
                     event: Event::Foo
                 }
@@ -616,8 +607,8 @@ mod tests {
     }
 
     #[gtest]
-    fn test_subject_subscriptions_can_add_subscriber_during_emit() {
-        let subs = Rc::new(SubjectSubscriptions::<Event>::new());
+    fn test_subscriptions_can_add_subscriber_during_emit() {
+        let subs = Rc::new(Subscriptions::<Event>::new());
         let events = ReceivedEventStore::new();
 
         let subs_ref = subs.clone();
@@ -642,8 +633,8 @@ mod tests {
         // THEN the only event received is from the outer listener.
         expect_that!(
             events.take_events(),
-            elements_are![eq(&SubjectEvent {
-                subject: "a",
+            elements_are![eq(&TopicEvent {
+                topic: "a",
                 listener: "outer",
                 event: Event::Foo,
             })],
@@ -657,14 +648,14 @@ mod tests {
             events.take_events(),
             unordered_elements_are![
                 // One received from outer.
-                eq(&SubjectEvent {
-                    subject: "a",
+                eq(&TopicEvent {
+                    topic: "a",
                     listener: "outer",
                     event: Event::Foo,
                 }),
                 // One received from inner.
-                eq(&SubjectEvent {
-                    subject: "a",
+                eq(&TopicEvent {
+                    topic: "a",
                     listener: "inner",
                     event: Event::Foo,
                 }),
@@ -675,38 +666,38 @@ mod tests {
     }
 
     #[gtest]
-    fn test_multi_subject_subscriptions_sends_events() {
-        let subject_a = "a";
-        let subject_b = "b";
+    fn test_multi_topic_subscriptions_sends_events() {
+        let topic_a = "a";
+        let topic_b = "b";
 
-        let subscribers = MultiSubjectSubscriptions::<&'static str, Event>::new();
+        let subscribers = MultiTopicSubscriptions::<&'static str, Event>::new();
         let events = ReceivedEventStore::new();
 
-        let subscription_a_1 = subscribers.subscribe(&subject_a, events.listener(subject_a, "1"));
-        let subscription_b_2 = subscribers.subscribe(&subject_b, events.listener(subject_b, "2"));
+        let subscription_a_1 = subscribers.subscribe(&topic_a, events.listener(topic_a, "1"));
+        let subscription_b_2 = subscribers.subscribe(&topic_b, events.listener(topic_b, "2"));
 
-        subscribers.emit(&subject_a, &Event::Foo);
+        subscribers.emit(&topic_a, &Event::Foo);
         expect_that!(
             events.take_events(),
-            elements_are![eq(&SubjectEvent {
-                subject: subject_a,
+            elements_are![eq(&TopicEvent {
+                topic: topic_a,
                 listener: "1",
                 event: Event::Foo,
             })],
         );
 
-        subscribers.emit(&subject_b, &Event::Bar);
-        subscribers.emit(&subject_b, &Event::Foo);
+        subscribers.emit(&topic_b, &Event::Bar);
+        subscribers.emit(&topic_b, &Event::Foo);
         expect_that!(
             events.take_events(),
             elements_are![
-                eq(&SubjectEvent {
-                    subject: subject_b,
+                eq(&TopicEvent {
+                    topic: topic_b,
                     listener: "2",
                     event: Event::Bar,
                 }),
-                eq(&SubjectEvent {
-                    subject: subject_b,
+                eq(&TopicEvent {
+                    topic: topic_b,
                     listener: "2",
                     event: Event::Foo,
                 }),
@@ -714,20 +705,20 @@ mod tests {
         );
 
         subscription_b_2.unsubscribe();
-        subscribers.emit(&subject_b, &Event::Foo);
+        subscribers.emit(&topic_b, &Event::Foo);
         expect_that!(events.take_events(), empty());
 
         subscription_a_1.unsubscribe();
-        subscribers.emit(&subject_a, &Event::Foo);
+        subscribers.emit(&topic_a, &Event::Foo);
         expect_that!(events.take_events(), empty());
 
-        subscribers.remove_subject(&subject_a);
-        subscribers.remove_subject(&subject_b);
+        subscribers.remove_topic(&topic_a);
+        subscribers.remove_topic(&topic_b);
     }
 
     #[gtest]
-    fn test_multi_subject_subscriptions_can_add_subscriber_during_emit() {
-        let subs = Rc::new(MultiSubjectSubscriptions::<&'static str, Event>::new());
+    fn test_multi_topic_subscriptions_can_add_subscriber_during_emit() {
+        let subs = Rc::new(MultiTopicSubscriptions::<&'static str, Event>::new());
         let events = ReceivedEventStore::new();
 
         let subs_ref = subs.clone();
@@ -750,8 +741,8 @@ mod tests {
         // THEN the only event received is from the outer listener.
         expect_that!(
             events.take_events(),
-            elements_are![eq(&SubjectEvent {
-                subject: "a",
+            elements_are![eq(&TopicEvent {
+                topic: "a",
                 listener: "outer",
                 event: Event::Foo,
             })],
@@ -765,14 +756,14 @@ mod tests {
             events.take_events(),
             unordered_elements_are![
                 // One received from outer.
-                eq(&SubjectEvent {
-                    subject: "a",
+                eq(&TopicEvent {
+                    topic: "a",
                     listener: "outer",
                     event: Event::Foo,
                 }),
                 // One received from inner.
-                eq(&SubjectEvent {
-                    subject: "a",
+                eq(&TopicEvent {
+                    topic: "a",
                     listener: "inner",
                     event: Event::Foo,
                 }),
