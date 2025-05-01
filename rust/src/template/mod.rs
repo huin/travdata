@@ -1,5 +1,6 @@
 //! Defines the internal representation of extraction templates.
 
+// TODO: Remove this allowance.
 #![allow(dead_code)]
 
 pub mod loadarg;

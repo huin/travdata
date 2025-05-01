@@ -17,7 +17,7 @@ const MAX_MERGE_TIME_DELTA: TimeDelta = TimeDelta::new(5, 0).unwrap();
 const BEYOND_MERGE_TIME_DELTA: TimeDelta = TimeDelta::new(6, 0).unwrap();
 
 struct DocumentFixture {
-    doc: DocumentRc,
+    doc: Document,
     fake_clock: FakeClock,
 }
 
@@ -26,7 +26,7 @@ impl ConsumableFixture for DocumentFixture {
         let fake_clock = FakeClock::new(START_TIMESTAMP);
         edit::set_max_merge_edit_time_delta(MAX_MERGE_TIME_DELTA);
         Ok(Self {
-            doc: DocumentRc::new_with_clock(Rc::new(fake_clock.clone())),
+            doc: Document::new_with_clock(Rc::new(fake_clock.clone())),
             fake_clock,
         })
     }

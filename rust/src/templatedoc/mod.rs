@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 mod edit;
+pub mod event;
 #[cfg(test)]
 mod tests;
 
@@ -13,7 +14,7 @@ use std::{
 
 use crate::{clock, extraction::tableextract, template};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct GroupToken(atree::Token);
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TableToken(atree::Token);
@@ -22,32 +23,32 @@ pub struct TablePortionToken(atree::Token);
 
 /// Reference-counted [Document].
 #[derive(Clone)]
-pub struct DocumentRc(Rc<RefCell<Document>>);
+pub struct Document(Rc<RefCell<DocumentInner>>);
 
-impl DocumentRc {
+impl Document {
     pub fn new_with_clock(clock: Rc<dyn clock::Clock>) -> Self {
-        DocumentRc(Rc::new(RefCell::new(Document::new(clock))))
+        Document(Rc::new(RefCell::new(DocumentInner::new(clock))))
     }
 
     pub fn new() -> Self {
         let clock = clock::RealClock::new();
-        DocumentRc(Rc::new(RefCell::new(Document::new(Rc::new(clock)))))
+        Document(Rc::new(RefCell::new(DocumentInner::new(Rc::new(clock)))))
     }
 
-    fn get_doc(&self) -> Ref<Document> {
+    fn get_inner(&self) -> Ref<DocumentInner> {
         self.0.as_ref().borrow()
     }
 
-    fn get_mut_doc(&self) -> RefMut<Document> {
+    fn get_mut_inner(&self) -> RefMut<DocumentInner> {
         self.0.as_ref().borrow_mut()
     }
 
     pub fn undo(&self) -> Result<(), EditError> {
-        self.get_mut_doc().undo()
+        self.get_mut_inner().undo()
     }
 
     pub fn redo(&self) -> Result<(), EditError> {
-        self.get_mut_doc().redo()
+        self.get_mut_inner().redo()
     }
 
     pub fn get_book(&self) -> Book {
@@ -55,7 +56,7 @@ impl DocumentRc {
     }
 
     pub fn new_table(&self, table_data: TableData) -> Table {
-        let mut doc = self.get_mut_doc();
+        let mut doc = self.get_mut_inner();
         let token = doc.state.allocs.new_table(table_data);
 
         Table {
@@ -65,7 +66,7 @@ impl DocumentRc {
     }
 
     pub fn new_group(&self, group_data: GroupData) -> Group {
-        let mut doc = self.get_mut_doc();
+        let mut doc = self.get_mut_inner();
         let token = doc.state.allocs.new_group(group_data);
 
         Group {
@@ -75,13 +76,13 @@ impl DocumentRc {
     }
 }
 
-impl std::fmt::Debug for DocumentRc {
+impl std::fmt::Debug for Document {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "DocumentRc @ {:?}", self.0.as_ptr())
     }
 }
 
-struct Document {
+struct DocumentInner {
     state: DocumentState,
 
     clock: Rc<dyn clock::Clock>,
@@ -90,7 +91,7 @@ struct Document {
     edits: undo::Record<edit::TimestampedEdit, ()>,
 }
 
-impl Document {
+impl DocumentInner {
     fn new(clock: Rc<dyn clock::Clock>) -> Self {
         Self {
             state: DocumentState::new(),
@@ -191,14 +192,14 @@ impl DocumentAllocs {
 
 #[derive(Clone)]
 pub struct Book {
-    doc: DocumentRc,
+    doc: Document,
 }
 
 impl Book {
     pub fn get_root_group(&self) -> Group {
         Group {
             doc: self.doc.clone(),
-            token: self.doc.get_doc().state.book.root_group,
+            token: self.doc.get_inner().state.book.root_group,
         }
     }
 }
@@ -232,7 +233,7 @@ pub struct GroupData {
 
 #[derive(Clone)]
 pub struct Group {
-    doc: DocumentRc,
+    doc: Document,
     token: GroupToken,
 }
 
@@ -242,13 +243,13 @@ impl Group {
     }
 
     pub fn get_name(&self) -> Result<String, EditError> {
-        let doc = self.doc.get_doc();
+        let doc = self.doc.get_inner();
         let group = doc.state.allocs.get_group(self.token)?;
         Ok(group.name.clone())
     }
 
     pub fn edit_name(&self, new_name: String) -> Result<(), EditError> {
-        let mut doc = self.doc.get_mut_doc();
+        let mut doc = self.doc.get_mut_inner();
         let old_name = doc.state.allocs.get_group(self.token)?.name.clone();
         doc.apply_edit(edit::EditDocumentState::Group {
             group: self.token,
@@ -260,7 +261,7 @@ impl Group {
 
 impl std::fmt::Debug for Group {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let doc = self.doc.get_doc();
+        let doc = self.doc.get_inner();
         let name = doc
             .state
             .allocs
@@ -285,7 +286,7 @@ pub struct TableData {
 
 #[derive(Clone)]
 pub struct Table {
-    doc: DocumentRc,
+    doc: Document,
     token: TableToken,
 }
 
@@ -295,13 +296,13 @@ impl Table {
     }
 
     pub fn get_name(&self) -> Result<String, EditError> {
-        let doc = self.doc.get_doc();
+        let doc = self.doc.get_inner();
         let table = doc.state.allocs.get_table(self.token)?;
         Ok(table.name.clone())
     }
 
     pub fn edit_name(&self, new_name: String) -> Result<(), EditError> {
-        let mut doc = self.doc.get_mut_doc();
+        let mut doc = self.doc.get_mut_inner();
         let old_name = doc.state.allocs.get_table(self.token)?.name.clone();
         doc.apply_edit(edit::EditDocumentState::Table {
             table: self.token,
@@ -313,7 +314,7 @@ impl Table {
 
 impl std::fmt::Debug for Table {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let doc = self.doc.get_doc();
+        let doc = self.doc.get_inner();
         let name = doc
             .state
             .allocs
