@@ -11,6 +11,8 @@ use relm4::{
 pub enum Action {
     FileOpenPDF,
     FileQuit,
+    EditUndo,
+    EditRedo,
     TemplateNew,
     TemplateOpen,
     TemplateSave,
@@ -23,6 +25,8 @@ pub enum Action {
 new_action_group!(MenuActionGroup, "main-menu");
 new_stateless_action!(FileOpenPDF, MenuActionGroup, "file_open_pdf");
 new_stateless_action!(FileQuit, MenuActionGroup, "file_quit");
+new_stateless_action!(EditUndo, MenuActionGroup, "edit_undo");
+new_stateless_action!(EditRedo, MenuActionGroup, "edit_redo");
 new_stateless_action!(TemplateNew, MenuActionGroup, "template_new");
 new_stateless_action!(TemplateOpen, MenuActionGroup, "template_open");
 new_stateless_action!(TemplateSave, MenuActionGroup, "template_save");
@@ -43,9 +47,13 @@ pub fn install_on_startup(app: &Application) {
                     "Quit" => FileQuit,
                 },
             },
+            "Edit" {
+                "Undo" => EditUndo,
+                "Redo" => EditRedo,
+            },
             "Extraction template" {
                 section! {
-                    "New..." => TemplateNew,
+                    "New" => TemplateNew,
                     "Open..." => TemplateOpen,
                     "Save" => TemplateSave,
                 },
@@ -80,6 +88,8 @@ where
 
     r.stateless(FileOpenPDF, Action::FileOpenPDF);
     r.stateless(FileQuit, Action::FileQuit);
+    r.stateless(EditUndo, Action::EditUndo);
+    r.stateless(EditRedo, Action::EditRedo);
     r.stateless(TemplateNew, Action::TemplateNew);
     r.stateless(TemplateOpen, Action::TemplateOpen);
     r.stateless(TemplateSave, Action::TemplateSave);
