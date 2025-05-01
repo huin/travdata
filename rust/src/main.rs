@@ -13,6 +13,7 @@ mod table;
 mod template;
 #[cfg(test)]
 mod testutil;
+mod util;
 mod v8wrapper;
 
 fn main() -> Result<()> {
