@@ -7,12 +7,12 @@ use crate::{
     commontext,
     extraction::pdf::pdfiumthread::PdfiumClient,
     gui::{extract, inputpdf, outputselect, pageview},
-    template,
+    template, templatedoc,
 };
 
 use super::{
     components::{editgroup, errordialog, tmplimport},
-    extractionlist, mainmenu, tmplmodel, treelist,
+    extractionlist, mainmenu, treelist,
     workers::{self, extractor},
 };
 
@@ -54,7 +54,7 @@ pub struct MainWindow {
     page_view: Controller<pageview::PageView>,
     edit_group: Controller<editgroup::EditGroup>,
 
-    document: tmplmodel::DocumentRc,
+    document: templatedoc::Document,
 }
 
 #[relm4::component(pub)]
@@ -133,7 +133,7 @@ impl SimpleComponent for MainWindow {
             }
             Input::NewTemplate => {
                 // TODO: Confirm if there are unsaved changes.
-                self.document = tmplmodel::DocumentRc::new();
+                self.document = templatedoc::Document::new();
 
                 // Edit the root group for now.
                 let group = self.document.get_book().get_root_group();
@@ -213,7 +213,7 @@ impl SimpleComponent for MainWindow {
                 },
             ),
 
-            document: tmplmodel::DocumentRc::new(),
+            document: templatedoc::Document::new(),
         };
 
         let widgets = view_output!();
