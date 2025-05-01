@@ -11,6 +11,7 @@ mod gui;
 mod mpscutil;
 mod table;
 mod template;
+mod templatedoc;
 #[cfg(test)]
 mod testutil;
 mod util;

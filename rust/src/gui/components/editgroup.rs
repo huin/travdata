@@ -2,13 +2,13 @@ use anyhow::{Context, Result, bail};
 use gtk::prelude::*;
 use relm4::prelude::*;
 
-use crate::gui::{tmplmodel, util};
+use crate::{gui::util, templatedoc};
 
 use super::textentry;
 
-/// GUI component to edit a [tmplmodel::Group].
+/// GUI component to edit a [templatedoc::Group].
 pub struct EditGroup {
-    group: Option<tmplmodel::Group>,
+    group: Option<templatedoc::Group>,
 
     name_text_entry: Controller<textentry::TextEntry>,
 }
@@ -16,7 +16,7 @@ pub struct EditGroup {
 #[derive(Debug)]
 pub enum Input {
     /// Sets the group to edit, or no group at all.
-    SetGroup(Option<tmplmodel::Group>),
+    SetGroup(Option<templatedoc::Group>),
     // Internal:
     Edit(Edit),
     // TODO: Receive events for outside changes to the group (such as from undo/redo).
@@ -85,7 +85,7 @@ impl SimpleComponent for EditGroup {
 }
 
 impl EditGroup {
-    fn set_group(&mut self, group: Option<tmplmodel::Group>) -> Result<()> {
+    fn set_group(&mut self, group: Option<templatedoc::Group>) -> Result<()> {
         match &group {
             Some(group) => {
                 self.name_text_entry
