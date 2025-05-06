@@ -1,6 +1,10 @@
 // TODO: Remove this allowance.
 #![allow(dead_code)]
 
+mod arena;
+mod docgroup;
+mod doctable;
+mod doctableportion;
 mod edit;
 pub mod event;
 #[cfg(test)]
@@ -12,14 +16,11 @@ use std::{
     rc::Rc,
 };
 
-use crate::{clock, extraction::tableextract, template};
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct GroupToken(atree::Token);
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct TableToken(atree::Token);
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct TablePortionToken(atree::Token);
+use crate::{clock, template};
+use arena::ArenaError;
+pub use docgroup::{Group, GroupData};
+pub use doctable::{Table, TableData};
+pub use doctableportion::{TablePortion, TablePortionData};
 
 /// Reference-counted [Document].
 #[derive(Clone)]
@@ -56,23 +57,13 @@ impl Document {
     }
 
     pub fn new_table(&self, table_data: TableData) -> Table {
-        let mut doc = self.get_mut_inner();
-        let token = doc.state.allocs.new_table(table_data);
-
-        Table {
-            doc: self.clone(),
-            token,
-        }
+        let token = self.get_mut_inner().state.table_arena.new_inner(table_data);
+        doctable::new_table(self, token)
     }
 
     pub fn new_group(&self, group_data: GroupData) -> Group {
-        let mut doc = self.get_mut_inner();
-        let token = doc.state.allocs.new_group(group_data);
-
-        Group {
-            doc: self.clone(),
-            token,
-        }
+        let token = self.get_mut_inner().state.group_arena.new_inner(group_data);
+        docgroup::new_group(self, token)
     }
 }
 
@@ -119,74 +110,27 @@ impl DocumentInner {
 }
 
 pub struct DocumentState {
-    allocs: DocumentAllocs,
+    group_arena: arena::TypedArena<Group, GroupData>,
+    table_arena: arena::TypedArena<Table, TableData>,
+    table_portion_arena: arena::TypedArena<TablePortion, TablePortionData>,
     book: BookData,
 }
 
 impl DocumentState {
     fn new() -> Self {
-        let mut allocs = DocumentAllocs::new();
-        let root_group = allocs.new_group(GroupData {
+        let mut group_arena = arena::TypedArena::new();
+        let root_group_token = group_arena.new_inner(GroupData {
             name: "root".to_string(),
             tags: HashSet::new(),
             tables: Vec::new(),
         });
-        let book = BookData::new(root_group);
 
-        Self { allocs, book }
-    }
-}
-
-struct DocumentAllocs {
-    // TODO: Consider interning strings.
-    group_arena: atree::Arena<GroupData>,
-    table_arena: atree::Arena<TableData>,
-    table_portion_arena: atree::Arena<template::TablePortion>,
-}
-
-impl DocumentAllocs {
-    fn new() -> Self {
         Self {
-            group_arena: atree::Arena::new(),
-            table_arena: atree::Arena::new(),
-            table_portion_arena: atree::Arena::new(),
+            group_arena,
+            table_arena: arena::TypedArena::new(),
+            table_portion_arena: arena::TypedArena::new(),
+            book: BookData::new(root_group_token),
         }
-    }
-
-    fn get_mut_group(&mut self, token: GroupToken) -> Result<&mut GroupData, EditError> {
-        self.group_arena
-            .get_mut(token.0)
-            .map(|node| &mut node.data)
-            .ok_or(EditError::InvalidGroupToken(token))
-    }
-
-    fn get_mut_table(&mut self, token: TableToken) -> Result<&mut TableData, EditError> {
-        self.table_arena
-            .get_mut(token.0)
-            .map(|node| &mut node.data)
-            .ok_or(EditError::InvalidTableToken(token))
-    }
-
-    fn new_group(&mut self, group_data: GroupData) -> GroupToken {
-        GroupToken(self.group_arena.new_node(group_data))
-    }
-
-    fn new_table(&mut self, table_data: TableData) -> TableToken {
-        TableToken(self.table_arena.new_node(table_data))
-    }
-
-    fn get_group(&self, token: GroupToken) -> Result<&GroupData, EditError> {
-        self.group_arena
-            .get(token.0)
-            .map(|node| &node.data)
-            .ok_or(EditError::InvalidGroupToken(token))
-    }
-
-    fn get_table(&self, token: TableToken) -> Result<&TableData, EditError> {
-        self.table_arena
-            .get(token.0)
-            .map(|node| &node.data)
-            .ok_or(EditError::InvalidTableToken(token))
     }
 }
 
@@ -197,23 +141,21 @@ pub struct Book {
 
 impl Book {
     pub fn get_root_group(&self) -> Group {
-        Group {
-            doc: self.doc.clone(),
-            token: self.doc.get_inner().state.book.root_group,
-        }
+        let token = self.doc.get_inner().state.book.root_group_token;
+        docgroup::new_group(&self.doc, token)
     }
 }
 
 struct BookData {
     scripts: Vec<template::Script>,
-    root_group: GroupToken,
+    root_group_token: docgroup::GroupToken,
 }
 
 impl BookData {
-    fn new(root_group: GroupToken) -> Self {
+    fn new(root_group: docgroup::GroupToken) -> Self {
         Self {
             scripts: Vec::new(),
-            root_group,
+            root_group_token: root_group,
         }
     }
 }
@@ -224,128 +166,13 @@ impl std::fmt::Debug for BookData {
     }
 }
 
-#[derive(Default)]
-pub struct GroupData {
-    pub name: String,
-    pub tags: HashSet<String>,
-    pub tables: Vec<TableToken>,
-}
-
-#[derive(Clone)]
-pub struct Group {
-    doc: Document,
-    token: GroupToken,
-}
-
-impl Group {
-    pub fn token(&self) -> GroupToken {
-        self.token
-    }
-
-    pub fn get_name(&self) -> Result<String, EditError> {
-        let doc = self.doc.get_inner();
-        let group = doc.state.allocs.get_group(self.token)?;
-        Ok(group.name.clone())
-    }
-
-    pub fn edit_name(&self, new_name: String) -> Result<(), EditError> {
-        let mut doc = self.doc.get_mut_inner();
-        let old_name = doc.state.allocs.get_group(self.token)?.name.clone();
-        doc.apply_edit(edit::EditDocumentState::Group {
-            group: self.token,
-            edit: edit::EditGroup::SetName { new_name, old_name },
-        })?;
-        Ok(())
-    }
-}
-
-impl std::fmt::Debug for Group {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let doc = self.doc.get_inner();
-        let name = doc
-            .state
-            .allocs
-            .get_group(self.token)
-            .map(|group| group.name.as_str())
-            .unwrap_or("<unknown>");
-        f.debug_struct("Group")
-            .field("doc", &self.doc)
-            .field("token", &self.token)
-            .field("name", &&name)
-            .finish()
-    }
-}
-
-#[derive(Default)]
-pub struct TableData {
-    pub name: String,
-    pub tags: HashSet<String>,
-    pub portions: Vec<TablePortionToken>,
-    pub transform: tableextract::TableTransform,
-}
-
-#[derive(Clone)]
-pub struct Table {
-    doc: Document,
-    token: TableToken,
-}
-
-impl Table {
-    pub fn token(&self) -> TableToken {
-        self.token
-    }
-
-    pub fn get_name(&self) -> Result<String, EditError> {
-        let doc = self.doc.get_inner();
-        let table = doc.state.allocs.get_table(self.token)?;
-        Ok(table.name.clone())
-    }
-
-    pub fn edit_name(&self, new_name: String) -> Result<(), EditError> {
-        let mut doc = self.doc.get_mut_inner();
-        let old_name = doc.state.allocs.get_table(self.token)?.name.clone();
-        doc.apply_edit(edit::EditDocumentState::Table {
-            table: self.token,
-            edit: edit::EditTable::SetName { new_name, old_name },
-        })?;
-        Ok(())
-    }
-}
-
-impl std::fmt::Debug for Table {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let doc = self.doc.get_inner();
-        let name = doc
-            .state
-            .allocs
-            .get_table(self.token)
-            .map(|table| table.name.as_str())
-            .unwrap_or("<unknown>");
-        f.debug_struct("Table")
-            .field("doc", &self.doc)
-            .field("token", &self.token)
-            .field("name", &&name)
-            .finish()
-    }
-}
-
-pub struct TablePortion<'node>(&'node atree::Node<template::TablePortion>);
-
-impl<'node> TablePortion<'node> {
-    pub fn token(&'node self) -> TablePortionToken {
-        TablePortionToken(self.0.token())
-    }
-}
-
 /// Describes an error encountered while applying an edit.
 #[derive(Debug, Eq, PartialEq)]
 #[allow(clippy::enum_variant_names)]
 pub enum EditError {
     NothingToUndo,
     NothingToRedo,
-    InvalidGroupToken(GroupToken),
-    InvalidTableToken(TableToken),
-    InvalidTablePortionToken(TablePortionToken),
+    ArenaError(ArenaError),
 }
 
 impl std::error::Error for EditError {}
@@ -360,16 +187,16 @@ impl std::fmt::Display for EditError {
             NothingToRedo => {
                 write!(f, "no actions to redo")
             }
-            InvalidGroupToken(token) => {
-                write!(f, "invalid group token: {:?}", token)
-            }
-            InvalidTableToken(token) => {
-                write!(f, "invalid table token: {:?}", token)
-            }
-            InvalidTablePortionToken(token) => {
-                write!(f, "invalid table portion token: {:?}", token)
+            ArenaError(error) => {
+                write!(f, "arena error: {}", error)
             }
         }
+    }
+}
+
+impl From<ArenaError> for EditError {
+    fn from(value: ArenaError) -> Self {
+        EditError::ArenaError(value)
     }
 }
 
