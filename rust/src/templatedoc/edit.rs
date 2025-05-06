@@ -1,5 +1,8 @@
 use std::mem::swap;
 
+use docgroup::GroupToken;
+use doctable::TableToken;
+
 use crate::clock;
 
 use super::*;
@@ -82,11 +85,11 @@ impl undo::Edit for EditDocumentState {
 
         match self {
             Group { group, edit } => {
-                let group = target.allocs.get_mut_group(*group)?;
+                let group = target.group_arena.get_mut_inner(*group)?;
                 edit.edit(group)
             }
             Table { table, edit } => {
-                let table = target.allocs.get_mut_table(*table)?;
+                let table = target.table_arena.get_mut_inner(*table)?;
                 edit.edit(table)
             }
         }
@@ -97,11 +100,11 @@ impl undo::Edit for EditDocumentState {
 
         match self {
             Group { group, edit } => {
-                let group = target.allocs.get_mut_group(*group)?;
+                let group = target.group_arena.get_mut_inner(*group)?;
                 edit.undo(group)
             }
             Table { table, edit } => {
-                let table = target.allocs.get_mut_table(*table)?;
+                let table = target.table_arena.get_mut_inner(*table)?;
                 edit.undo(table)
             }
         }
