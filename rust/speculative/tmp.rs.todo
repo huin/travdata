@@ -1,0 +1,17 @@
+//
+//
+//     document_subscriptions: subscribers::Subscriptions<event::DocumentEvent>,
+//     group_subscriptions: subscribers::MultiTopicSubscriptions<GroupToken, event::GroupEvent>,
+//
+//             document_subscriptions: subscribers::Subscriptions::new(),
+//             group_subscriptions: subscribers::MultiTopicSubscriptions::new(),
+//
+// type GroupSubscription = subscribers::TopicSubscription<GroupToken, event::GroupEvent>;
+//
+//     pub fn subscribe(&self, listener: impl Fn(&event::GroupEvent) + 'static) -> GroupSubscription {
+//         self.doc
+//             .get_mut_inner()
+//             .group_subscriptions
+//             .subscribe(&self.token, listener)
+//     }
+//
