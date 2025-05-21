@@ -4,13 +4,14 @@ use relm4::prelude::*;
 
 use crate::{gui::util, templatedoc};
 
-use super::textentry;
+use super::{tagseditor, textentry};
 
 /// GUI component to edit a [templatedoc::Group].
 pub struct EditGroup {
     group: Option<templatedoc::Group>,
 
     name_text_entry: Controller<textentry::TextEntry>,
+    tags_editor: Controller<tagseditor::TagsEditor>,
 }
 
 #[derive(Debug)]
@@ -25,6 +26,7 @@ pub enum Input {
 #[derive(Debug)]
 pub enum Edit {
     SetName(String),
+    RequestChangeTags(tagseditor::Output),
 }
 
 #[derive(Debug)]
@@ -53,6 +55,12 @@ impl SimpleComponent for EditGroup {
                 set_halign: gtk::Align::Start,
             },
             attach[1, 0, 1, 1] = model.name_text_entry.widget(),
+
+            attach[0, 1, 2, 1] = &gtk::Label {
+                set_label: "Tags:",
+                set_halign: gtk::Align::Start,
+            },
+            attach[0, 2, 2, 1] = model.tags_editor.widget(),
         }
     }
 
@@ -67,6 +75,11 @@ impl SimpleComponent for EditGroup {
                 .launch(None)
                 .forward(sender.input_sender(), |name| {
                     Input::Edit(Edit::SetName(name))
+                }),
+            tags_editor: tagseditor::TagsEditor::builder()
+                .launch(())
+                .forward(sender.input_sender(), |message| {
+                    Input::Edit(Edit::RequestChangeTags(message))
                 }),
         };
 
@@ -86,13 +99,22 @@ impl SimpleComponent for EditGroup {
 
 impl EditGroup {
     fn set_group(&mut self, group: Option<templatedoc::Group>) -> Result<()> {
+        // TODO: Subscribe/unsubscribe to group events to receive updates to properties.
         match &group {
             Some(group) => {
-                self.name_text_entry
-                    .emit(Some(group.get_name().context("getting group name")?));
+                let data = group.get_data().context("getting group data")?;
+
+                self.name_text_entry.emit(Some(data.name));
+
+                self.tags_editor
+                    .emit(tagseditor::Input::SetTags(Some(data.tags)));
+                self.tags_editor.emit(tagseditor::Input::Editable(true));
             }
             None => {
                 self.name_text_entry.emit(None);
+
+                self.tags_editor.emit(tagseditor::Input::SetTags(None));
+                self.tags_editor.emit(tagseditor::Input::Editable(false));
             }
         }
         self.group = group;
@@ -106,9 +128,23 @@ impl EditGroup {
             bail!("Cannot edit group - edited group is not set.");
         };
 
+        use Edit::*;
         match edit {
-            Edit::SetName(name) => {
+            SetName(name) => {
                 group.edit_name(name).context("editing group name")?;
+            }
+            RequestChangeTags(message) => {
+                use tagseditor::Output::*;
+                match message {
+                    RequestTagAdded(tag) => {
+                        group.add_tag(tag)?;
+                        self.tags_editor
+                            .emit(tagseditor::Input::AcceptedRequestTagAdded);
+                    }
+                    RequestTagRemoved(tag) => {
+                        group.remove_tag(tag)?;
+                    }
+                }
             }
         }
         Ok(())

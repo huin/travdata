@@ -20,6 +20,10 @@ pub fn get_max_merge_edit_time_delta() -> chrono::TimeDelta {
     *MAX_MERGE_EDIT_TIME_DELTA.lock().unwrap()
 }
 
+pub trait CheckedEdit: undo::Edit {
+    fn check(&self, target: &Self::Target) -> Result<(), EditError>;
+}
+
 /// An edit that includes a timestamp.
 ///
 /// It will only allow a merge if the timestamps of two [TimestampedEdit]s are within
@@ -146,8 +150,27 @@ impl undo::Edit for EditDocumentState {
     }
 }
 
+impl CheckedEdit for EditDocumentState {
+    fn check(&self, target: &Self::Target) -> Result<(), EditError> {
+        use EditDocumentState::*;
+
+        match self {
+            Group { group, edit } => {
+                let group = target.group_arena.get_inner(*group)?;
+                edit.check(group)
+            }
+            Table { table, edit } => {
+                let table = target.table_arena.get_inner(*table)?;
+                edit.check(table)
+            }
+        }
+    }
+}
+
 pub enum EditGroup {
     SetName { new_name: String, old_name: String },
+    AddTag(String),
+    RemoveTag(String),
 }
 
 impl undo::Edit for EditGroup {
@@ -162,6 +185,12 @@ impl undo::Edit for EditGroup {
             SetName { new_name, .. } => {
                 target.name = new_name.clone();
             }
+            AddTag(tag) => {
+                target.tags.insert(tag.clone());
+            }
+            RemoveTag(tag) => {
+                target.tags.remove(tag.as_str());
+            }
         }
 
         Ok(())
@@ -173,6 +202,12 @@ impl undo::Edit for EditGroup {
         match self {
             SetName { old_name, .. } => {
                 target.name = old_name.clone();
+            }
+            AddTag(tag) => {
+                target.tags.remove(tag.as_str());
+            }
+            RemoveTag(tag) => {
+                target.tags.insert(tag.clone());
             }
         }
 
@@ -199,7 +234,32 @@ impl undo::Edit for EditGroup {
                 swap(other_new_name, self_new_name);
                 undo::Merged::Yes
             }
+            _ => undo::Merged::No(other),
         }
+    }
+}
+
+impl CheckedEdit for EditGroup {
+    fn check(&self, target: &Self::Target) -> Result<(), EditError> {
+        use EditGroup::*;
+
+        match self {
+            SetName { .. } => {}
+            AddTag(tag) => {
+                if target.tags.contains(tag) {
+                    // Adding a present tag will not preserve accurate undo history.
+                    return Err(EditError::RedundantEdit("tag already present on group"));
+                }
+            }
+            RemoveTag(tag) => {
+                if !target.tags.contains(tag) {
+                    // Removing an absent tag will not preserve accurate undo history.
+                    return Err(EditError::RedundantEdit("tag not present on group"));
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -256,6 +316,16 @@ impl undo::Edit for EditTable {
                 swap(other_new_name, self_new_name);
                 undo::Merged::Yes
             }
+        }
+    }
+}
+
+impl CheckedEdit for EditTable {
+    fn check(&self, _target: &Self::Target) -> Result<(), EditError> {
+        use EditTable::*;
+
+        match self {
+            SetName { .. } => Ok(()),
         }
     }
 }
