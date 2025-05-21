@@ -6,12 +6,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 atomic-write-file = "0.2.3"
 borsh = { version = "1.5.7", features = ["derive"] }
-clap = { version = "4.5.35", features = ["derive"] }
+clap = { version = "4.5.38", features = ["derive"] }
 csv = "1.3.1"
-ctrlc = "3.4.5"
+ctrlc = "3.4.7"
 gtk = { version = "0.9.6", package = "gtk4" }
 hex = "0.4.3"
 image = "0.25.6"
@@ -27,7 +27,7 @@ serde_yaml_ng = "0.10.0"
 sha = "1.0.3"
 simple_bar = "0.2.2"
 tabula = "0.2.0"
-tempfile = "3.19.1"
+tempfile = "3.20.0"
 test-casing = "0.1.3"
 v8 = "135.1.0"
 walkdir = "2.5.0"
@@ -41,7 +41,7 @@ features = ["std"]
 [dependencies.pdfium-render]
 # TODO: Check if we need to use feature thread_safe. For now we're serialising
 # access into a single worker thread.
-version = "0.8.29"
+version = "0.8.31"
 default-features = false
 # Select the matching pdfium_xxxx feature for the build being linked against.
 # Match the image_xxx feature against the `image` crate being used.
