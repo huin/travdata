@@ -4,7 +4,7 @@ use super::{Document, EditError, Table, arena, edit};
 
 pub type GroupToken = arena::TypedToken<Group>;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct GroupData {
     pub name: String,
     pub tags: HashSet<String>,
@@ -30,12 +30,24 @@ impl Group {
         self.token
     }
 
-    pub fn get_name(&self) -> Result<String, EditError> {
+    /// Returns a clone of the group's data.
+    pub fn get_data(&self) -> Result<GroupData, EditError> {
         let doc_inner = self.doc.get_inner();
-        let group_data = doc_inner.state.group_arena.get_inner(self.token)?;
-        Ok(group_data.name.clone())
+        doc_inner
+            .state
+            .group_arena
+            .get_inner(self.token)
+            .map_err(EditError::from)
+            .cloned()
     }
 
+    pub fn get_name(&self) -> Result<String, EditError> {
+        let doc = self.doc.get_inner();
+        let group = doc.state.group_arena.get_inner(self.token)?;
+        Ok(group.name.clone())
+    }
+
+    /// Requests an edit to set the group's name.
     pub fn edit_name(&self, new_name: String) -> Result<(), EditError> {
         let mut doc = self.doc.get_mut_inner();
         let old_name = doc.state.group_arena.get_inner(self.token)?.name.clone();
@@ -44,6 +56,24 @@ impl Group {
             edit: edit::EditGroup::SetName { new_name, old_name },
         })?;
         Ok(())
+    }
+
+    /// Requests an edit to add a tag.
+    pub fn add_tag(&self, tag: String) -> Result<(), EditError> {
+        let mut doc = self.doc.get_mut_inner();
+        doc.apply_edit(edit::EditDocumentState::Group {
+            group: self.token,
+            edit: edit::EditGroup::AddTag(tag),
+        })
+    }
+
+    /// Requests an edit to remove a tag.
+    pub fn remove_tag(&self, tag: String) -> Result<(), EditError> {
+        let mut doc = self.doc.get_mut_inner();
+        doc.apply_edit(edit::EditDocumentState::Group {
+            group: self.token,
+            edit: edit::EditGroup::RemoveTag(tag),
+        })
     }
 }
 
