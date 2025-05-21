@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "travdata"
-version = "0.5.0"
+version = "0.6.3"
 description = "Data utility code for Mongoose Traveller TTRPG."
 authors = ["John Beisley <johnbeisleyuk@gmail.com>"]
 keywords = ["traveller", "ttrpg"]
@@ -64,9 +64,9 @@ persistent = true
 
 [tool.pylint."messages control"]
 disable = [
-    "too-few-public-methods",
-    # mypy expects the ellipsis in Protocol methods.
-    "unnecessary-ellipsis",
+  "too-few-public-methods",
+  # mypy expects the ellipsis in Protocol methods.
+  "unnecessary-ellipsis",
 ]
 
 [tool.pyright]
