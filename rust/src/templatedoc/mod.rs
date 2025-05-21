@@ -21,6 +21,7 @@ use arena::ArenaError;
 pub use docgroup::{Group, GroupData};
 pub use doctable::{Table, TableData};
 pub use doctableportion::{TablePortion, TablePortionData};
+use edit::CheckedEdit;
 
 /// Reference-counted [Document].
 #[derive(Clone)]
@@ -92,6 +93,7 @@ impl DocumentInner {
     }
 
     fn apply_edit(&mut self, edit: edit::EditDocumentState) -> Result<(), EditError> {
+        edit.check(&self.state)?;
         let ts_edit = edit::TimestampedEdit::new(self.clock.as_ref().now(), edit);
         self.edits.edit(&mut self.state, ts_edit)
     }
@@ -173,6 +175,8 @@ pub enum EditError {
     NothingToUndo,
     NothingToRedo,
     ArenaError(ArenaError),
+    /// Edit would not change state, but would break undo history if applied.
+    RedundantEdit(&'static str),
 }
 
 impl std::error::Error for EditError {}
@@ -189,6 +193,9 @@ impl std::fmt::Display for EditError {
             }
             ArenaError(error) => {
                 write!(f, "arena error: {}", error)
+            }
+            RedundantEdit(reason) => {
+                write!(f, "redundant edit: {}", reason)
             }
         }
     }

@@ -74,8 +74,8 @@ pub fn send_output_or_log<C: Component>(
     }
 }
 
-/// Sends an error message on component output, logging both the failure to send and the edit error
-/// itself.
+/// Sends an error message on component output. Upon failure to send logs both the failure to send
+/// and the error itself.
 pub fn send_if_error_or_log<C: Component, F>(
     result: anyhow::Result<()>,
     to_error_message: F,
