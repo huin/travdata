@@ -30,7 +30,7 @@ impl Default for Command {
 
 pub fn run() -> Result<()> {
     let args = Args::parse();
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("travdata")?;
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("travdata");
 
     simplelog::SimpleLogger::init(args.log_level, simplelog::Config::default())
         .with_context(|| "configuring logging")?;
