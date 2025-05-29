@@ -3,7 +3,7 @@ use std::mem::swap;
 use docgroup::GroupToken;
 use doctable::TableToken;
 
-use crate::clock;
+use crate::{clock, templatedoc::docgroup::GroupDataMutator};
 
 use super::*;
 
@@ -20,7 +20,9 @@ pub fn get_max_merge_edit_time_delta() -> chrono::TimeDelta {
     *MAX_MERGE_EDIT_TIME_DELTA.lock().unwrap()
 }
 
-pub trait CheckedEdit: undo::Edit {
+pub trait CheckedEdit {
+    type Target;
+
     fn check(&self, target: &Self::Target) -> Result<(), EditError>;
 }
 
@@ -89,8 +91,8 @@ impl undo::Edit for EditDocumentState {
 
         match self {
             Group { group, edit } => {
-                let group = target.group_arena.get_mut_inner(*group)?;
-                edit.edit(group)
+                let mut mutator = target.group_mutator(*group)?;
+                edit.edit(&mut mutator)
             }
             Table { table, edit } => {
                 let table = target.table_arena.get_mut_inner(*table)?;
@@ -104,8 +106,8 @@ impl undo::Edit for EditDocumentState {
 
         match self {
             Group { group, edit } => {
-                let group = target.group_arena.get_mut_inner(*group)?;
-                edit.undo(group)
+                let mut mutator = target.group_mutator(*group)?;
+                edit.undo(&mut mutator)
             }
             Table { table, edit } => {
                 let table = target.table_arena.get_mut_inner(*table)?;
@@ -151,6 +153,8 @@ impl undo::Edit for EditDocumentState {
 }
 
 impl CheckedEdit for EditDocumentState {
+    type Target = DocumentState;
+
     fn check(&self, target: &Self::Target) -> Result<(), EditError> {
         use EditDocumentState::*;
 
@@ -173,8 +177,10 @@ pub enum EditGroup {
     RemoveTag(String),
 }
 
-impl undo::Edit for EditGroup {
-    type Target = GroupData;
+XXX urg this associated type :(
+
+impl<'a> undo::Edit for EditGroup {
+    type Target = GroupDataMutator<'a>;
 
     type Output = Result<(), EditError>;
 
@@ -183,13 +189,13 @@ impl undo::Edit for EditGroup {
 
         match self {
             SetName { new_name, .. } => {
-                target.name = new_name.clone();
+                target.set_name(new_name.clone());
             }
             AddTag(tag) => {
-                target.tags.insert(tag.clone());
+                target.add_tag(tag.clone());
             }
             RemoveTag(tag) => {
-                target.tags.remove(tag.as_str());
+                target.remove_tag(&tag);
             }
         }
 
@@ -201,13 +207,13 @@ impl undo::Edit for EditGroup {
 
         match self {
             SetName { old_name, .. } => {
-                target.name = old_name.clone();
+                target.set_name(old_name.clone());
             }
             AddTag(tag) => {
-                target.tags.remove(tag.as_str());
+                target.remove_tag(tag.as_str());
             }
             RemoveTag(tag) => {
-                target.tags.insert(tag.clone());
+                target.add_tag(tag.clone());
             }
         }
 
@@ -240,6 +246,8 @@ impl undo::Edit for EditGroup {
 }
 
 impl CheckedEdit for EditGroup {
+    type Target = GroupData;
+
     fn check(&self, target: &Self::Target) -> Result<(), EditError> {
         use EditGroup::*;
 
@@ -321,6 +329,8 @@ impl undo::Edit for EditTable {
 }
 
 impl CheckedEdit for EditTable {
+    type Target = TableData;
+
     fn check(&self, _target: &Self::Target) -> Result<(), EditError> {
         use EditTable::*;
 

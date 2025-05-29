@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use crate::util::subscribers;
+
 use super::{Document, EditError, Table, arena, edit};
 
 pub type GroupToken = arena::TypedToken<Group>;
@@ -9,6 +11,51 @@ pub struct GroupData {
     pub name: String,
     pub tags: HashSet<String>,
     pub tables: Vec<Table>,
+}
+
+pub struct GroupDataMutator<'a> {
+    token: GroupToken,
+    subscribers: &'a subscribers::MultiTopicSubscriptions<GroupToken, GroupEvent>,
+    data: &'a mut GroupData,
+}
+
+impl<'a> GroupDataMutator<'a> {
+    pub fn new(
+        token: GroupToken,
+        subscribers: &'a subscribers::MultiTopicSubscriptions<GroupToken, GroupEvent>,
+        data: &'a mut GroupData,
+    ) -> Self {
+        Self {
+            token,
+            subscribers,
+            data,
+        }
+    }
+
+    pub fn data(&self) -> &GroupData {
+        &self.data
+    }
+
+    pub fn set_name(&mut self, name: String) {
+        self.data.name = name.clone();
+        self.subscribers
+            .emit(&self.token, &GroupEvent::NameSet(name));
+    }
+
+    pub fn add_tag(&mut self, tag: String) {
+        self.data.tags.insert(tag);
+    }
+
+    pub fn remove_tag(&mut self, tag: &str) {
+        self.data.tags.remove(tag);
+    }
+}
+
+#[derive(Debug)]
+pub enum GroupEvent {
+    NameSet(String),
+    TagAdded(String),
+    TagRemoved(String),
 }
 
 #[derive(Clone)]
