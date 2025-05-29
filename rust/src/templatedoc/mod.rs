@@ -16,9 +16,9 @@ use std::{
     rc::Rc,
 };
 
-use crate::{clock, template};
+use crate::{clock, template, util::subscribers};
 use arena::ArenaError;
-pub use docgroup::{Group, GroupData};
+pub use docgroup::{Group, GroupData, GroupEvent};
 pub use doctable::{Table, TableData};
 pub use doctableportion::{TablePortion, TablePortionData};
 use edit::CheckedEdit;
@@ -113,6 +113,7 @@ impl DocumentInner {
 
 pub struct DocumentState {
     group_arena: arena::TypedArena<Group, GroupData>,
+    group_subscriptions: subscribers::MultiTopicSubscriptions<docgroup::GroupToken, GroupEvent>,
     table_arena: arena::TypedArena<Table, TableData>,
     table_portion_arena: arena::TypedArena<TablePortion, TablePortionData>,
     book: BookData,
@@ -129,10 +130,23 @@ impl DocumentState {
 
         Self {
             group_arena,
+            group_subscriptions: subscribers::MultiTopicSubscriptions::new(),
             table_arena: arena::TypedArena::new(),
             table_portion_arena: arena::TypedArena::new(),
             book: BookData::new(root_group_token),
         }
+    }
+
+    fn group_mutator<'a>(
+        &'a mut self,
+        token: docgroup::GroupToken,
+    ) -> Result<docgroup::GroupDataMutator<'a>, EditError> {
+        let group_data = self.group_arena.get_mut_inner(token)?;
+        Ok(docgroup::GroupDataMutator::new(
+            token,
+            &self.group_subscriptions,
+            group_data,
+        ))
     }
 }
 
