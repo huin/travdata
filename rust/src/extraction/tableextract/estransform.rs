@@ -1,12 +1,13 @@
-use std::sync::mpsc;
 use std::sync::OnceLock;
+use std::sync::mpsc;
 
 use anyhow::Context;
 use anyhow::Error;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 
 use crate::table::Table;
 
+// TODO Remove this in favour of the one in [crate::v8wrapper].
 static INIT_V8: OnceLock<()> = OnceLock::new();
 
 fn init_v8() {

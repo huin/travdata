@@ -12,6 +12,7 @@ mod table;
 mod template;
 #[cfg(test)]
 mod testutil;
+mod v8wrapper;
 
 fn main() -> Result<()> {
     cli::run()
