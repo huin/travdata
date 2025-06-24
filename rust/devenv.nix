@@ -20,6 +20,8 @@ in
     gtk4.devdoc
     pkg-config
     pdfium-binaries
+    # TODO: Consider using the devenv builtin pre-commit support in future.
+    pre-commit
   ];
 
   enterShell = ''
