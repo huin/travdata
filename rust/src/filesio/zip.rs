@@ -8,16 +8,16 @@ use std::{
     rc::Rc,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use atomic_write_file::AtomicWriteFile;
 use tempfile::TempDir;
-use zip::{write::SimpleFileOptions, ZipArchive, ZipWriter};
+use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
 
 use crate::filesio::FilesIoError;
 
 use super::{
-    check_fully_relative, dir::DirReadWriter, util::read_from_slice, FileRead, FileReadImpl,
-    ReadWriter, Reader,
+    FileRead, FileReadImpl, ReadWriter, Reader, check_fully_relative, dir::DirReadWriter,
+    util::read_from_slice,
 };
 
 pub struct ZipReader {

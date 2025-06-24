@@ -3,13 +3,13 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use atomic_write_file::AtomicWriteFile;
 
 use crate::filesio::FilesIoError;
 
 use super::{
-    check_fully_relative, FileRead, FileReadImpl, FileWrite, FileWriteImpl, ReadWriter, Reader,
+    FileRead, FileReadImpl, FileWrite, FileWriteImpl, ReadWriter, Reader, check_fully_relative,
 };
 
 #[derive(Debug)]

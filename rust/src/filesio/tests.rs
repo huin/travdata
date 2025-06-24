@@ -9,19 +9,19 @@ use googletest::{
     assert_that,
     matchers::{eq, err, ok, unordered_elements_are},
 };
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 use test_casing::test_casing;
 
 use crate::{
-    filesio::{check_fully_relative, FilesIoError, NonRelativePathType},
+    filesio::{FilesIoError, NonRelativePathType, check_fully_relative},
     testutil::anyhow_downcasts_to,
 };
 
 use super::{
+    FileRead, ReadWriter, Reader,
     dir::DirReadWriter,
     mem::{MemFilesHandle, MemReadWriter},
     zip::{ZipReadWriter, ZipReader},
-    FileRead, ReadWriter, Reader,
 };
 
 type BoxIoTestEnvironment = Box<dyn IoTestEnvironment>;

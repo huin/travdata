@@ -1,5 +1,5 @@
-use gtk::prelude::*;
 use gtk::Application;
+use gtk::prelude::*;
 use relm4::{
     actions::{ActionName, EmptyType, RelmAction, RelmActionGroup},
     menu, new_action_group, new_stateless_action,

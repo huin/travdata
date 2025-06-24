@@ -12,11 +12,7 @@ pub fn intersect_range(len: usize, from: Option<usize>, to: Option<usize>) -> Op
     let from = min(len, from.unwrap_or(0));
     let to = min(len, to.unwrap_or(len));
 
-    if from < to {
-        Some(from..to)
-    } else {
-        None
-    }
+    if from < to { Some(from..to) } else { None }
 }
 
 /// Replace Python `\1` style replacements with Rust regex `${1}` style.

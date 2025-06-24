@@ -1,10 +1,10 @@
 use std::{fmt::Write, path::PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use gtk::prelude::{BoxExt, ButtonExt, OrientableExt, TextBufferExt, WidgetExt};
 use relm4::{
-    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
-    SimpleComponent,
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, SimpleComponent,
+    gtk,
 };
 
 use crate::{extraction::bookextract, filesio::FileIoPath, template};

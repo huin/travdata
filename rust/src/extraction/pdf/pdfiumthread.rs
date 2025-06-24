@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf, sync::mpsc};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use image::ImageBuffer;
 use pdfium_render::prelude::{PdfDocument, PdfRenderConfig, Pdfium};
 

@@ -6,11 +6,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use super::{
-    check_fully_relative, util::read_from_slice, FileRead, FileReadImpl, FileWrite, FileWriteImpl,
-    FilesIoError, ReadWriter, Reader,
+    FileRead, FileReadImpl, FileWrite, FileWriteImpl, FilesIoError, ReadWriter, Reader,
+    check_fully_relative, util::read_from_slice,
 };
 
 type FileMap = HashMap<PathBuf, Arc<[u8]>>;

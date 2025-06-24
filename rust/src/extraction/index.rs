@@ -7,7 +7,7 @@ use std::{
 #[cfg(test)]
 use std::{collections::HashSet, io::Read};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -211,10 +211,10 @@ mod tests {
     };
 
     use crate::{
-        extraction::index::{Index, IndexWriter, INDEX_PATH},
+        extraction::index::{INDEX_PATH, Index, IndexWriter},
         filesio::{
-            mem::{MemFilesHandle, MemReadWriter},
             ReadWriter,
+            mem::{MemFilesHandle, MemReadWriter},
         },
     };
 

@@ -5,7 +5,7 @@ pub mod tabulatmpl;
 
 use std::path::Path;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use cachingreader::CachingTableReader;
 use clap::Args;
 use serde::{Deserialize, Serialize};

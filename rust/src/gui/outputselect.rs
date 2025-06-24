@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use gtk::prelude::{BoxExt, ButtonExt, FrameExt, GridExt, OrientableExt, WidgetExt};
 use relm4::{
-    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
-    SimpleComponent,
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, SimpleComponent,
+    gtk,
 };
 use relm4_components::{
     open_button::{OpenButton, OpenButtonSettings},
