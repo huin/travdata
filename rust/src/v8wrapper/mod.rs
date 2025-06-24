@@ -29,7 +29,7 @@ impl<F> RunFn for F where F: FnOnce(&mut TryScope<'_, '_>) -> RunResult + Send {
 type BoxedRunFn = Box<dyn RunFn>;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ContextKey(u32);
+struct ContextKey(u32);
 
 /// Origin of some code.
 #[derive(Debug)]
@@ -73,6 +73,10 @@ impl Default for ESScriptOrigin {
     }
 }
 
+/// Single-owner of a thread that manages requests to be made on a [v8::Isolate].
+///
+/// Only one of these should be created within a process, due to a bug that causes a segfault if
+/// the [v8] crate creates a second [v8::Isolate].
 pub struct IsolateThreadHandle {
     // The declaration order of request_send and thread_join is such that they will be dropped in
     // an order that shuts down correctly. Dropping `request_send` implicitly requests that the
@@ -102,8 +106,6 @@ impl IsolateThreadHandle {
     }
 }
 
-// TODO: refactor client to be an `Rc` that takes down the context with it. ContextKey can then be
-// internal to this package.
 pub struct IsolateThreadClient {
     // The declaration order of request_send and thread_join is such that they will be dropped in
     // an order that shuts down correctly. Dropping `request_send` implicitly requests that the
@@ -112,29 +114,34 @@ pub struct IsolateThreadClient {
 }
 
 impl IsolateThreadClient {
-    /// Creates a new [v8::Context] and returns a reference to it.
-    pub fn new_context(&self) -> Result<ContextKey> {
+    /// Creates a new [v8::Context] and returns a client to act on it.
+    pub fn new_context(&self) -> Result<ContextClient> {
         let (result_send, result_recv) = mpsc::sync_channel(0);
         self.request_send
             .send(Request::NewContext(result_send))
             .map_err(|err| anyhow!("{}", err))
             .context("sending request to IsolateThread")?;
-        result_recv
+        let ctx_key = result_recv
             .recv()
             .context("receiving result from IsolateThread")?
-    }
+            .context("failed to allocate Context")?;
 
-    /// Deletes the [v8::Context] referenced by `ctx_key`.
-    pub fn drop_context(&self, ctx_key: ContextKey) -> Result<()> {
-        self.request_send
-            .send(Request::DropContext(ctx_key))
-            .map_err(|err| anyhow!("{}", err))
-            .context("sending request to IsolateThread")?;
-        Ok(())
+        Ok(ContextClient {
+            ctx_key,
+            request_send: self.request_send.clone(),
+        })
     }
+}
 
-    /// Runs the closure `f` against the [v8::Context] identified by `ctx_key`.
-    pub fn run<F, T>(&self, ctx_key: &ContextKey, f: F) -> Result<T>
+/// Owns a [v8::Context] within an [IsolateThreadClient], cleans up the [v8::Context] when dropped.
+pub struct ContextClient {
+    ctx_key: ContextKey,
+    request_send: mpsc::SyncSender<Request>,
+}
+
+impl ContextClient {
+    /// Runs the closure `f` against the [v8::Context] on the isolate thread.
+    pub fn run<F, T>(&self, f: F) -> Result<T>
     where
         F: FnOnce(&mut TryScope) -> Result<T> + Send + 'static,
         T: Any + Send + 'static,
@@ -143,7 +150,7 @@ impl IsolateThreadClient {
 
         self.request_send
             .send(Request::Run {
-                ctx_key: ctx_key.clone(),
+                ctx_key: self.ctx_key.clone(),
                 func: Box::new(|context: &mut TryScope| -> RunResult {
                     let value = f(context)?;
                     Ok(Box::new(value))
@@ -165,6 +172,19 @@ impl IsolateThreadClient {
                 })
             })
             .map(|value| *value)
+    }
+}
+
+impl Drop for ContextClient {
+    fn drop(&mut self) {
+        let result = self
+            .request_send
+            .send(Request::DropContext(self.ctx_key.clone()))
+            .map_err(|err| anyhow!("{}", err))
+            .context("sending request to IsolateThread");
+        if let Err(err) = result {
+            log::error!("failed to drop ContextClient: {:?}", err);
+        }
     }
 }
 
@@ -305,6 +325,7 @@ pub fn try_catch_to_result(try_catch: &mut TryScope<'_, '_>) -> Error {
     }
 }
 
+/// Creates a new [v8::String].
 pub fn new_v8_string<'s>(
     try_catch: &mut TryScope<'_, 's>,
     string: &str,
@@ -312,6 +333,7 @@ pub fn new_v8_string<'s>(
     v8::String::new(try_catch, string).ok_or_else(|| try_catch_to_result(try_catch))
 }
 
+/// Creates a new [v8::Number].
 pub fn new_v8_number<'s>(
     try_catch: &mut TryScope<'_, 's>,
     number: f64,
@@ -319,6 +341,7 @@ pub fn new_v8_number<'s>(
     v8::Number::new(try_catch, number)
 }
 
+/// Creates a new [v8::Function].
 pub fn new_v8_function<'s>(
     try_catch: &mut TryScope<'s, '_>,
     arg_names: &[&str],

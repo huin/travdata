@@ -42,9 +42,9 @@ fn test_thread_isolate_create_and_call_function(
 ) -> googletest::Result<()> {
     let client = handle.create_client();
 
-    let ctx_key = client.new_context().wrap_error()?;
-    let result: f64 = client
-        .run(&ctx_key, |try_catch| {
+    let ctx_client = client.new_context().wrap_error()?;
+    let result: f64 = ctx_client
+        .run(|try_catch| {
             let func_v8 = new_v8_function(
                 try_catch,
                 &["arg1"],
@@ -81,14 +81,14 @@ fn test_thread_isolate_create_store_and_later_use_function(
     let client = handle.create_client();
 
     // Given two contexts.
-    let ctx_key_1 = client.new_context().wrap_error()?;
-    let ctx_key_2 = client.new_context().wrap_error()?;
+    let ctx_client_1 = client.new_context().wrap_error()?;
+    let ctx_client_2 = client.new_context().wrap_error()?;
 
     const FUNC_NAME: &str = "my_func";
 
     // Given a function is created on the first context's global.
-    client
-        .run(&ctx_key_1, |try_catch| {
+    ctx_client_1
+        .run(|try_catch| {
             let func_v8 = new_v8_function(
                 try_catch,
                 &["arg1"],
@@ -110,8 +110,8 @@ fn test_thread_isolate_create_store_and_later_use_function(
         .wrap_error()?;
 
     // Then calling the function in the first context should work and return the expected answer.
-    let result = client
-        .run(&ctx_key_1, |try_catch| {
+    let result = ctx_client_1
+        .run(|try_catch| {
             let global = try_catch.get_current_context().global(try_catch);
             let func_name_v8 =
                 new_v8_string(try_catch, FUNC_NAME).context("creating function name string")?;
@@ -140,8 +140,8 @@ fn test_thread_isolate_create_store_and_later_use_function(
     assert_that!(result, approx_eq(5.0));
 
     // Then the function should not be present in the second context.
-    let func_existed_on_other_context = client
-        .run(&ctx_key_2, |try_catch| {
+    let func_existed_on_other_context = ctx_client_2
+        .run(|try_catch| {
             let global = try_catch.get_current_context().global(try_catch);
             let func_name_v8 =
                 new_v8_string(try_catch, FUNC_NAME).context("creating function name string")?;
