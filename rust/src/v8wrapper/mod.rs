@@ -397,33 +397,3 @@ impl googletest::fixtures::StaticFixture for IsolateThreadHandleForTest {
         })
     }
 }
-
-/// Should only be implemented for types that will safely cast from [v8::Local<'s, T>] to
-/// [v8::Local<'s, v8::Value>] without panicing.
-pub trait SafeCastV8<'s> {
-    fn safe_cast(self) -> v8::Local<'s, v8::Value>;
-}
-
-impl<'s> SafeCastV8<'s> for v8::Local<'s, v8::Function> {
-    fn safe_cast(self) -> v8::Local<'s, v8::Value> {
-        self.cast()
-    }
-}
-
-impl<'s> SafeCastV8<'s> for v8::Local<'s, v8::Number> {
-    fn safe_cast(self) -> v8::Local<'s, v8::Value> {
-        self.cast()
-    }
-}
-
-impl<'s> SafeCastV8<'s> for v8::Local<'s, v8::Object> {
-    fn safe_cast(self) -> v8::Local<'s, v8::Value> {
-        self.cast()
-    }
-}
-
-impl<'s> SafeCastV8<'s> for v8::Local<'s, v8::String> {
-    fn safe_cast(self) -> v8::Local<'s, v8::Value> {
-        self.cast()
-    }
-}

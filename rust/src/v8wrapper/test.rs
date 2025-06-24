@@ -55,7 +55,7 @@ fn test_thread_isolate_create_and_call_function(
             let global = try_catch.get_current_context().global(try_catch);
             let arg1_v8 = new_v8_number(try_catch, 3.0);
             let result_v8 = func_v8
-                .call(try_catch, global.safe_cast(), &[arg1_v8.safe_cast()])
+                .call(try_catch, global.into(), &[arg1_v8.into()])
                 .ok_or_else(|| try_catch_to_result(try_catch))
                 .context("calling function")?;
 
@@ -101,7 +101,7 @@ fn test_thread_isolate_create_store_and_later_use_function(
                 new_v8_string(try_catch, FUNC_NAME).context("creating function name string")?;
 
             global
-                .set(try_catch, func_name_v8.safe_cast(), func_v8.safe_cast())
+                .set(try_catch, func_name_v8.into(), func_v8.into())
                 .context("setting function on global object")?;
 
             Ok(())
@@ -117,14 +117,14 @@ fn test_thread_isolate_create_store_and_later_use_function(
                 new_v8_string(try_catch, FUNC_NAME).context("creating function name string")?;
 
             let func_v8 = global
-                .get(try_catch, func_name_v8.safe_cast())
+                .get(try_catch, func_name_v8.into())
                 .context("getting function from global object")?
                 .try_cast::<v8::Function>()
                 .context("casting Value to Function")?;
 
             let arg1_v8 = new_v8_number(try_catch, 3.0);
             let result_v8 = func_v8
-                .call(try_catch, global.safe_cast(), &[arg1_v8.safe_cast()])
+                .call(try_catch, global.into(), &[arg1_v8.into()])
                 .ok_or_else(|| try_catch_to_result(try_catch))
                 .context("calling function")?;
 
@@ -147,7 +147,7 @@ fn test_thread_isolate_create_store_and_later_use_function(
                 new_v8_string(try_catch, FUNC_NAME).context("creating function name string")?;
 
             let func_v8 = global
-                .get(try_catch, func_name_v8.safe_cast())
+                .get(try_catch, func_name_v8.into())
                 .context("getting function from global object")?;
 
             Ok(!func_v8.is_undefined())
