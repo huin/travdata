@@ -1,48 +1,15 @@
 use googletest::prelude::*;
 
+use crate::testutil::WrapError;
+
 use super::*;
-
-/// Adapts [anyhow::Error] to [std::error::Error] to make it compatible with [googletest] tests
-/// that use fixtures.
-#[derive(Debug)]
-struct WrappedError(anyhow::Error);
-
-trait WrapError<T> {
-    fn wrap_error(self) -> std::result::Result<T, WrappedError>;
-}
-
-/// Trait to convert an [anyhow::Result] to a [std::result::Result<T, WrappedError>].
-impl<T> WrapError<T> for anyhow::Result<T> {
-    fn wrap_error(self) -> std::result::Result<T, WrappedError> {
-        self.map_err(WrappedError::from)
-    }
-}
-
-impl std::fmt::Display for WrappedError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl std::error::Error for WrappedError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
-    }
-}
-
-impl From<anyhow::Error> for WrappedError {
-    fn from(value: anyhow::Error) -> Self {
-        Self(value)
-    }
-}
 
 #[gtest]
 fn test_thread_isolate_create_and_call_function(
     handle: &&IsolateThreadHandleForTest,
 ) -> googletest::Result<()> {
-    let client = handle.create_client();
+    let ctx_client = handle.new_context().wrap_error()?;
 
-    let ctx_client = client.new_context().wrap_error()?;
     let result: f64 = ctx_client
         .run(|try_catch| {
             let func_v8 = new_v8_function(
@@ -78,11 +45,9 @@ fn test_thread_isolate_create_and_call_function(
 fn test_thread_isolate_create_store_and_later_use_function(
     handle: &&IsolateThreadHandleForTest,
 ) -> googletest::Result<()> {
-    let client = handle.create_client();
-
     // Given two contexts.
-    let ctx_client_1 = client.new_context().wrap_error()?;
-    let ctx_client_2 = client.new_context().wrap_error()?;
+    let ctx_client_1 = handle.new_context().wrap_error()?;
+    let ctx_client_2 = handle.new_context().wrap_error()?;
 
     const FUNC_NAME: &str = "my_func";
 

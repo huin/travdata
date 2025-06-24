@@ -1,6 +1,6 @@
 use std::{
     path::PathBuf,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use anyhow::{Context, Result};
@@ -14,6 +14,7 @@ use crate::{
     },
     filesio,
     template::loadarg,
+    v8wrapper,
 };
 
 /// Extracts data tables from the Mongoose Traveller 2022 core rules PDF as CSV
@@ -68,7 +69,12 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
     let tmpl = cmd.template.load_template()?;
 
     let table_reader = cmd.table_reader.build(&xdg_dirs)?;
-    let extractor = Extractor::new(&tmpl, table_reader.as_ref())?;
+    let isolate_thread = v8wrapper::IsolateThreadHandle::new();
+    let extractor = Extractor::new(
+        &tmpl,
+        table_reader.as_ref(),
+        isolate_thread.create_client().new_context()?,
+    )?;
 
     let output_type = filesio::IoType::resolve_auto(cmd.output_type, &cmd.output);
     let out_writer = output_type

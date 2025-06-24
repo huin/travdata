@@ -1,3 +1,5 @@
+//! Provides a wrapper of a [v8::Isolate] that can be shared between threads by making serialised
+//! requests against it.
 #![allow(dead_code)]
 
 #[cfg(test)]
@@ -77,6 +79,7 @@ impl Default for ESScriptOrigin {
 ///
 /// Only one of these should be created within a process, due to a bug that causes a segfault if
 /// the [v8] crate creates a second [v8::Isolate].
+#[derive(Debug)]
 pub struct IsolateThreadHandle {
     // The declaration order of request_send and thread_join is such that they will be dropped in
     // an order that shuts down correctly. Dropping `request_send` implicitly requests that the
@@ -104,32 +107,22 @@ impl IsolateThreadHandle {
             request_send: self.request_send.clone(),
         }
     }
+
+    /// Creates a new [v8::Context] and returns a client to act on it.
+    pub fn new_context(&self) -> Result<ContextClient> {
+        ContextClient::new(self.request_send.clone())
+    }
 }
 
+#[derive(Debug, Clone)]
 pub struct IsolateThreadClient {
-    // The declaration order of request_send and thread_join is such that they will be dropped in
-    // an order that shuts down correctly. Dropping `request_send` implicitly requests that the
-    // thread stops waiting for more requests.
     request_send: mpsc::SyncSender<Request>,
 }
 
 impl IsolateThreadClient {
     /// Creates a new [v8::Context] and returns a client to act on it.
     pub fn new_context(&self) -> Result<ContextClient> {
-        let (result_send, result_recv) = mpsc::sync_channel(0);
-        self.request_send
-            .send(Request::NewContext(result_send))
-            .map_err(|err| anyhow!("{}", err))
-            .context("sending request to IsolateThread")?;
-        let ctx_key = result_recv
-            .recv()
-            .context("receiving result from IsolateThread")?
-            .context("failed to allocate Context")?;
-
-        Ok(ContextClient {
-            ctx_key,
-            request_send: self.request_send.clone(),
-        })
+        ContextClient::new(self.request_send.clone())
     }
 }
 
@@ -140,6 +133,23 @@ pub struct ContextClient {
 }
 
 impl ContextClient {
+    fn new(request_send: mpsc::SyncSender<Request>) -> Result<Self> {
+        let (result_send, result_recv) = mpsc::sync_channel(0);
+        request_send
+            .send(Request::NewContext(result_send))
+            .map_err(|err| anyhow!("{}", err))
+            .context("sending request to IsolateThread")?;
+        let ctx_key = result_recv
+            .recv()
+            .context("receiving result from IsolateThread")?
+            .context("failed to allocate Context")?;
+
+        Ok(ContextClient {
+            ctx_key,
+            request_send,
+        })
+    }
+
     /// Runs the closure `f` against the [v8::Context] on the isolate thread.
     pub fn run<F, T>(&self, f: F) -> Result<T>
     where

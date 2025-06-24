@@ -1,17 +1,17 @@
 use std::{
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
     thread,
 };
 
 use anyhow::{Context, Result};
-use gtk::prelude::*;
 use gtk::Application;
+use gtk::prelude::*;
 use relm4::RelmApp;
 
 use crate::{
     extraction::pdf::pdfiumthread::{PdfiumClient, PdfiumServer},
     gui::{self, mainmenu, workers},
-    mpscutil,
+    mpscutil, v8wrapper,
 };
 
 /// Runs the GUI. Must be called from the main thread.
@@ -21,7 +21,12 @@ pub fn run(
     xdg_dirs: xdg::BaseDirectories,
 ) -> Result<()> {
     let result: Result<()> = thread::scope(|s| {
-        let worker = workers::extractor::MainThreadWorker::new(table_reader.as_ref());
+        let isolate_thread = v8wrapper::IsolateThreadHandle::new();
+
+        let worker = workers::extractor::MainThreadWorker::new(
+            table_reader.as_ref(),
+            isolate_thread.create_client(),
+        );
 
         // Run the PdfiumServer in its own dedicated thread, to serialise access to the
         // pdfium_render library.

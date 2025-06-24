@@ -75,3 +75,37 @@ where
         }
     }
 }
+
+/// Adapts [anyhow::Error] to [std::error::Error] to make it compatible with [googletest] tests
+/// that use fixtures.
+#[derive(Debug)]
+pub struct WrappedError(anyhow::Error);
+
+pub trait WrapError<T> {
+    fn wrap_error(self) -> std::result::Result<T, WrappedError>;
+}
+
+/// Trait to convert an [anyhow::Result] to a [std::result::Result<T, WrappedError>].
+impl<T> WrapError<T> for anyhow::Result<T> {
+    fn wrap_error(self) -> std::result::Result<T, WrappedError> {
+        self.map_err(WrappedError::from)
+    }
+}
+
+impl std::fmt::Display for WrappedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.0, f)
+    }
+}
+
+impl std::error::Error for WrappedError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
+impl From<anyhow::Error> for WrappedError {
+    fn from(value: anyhow::Error) -> Self {
+        Self(value)
+    }
+}

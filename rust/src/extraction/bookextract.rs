@@ -11,11 +11,12 @@ use super::{
     index::IndexWriter,
     pdf::{ExtractedTable, ExtractedTables, TableReader},
     tableextract::{
-        estransform::{ESScript, ESScriptOrigin, ESTransformer, TransformFn},
-        legacy_transform, TableTransform,
+        TableTransform,
+        estransform::{ESScript, ESTransformer, TransformFn},
+        legacy_transform,
     },
 };
-use crate::{filesio::ReadWriter, table::Table, template};
+use crate::{filesio::ReadWriter, table::Table, template, v8wrapper};
 
 /// Encapsulates the values required to extract tables from book(s).
 pub struct Extractor<'a> {
@@ -76,8 +77,12 @@ pub trait ExtractEvents {
 
 impl<'a> Extractor<'a> {
     /// Create a new [Extractor].
-    pub fn new(tmpl: &'a template::Book, tabula_client: &'a dyn TableReader) -> Result<Self> {
-        let mut estrn = ESTransformer::new();
+    pub fn new(
+        tmpl: &'a template::Book,
+        tabula_client: &'a dyn TableReader,
+        ctx_client: v8wrapper::ContextClient,
+    ) -> Result<Self> {
+        let mut estrn = ESTransformer::new(ctx_client);
         run_ecma_scripts(&mut estrn, &tmpl.scripts)?;
 
         Ok(Self {
@@ -249,7 +254,7 @@ impl<'a> Extractor<'a> {
             Some(TableTransform::ESTransform(es_transform)) => {
                 let func = TransformFn {
                     function_body: es_transform.src.clone(),
-                    origin: ESScriptOrigin {
+                    origin: v8wrapper::ESScriptOrigin {
                         resource_name: out_table.transform_name.clone(),
                         resource_line_offset: 0,
                         resource_column_offset: 0,
@@ -271,7 +276,7 @@ fn run_ecma_scripts(estrn: &mut ESTransformer, scripts: &[template::Script]) -> 
         estrn
             .run_script(ESScript {
                 source: script.code.clone(),
-                origin: ESScriptOrigin {
+                origin: v8wrapper::ESScriptOrigin {
                     resource_name: script.name.clone(),
                     resource_line_offset: 0,
                     resource_column_offset: 0,

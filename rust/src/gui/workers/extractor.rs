@@ -1,16 +1,16 @@
 use std::{
     path::PathBuf,
-    sync::{atomic::AtomicBool, mpsc, Arc},
+    sync::{Arc, atomic::AtomicBool, mpsc},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use relm4::Worker;
 
 use crate::{
     extraction::{bookextract, pdf::TableReader},
     filesio::FileIoPath,
     gui::util,
-    template,
+    template, v8wrapper,
 };
 
 /// Initialisation data for [ExtractorWorker].
@@ -118,16 +118,21 @@ impl Worker for ExtractorWorker {
 
 pub struct MainThreadWorker<'a> {
     table_reader: &'a dyn TableReader,
+    isolate_client: v8wrapper::IsolateThreadClient,
 
     request_sender: mpsc::SyncSender<Work>,
     request_receiver: mpsc::Receiver<Work>,
 }
 
 impl<'a> MainThreadWorker<'a> {
-    pub fn new(table_reader: &'a dyn TableReader) -> Self {
+    pub fn new(
+        table_reader: &'a dyn TableReader,
+        isolate_client: v8wrapper::IsolateThreadClient,
+    ) -> Self {
         let (request_sender, request_receiver) = mpsc::sync_channel(0);
         Self {
             table_reader,
+            isolate_client,
             request_sender,
             request_receiver,
         }
@@ -147,6 +152,7 @@ impl<'a> MainThreadWorker<'a> {
         drop(self.request_sender);
 
         let table_reader = self.table_reader;
+        let isolate_client = self.isolate_client;
         let request_receiver = self.request_receiver;
 
         loop {
@@ -158,7 +164,7 @@ impl<'a> MainThreadWorker<'a> {
                 }
             };
 
-            work.run(table_reader);
+            work.run(table_reader, &isolate_client);
         }
     }
 }
@@ -192,19 +198,30 @@ impl Work {
         }
     }
 
-    fn run(&mut self, table_reader: &dyn TableReader) {
-        if let Err(err) = self.run_inner(table_reader) {
+    fn run(
+        &mut self,
+        table_reader: &dyn TableReader,
+        isolate_client: &v8wrapper::IsolateThreadClient,
+    ) {
+        if let Err(err) = self.run_inner(table_reader, isolate_client) {
             self.sender.send(Output::Failure(err));
         }
     }
 
-    fn run_inner(&mut self, table_reader: &dyn TableReader) -> Result<()> {
+    fn run_inner(
+        &mut self,
+        table_reader: &dyn TableReader,
+        isolate_client: &v8wrapper::IsolateThreadClient,
+    ) -> Result<()> {
         let out_writer = self
             .request
             .out_io
             .new_read_writer()
             .with_context(|| "Opening output writer.")?;
-        let extractor = bookextract::Extractor::new(&self.request.tmpl, table_reader)
+        let ctx_client = isolate_client
+            .new_context()
+            .context("creating new v8 Context")?;
+        let extractor = bookextract::Extractor::new(&self.request.tmpl, table_reader, ctx_client)
             .with_context(|| "Preparing extractor.")?;
 
         let spec = bookextract::ExtractSpec {
