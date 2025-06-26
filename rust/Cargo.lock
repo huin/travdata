@@ -2954,7 +2954,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "travdata-rs"
+name = "travdata-bin"
 version = "0.1.0"
 dependencies = [
  "anyhow",
