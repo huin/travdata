@@ -18,6 +18,7 @@ in
     gtk4.debug
     gtk4.dev
     gtk4.devdoc
+    mask
     pkg-config
     pdfium-binaries
     # TODO: Consider using the devenv builtin pre-commit support in future.

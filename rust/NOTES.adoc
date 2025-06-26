@@ -2,36 +2,9 @@
 
 == Building with tabula-rs
 
-To build a working version of tabula-java for use with tabula-rs:
-
-[source,shell]
-----
-# with maven installed: (e.g. nix-shell -p maven)
-mkdir deps
-cd deps
-git clone git@github.com:sp1ritCS/tabula-rs.git
-git clone git@github.com:tabulapdf/tabula-java.git
-cd tabula-java
-patch -p1 < ../tabula-rs/0001-add-ffi-constructor-to-CommandLineApp.patch
-mvn compile assembly:single
-----
-
-This will produce the required 
-`deps/tabula-java/target/tabula-1.0.6-SNAPSHOT-jar-with-dependencies.jar`.
+To build a working version of tabula-java for use with tabula-rs, use `mask
+build-tabula-rs`, or look at the script in `maskfile.md`.
 
 The entry point into Tabula Java opens the PDF document each time, which is
 probably computationally expensive. Unsure if that's addressable without
 patching Tabula further.
-
-== Adding ZIP file support
-
-When ZIP files are to be read, we might be able to make do with no extra features:
-
-[source,toml]
-----
-[dependencies.zip]
-version = "1.2.1"
-# We don't need many features - we write our own ZIP files without encryption
-# and compression etc., so strip this down to a minimum.
-default-features = false
-----
