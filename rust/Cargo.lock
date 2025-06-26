@@ -1767,6 +1767,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mapro"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0c16fb16274e1a9206ec1d62486a8de21233cd0660db839e7978d39958b92c5"
+
+[[package]]
 name = "maybe-owned"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2989,6 +2995,19 @@ dependencies = [
  "walkdir",
  "xdg",
  "zip",
+]
+
+[[package]]
+name = "travdata-extraction"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "googletest",
+ "mapro",
+ "serde",
+ "serde_derive",
+ "serde_yaml_ng",
+ "test-casing",
 ]
 
 [[package]]

@@ -1,0 +1,17 @@
+[package]
+name = "travdata-extraction"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+serde = { version = "1.0.219", features = ["std", "serde_derive"] }
+serde_derive = "1.0.219"
+serde_yaml_ng = "0.10.0"
+strum = { version = "0.27.1", features = ["derive", "std", "strum_macros"] }
+strum_macros = "0.27.1"
+
+[dev-dependencies]
+googletest = { version = "0.14.0", features = ["anyhow"] }
+mapro = "0.1.1"
+test-casing = "0.1.3"
