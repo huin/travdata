@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// Per-type wrapper of a specific type of extraction configuration node.
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize, strum_macros::EnumDiscriminants)]
+#[strum_discriminants(derive(Hash))]
 #[serde(tag = "type", content = "spec")]
 pub enum Spec {
     EsTransform(es_transform::EsTransform),

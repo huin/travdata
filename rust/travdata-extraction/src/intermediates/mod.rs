@@ -1,0 +1,29 @@
+//! Intermediate data types, that are outputs of some [crate::nodes::Node] and inputs to others
+//! during extraction processing.
+
+use std::path::PathBuf;
+
+use crate::node::core_type;
+
+pub mod es_transform;
+
+pub enum Intermediate {
+    EsTransform(es_transform::EsTransform),
+    InputFile(PathBuf),
+    JsonData(serde_json::Value),
+}
+
+#[derive(Default)]
+pub struct IntermediateSet {
+    intermediates: hashbrown::HashMap<core_type::NodeId, Intermediate>,
+}
+
+impl IntermediateSet {
+    pub fn set(&mut self, node_id: core_type::NodeId, intermediate: Intermediate) {
+        self.intermediates.insert(node_id, intermediate);
+    }
+
+    pub fn get<'a>(&'a self, node_id: &core_type::NodeId) -> Option<&'a Intermediate> {
+        self.intermediates.get(node_id)
+    }
+}
