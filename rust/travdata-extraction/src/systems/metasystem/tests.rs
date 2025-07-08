@@ -1,110 +1,75 @@
-use anyhow::Result;
 use googletest::prelude::*;
-use mockall::mock;
 
 use super::*;
-use crate::{
-    intermediates,
-    node::{self, core_type, spec},
-    processargs, processparams, systems,
-    testutil::*,
-};
-
-mock! {
-    pub System {}
-
-    // TODO: Use fake specs for testing here.
-
-    impl systems::GenericSystem<spec::Spec> for System {
-        fn params(&self, node: &node::Node) -> Option<processparams::NodeParams>;
-
-        fn inputs(&self, node: &node::Node) -> Vec<core_type::NodeId>;
-
-        fn process(
-            &self,
-            node: &node::Node,
-            args: &processargs::ArgSet,
-            intermediates: &intermediates::IntermediateSet,
-        ) -> Result<intermediates::Intermediate>;
-
-        fn process_multiple<'a>(
-            &self,
-            nodes: &'a [&'a node::Node],
-            args: &processargs::ArgSet,
-            intermediates: &intermediates::IntermediateSet,
-        ) -> Vec<(core_type::NodeId, Result<intermediates::Intermediate>)>;
-    }
-}
+use crate::{processparams, testutil::*};
 
 #[gtest]
 fn test_params() {
-    let mut pdf_sys = MockSystem::new();
-    let mut json_sys = MockSystem::new();
+    let mut foo_sys = MockFakeSystem::new();
+    let mut bar_sys = MockFakeSystem::new();
 
-    // GIVEN: an InputPdfFile node.
-    let pdf_node = Rc::new(default_node(|_| {}, default_spec_input_pdf_file(|_| {})));
+    // GIVEN: a Foo node.
+    let foo_node = Rc::new(FakeNode::default_with_spec(FakeSpec::default_foo()));
 
-    // GIVEN: an OutputFileJson node.
-    let json_node = Rc::new(default_node(|_| {}, default_spec_output_file_json(|_| {})));
+    // GIVEN: a Bar node.
+    let bar_node = Rc::new(FakeNode::default_with_spec(FakeSpec::default_bar()));
 
-    // GIVEN: the pdf_sys will return the given parameters.
-    let new_expected_pdf_params = || {
+    // GIVEN: the foo_sys will return the given parameters.
+    let new_expected_foo_params = || {
         Some(processparams::NodeParams {
             params: vec![processparams::Param {
-                param_id: processparams::ParamId("pdf-in"),
-                description: "pdf-in description.".into(),
+                param_id: processparams::ParamId("foo-param"),
+                description: "foo-param description.".into(),
                 param_type: processparams::ParamType::InputPdf,
             }],
         })
     };
-    pdf_sys
+    foo_sys
         .expect_params()
         .withf_st({
-            let pdf_node = pdf_node.clone();
-            move |node| node == pdf_node.as_ref()
+            let foo_node = foo_node.clone();
+            move |node| node == foo_node.as_ref()
         })
-        .return_once_st(move |_| new_expected_pdf_params());
+        .return_once_st(move |_| new_expected_foo_params());
 
-    // GIVEN: the json_sys will return the given parameters.
-    let new_expected_json_params = || {
+    // GIVEN: the bar_sys will return the given parameters.
+    let new_expected_bar_params = || {
         Some(processparams::NodeParams {
             params: vec![processparams::Param {
-                param_id: processparams::ParamId("json-out"),
-                description: "json-out description.".into(),
+                param_id: processparams::ParamId("bar-param"),
+                description: "bar-param description.".into(),
                 param_type: processparams::ParamType::OutputDirectory,
             }],
         })
     };
-    json_sys
+    bar_sys
         .expect_params()
         .withf_st({
-            let json_node = json_node.clone();
-            move |node| node == json_node.as_ref()
+            let bar_node = bar_node.clone();
+            move |node| node == bar_node.as_ref()
         })
-        .return_once_st(move |_| new_expected_json_params());
+        .return_once_st(move |_| new_expected_bar_params());
 
-    // GIVEN: a meta_system that dispatches for InputPdfFile and OutputFileJson.
-    let pdf_sys = Rc::new(pdf_sys);
-    let json_sys = Rc::new(json_sys);
-    let mut systems = hashbrown::HashMap::<
-        spec::SpecDiscriminants,
-        Rc<dyn systems::GenericSystem<spec::Spec>>,
-    >::new();
-    systems.insert(spec::SpecDiscriminants::InputPdfFile, pdf_sys.clone());
-    systems.insert(spec::SpecDiscriminants::OutputFileJson, json_sys.clone());
+    // GIVEN: a meta_system that dispatches for Foo and Bar.
+    let foo_sys = Rc::new(foo_sys);
+    let bar_sys = Rc::new(bar_sys);
+    let mut systems =
+        hashbrown::HashMap::<FakeSpecDiscriminants, Rc<dyn GenericSystem<FakeSpec>>>::new();
+    systems.insert(FakeSpecDiscriminants::Foo, foo_sys.clone());
+    systems.insert(FakeSpecDiscriminants::Bar, bar_sys.clone());
     let meta_system = GenericMetaSystem::new(systems);
 
-    // WHEN: the params are requested for the InputPdfFile node.
-    let got_pdf_params = meta_system.params(&pdf_node);
+    // WHEN: the params are requested for the Foo node.
+    let got_foo_params = meta_system.params(&foo_node);
 
     // THEN: the single param should be for an input PDF file path.
-    let expected_pdf_params = new_expected_pdf_params();
-    expect_that!(got_pdf_params, eq(&expected_pdf_params));
+    let expected_foo_params = new_expected_foo_params();
+    expect_that!(got_foo_params, eq(&expected_foo_params));
 
-    // WHEN: the params are requested for the InputPdfFile node.
-    let got_json_params = meta_system.params(&json_node);
+    // WHEN: the params are requested for the Bar node.
+    let got_bar_params = meta_system.params(&bar_node);
 
-    // THEN: the single param should be for an input json file path.
-    let expected_json_params = new_expected_json_params();
-    expect_that!(got_json_params, eq(&expected_json_params));
+    // THEN: the single param should be for an output JSON file path.
+    let expected_bar_params = new_expected_bar_params();
+    expect_that!(got_bar_params, eq(&expected_bar_params));
 }
