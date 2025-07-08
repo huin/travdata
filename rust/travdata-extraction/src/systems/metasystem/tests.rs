@@ -5,7 +5,7 @@ use mockall::mock;
 use super::*;
 use crate::{
     intermediates,
-    node::{self, core_type},
+    node::{self, core_type, spec},
     processargs, processparams, systems,
     testutil::*,
 };
@@ -13,7 +13,9 @@ use crate::{
 mock! {
     pub System {}
 
-    impl systems::System for System {
+    // TODO: Use fake specs for testing here.
+
+    impl systems::GenericSystem<spec::Spec> for System {
         fn params(&self, node: &node::Node) -> Option<processparams::NodeParams>;
 
         fn inputs(&self, node: &node::Node) -> Vec<core_type::NodeId>;
@@ -84,10 +86,13 @@ fn test_params() {
     // GIVEN: a meta_system that dispatches for InputPdfFile and OutputFileJson.
     let pdf_sys = Rc::new(pdf_sys);
     let json_sys = Rc::new(json_sys);
-    let mut systems = hashbrown::HashMap::<spec::SpecDiscriminants, Rc<dyn systems::System>>::new();
+    let mut systems = hashbrown::HashMap::<
+        spec::SpecDiscriminants,
+        Rc<dyn systems::GenericSystem<spec::Spec>>,
+    >::new();
     systems.insert(spec::SpecDiscriminants::InputPdfFile, pdf_sys.clone());
     systems.insert(spec::SpecDiscriminants::OutputFileJson, json_sys.clone());
-    let meta_system = MetaSystem::new(systems);
+    let meta_system = GenericMetaSystem::new(systems);
 
     // WHEN: the params are requested for the InputPdfFile node.
     let got_pdf_params = meta_system.params(&pdf_node);

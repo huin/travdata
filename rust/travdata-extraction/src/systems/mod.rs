@@ -5,30 +5,29 @@ mod missingsystem;
 
 use anyhow::Result;
 
-use crate::{
-    intermediates,
-    node::{self, core_type},
-    processargs, processparams,
-};
+use crate::{intermediates, node, processargs, processparams};
 
-pub use metasystem::MetaSystem;
+pub use metasystem::GenericMetaSystem;
 pub use missingsystem::MissingSystem;
 
 /// Required trait for types that perform processing of a [node::Node]. Implementations are
 /// expected to be stateless with regards to nodes, their arguments, outputs, etc.
-pub trait System {
+pub trait GenericSystem<S>
+where
+    S: node::SpecTrait,
+{
     /// Returns the parameters for the node, if any.
-    fn params(&self, _node: &node::Node) -> Option<processparams::NodeParams> {
+    fn params(&self, _node: &node::GenericNode<S>) -> Option<processparams::NodeParams> {
         None
     }
 
     /// Returns the set of node IDs that the given node depends on as inputs.
-    fn inputs(&self, node: &node::Node) -> Vec<core_type::NodeId>;
+    fn inputs(&self, node: &node::GenericNode<S>) -> Vec<node::NodeId>;
 
     /// Performs processing of the given [node::Node], returning its [intermediates::Intermediate].
     fn process(
         &self,
-        node: &node::Node,
+        node: &node::GenericNode<S>,
         args: &processargs::ArgSet,
         intermediates: &intermediates::IntermediateSet,
     ) -> Result<intermediates::Intermediate>;
@@ -40,10 +39,10 @@ pub trait System {
     /// optimise this.
     fn process_multiple<'a>(
         &self,
-        nodes: &'a [&'a node::Node],
+        nodes: &'a [&'a node::GenericNode<S>],
         args: &processargs::ArgSet,
         intermediates: &intermediates::IntermediateSet,
-    ) -> Vec<(core_type::NodeId, Result<intermediates::Intermediate>)> {
+    ) -> Vec<(node::NodeId, Result<intermediates::Intermediate>)> {
         nodes
             .iter()
             .map(|&node| (node.id.clone(), self.process(node, args, intermediates)))

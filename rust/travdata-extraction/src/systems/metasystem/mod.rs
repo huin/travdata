@@ -6,9 +6,7 @@ mod tests;
 
 use std::rc::Rc;
 
-use strum::IntoDiscriminant;
-
-use super::{MissingSystem, System};
+use super::{GenericSystem, MissingSystem};
 use crate::{
     intermediates,
     node::{self, spec},
@@ -16,22 +14,28 @@ use crate::{
 
 /// A system that delegates to other systems based on the [spec::SpecDiscriminants] of any given
 /// [node::Node].
-pub struct MetaSystem {
-    systems: hashbrown::HashMap<spec::SpecDiscriminants, Rc<dyn System>>,
+pub struct GenericMetaSystem<S>
+where
+    S: node::SpecTrait,
+{
+    systems: hashbrown::HashMap<S::Discrim, Rc<dyn GenericSystem<S>>>,
     default_system: MissingSystem,
 }
 
-impl MetaSystem {
+impl<S> GenericMetaSystem<S>
+where
+    S: node::SpecTrait,
+{
     /// Creates a new [MetaSystem] that delegates to the given systems for the given
     /// [spec::SpecDiscriminants].
-    pub fn new(systems: hashbrown::HashMap<spec::SpecDiscriminants, Rc<dyn System>>) -> Self {
+    pub fn new(systems: hashbrown::HashMap<S::Discrim, Rc<dyn GenericSystem<S>>>) -> Self {
         Self {
             systems,
             default_system: MissingSystem,
         }
     }
 
-    fn system_for(&self, spec_type: spec::SpecDiscriminants) -> &dyn System {
+    fn system_for(&self, spec_type: S::Discrim) -> &dyn GenericSystem<S> {
         self.systems
             .get(&spec_type)
             .map(Rc::as_ref)
@@ -39,18 +43,21 @@ impl MetaSystem {
     }
 }
 
-impl System for MetaSystem {
-    fn params(&self, node: &node::Node) -> Option<crate::processparams::NodeParams> {
+impl<S> GenericSystem<S> for GenericMetaSystem<S>
+where
+    S: node::SpecTrait,
+{
+    fn params(&self, node: &node::GenericNode<S>) -> Option<crate::processparams::NodeParams> {
         self.system_for(node.spec.discriminant()).params(node)
     }
 
-    fn inputs(&self, _node: &node::Node) -> Vec<node::core_type::NodeId> {
+    fn inputs(&self, _node: &node::GenericNode<S>) -> Vec<node::core_type::NodeId> {
         todo!()
     }
 
     fn process(
         &self,
-        _node: &node::Node,
+        _node: &node::GenericNode<S>,
         _args: &crate::processargs::ArgSet,
         _intermediates: &intermediates::IntermediateSet,
     ) -> anyhow::Result<intermediates::Intermediate> {
@@ -59,7 +66,7 @@ impl System for MetaSystem {
 
     fn process_multiple<'a>(
         &self,
-        _nodes: &'a [&'a node::Node],
+        _nodes: &'a [&'a node::GenericNode<S>],
         _args: &crate::processargs::ArgSet,
         _intermediates: &intermediates::IntermediateSet,
     ) -> Vec<(
@@ -69,3 +76,6 @@ impl System for MetaSystem {
         todo!()
     }
 }
+
+/// Specific [GenericMetaSystem] used in actual processing.
+pub type MetaSystem = GenericMetaSystem<spec::Spec>;

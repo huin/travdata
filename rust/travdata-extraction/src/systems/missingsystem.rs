@@ -1,9 +1,9 @@
 use anyhow::{Result, anyhow};
 
-use super::System;
+use super::GenericSystem;
 use crate::{
     intermediates,
-    node::{self, core_type, spec},
+    node::{self, core_type},
     processargs,
 };
 
@@ -11,21 +11,24 @@ use crate::{
 /// [spec::Spec] type.
 pub struct MissingSystem;
 
-impl System for MissingSystem {
-    fn inputs(&self, _node: &node::Node) -> Vec<core_type::NodeId> {
+impl<S> GenericSystem<S> for MissingSystem
+where
+    S: node::SpecTrait,
+{
+    fn inputs(&self, _node: &node::GenericNode<S>) -> Vec<core_type::NodeId> {
         vec![]
     }
 
     fn process(
         &self,
-        node: &node::Node,
+        node: &node::GenericNode<S>,
         _args: &processargs::ArgSet,
         _intermediates: &intermediates::IntermediateSet,
     ) -> Result<intermediates::Intermediate> {
         Err(anyhow!(
             "node {:?} of type {:?} is processed by MissingSystem that will only produce errors, a system has not been installed for nodes of this type",
             node.id,
-            spec::SpecDiscriminants::from(&node.spec),
+            node.spec.discriminant(),
         ))
     }
 }
