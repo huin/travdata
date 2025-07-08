@@ -4,11 +4,13 @@ pub mod core_type;
 pub mod spec;
 pub mod spec_type;
 #[cfg(test)]
-mod tests;
+pub mod tests;
 
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
+
+pub use core_type::NodeId;
 
 /// Generic wrapper and properties of an extraction configuration node.
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

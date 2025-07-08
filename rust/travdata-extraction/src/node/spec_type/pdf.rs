@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize, de::Visitor};
 /// Defines a page-aligned rectangular region within a page of a PDF.
 ///
 /// NOTE: In the PDF coordinate system, the origin (0,0) is at the bottom left of page. Therefore
-/// for a valid [PDFRect] the following must be true: `left <= right && bottom <= top`.
+/// for a valid [PdfRect] the following must be true: `left <= right && bottom <= top`.
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PdfRect {
     /// Horizontal coordinate of the left hand side of the rectangle.

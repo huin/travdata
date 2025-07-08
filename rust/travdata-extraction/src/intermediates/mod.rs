@@ -1,4 +1,4 @@
-//! Intermediate data types, that are outputs of some [crate::nodes::Node] and inputs to others
+//! Intermediate data types, that are outputs of some [crate::node::Node] and inputs to others
 //! during extraction processing.
 
 use std::path::PathBuf;

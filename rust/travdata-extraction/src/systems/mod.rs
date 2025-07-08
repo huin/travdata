@@ -1,12 +1,18 @@
 //! Data types that act upon [crate::node::Node] to perform individual parts of an extraction process.
 
-use anyhow::{Result, anyhow};
+mod metasystem;
+mod missingsystem;
+
+use anyhow::Result;
 
 use crate::{
     intermediates,
-    node::{self, core_type, spec},
+    node::{self, core_type},
     processargs, processparams,
 };
+
+pub use metasystem::MetaSystem;
+pub use missingsystem::MissingSystem;
 
 /// Required trait for types that perform processing of a [node::Node]. Implementations are
 /// expected to be stateless with regards to nodes, their arguments, outputs, etc.
@@ -32,9 +38,9 @@ pub trait System {
     ///
     /// The default implementation processes in serial. Specific implementations may choose to
     /// optimise this.
-    fn process_multiple(
+    fn process_multiple<'a>(
         &self,
-        nodes: &[&node::Node],
+        nodes: &'a [&'a node::Node],
         args: &processargs::ArgSet,
         intermediates: &intermediates::IntermediateSet,
     ) -> Vec<(core_type::NodeId, Result<intermediates::Intermediate>)> {
@@ -42,28 +48,5 @@ pub trait System {
             .iter()
             .map(|&node| (node.id.clone(), self.process(node, args, intermediates)))
             .collect()
-    }
-}
-
-/// Used as a fallback when a [System] implementation has not been provided for a [node::Node]'s
-/// [spec::Spec] type.
-pub struct MissingSystem;
-
-impl System for MissingSystem {
-    fn inputs(&self, _node: &node::Node) -> Vec<core_type::NodeId> {
-        vec![]
-    }
-
-    fn process(
-        &self,
-        node: &node::Node,
-        _args: &processargs::ArgSet,
-        _intermediates: &intermediates::IntermediateSet,
-    ) -> Result<intermediates::Intermediate> {
-        Err(anyhow!(
-            "node {:?} of type {:?} is processed by MissingSystem that will only produce errors, a system has not been installed for nodes of this type",
-            node.id,
-            spec::SpecDiscriminants::from(&node.spec),
-        ))
     }
 }

@@ -16,4 +16,5 @@ strum_macros = "0.27.1"
 [dev-dependencies]
 googletest = { version = "0.14.0", features = ["anyhow"] }
 mapro = "0.1.1"
+mockall = "0.13.1"
 test-casing = "0.1.3"

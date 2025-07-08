@@ -1,8 +1,9 @@
 /// ID of a parameter, within the namespace of the [crate::node::Node] that it is for.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ParamId(&'static str);
+pub struct ParamId(pub &'static str);
 
 /// Describes an input parameter for processing.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Param {
     /// ID of the parameter.
     pub param_id: ParamId,
@@ -13,13 +14,14 @@ pub struct Param {
 }
 
 /// Indicates the required semantic type of an argument.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ParamType {
     InputPdf,
     OutputDirectory,
 }
 
 /// [Param]s for a single [crate::node::Node].
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NodeParams {
     pub params: Vec<Param>,
 }

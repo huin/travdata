@@ -4,3 +4,5 @@ pub mod processargs;
 pub mod processing;
 pub mod processparams;
 pub mod systems;
+#[cfg(test)]
+mod testutil;

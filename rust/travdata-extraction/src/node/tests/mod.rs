@@ -1,5 +1,3 @@
-use std::{ffi::OsStr, path::Path};
-
 use anyhow::{Context, Result};
 use googletest::prelude::*;
 use mapro::set;
@@ -13,6 +11,7 @@ use super::{
     spec_type::pdf,
     *,
 };
+use crate::testutil::{node_id, output_path_buf, tag};
 
 const CASES: TestCases<(&'static str, Node)> = cases! {
     [
@@ -196,19 +195,4 @@ spec:
     }
 
     Ok(())
-}
-
-fn node_id(s: &str) -> core_type::NodeId {
-    s.to_string().try_into().expect("expected valid Id value")
-}
-
-fn output_path_buf<S: AsRef<OsStr> + ?Sized>(s: &S) -> core_type::OutputPathBuf {
-    Path::new(s)
-        .to_owned()
-        .try_into()
-        .expect("expected valid OutputPathBufValue")
-}
-
-fn tag(s: &str) -> core_type::Tag {
-    s.to_string().try_into().expect("expected valid Tag value")
 }

@@ -1,4 +1,4 @@
-//! Core types used within an extraction configuration [crate::nodes::Node].
+//! Core types used within an extraction configuration [crate::node::Node].
 //!
 //! Many of these have value validation, so their inner value is private.
 
@@ -35,7 +35,7 @@ impl TryFrom<PathBuf> for OutputPathBuf {
 }
 
 /// Tag value that non-uniquely identifies a set of extraction configuration
-/// [crate::node::Node](s).
+/// [crate::node::Node]s.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 // TODO: Validate the ID when deserializing.
 pub struct Tag(String);
