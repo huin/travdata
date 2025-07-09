@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     intermediates,
-    node::{self, core_type},
+    node::{self, core_type, spec_type},
     processargs, processparams, systems,
 };
 
@@ -14,7 +14,7 @@ pub fn node_id(s: &str) -> node::NodeId {
     s.to_string().try_into().expect("expected valid Id value")
 }
 
-pub fn output_path_buf<S: AsRef<OsStr> + ?Sized>(s: &S) -> core_type::OutputPathBuf {
+pub fn output_path_buf<S: AsRef<OsStr> + ?Sized>(s: &S) -> spec_type::OutputPathBuf {
     Path::new(s)
         .to_owned()
         .try_into()

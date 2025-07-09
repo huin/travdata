@@ -2,8 +2,6 @@
 //!
 //! Many of these have value validation, so their inner value is private.
 
-use std::path::PathBuf;
-
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier of an extraction configuration [crate::node::Node] within a bundle.
@@ -16,20 +14,6 @@ impl TryFrom<String> for NodeId {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         // TODO: Validate the ID.
-        Ok(Self(value))
-    }
-}
-
-/// Relative path to an output file within a runtime-specified directory.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-// TODO: Validate the path when deserializing. Should be a relative-and-subdir-only value.
-pub struct OutputPathBuf(PathBuf);
-
-impl TryFrom<PathBuf> for OutputPathBuf {
-    type Error = anyhow::Error;
-
-    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
-        // TODO: Validate the path.
         Ok(Self(value))
     }
 }
