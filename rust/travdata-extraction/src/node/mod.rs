@@ -1,6 +1,6 @@
 //! Data types that configure an aspect of extraction processing.
 
-pub mod core_type;
+mod core_type;
 pub mod spec;
 pub mod spec_type;
 #[cfg(test)]
@@ -10,7 +10,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-pub use core_type::NodeId;
+pub use core_type::{NodeId, Tag};
 
 pub trait SpecTrait:
     std::fmt::Debug + for<'a> Deserialize<'a> + Eq + PartialEq + Serialize

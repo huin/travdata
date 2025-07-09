@@ -51,7 +51,7 @@ where
         self.system_for(node.spec.discriminant()).params(node)
     }
 
-    fn inputs(&self, _node: &node::GenericNode<S>) -> Vec<node::core_type::NodeId> {
+    fn inputs(&self, _node: &node::GenericNode<S>) -> Vec<node::NodeId> {
         todo!()
     }
 
@@ -69,10 +69,7 @@ where
         _nodes: &'a [&'a node::GenericNode<S>],
         _args: &crate::processargs::ArgSet,
         _intermediates: &intermediates::IntermediateSet,
-    ) -> Vec<(
-        node::core_type::NodeId,
-        anyhow::Result<intermediates::Intermediate>,
-    )> {
+    ) -> Vec<(node::NodeId, anyhow::Result<intermediates::Intermediate>)> {
         todo!()
     }
 }

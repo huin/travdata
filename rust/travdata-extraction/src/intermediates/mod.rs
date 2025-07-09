@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use crate::node::core_type;
+use crate::node;
 
 pub mod es_transform;
 
@@ -15,15 +15,15 @@ pub enum Intermediate {
 
 #[derive(Default)]
 pub struct IntermediateSet {
-    intermediates: hashbrown::HashMap<core_type::NodeId, Intermediate>,
+    intermediates: hashbrown::HashMap<node::NodeId, Intermediate>,
 }
 
 impl IntermediateSet {
-    pub fn set(&mut self, node_id: core_type::NodeId, intermediate: Intermediate) {
+    pub fn set(&mut self, node_id: node::NodeId, intermediate: Intermediate) {
         self.intermediates.insert(node_id, intermediate);
     }
 
-    pub fn get<'a>(&'a self, node_id: &core_type::NodeId) -> Option<&'a Intermediate> {
+    pub fn get<'a>(&'a self, node_id: &node::NodeId) -> Option<&'a Intermediate> {
         self.intermediates.get(node_id)
     }
 }

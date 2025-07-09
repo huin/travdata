@@ -1,11 +1,7 @@
 use anyhow::{Result, anyhow};
 
 use super::GenericSystem;
-use crate::{
-    intermediates,
-    node::{self, core_type},
-    processargs,
-};
+use crate::{intermediates, node, processargs};
 
 /// Used as a fallback when a [System] implementation has not been provided for a [node::Node]'s
 /// [spec::Spec] type.
@@ -15,7 +11,7 @@ impl<S> GenericSystem<S> for MissingSystem
 where
     S: node::SpecTrait,
 {
-    fn inputs(&self, _node: &node::GenericNode<S>) -> Vec<core_type::NodeId> {
+    fn inputs(&self, _node: &node::GenericNode<S>) -> Vec<node::NodeId> {
         vec![]
     }
 

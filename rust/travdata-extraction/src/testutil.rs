@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     intermediates,
-    node::{self, core_type, spec_type},
+    node::{self, spec_type},
     processargs, processparams, systems,
 };
 
@@ -21,7 +21,7 @@ pub fn output_path_buf<S: AsRef<OsStr> + ?Sized>(s: &S) -> spec_type::OutputPath
         .expect("expected valid OutputPathBufValue")
 }
 
-pub fn tag(s: &str) -> core_type::Tag {
+pub fn tag(s: &str) -> node::Tag {
     s.to_string().try_into().expect("expected valid Tag value")
 }
 
@@ -85,7 +85,7 @@ mock! {
     impl systems::GenericSystem<FakeSpec> for FakeSystem {
         fn params(&self, node: &FakeNode) -> Option<processparams::NodeParams>;
 
-        fn inputs(&self, node: &FakeNode) -> Vec<core_type::NodeId>;
+        fn inputs(&self, node: &FakeNode) -> Vec<node::NodeId>;
 
         fn process(
             &self,
@@ -99,6 +99,6 @@ mock! {
             nodes: &'a [&'a FakeNode],
             args: &processargs::ArgSet,
             intermediates: &intermediates::IntermediateSet,
-        ) -> Vec<(core_type::NodeId, Result<intermediates::Intermediate>)>;
+        ) -> Vec<(node::NodeId, Result<intermediates::Intermediate>)>;
     }
 }
