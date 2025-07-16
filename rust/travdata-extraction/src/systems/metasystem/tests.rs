@@ -9,20 +9,18 @@ fn test_params() {
     let mut bar_sys = MockFakeSystem::new();
 
     // GIVEN: a Foo node.
-    let foo_node = Rc::new(FakeNode::default_with_spec(FakeSpec::default_foo()));
+    let foo_node = Rc::new(FakeNode::default_with_spec(FooSpec::default()));
 
     // GIVEN: a Bar node.
-    let bar_node = Rc::new(FakeNode::default_with_spec(FakeSpec::default_bar()));
+    let bar_node = Rc::new(FakeNode::default_with_spec(BarSpec::default()));
 
     // GIVEN: the foo_sys will return the given parameters.
-    let new_expected_foo_params = || {
-        Some(processparams::NodeParams {
-            params: vec![processparams::Param {
-                param_id: processparams::ParamId("foo-param"),
-                description: "foo-param description.".into(),
-                param_type: processparams::ParamType::InputPdf,
-            }],
-        })
+    let new_expected_foo_params = || processparams::Params {
+        params: vec![processparams::Param {
+            param_id: processparams::ParamId("foo-param"),
+            description: "foo-param description.".into(),
+            param_type: processparams::ParamType::InputPdf,
+        }],
     };
     foo_sys
         .expect_params()
@@ -33,14 +31,12 @@ fn test_params() {
         .return_once_st(move |_| new_expected_foo_params());
 
     // GIVEN: the bar_sys will return the given parameters.
-    let new_expected_bar_params = || {
-        Some(processparams::NodeParams {
-            params: vec![processparams::Param {
-                param_id: processparams::ParamId("bar-param"),
-                description: "bar-param description.".into(),
-                param_type: processparams::ParamType::OutputDirectory,
-            }],
-        })
+    let new_expected_bar_params = || processparams::Params {
+        params: vec![processparams::Param {
+            param_id: processparams::ParamId("bar-param"),
+            description: "bar-param description.".into(),
+            param_type: processparams::ParamType::OutputDirectory,
+        }],
     };
     bar_sys
         .expect_params()

@@ -8,6 +8,7 @@ use crate::node;
 pub mod es_transform;
 
 pub enum Intermediate {
+    NoData,
     EsTransform(es_transform::EsTransform),
     InputFile(PathBuf),
     JsonData(serde_json::Value),
@@ -19,6 +20,12 @@ pub struct IntermediateSet {
 }
 
 impl IntermediateSet {
+    pub fn new() -> Self {
+        Self {
+            intermediates: Default::default(),
+        }
+    }
+
     pub fn set(&mut self, node_id: node::NodeId, intermediate: Intermediate) {
         self.intermediates.insert(node_id, intermediate);
     }

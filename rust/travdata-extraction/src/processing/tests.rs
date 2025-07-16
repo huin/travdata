@@ -1,0 +1,262 @@
+use std::rc::Rc;
+
+use googletest::prelude::*;
+use hashbrown::HashSet;
+use predicates::constant::always;
+
+use crate::{intermediates, node, processargs, testutil::*};
+
+const FOO_1_ID: &str = "foo-1-id";
+const FOO_2_ID: &str = "foo-2-id";
+const BAR_1_ID: &str = "bar-1-id";
+const BAR_2_ID: &str = "bar-2-id";
+
+#[gtest]
+#[test_log::test]
+fn test_basic_process_order() {
+    let mut sys = MockFakeSystem::new();
+
+    // GIVEN nodes where BAR_1_ID will depend on FOO_1_ID.
+    let node_set = TestNodeSet::new(vec![
+        foo_node(FOO_1_ID, &[]),
+        bar_node(BAR_1_ID, &[FOO_1_ID]),
+    ]);
+
+    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
+    // specs:
+    sys.expect_inputs().returning_st(|node| node.deps());
+
+    // GIVEN: distinct process_multiple calls for foo_1_node followed by bar_1_node.
+    let mut process_sequence = mockall::Sequence::new();
+    expect_process_multiple(&mut process_sequence, &mut sys, &[FOO_1_ID]);
+    expect_process_multiple(&mut process_sequence, &mut sys, &[BAR_1_ID]);
+
+    let sys = Rc::new(sys);
+    let processor = TestProcessor::new(sys.clone());
+    let args = processargs::ArgSet::default();
+
+    // WHEN: processing is requested on the nodes.
+    expect_that!(processor.process(&node_set, &args), ok(eq(&())));
+
+    // THEN: the expected process_multiple calls will have been made.
+    // (this is implicitly check by the mock when dropped)
+}
+
+#[gtest]
+#[test_log::test]
+fn test_three_stage_processing() {
+    let mut sys = MockFakeSystem::new();
+
+    // GIVEN nodes where BAR_2_ID will depend on BAR_1_ID which depends on FOO_1_ID.
+    let node_set = TestNodeSet::new(vec![
+        foo_node(FOO_1_ID, &[]),
+        bar_node(BAR_1_ID, &[FOO_1_ID]),
+        bar_node(BAR_2_ID, &[BAR_1_ID]),
+    ]);
+
+    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
+    // specs: BAR_2_ID -> BAR_1_ID -> FOO_1_ID.
+    sys.expect_inputs().returning_st(|node| node.deps());
+
+    // GIVEN: distinct process_multiple calls for FOO_1_ID followed by BAR_1_ID, and then
+    // BAR_2_ID.
+    let mut process_sequence = mockall::Sequence::new();
+    expect_process_multiple(&mut process_sequence, &mut sys, &[FOO_1_ID]);
+    expect_process_multiple(&mut process_sequence, &mut sys, &[BAR_1_ID]);
+    expect_process_multiple(&mut process_sequence, &mut sys, &[BAR_2_ID]);
+
+    let sys = Rc::new(sys);
+    let processor = TestProcessor::new(sys.clone());
+    let args = processargs::ArgSet::default();
+
+    // WHEN: processing is requested on the nodes.
+    expect_that!(processor.process(&node_set, &args), ok(eq(&())));
+
+    // THEN: the expected process_multiple calls will have been made.
+    // (this is implicitly check by the mock when dropped)
+}
+
+#[gtest]
+#[test_log::test]
+fn test_passes_all_runnable_nodes_together() {
+    let mut sys = MockFakeSystem::new();
+
+    // GIVEN nodes where BAR_1_ID will depend on FOO_1_ID, and BAR_2_ID will depend on FOO_2_ID.
+    let node_set = TestNodeSet::new(vec![
+        foo_node(FOO_1_ID, &[]),
+        foo_node(FOO_2_ID, &[]),
+        bar_node(BAR_1_ID, &[FOO_1_ID]),
+        bar_node(BAR_2_ID, &[FOO_2_ID]),
+    ]);
+
+    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
+    // specs:
+    // BAR_1_ID -> FOO_1_ID
+    // BAR_2_ID -> FOO_2_ID
+    sys.expect_inputs().returning_st(|node| node.deps());
+
+    let mut process_sequence = mockall::Sequence::new();
+    // GIVEN: expected call for FOO_1_ID and FOO_2_ID.
+    expect_process_multiple(&mut process_sequence, &mut sys, &[FOO_1_ID, FOO_2_ID]);
+    // GIVEN: expected call for BAR_1_ID and BAR_2_ID.
+    expect_process_multiple(&mut process_sequence, &mut sys, &[BAR_1_ID, BAR_2_ID]);
+
+    let sys = Rc::new(sys);
+    let processor = TestProcessor::new(sys.clone());
+    let args = processargs::ArgSet::default();
+
+    // WHEN: processing is requested on the nodes.
+    expect_that!(processor.process(&node_set, &args), ok(eq(&())));
+
+    // THEN: the expected process_multiple calls will have been made.
+    // (this is implicitly check by the mock when dropped)
+}
+
+#[gtest]
+#[test_log::test]
+fn test_handles_direct_loop() {
+    // TODO: Should this return an error, rather than simply logging?
+
+    let mut sys = MockFakeSystem::new();
+
+    // GIVEN nodes where FOO_1_ID depends on itself.
+    let node_set = TestNodeSet::new(vec![foo_node(FOO_1_ID, &[FOO_1_ID])]);
+
+    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
+    // specs: FOO_1_ID -> FOO_1_ID
+    sys.expect_inputs().returning_st(|node| node.deps());
+
+    // GIVEN: No expected processing calls.
+
+    let sys = Rc::new(sys);
+    let processor = TestProcessor::new(sys.clone());
+    let args = processargs::ArgSet::default();
+
+    // WHEN: processing is requested on the nodes.
+    expect_that!(processor.process(&node_set, &args), ok(eq(&())));
+
+    // THEN: no process_multiple calls will have been made.
+}
+
+#[gtest]
+#[test_log::test]
+fn test_handles_indirect_loop() {
+    // TODO: Should this return an error, rather than simply logging?
+
+    let mut sys = MockFakeSystem::new();
+
+    // GIVEN nodes where FOO_1_ID depends on BAR_1_ID which depends on FOO_1_ID, forming a loop.
+    let node_set = TestNodeSet::new(vec![
+        foo_node(FOO_1_ID, &[BAR_1_ID]),
+        bar_node(BAR_1_ID, &[FOO_1_ID]),
+    ]);
+
+    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
+    // specs:
+    // BAR_1_ID -> FOO_1_ID -> BAR_1_ID
+    sys.expect_inputs().returning_st(|node| node.deps());
+
+    // GIVEN: No expected processing calls.
+
+    let sys = Rc::new(sys);
+    let processor = TestProcessor::new(sys.clone());
+    let args = processargs::ArgSet::default();
+
+    // WHEN: processing is requested on the nodes.
+    expect_that!(processor.process(&node_set, &args), ok(eq(&())));
+
+    // THEN: no process_multiple calls will have been made.
+}
+
+#[gtest]
+#[test_log::test]
+fn test_handles_unknown_dependency() {
+    // TODO: Should this return an error, rather than simply logging?
+
+    let mut sys = MockFakeSystem::new();
+
+    // GIVEN nodes where FOO_1_ID depends on BAR_1_ID which depends on FOO_1_ID, forming a loop.
+    let node_set = TestNodeSet::new(vec![foo_node(FOO_1_ID, &["unknown-id"])]);
+
+    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
+    // specs: FOO_1_ID -> "unknown-id"
+    sys.expect_inputs().returning_st(|node| node.deps());
+
+    // GIVEN: No expected processing calls.
+
+    let sys = Rc::new(sys);
+    let processor = TestProcessor::new(sys.clone());
+    let args = processargs::ArgSet::default();
+
+    // WHEN: processing is requested on the nodes.
+    expect_that!(processor.process(&node_set, &args), ok(eq(&())));
+
+    // THEN: no process_multiple calls will have been made.
+}
+
+fn expect_process_multiple(
+    process_sequence: &mut mockall::Sequence,
+    sys: &mut MockFakeSystem,
+    node_ids: &[&str],
+) {
+    let mut nodes_predicate = ProcessNodesPredicate::new();
+    for id_str in node_ids {
+        nodes_predicate.add_node_id(id_str);
+    }
+
+    sys.expect_process_multiple()
+        .once()
+        .with(nodes_predicate, always(), always())
+        .returning_st(|nodes, _, _| fake_process_multiple(nodes))
+        .in_sequence(process_sequence);
+}
+
+fn fake_process_multiple(
+    nodes: &[&FakeNode],
+) -> Vec<(node::NodeId, anyhow::Result<intermediates::Intermediate>)> {
+    nodes
+        .iter()
+        .map(|node| (node.id.clone(), Ok(intermediates::Intermediate::NoData)))
+        .collect()
+}
+
+struct ProcessNodesPredicate {
+    want_ids: HashSet<node::NodeId>,
+}
+
+impl ProcessNodesPredicate {
+    fn new() -> Self {
+        Self {
+            want_ids: HashSet::new(),
+        }
+    }
+
+    fn add_node_id(&mut self, id_str: &str) {
+        self.want_ids.insert(node_id(id_str));
+    }
+}
+
+impl std::fmt::Display for ProcessNodesPredicate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut fmt_ids: Vec<_> = self
+            .want_ids
+            .iter()
+            .map(|node_id| format!("{:?}", node_id))
+            .collect();
+        fmt_ids.sort();
+        write!(
+            f,
+            "&[&FakeNode] slice containing node IDs [{}]",
+            fmt_ids.join(", ")
+        )
+    }
+}
+
+impl predicates::reflection::PredicateReflection for ProcessNodesPredicate {}
+
+impl mockall::Predicate<[&FakeNode]> for ProcessNodesPredicate {
+    fn eval(&self, variable: &[&FakeNode]) -> bool {
+        let got_ids: HashSet<node::NodeId> = variable.iter().map(|node| node.id.clone()).collect();
+        got_ids == self.want_ids
+    }
+}

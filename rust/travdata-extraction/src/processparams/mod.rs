@@ -1,4 +1,6 @@
-/// ID of a parameter, within the namespace of the [crate::node::Node] that it is for.
+use crate::node;
+
+/// ID of a parameter, within the namespace of the [node::Node] that it is for.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ParamId(pub &'static str);
 
@@ -20,8 +22,21 @@ pub enum ParamType {
     OutputDirectory,
 }
 
-/// [Param]s for a single [crate::node::Node].
+/// [Param]s for a single [node::Node].
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct NodeParams {
+pub struct Params {
     pub params: Vec<Param>,
+}
+
+/// A [Param] qualified by its [node::NodeId].
+#[derive(Debug)]
+pub struct NodeParam {
+    pub node_id: node::NodeId,
+    pub param: Param,
+}
+
+/// [NodeParam]s for a collection of [node::Node]s.
+#[derive(Debug)]
+pub struct NodeParams {
+    pub params: Vec<NodeParam>,
 }

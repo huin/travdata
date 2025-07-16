@@ -9,6 +9,12 @@ use serde::{Deserialize, Serialize};
 // TODO: Validate the ID when deserializing.
 pub struct NodeId(String);
 
+impl From<&NodeId> for NodeId {
+    fn from(value: &NodeId) -> Self {
+        value.clone()
+    }
+}
+
 impl TryFrom<String> for NodeId {
     type Error = anyhow::Error;
 

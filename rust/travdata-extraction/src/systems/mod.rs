@@ -17,8 +17,10 @@ where
     S: node::SpecTrait,
 {
     /// Returns the parameters for the node, if any.
-    fn params(&self, _node: &node::GenericNode<S>) -> Option<processparams::NodeParams> {
-        None
+    fn params(&self, _node: &node::GenericNode<S>) -> processparams::Params {
+        processparams::Params {
+            params: Vec::default(),
+        }
     }
 
     /// Returns the set of node IDs that the given node depends on as inputs.

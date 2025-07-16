@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     intermediates,
     node::{self, spec_type},
-    processargs, processparams, systems,
+    processargs, processing, processparams, systems,
 };
 
 pub fn node_id(s: &str) -> node::NodeId {
@@ -34,20 +34,6 @@ pub enum FakeSpec {
     Bar(BarSpec),
 }
 
-impl FakeSpec {
-    pub fn default_foo() -> Self {
-        FakeSpec::Foo(FooSpec {
-            value: "foo-value".into(),
-        })
-    }
-
-    pub fn default_bar() -> Self {
-        FakeSpec::Bar(BarSpec {
-            value: "bar-value".into(),
-        })
-    }
-}
-
 impl node::SpecTrait for FakeSpec {
     type Discrim = FakeSpecDiscriminants;
 
@@ -56,26 +42,112 @@ impl node::SpecTrait for FakeSpec {
     }
 }
 
+impl From<FooSpec> for FakeSpec {
+    fn from(value: FooSpec) -> Self {
+        Self::Foo(value)
+    }
+}
+
+impl From<BarSpec> for FakeSpec {
+    fn from(value: BarSpec) -> Self {
+        Self::Bar(value)
+    }
+}
+
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct FooSpec {
-    value: String,
+    pub value: String,
+    pub deps: Vec<node::NodeId>,
+}
+
+impl Default for FooSpec {
+    fn default() -> Self {
+        Self {
+            value: "foo-value".into(),
+            deps: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct BarSpec {
-    value: String,
+    pub value: String,
+    pub deps: Vec<node::NodeId>,
+}
+
+impl Default for BarSpec {
+    fn default() -> Self {
+        Self {
+            value: "bar-value".into(),
+            deps: Default::default(),
+        }
+    }
 }
 
 pub type FakeNode = node::GenericNode<FakeSpec>;
 
+impl Default for FakeNode {
+    fn default() -> Self {
+        Self {
+            id: node_id("default-node-id"),
+            tags: Default::default(),
+            public: Default::default(),
+            spec: FooSpec::default().into(),
+        }
+    }
+}
+
 impl node::GenericNode<FakeSpec> {
-    pub fn default_with_spec(spec: FakeSpec) -> Self {
+    pub fn default_with_spec<S>(spec: S) -> Self
+    where
+        S: Into<FakeSpec>,
+    {
         Self {
             id: node_id("foo"),
             tags: Default::default(),
             public: false,
-            spec,
+            spec: spec.into(),
         }
+    }
+
+    pub fn modified<F>(self, f: F) -> Self
+    where
+        F: FnOnce(&mut Self),
+    {
+        let mut s = self;
+        f(&mut s);
+        s
+    }
+
+    pub fn deps(&self) -> Vec<node::NodeId> {
+        match &self.spec {
+            FakeSpec::Foo(foo_spec) => foo_spec.deps.clone(),
+            FakeSpec::Bar(bar_spec) => bar_spec.deps.clone(),
+        }
+    }
+}
+
+pub fn foo_node(id: &str, deps: &[&str]) -> FakeNode {
+    FakeNode {
+        id: node_id(id),
+        spec: FooSpec {
+            deps: deps.iter().map(|s| node_id(s)).collect(),
+            ..Default::default()
+        }
+        .into(),
+        ..Default::default()
+    }
+}
+
+pub fn bar_node(id: &str, deps: &[&str]) -> FakeNode {
+    FakeNode {
+        id: node_id(id),
+        spec: BarSpec {
+            deps: deps.iter().map(|s| node_id(s)).collect(),
+            ..Default::default()
+        }
+        .into(),
+        ..Default::default()
     }
 }
 
@@ -83,7 +155,7 @@ mock! {
     pub FakeSystem {}
 
     impl systems::GenericSystem<FakeSpec> for FakeSystem {
-        fn params(&self, node: &FakeNode) -> Option<processparams::NodeParams>;
+        fn params(&self, node: &FakeNode) -> processparams::Params;
 
         fn inputs(&self, node: &FakeNode) -> Vec<node::NodeId>;
 
@@ -102,3 +174,7 @@ mock! {
         ) -> Vec<(node::NodeId, Result<intermediates::Intermediate>)>;
     }
 }
+
+pub type TestNodeSet = processing::GenericNodeSet<FakeSpec>;
+
+pub type TestProcessor = processing::GenericProcessor<FakeSpec>;

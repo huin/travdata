@@ -47,7 +47,7 @@ impl<S> GenericSystem<S> for GenericMetaSystem<S>
 where
     S: node::SpecTrait,
 {
-    fn params(&self, node: &node::GenericNode<S>) -> Option<crate::processparams::NodeParams> {
+    fn params(&self, node: &node::GenericNode<S>) -> crate::processparams::Params {
         self.system_for(node.spec.discriminant()).params(node)
     }
 
