@@ -175,6 +175,6 @@ mock! {
     }
 }
 
-pub type TestNodeSet = processing::GenericNodeSet<FakeSpec>;
+pub type TestPipeline = processing::GenericPipeline<FakeSpec>;
 
 pub type TestProcessor = processing::GenericProcessor<FakeSpec>;

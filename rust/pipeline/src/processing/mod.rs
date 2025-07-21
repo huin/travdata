@@ -66,11 +66,11 @@ pub enum UnprocessedDependencyReason {
 }
 
 /// Immutable set of [node::Node]s, indexed for processing.
-pub struct GenericNodeSet<S> {
+pub struct GenericPipeline<S> {
     id_to_node: HashMap<node::NodeId, node::GenericNode<S>>,
 }
 
-impl<S> GenericNodeSet<S> {
+impl<S> GenericPipeline<S> {
     pub fn new(nodes: impl IntoIterator<Item = node::GenericNode<S>>) -> Self {
         let id_to_node = nodes
             .into_iter()
@@ -98,8 +98,8 @@ impl<S> GenericNodeSet<S> {
     }
 }
 
-/// Specific [GenericNodeSet] used in actual processing.
-pub type NodeSet = GenericNodeSet<spec::Spec>;
+/// Specific [GenericPipeline] used in actual processing.
+pub type Pipeline = GenericPipeline<spec::Spec>;
 
 /// Processes a set of [crate::node::Node]s using the [crate::systems::System]s that it was given.
 pub struct GenericProcessor<S>
@@ -117,7 +117,7 @@ where
         Self { system }
     }
 
-    pub fn resolve_params(&self, nodes: &GenericNodeSet<S>) -> processparams::NodeParams {
+    pub fn resolve_params(&self, nodes: &GenericPipeline<S>) -> processparams::NodeParams {
         processparams::NodeParams {
             params: nodes
                 .id_to_node
@@ -136,7 +136,7 @@ where
 
     pub fn process(
         &self,
-        nodes: &GenericNodeSet<S>,
+        nodes: &GenericPipeline<S>,
         args: &crate::processargs::ArgSet,
     ) -> ProcessOutcome {
         log::debug!("Processing {} nodes total.", nodes.nodes().count());

@@ -24,7 +24,7 @@ fn test_basic_process_order() {
     let mut sys = MockFakeSystem::new();
 
     // GIVEN: nodes where BAR_1_ID will depend on FOO_1_ID.
-    let node_set = TestNodeSet::new(vec![
+    let node_set = TestPipeline::new(vec![
         foo_node(FOO_1_ID, &[]),
         bar_node(BAR_1_ID, &[FOO_1_ID]),
     ]);
@@ -66,7 +66,7 @@ fn test_three_stage_processing() {
     let mut sys = MockFakeSystem::new();
 
     // GIVEN: nodes where BAR_2_ID will depend on BAR_1_ID which depends on FOO_1_ID.
-    let node_set = TestNodeSet::new(vec![
+    let node_set = TestPipeline::new(vec![
         foo_node(FOO_1_ID, &[]),
         bar_node(BAR_1_ID, &[FOO_1_ID]),
         bar_node(BAR_2_ID, &[BAR_1_ID]),
@@ -112,7 +112,7 @@ fn test_passes_all_runnable_nodes_together() {
     let mut sys = MockFakeSystem::new();
 
     // GIVEN: nodes where BAR_1_ID will depend on FOO_1_ID, and BAR_2_ID will depend on FOO_2_ID.
-    let node_set = TestNodeSet::new(vec![
+    let node_set = TestPipeline::new(vec![
         foo_node(FOO_1_ID, &[]),
         foo_node(FOO_2_ID, &[]),
         bar_node(BAR_1_ID, &[FOO_1_ID]),
@@ -161,7 +161,7 @@ fn test_handles_direct_loop() {
     let mut sys = MockFakeSystem::new();
 
     // GIVEN: nodes where FOO_1_ID depends on itself.
-    let node_set = TestNodeSet::new(vec![foo_node(FOO_1_ID, &[FOO_1_ID])]);
+    let node_set = TestPipeline::new(vec![foo_node(FOO_1_ID, &[FOO_1_ID])]);
 
     // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
     // specs: FOO_1_ID -> FOO_1_ID
@@ -199,7 +199,7 @@ fn test_handles_indirect_loop() {
     let mut sys = MockFakeSystem::new();
 
     // GIVEN: nodes where FOO_1_ID depends on BAR_1_ID which depends on FOO_1_ID, forming a loop.
-    let node_set = TestNodeSet::new(vec![
+    let node_set = TestPipeline::new(vec![
         foo_node(FOO_1_ID, &[BAR_1_ID]),
         bar_node(BAR_1_ID, &[FOO_1_ID]),
     ]);
@@ -248,7 +248,7 @@ fn test_handles_unknown_dependency() {
     let mut sys = MockFakeSystem::new();
 
     // GIVEN: nodes where FOO_1_ID depends on BAR_1_ID which depends on FOO_1_ID, forming a loop.
-    let node_set = TestNodeSet::new(vec![foo_node(FOO_1_ID, &[UNKNOWN_ID])]);
+    let node_set = TestPipeline::new(vec![foo_node(FOO_1_ID, &[UNKNOWN_ID])]);
 
     // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
     // specs: FOO_1_ID -> "unknown-id"
@@ -285,7 +285,7 @@ fn test_handles_system_error() {
     let mut sys = MockFakeSystem::new();
 
     // GIVEN: nodes where FOO_1_ID depends on BAR_1_ID which depends on FOO_1_ID, forming a loop.
-    let node_set = TestNodeSet::new(vec![foo_node(FOO_1_ID, &[])]);
+    let node_set = TestPipeline::new(vec![foo_node(FOO_1_ID, &[])]);
 
     // GIVEN: inputs() is called for each node.
     sys.expect_inputs().returning_st(|node| node.deps());
@@ -326,7 +326,7 @@ fn test_passes_intermediates() {
     let mut sys = MockFakeSystem::new();
 
     // GIVEN: nodes where BAR_1_ID will depend on FOO_1_ID.
-    let node_set = TestNodeSet::new(vec![
+    let node_set = TestPipeline::new(vec![
         foo_node(FOO_1_ID, &[]),
         bar_node(BAR_1_ID, &[FOO_1_ID]),
     ]);
