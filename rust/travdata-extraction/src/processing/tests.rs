@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use anyhow::anyhow;
 use googletest::prelude::*;
 use hashbrown::HashSet;
 use map_macro::hashbrown::hash_map;
@@ -277,7 +278,44 @@ fn test_handles_unknown_dependency() {
     // THEN: no process_multiple calls will have been made.
 }
 
-// TODO: Test for a node that fails to process with an error.
+#[gtest]
+#[test_log::test]
+fn test_handles_system_error() {
+    let mut sys = MockFakeSystem::new();
+
+    // GIVEN: nodes where FOO_1_ID depends on BAR_1_ID which depends on FOO_1_ID, forming a loop.
+    let node_set = TestNodeSet::new(vec![foo_node(FOO_1_ID, &[])]);
+
+    // GIVEN: inputs() is called for each node.
+    sys.expect_inputs().returning_st(|node| node.deps());
+
+    // GIVEN: A process_multiple call that fails with an error.
+    let mut nodes_predicate = ProcessNodesPredicate::new();
+    nodes_predicate.add_node_id(FOO_1_ID);
+    sys.expect_process_multiple()
+        .with(nodes_predicate, always(), always())
+        .returning_st(|_, _, _| vec![(node_id(FOO_1_ID), Err(anyhow!("some error")))]);
+
+    let sys = Rc::new(sys);
+    let processor = TestProcessor::new(sys.clone());
+    let args = processargs::ArgSet::default();
+
+    // WHEN: processing is requested on the nodes.
+    let outcome = processor.process(&node_set, &args);
+
+    expect_that!(
+        outcome,
+        eq(&processing::ProcessOutcome {
+            node_outcomes: hash_map! {
+                node_id(FOO_1_ID) => NodeProcessOutcome::ProcessErrored(
+                    anyhow::Error::msg("error message, content does not matter"),
+                ),
+            },
+        }),
+    );
+
+    // THEN: no process_multiple calls will have been made.
+}
 
 fn expect_process_multiple(
     process_sequence: &mut mockall::Sequence,
