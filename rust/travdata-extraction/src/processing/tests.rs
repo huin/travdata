@@ -7,7 +7,8 @@ use map_macro::hashbrown::hash_map;
 use predicates::constant::always;
 
 use crate::{
-    intermediates, node, processargs,
+    intermediates::{self, IntermediateSet},
+    node, processargs,
     processing::{self, NodeProcessOutcome, NodeUnprocessedReason, UnprocessedDependencyReason},
     testutil::*,
 };
@@ -290,10 +291,12 @@ fn test_handles_system_error() {
     sys.expect_inputs().returning_st(|node| node.deps());
 
     // GIVEN: A process_multiple call that fails with an error.
-    let mut nodes_predicate = ProcessNodesPredicate::new();
-    nodes_predicate.add_node_id(FOO_1_ID);
     sys.expect_process_multiple()
-        .with(nodes_predicate, always(), always())
+        .with(
+            ProcessNodesPredicate::new().with_node_ids(&[FOO_1_ID]),
+            always(),
+            always(),
+        )
         .returning_st(|_, _, _| vec![(node_id(FOO_1_ID), Err(anyhow!("some error")))]);
 
     let sys = Rc::new(sys);
@@ -315,6 +318,75 @@ fn test_handles_system_error() {
     );
 
     // THEN: no process_multiple calls will have been made.
+}
+
+#[gtest]
+#[test_log::test]
+fn test_passes_intermediates() {
+    let mut sys = MockFakeSystem::new();
+
+    // GIVEN: nodes where BAR_1_ID will depend on FOO_1_ID.
+    let node_set = TestNodeSet::new(vec![
+        foo_node(FOO_1_ID, &[]),
+        bar_node(BAR_1_ID, &[FOO_1_ID]),
+    ]);
+
+    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
+    // specs:
+    sys.expect_inputs().returning_st(|node| node.deps());
+
+    // GIVEN: distinct process_multiple calls for foo_1_node followed by bar_1_node.
+    sys.expect_process_multiple()
+        .once()
+        .with(
+            ProcessNodesPredicate::new().with_node_ids(&[FOO_1_ID]),
+            always(),
+            always(),
+        )
+        .returning_st(|_, _, _| {
+            vec![(
+                node_id(FOO_1_ID),
+                Ok(intermediates::Intermediate::JsonData(
+                    serde_json::Value::String("some string".into()),
+                )),
+            )]
+        });
+    sys.expect_process_multiple()
+        .once()
+        .with(
+            ProcessNodesPredicate::new().with_node_ids(&[BAR_1_ID]),
+            always(),
+            predicates::function::function(|interms: &IntermediateSet| {
+                match interms.get(&node_id(FOO_1_ID)) {
+                    Some(intermediates::Intermediate::JsonData(serde_json::Value::String(
+                        str_value,
+                    ))) => str_value == "some string",
+                    _ => false,
+                }
+            }),
+        )
+        .returning_st(|_, _, _| vec![(node_id(BAR_1_ID), Ok(intermediates::Intermediate::NoData))]);
+
+    let sys = Rc::new(sys);
+    let processor = TestProcessor::new(sys.clone());
+    let args = processargs::ArgSet::default();
+
+    // WHEN: processing is requested on the nodes.
+    let outcome = processor.process(&node_set, &args);
+
+    // THEN:
+    expect_that!(
+        outcome,
+        eq(&processing::ProcessOutcome {
+            node_outcomes: hash_map! {
+                node_id(FOO_1_ID) => NodeProcessOutcome::Success,
+                node_id(BAR_1_ID) => NodeProcessOutcome::Success,
+            },
+        }),
+    );
+
+    // THEN: the expected process_multiple calls will have been made.
+    // (this is implicitly checked by the mock when dropped)
 }
 
 fn expect_process_multiple(
@@ -352,6 +424,13 @@ impl ProcessNodesPredicate {
         Self {
             want_ids: HashSet::new(),
         }
+    }
+
+    fn with_node_ids(mut self, id_strs: &[&str]) -> Self {
+        for id_str in id_strs {
+            self.add_node_id(id_str);
+        }
+        self
     }
 
     fn add_node_id(&mut self, id_str: &str) {
