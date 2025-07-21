@@ -3,7 +3,7 @@ mod tests;
 
 use std::rc::Rc;
 
-use anyhow::Result;
+use anyhow::anyhow;
 use hashbrown::{HashMap, HashSet};
 
 use crate::{
@@ -11,6 +11,59 @@ use crate::{
     node::{self, spec},
     processparams, systems,
 };
+
+/// Describes the outcome of an entire processing attempt. It does not attempt to contain the
+/// processed data itself, but rather information about the processing.
+#[derive(Debug, PartialEq)]
+pub struct ProcessOutcome {
+    node_outcomes: HashMap<node::NodeId, NodeProcessOutcome>,
+}
+
+/// Describes the outcome of a single node.
+#[derive(Debug)]
+pub enum NodeProcessOutcome {
+    /// Node processed successfully.
+    Success,
+    /// Node processed, but unexpectedly. Dependent nodes not processed.
+    Unexpected,
+    /// Attempted to process the node, but resulted in an error.
+    ProcessErrored(anyhow::Error),
+    /// No attempt was made to process the node.
+    Unprocessed(NodeUnprocessedReason),
+    /// Processing encountered an internal error, likely a bug.
+    InternalError(anyhow::Error),
+}
+
+/// NOTE: the equality comparison does not check any form of equality for underlying errors in the
+/// case of [NodeProcessingOutcome::ProcessErrored] or [NodeProcessOutcome::InternalError], instead
+/// regarding them as equal on the basis of variant selection equality.
+impl PartialEq for NodeProcessOutcome {
+    fn eq(&self, other: &Self) -> bool {
+        use NodeProcessOutcome::*;
+        match (self, other) {
+            (Success, Success) => true,
+            (ProcessErrored(_), ProcessErrored(_)) => true,
+            (Unprocessed(unproc_self), Unprocessed(unproc_other)) => unproc_self == unproc_other,
+            (InternalError(_), InternalError(_)) => true,
+            _ => false,
+        }
+    }
+}
+
+/// Describes the reasons for a single [node::Node] being unprocessed.
+#[derive(Debug, PartialEq)]
+pub struct NodeUnprocessedReason {
+    pub unprocessed_dependencies: HashMap<node::NodeId, UnprocessedDependencyReason>,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum UnprocessedDependencyReason {
+    /// Could not process the node due to failing to process nodes that it depends on. This could
+    /// be because a dependency errored during processing, or that there was a dependency cycle.
+    Unprocessed,
+    /// Dependency was unknown.
+    Unknown,
+}
 
 /// Immutable set of [node::Node]s, indexed for processing.
 pub struct GenericNodeSet<S> {
@@ -24,6 +77,14 @@ impl<S> GenericNodeSet<S> {
             .map(|node| (node.id.clone(), node))
             .collect();
         Self { id_to_node }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.id_to_node.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.id_to_node.len()
     }
 
     /// Returns an [Iterator] over all [node::GenericNode]s in the set.
@@ -77,8 +138,12 @@ where
         &self,
         nodes: &GenericNodeSet<S>,
         args: &crate::processargs::ArgSet,
-    ) -> Result<()> {
+    ) -> ProcessOutcome {
         log::debug!("Processing {} nodes total.", nodes.nodes().count());
+
+        let mut outcome = ProcessOutcome {
+            node_outcomes: HashMap::with_capacity(nodes.len()),
+        };
 
         let mut processable_ids: HashSet<node::NodeId> = HashSet::new();
         // Map from NodeId to the NodeIds that depend on it.
@@ -117,7 +182,7 @@ where
                     if let Some(node) = nodes.get(node_id) {
                         Some(node)
                     } else {
-                        log::error!("Failed to resolve processable node with ID {:?}.", node_id);
+                        log::error!("Failed to resolve processable node with ID {node_id:?}.");
                         None
                     }
                 })
@@ -137,15 +202,17 @@ where
             for (processed_node_id, interm_result) in id_intermediates {
                 if !processable_ids.remove(&processed_node_id) {
                     log::error!(
-                        "Node {:?} was processed, despite not being requested to process. Faulty system?",
-                        processed_node_id
+                        "Node {processed_node_id:?} was processed, despite not being requested to process. Faulty system?",
                     );
+                    outcome
+                        .node_outcomes
+                        .insert(processed_node_id, NodeProcessOutcome::Unexpected);
                     continue;
                 }
 
                 match interm_result {
                     Ok(interm) => {
-                        log::info!("Node {:?} processed successfully.", processed_node_id);
+                        log::info!("Node {processed_node_id:?} processed successfully.");
 
                         // Update unprocessed_id_to_dep_ids and fnd newly processable nodes in the
                         // process.
@@ -155,10 +222,13 @@ where
                                 match unprocessed_id_to_dep_ids.entry_ref(dependee_id) {
                                     EntryRef::Occupied(mut occupied_entry) => {
                                         if !occupied_entry.get_mut().remove(&processed_node_id) {
-                                            log::error!(
-                                                "Could not remove node {:?} from node {:?}'s unprocessed dependencies. Bug in processor?",
-                                                processed_node_id,
-                                                dependee_id,
+                                            let err = anyhow!(
+                                                "Could not remove node {processed_node_id:?} from node {dependee_id:?}'s unprocessed dependencies. Bug in processor?"
+                                            );
+                                            log::error!("{err:?}");
+                                            outcome.node_outcomes.insert(
+                                                dependee_id.clone(),
+                                                NodeProcessOutcome::InternalError(err),
                                             );
                                         }
                                         if occupied_entry.get().is_empty() {
@@ -168,38 +238,68 @@ where
                                         }
                                     }
                                     EntryRef::Vacant(_vacant_entry) => {
-                                        log::error!(
-                                            "Unexpected vacant entry for dependees of {:?}. Bug in processor?",
-                                            processed_node_id
+                                        let err = anyhow!(
+                                            "Unexpected vacant entry for dependees of {processed_node_id:?}. Bug in processor?",
+                                        );
+                                        log::error!("{err:?}");
+                                        outcome.node_outcomes.insert(
+                                            dependee_id.clone(),
+                                            NodeProcessOutcome::InternalError(err),
                                         );
                                     }
                                 }
                             }
                         }
 
+                        outcome
+                            .node_outcomes
+                            .insert(processed_node_id.clone(), NodeProcessOutcome::Success);
                         interms.set(processed_node_id, interm);
                     }
                     Err(err) => {
-                        log::error!("Error processing node {:?}: {:?}", processed_node_id, err);
+                        log::error!("Error processing node {processed_node_id:?}: {err:?}");
+                        outcome.node_outcomes.insert(
+                            processed_node_id.clone(),
+                            NodeProcessOutcome::ProcessErrored(err),
+                        );
                     }
                 }
             }
 
             for node_id in processable_ids.drain() {
-                log::error!(
-                    "Node {:?} was not processed, despite being requested to process. Faulty system?",
-                    node_id
+                let err = anyhow!(
+                    "Node {node_id:?} was not processed, despite being requested to process. Faulty system?",
                 );
+                log::error!("{err:?}");
+                outcome
+                    .node_outcomes
+                    .insert(node_id, NodeProcessOutcome::ProcessErrored(err));
             }
 
             processable_ids.extend(newly_processable_ids.drain());
         }
 
-        for unprocessed_id in unprocessed_id_to_dep_ids.keys() {
-            log::error!("Node {:?} was not processed.", unprocessed_id);
+        for (unprocessed_id, mut dep_ids) in unprocessed_id_to_dep_ids.drain() {
+            log::error!("Node {unprocessed_id:?} was not processed.");
+            outcome.node_outcomes.insert(
+                unprocessed_id,
+                NodeProcessOutcome::Unprocessed(NodeUnprocessedReason {
+                    unprocessed_dependencies: dep_ids
+                        .drain()
+                        .map(|dep_id| {
+                            let reason = if nodes.get(&dep_id).is_some() {
+                                UnprocessedDependencyReason::Unprocessed
+                            } else {
+                                UnprocessedDependencyReason::Unknown
+                            };
+                            (dep_id, reason)
+                        })
+                        .collect(),
+                }),
+            );
         }
 
-        Ok(())
+        outcome
     }
 }
 

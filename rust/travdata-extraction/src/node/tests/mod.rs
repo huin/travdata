@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use googletest::prelude::*;
-use mapro::set;
+use map_macro::hash_set;
 use test_casing::{TestCases, cases, test_casing};
 
 use super::{
@@ -89,7 +89,7 @@ spec:
             "#,
             Node{
                 id: node_id("thingy-1-json-out"),
-                tags: set!{
+                tags: hash_set!{
                     tag("format/json"),
                     tag("thingy-1"),
                 },
@@ -112,7 +112,7 @@ spec:
             "#,
             Node{
                 id: node_id("thingy-1-csv-out"),
-                tags: set!{
+                tags: hash_set!{
                     tag("format/csv"),
                     tag("thingy-1"),
                 },
