@@ -9,19 +9,19 @@ use hashbrown::{HashMap, HashSet};
 use crate::{
     intermediates,
     node::{self, spec},
-    processparams, systems,
+    plparams, systems,
 };
 
 /// Describes the outcome of an entire processing attempt. It does not attempt to contain the
 /// processed data itself, but rather information about the processing.
 #[derive(Debug, PartialEq)]
-pub struct ProcessOutcome {
-    node_outcomes: HashMap<node::NodeId, NodeProcessOutcome>,
+pub struct PipelineOutcome {
+    pub node_outcomes: HashMap<node::NodeId, NodeOutcome>,
 }
 
 /// Describes the outcome of a single node.
 #[derive(Debug)]
-pub enum NodeProcessOutcome {
+pub enum NodeOutcome {
     /// Node processed successfully.
     Success,
     /// Node processed, but unexpectedly. Dependent nodes not processed.
@@ -37,9 +37,9 @@ pub enum NodeProcessOutcome {
 /// NOTE: the equality comparison does not check any form of equality for underlying errors in the
 /// case of [NodeProcessingOutcome::ProcessErrored] or [NodeProcessOutcome::InternalError], instead
 /// regarding them as equal on the basis of variant selection equality.
-impl PartialEq for NodeProcessOutcome {
+impl PartialEq for NodeOutcome {
     fn eq(&self, other: &Self) -> bool {
-        use NodeProcessOutcome::*;
+        use NodeOutcome::*;
         match (self, other) {
             (Success, Success) => true,
             (ProcessErrored(_), ProcessErrored(_)) => true,
@@ -117,18 +117,20 @@ where
         Self { system }
     }
 
-    pub fn resolve_params(&self, nodes: &GenericPipeline<S>) -> processparams::NodeParams {
-        processparams::NodeParams {
+    pub fn resolve_params(&self, nodes: &GenericPipeline<S>) -> plparams::NodeParams {
+        plparams::NodeParams {
             params: nodes
                 .id_to_node
                 .iter()
                 .flat_map(|(id, node)| {
-                    self.system.params(node).params.into_iter().map(|param| {
-                        processparams::NodeParam {
+                    self.system
+                        .params(node)
+                        .params
+                        .into_iter()
+                        .map(|param| plparams::NodeParam {
                             node_id: id.clone(),
                             param,
-                        }
-                    })
+                        })
                 })
                 .collect(),
         }
@@ -137,8 +139,8 @@ where
     pub fn process(
         &self,
         nodes: &GenericPipeline<S>,
-        args: &crate::processargs::ArgSet,
-    ) -> ProcessOutcome {
+        args: &crate::plargs::ArgSet,
+    ) -> PipelineOutcome {
         let state = GenericProcessingState::new(nodes, args, self.system.clone());
         state.process()
     }
@@ -146,14 +148,14 @@ where
 
 struct GenericProcessingState<'a, S> {
     nodes: &'a GenericPipeline<S>,
-    args: &'a crate::processargs::ArgSet,
+    args: &'a crate::plargs::ArgSet,
 
     system: Rc<dyn systems::GenericSystem<S>>,
 
     // Map from NodeId to the NodeIds that depend on it.
     dep_id_to_dependee_ids: HashMap<node::NodeId, Vec<node::NodeId>>,
 
-    outcome: ProcessOutcome,
+    outcome: PipelineOutcome,
     interms: intermediates::IntermediateSet,
     processable_ids: HashSet<node::NodeId>,
     // Map from NodeId to the NodeIds that it depends on. This is dynamically updated to remove
@@ -168,7 +170,7 @@ where
 {
     fn new(
         nodes: &'a GenericPipeline<S>,
-        args: &'a crate::processargs::ArgSet,
+        args: &'a crate::plargs::ArgSet,
         system: Rc<dyn systems::GenericSystem<S>>,
     ) -> Self {
         log::debug!("Processing {} nodes total.", nodes.nodes().count());
@@ -205,7 +207,7 @@ where
 
             dep_id_to_dependee_ids,
 
-            outcome: ProcessOutcome {
+            outcome: PipelineOutcome {
                 node_outcomes: HashMap::with_capacity(nodes.len()),
             },
             interms: intermediates::IntermediateSet::new(),
@@ -214,7 +216,7 @@ where
         }
     }
 
-    fn process(mut self) -> ProcessOutcome {
+    fn process(mut self) -> PipelineOutcome {
         while !self.processable_ids.is_empty() {
             log::debug!(
                 "Processing {} nodes in this pass.",
@@ -243,7 +245,7 @@ where
                     );
                     self.outcome
                         .node_outcomes
-                        .insert(processed_node_id, NodeProcessOutcome::Unexpected);
+                        .insert(processed_node_id, NodeOutcome::Unexpected);
                     continue;
                 }
 
@@ -257,7 +259,7 @@ where
                 log::error!("{err:?}");
                 self.outcome
                     .node_outcomes
-                    .insert(node_id, NodeProcessOutcome::ProcessErrored(err));
+                    .insert(node_id, NodeOutcome::ProcessErrored(err));
             }
 
             self.processable_ids.extend(newly_processable_ids.drain());
@@ -267,7 +269,7 @@ where
             log::error!("Node {unprocessed_id:?} was not processed.");
             self.outcome.node_outcomes.insert(
                 unprocessed_id,
-                NodeProcessOutcome::Unprocessed(NodeUnprocessedReason {
+                NodeOutcome::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: dep_ids
                         .drain()
                         .map(|dep_id| {
@@ -314,15 +316,14 @@ where
 
                 self.outcome
                     .node_outcomes
-                    .insert(processed_node_id.clone(), NodeProcessOutcome::Success);
+                    .insert(processed_node_id.clone(), NodeOutcome::Success);
                 self.interms.set(processed_node_id, interm);
             }
             Err(err) => {
                 log::error!("Error processing node {processed_node_id:?}: {err:?}");
-                self.outcome.node_outcomes.insert(
-                    processed_node_id.clone(),
-                    NodeProcessOutcome::ProcessErrored(err),
-                );
+                self.outcome
+                    .node_outcomes
+                    .insert(processed_node_id.clone(), NodeOutcome::ProcessErrored(err));
             }
         }
     }
@@ -349,7 +350,7 @@ where
                         log::error!("{err:?}");
                         self.outcome
                             .node_outcomes
-                            .insert(dependee_id.clone(), NodeProcessOutcome::InternalError(err));
+                            .insert(dependee_id.clone(), NodeOutcome::InternalError(err));
                     }
                     if occupied_entry.get().is_empty() {
                         let removed = occupied_entry.remove_entry();
@@ -364,7 +365,7 @@ where
                     log::error!("{err:?}");
                     self.outcome
                         .node_outcomes
-                        .insert(dependee_id.clone(), NodeProcessOutcome::InternalError(err));
+                        .insert(dependee_id.clone(), NodeOutcome::InternalError(err));
                 }
             }
         }

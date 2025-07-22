@@ -5,7 +5,7 @@ mod missingsystem;
 
 use anyhow::Result;
 
-use crate::{intermediates, node, processargs, processparams};
+use crate::{intermediates, node, plargs, plparams};
 
 pub use metasystem::GenericMetaSystem;
 pub use missingsystem::MissingSystem;
@@ -17,8 +17,8 @@ where
     S: node::SpecTrait,
 {
     /// Returns the parameters for the node, if any.
-    fn params(&self, _node: &node::GenericNode<S>) -> processparams::Params {
-        processparams::Params {
+    fn params(&self, _node: &node::GenericNode<S>) -> plparams::Params {
+        plparams::Params {
             params: Vec::default(),
         }
     }
@@ -30,7 +30,7 @@ where
     fn process(
         &self,
         node: &node::GenericNode<S>,
-        args: &processargs::ArgSet,
+        args: &plargs::ArgSet,
         intermediates: &intermediates::IntermediateSet,
     ) -> Result<intermediates::Intermediate>;
 
@@ -42,7 +42,7 @@ where
     fn process_multiple<'a>(
         &self,
         nodes: &'a [&'a node::GenericNode<S>],
-        args: &processargs::ArgSet,
+        args: &plargs::ArgSet,
         intermediates: &intermediates::IntermediateSet,
     ) -> Vec<(node::NodeId, Result<intermediates::Intermediate>)> {
         nodes

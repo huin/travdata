@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     intermediates,
     node::{self, spec_type},
-    processargs, processing, processparams, systems,
+    plargs, plparams, processing, systems,
 };
 
 pub fn node_id(s: &str) -> node::NodeId {
@@ -155,21 +155,21 @@ mock! {
     pub FakeSystem {}
 
     impl systems::GenericSystem<FakeSpec> for FakeSystem {
-        fn params(&self, node: &FakeNode) -> processparams::Params;
+        fn params(&self, node: &FakeNode) -> plparams::Params;
 
         fn inputs(&self, node: &FakeNode) -> Vec<node::NodeId>;
 
         fn process(
             &self,
             node: &FakeNode,
-            args: &processargs::ArgSet,
+            args: &plargs::ArgSet,
             intermediates: &intermediates::IntermediateSet,
         ) -> Result<intermediates::Intermediate>;
 
         fn process_multiple<'a>(
             &self,
             nodes: &'a [&'a FakeNode],
-            args: &processargs::ArgSet,
+            args: &plargs::ArgSet,
             intermediates: &intermediates::IntermediateSet,
         ) -> Vec<(node::NodeId, Result<intermediates::Intermediate>)>;
     }

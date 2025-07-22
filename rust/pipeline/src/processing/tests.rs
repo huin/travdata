@@ -8,8 +8,8 @@ use predicates::constant::always;
 
 use crate::{
     intermediates::{self, IntermediateSet},
-    node, processargs,
-    processing::{self, NodeProcessOutcome, NodeUnprocessedReason, UnprocessedDependencyReason},
+    node, plargs,
+    processing::{self, NodeOutcome, NodeUnprocessedReason, UnprocessedDependencyReason},
     testutil::*,
 };
 
@@ -40,7 +40,7 @@ fn test_basic_process_order() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = processargs::ArgSet::default();
+    let args = plargs::ArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -48,10 +48,10 @@ fn test_basic_process_order() {
     // THEN:
     expect_that!(
         outcome,
-        eq(&processing::ProcessOutcome {
+        eq(&processing::PipelineOutcome {
             node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeProcessOutcome::Success,
-                node_id(BAR_1_ID) => NodeProcessOutcome::Success,
+                node_id(FOO_1_ID) => NodeOutcome::Success,
+                node_id(BAR_1_ID) => NodeOutcome::Success,
             },
         }),
     );
@@ -85,7 +85,7 @@ fn test_three_stage_processing() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = processargs::ArgSet::default();
+    let args = plargs::ArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -93,11 +93,11 @@ fn test_three_stage_processing() {
     // THEN: the outcome reflects the successfully processed nodes.
     expect_that!(
         outcome,
-        eq(&processing::ProcessOutcome {
+        eq(&processing::PipelineOutcome {
             node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeProcessOutcome::Success,
-                node_id(BAR_1_ID) => NodeProcessOutcome::Success,
-                node_id(BAR_2_ID) => NodeProcessOutcome::Success,
+                node_id(FOO_1_ID) => NodeOutcome::Success,
+                node_id(BAR_1_ID) => NodeOutcome::Success,
+                node_id(BAR_2_ID) => NodeOutcome::Success,
             },
         }),
     );
@@ -133,7 +133,7 @@ fn test_passes_all_runnable_nodes_together() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = processargs::ArgSet::default();
+    let args = plargs::ArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -141,12 +141,12 @@ fn test_passes_all_runnable_nodes_together() {
     // THEN: the outcome reflects the successfully processed nodes.
     expect_that!(
         outcome,
-        eq(&processing::ProcessOutcome {
+        eq(&processing::PipelineOutcome {
             node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeProcessOutcome::Success,
-                node_id(FOO_2_ID) => NodeProcessOutcome::Success,
-                node_id(BAR_1_ID) => NodeProcessOutcome::Success,
-                node_id(BAR_2_ID) => NodeProcessOutcome::Success,
+                node_id(FOO_1_ID) => NodeOutcome::Success,
+                node_id(FOO_2_ID) => NodeOutcome::Success,
+                node_id(BAR_1_ID) => NodeOutcome::Success,
+                node_id(BAR_2_ID) => NodeOutcome::Success,
             },
         }),
     );
@@ -171,7 +171,7 @@ fn test_handles_direct_loop() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = processargs::ArgSet::default();
+    let args = plargs::ArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -179,9 +179,9 @@ fn test_handles_direct_loop() {
     // THEN: the outcome reflects the unprocessed dependency loop.
     expect_that!(
         outcome,
-        eq(&processing::ProcessOutcome {
+        eq(&processing::PipelineOutcome {
             node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeProcessOutcome::Unprocessed(NodeUnprocessedReason {
+                node_id(FOO_1_ID) => NodeOutcome::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
                         node_id(FOO_1_ID) => UnprocessedDependencyReason::Unprocessed,
                     }
@@ -213,7 +213,7 @@ fn test_handles_indirect_loop() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = processargs::ArgSet::default();
+    let args = plargs::ArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -221,14 +221,14 @@ fn test_handles_indirect_loop() {
     // THEN: the outcome reflects the unprocessed dependency loop.
     expect_that!(
         outcome,
-        eq(&processing::ProcessOutcome {
+        eq(&processing::PipelineOutcome {
             node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeProcessOutcome::Unprocessed(NodeUnprocessedReason {
+                node_id(FOO_1_ID) => NodeOutcome::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
                         node_id(BAR_1_ID) => UnprocessedDependencyReason::Unprocessed,
                     }
                 }),
-                node_id(BAR_1_ID) => NodeProcessOutcome::Unprocessed(NodeUnprocessedReason {
+                node_id(BAR_1_ID) => NodeOutcome::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
                         node_id(FOO_1_ID) => UnprocessedDependencyReason::Unprocessed,
                     }
@@ -258,16 +258,16 @@ fn test_handles_unknown_dependency() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = processargs::ArgSet::default();
+    let args = plargs::ArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
 
     expect_that!(
         outcome,
-        eq(&processing::ProcessOutcome {
+        eq(&processing::PipelineOutcome {
             node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeProcessOutcome::Unprocessed(NodeUnprocessedReason {
+                node_id(FOO_1_ID) => NodeOutcome::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
                         node_id(UNKNOWN_ID) => UnprocessedDependencyReason::Unknown,
                     }
@@ -301,16 +301,16 @@ fn test_handles_system_error() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = processargs::ArgSet::default();
+    let args = plargs::ArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
 
     expect_that!(
         outcome,
-        eq(&processing::ProcessOutcome {
+        eq(&processing::PipelineOutcome {
             node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeProcessOutcome::ProcessErrored(
+                node_id(FOO_1_ID) => NodeOutcome::ProcessErrored(
                     anyhow::Error::msg("error message, content does not matter"),
                 ),
             },
@@ -369,7 +369,7 @@ fn test_passes_intermediates() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = processargs::ArgSet::default();
+    let args = plargs::ArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -377,10 +377,10 @@ fn test_passes_intermediates() {
     // THEN:
     expect_that!(
         outcome,
-        eq(&processing::ProcessOutcome {
+        eq(&processing::PipelineOutcome {
             node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeProcessOutcome::Success,
-                node_id(BAR_1_ID) => NodeProcessOutcome::Success,
+                node_id(FOO_1_ID) => NodeOutcome::Success,
+                node_id(BAR_1_ID) => NodeOutcome::Success,
             },
         }),
     );

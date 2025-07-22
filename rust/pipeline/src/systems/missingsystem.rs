@@ -1,7 +1,7 @@
 use anyhow::{Result, anyhow};
 
 use super::GenericSystem;
-use crate::{intermediates, node, processargs};
+use crate::{intermediates, node, plargs};
 
 /// Used as a fallback when a [System] implementation has not been provided for a [node::Node]'s
 /// [spec::Spec] type.
@@ -18,7 +18,7 @@ where
     fn process(
         &self,
         node: &node::GenericNode<S>,
-        _args: &processargs::ArgSet,
+        _args: &plargs::ArgSet,
         _intermediates: &intermediates::IntermediateSet,
     ) -> Result<intermediates::Intermediate> {
         Err(anyhow!(

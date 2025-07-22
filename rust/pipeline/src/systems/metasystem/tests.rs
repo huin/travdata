@@ -1,7 +1,7 @@
 use googletest::prelude::*;
 
 use super::*;
-use crate::{processparams, testutil::*};
+use crate::{plparams, testutil::*};
 
 #[gtest]
 fn test_params() {
@@ -15,11 +15,11 @@ fn test_params() {
     let bar_node = Rc::new(FakeNode::default_with_spec(BarSpec::default()));
 
     // GIVEN: the foo_sys will return the given parameters.
-    let new_expected_foo_params = || processparams::Params {
-        params: vec![processparams::Param {
-            param_id: processparams::ParamId("foo-param"),
+    let new_expected_foo_params = || plparams::Params {
+        params: vec![plparams::Param {
+            param_id: plparams::ParamId("foo-param"),
             description: "foo-param description.".into(),
-            param_type: processparams::ParamType::InputPdf,
+            param_type: plparams::ParamType::InputPdf,
         }],
     };
     foo_sys
@@ -31,11 +31,11 @@ fn test_params() {
         .return_once_st(move |_| new_expected_foo_params());
 
     // GIVEN: the bar_sys will return the given parameters.
-    let new_expected_bar_params = || processparams::Params {
-        params: vec![processparams::Param {
-            param_id: processparams::ParamId("bar-param"),
+    let new_expected_bar_params = || plparams::Params {
+        params: vec![plparams::Param {
+            param_id: plparams::ParamId("bar-param"),
             description: "bar-param description.".into(),
-            param_type: processparams::ParamType::OutputDirectory,
+            param_type: plparams::ParamType::OutputDirectory,
         }],
     };
     bar_sys

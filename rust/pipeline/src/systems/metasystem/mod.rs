@@ -47,7 +47,7 @@ impl<S> GenericSystem<S> for GenericMetaSystem<S>
 where
     S: node::SpecTrait,
 {
-    fn params(&self, node: &node::GenericNode<S>) -> crate::processparams::Params {
+    fn params(&self, node: &node::GenericNode<S>) -> crate::plparams::Params {
         self.system_for(node.spec.discriminant()).params(node)
     }
 
@@ -58,7 +58,7 @@ where
     fn process(
         &self,
         _node: &node::GenericNode<S>,
-        _args: &crate::processargs::ArgSet,
+        _args: &crate::plargs::ArgSet,
         _intermediates: &intermediates::IntermediateSet,
     ) -> anyhow::Result<intermediates::Intermediate> {
         todo!()
@@ -67,7 +67,7 @@ where
     fn process_multiple<'a>(
         &self,
         _nodes: &'a [&'a node::GenericNode<S>],
-        _args: &crate::processargs::ArgSet,
+        _args: &crate::plargs::ArgSet,
         _intermediates: &intermediates::IntermediateSet,
     ) -> Vec<(node::NodeId, anyhow::Result<intermediates::Intermediate>)> {
         todo!()
