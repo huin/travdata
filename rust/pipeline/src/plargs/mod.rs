@@ -1,4 +1,4 @@
-//! Arguments for a [crate::processing::GenericPipeline].
+//! Arguments for a [crate::pipeline::GenericPipeline].
 //!
 //! These provide runtime parameters for the [crate::plparams] for the pipeline.
 

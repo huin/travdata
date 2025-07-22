@@ -1,4 +1,4 @@
-//! Processing of a [GenericPipeline].
+//! Processing of a [pipeline::GenericPipeline].
 
 #[cfg(test)]
 mod tests;
@@ -11,7 +11,7 @@ use hashbrown::{HashMap, HashSet};
 use crate::{
     intermediates,
     node::{self, spec},
-    plparams, systems,
+    pipeline, plparams, systems,
 };
 
 /// Describes the outcome of an entire processing attempt. It does not attempt to contain the
@@ -67,44 +67,8 @@ pub enum UnprocessedDependencyReason {
     Unknown,
 }
 
-/// Immutable set of [node::Node]s, indexed for processing.
-pub struct GenericPipeline<S> {
-    id_to_node: HashMap<node::NodeId, node::GenericNode<S>>,
-}
-
-impl<S> GenericPipeline<S> {
-    pub fn new(nodes: impl IntoIterator<Item = node::GenericNode<S>>) -> Self {
-        let id_to_node = nodes
-            .into_iter()
-            .map(|node| (node.id.clone(), node))
-            .collect();
-        Self { id_to_node }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.id_to_node.is_empty()
-    }
-
-    pub fn len(&self) -> usize {
-        self.id_to_node.len()
-    }
-
-    /// Returns an [Iterator] over all [node::GenericNode]s in the set.
-    pub fn nodes(&self) -> impl Iterator<Item = &node::GenericNode<S>> {
-        self.id_to_node.values()
-    }
-
-    /// Returns the [node::GenericNode] for the given [node::NodeId].
-    pub fn get(&self, node_id: &node::NodeId) -> Option<&node::GenericNode<S>> {
-        self.id_to_node.get(node_id)
-    }
-}
-
-/// Specific [GenericPipeline] used in actual processing.
-pub type Pipeline = GenericPipeline<spec::Spec>;
-
-/// Processes a [GenericPipeline] using the [crate::systems::GenericSystem]s that it was given to
-/// process the nodes within.
+/// Processes a [pipeline::GenericPipeline] using the [crate::systems::GenericSystem]s that it was
+/// given to process the nodes within.
 pub struct GenericProcessor<S>
 where
     S: node::SpecTrait,
@@ -120,18 +84,17 @@ where
         Self { system }
     }
 
-    pub fn resolve_params(&self, nodes: &GenericPipeline<S>) -> plparams::NodeParams {
+    pub fn resolve_params(&self, nodes: &pipeline::GenericPipeline<S>) -> plparams::NodeParams {
         plparams::NodeParams {
             params: nodes
-                .id_to_node
-                .iter()
-                .flat_map(|(id, node)| {
+                .nodes()
+                .flat_map(|node| {
                     self.system
                         .params(node)
                         .params
                         .into_iter()
                         .map(|param| plparams::NodeParam {
-                            node_id: id.clone(),
+                            node_id: node.id.clone(),
                             param,
                         })
                 })
@@ -141,7 +104,7 @@ where
 
     pub fn process(
         &self,
-        nodes: &GenericPipeline<S>,
+        nodes: &pipeline::GenericPipeline<S>,
         args: &crate::plargs::ArgSet,
     ) -> PipelineOutcome {
         let state = GenericProcessingState::new(nodes, args, self.system.clone());
@@ -150,7 +113,7 @@ where
 }
 
 struct GenericProcessingState<'a, S> {
-    nodes: &'a GenericPipeline<S>,
+    nodes: &'a pipeline::GenericPipeline<S>,
     args: &'a crate::plargs::ArgSet,
 
     system: Rc<dyn systems::GenericSystem<S>>,
@@ -172,7 +135,7 @@ where
     S: node::SpecTrait,
 {
     fn new(
-        nodes: &'a GenericPipeline<S>,
+        nodes: &'a pipeline::GenericPipeline<S>,
         args: &'a crate::plargs::ArgSet,
         system: Rc<dyn systems::GenericSystem<S>>,
     ) -> Self {

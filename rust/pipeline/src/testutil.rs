@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     intermediates,
     node::{self, spec_type},
-    plargs, plparams, processing, systems,
+    pipeline, plargs, plparams, processing, systems,
 };
 
 pub fn node_id(s: &str) -> node::NodeId {
@@ -175,6 +175,6 @@ mock! {
     }
 }
 
-pub type TestPipeline = processing::GenericPipeline<FakeSpec>;
+pub type TestPipeline = pipeline::GenericPipeline<FakeSpec>;
 
 pub type TestProcessor = processing::GenericProcessor<FakeSpec>;

@@ -1,4 +1,4 @@
-//! Parameters for a [crate::processing::GenericPipeline].
+//! Parameters for a [crate::pipeline::GenericPipeline].
 
 use crate::node;
 
