@@ -37,8 +37,8 @@ pub enum NodeOutcome {
 }
 
 /// NOTE: the equality comparison does not check any form of equality for underlying errors in the
-/// case of [NodeProcessingOutcome::ProcessErrored] or [NodeProcessOutcome::InternalError], instead
-/// regarding them as equal on the basis of variant selection equality.
+/// case of [NodeOutcome::ProcessErrored] or [NodeOutcome::InternalError], instead regarding them
+/// as equal on the basis of variant selection equality.
 impl PartialEq for NodeOutcome {
     fn eq(&self, other: &Self) -> bool {
         use NodeOutcome::*;
@@ -103,7 +103,8 @@ impl<S> GenericPipeline<S> {
 /// Specific [GenericPipeline] used in actual processing.
 pub type Pipeline = GenericPipeline<spec::Spec>;
 
-/// Processes a set of [crate::node::Node]s using the [crate::systems::System]s that it was given.
+/// Processes a [GenericPipeline] using the [crate::systems::GenericSystem]s that it was given to
+/// process the nodes within.
 pub struct GenericProcessor<S>
 where
     S: node::SpecTrait,

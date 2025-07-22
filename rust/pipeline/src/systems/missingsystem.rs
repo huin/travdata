@@ -3,8 +3,8 @@ use anyhow::{Result, anyhow};
 use super::GenericSystem;
 use crate::{intermediates, node, plargs};
 
-/// Used as a fallback when a [System] implementation has not been provided for a [node::Node]'s
-/// [spec::Spec] type.
+/// Used as a fallback when a [crate::systems::GenericSystem] implementation has not been provided
+/// for a [node::Node]'s [crate::node::spec::Spec] type.
 pub struct MissingSystem;
 
 impl<S> GenericSystem<S> for MissingSystem

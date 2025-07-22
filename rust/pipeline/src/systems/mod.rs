@@ -7,7 +7,7 @@ use anyhow::Result;
 
 use crate::{intermediates, node, plargs, plparams};
 
-pub use metasystem::GenericMetaSystem;
+pub use metasystem::{GenericMetaSystem, MetaSystem};
 pub use missingsystem::MissingSystem;
 
 /// Required trait for types that perform processing of a [node::Node]. Implementations are
