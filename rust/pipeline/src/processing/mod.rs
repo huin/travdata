@@ -310,42 +310,7 @@ where
             Ok(interm) => {
                 log::info!("Node {processed_node_id:?} processed successfully.");
 
-                // Update unprocessed_id_to_dep_ids and fnd newly processable nodes in the
-                // process.
-                if let Some(dependee_ids) = self.dep_id_to_dependee_ids.get(&processed_node_id) {
-                    for dependee_id in dependee_ids {
-                        use hashbrown::hash_map::EntryRef;
-                        match self.unprocessed_id_to_dep_ids.entry_ref(dependee_id) {
-                            EntryRef::Occupied(mut occupied_entry) => {
-                                if !occupied_entry.get_mut().remove(&processed_node_id) {
-                                    let err = anyhow!(
-                                        "Could not remove node {processed_node_id:?} from node {dependee_id:?}'s unprocessed dependencies. Bug in processor?"
-                                    );
-                                    log::error!("{err:?}");
-                                    self.outcome.node_outcomes.insert(
-                                        dependee_id.clone(),
-                                        NodeProcessOutcome::InternalError(err),
-                                    );
-                                }
-                                if occupied_entry.get().is_empty() {
-                                    let removed = occupied_entry.remove_entry();
-                                    log::debug!("Newly processable node {:?}.", removed.0);
-                                    newly_processable_ids.insert(removed.0);
-                                }
-                            }
-                            EntryRef::Vacant(_vacant_entry) => {
-                                let err = anyhow!(
-                                    "Unexpected vacant entry for dependees of {processed_node_id:?}. Bug in processor?",
-                                );
-                                log::error!("{err:?}");
-                                self.outcome.node_outcomes.insert(
-                                    dependee_id.clone(),
-                                    NodeProcessOutcome::InternalError(err),
-                                );
-                            }
-                        }
-                    }
-                }
+                self.mark_dependent_nodes_processable(&processed_node_id, newly_processable_ids);
 
                 self.outcome
                     .node_outcomes
@@ -358,6 +323,49 @@ where
                     processed_node_id.clone(),
                     NodeProcessOutcome::ProcessErrored(err),
                 );
+            }
+        }
+    }
+
+    /// Updates unprocessed_id_to_dep_ids and fnd newly processable nodes in the process.
+    fn mark_dependent_nodes_processable(
+        &mut self,
+        processed_node_id: &node::NodeId,
+        newly_processable_ids: &mut HashSet<node::NodeId>,
+    ) {
+        let dependee_ids = match self.dep_id_to_dependee_ids.get(processed_node_id) {
+            Some(dependee_ids) => dependee_ids,
+            None => return,
+        };
+
+        for dependee_id in dependee_ids {
+            use hashbrown::hash_map::EntryRef;
+            match self.unprocessed_id_to_dep_ids.entry_ref(dependee_id) {
+                EntryRef::Occupied(mut occupied_entry) => {
+                    if !occupied_entry.get_mut().remove(processed_node_id) {
+                        let err = anyhow!(
+                            "Could not remove node {processed_node_id:?} from node {dependee_id:?}'s unprocessed dependencies. Bug in processor?"
+                        );
+                        log::error!("{err:?}");
+                        self.outcome
+                            .node_outcomes
+                            .insert(dependee_id.clone(), NodeProcessOutcome::InternalError(err));
+                    }
+                    if occupied_entry.get().is_empty() {
+                        let removed = occupied_entry.remove_entry();
+                        log::debug!("Newly processable node {:?}.", removed.0);
+                        newly_processable_ids.insert(removed.0);
+                    }
+                }
+                EntryRef::Vacant(_vacant_entry) => {
+                    let err = anyhow!(
+                        "Unexpected vacant entry for dependees of {processed_node_id:?}. Bug in processor?",
+                    );
+                    log::error!("{err:?}");
+                    self.outcome
+                        .node_outcomes
+                        .insert(dependee_id.clone(), NodeProcessOutcome::InternalError(err));
+                }
             }
         }
     }
