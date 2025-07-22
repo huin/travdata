@@ -1,3 +1,5 @@
+//! Concrete specialisations of [node::Node]s.
+
 pub mod es_transform;
 pub mod input_pdf_file;
 pub mod output_file_csv;

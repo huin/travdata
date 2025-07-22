@@ -1,3 +1,7 @@
+//! Arguments for a [crate::processing::GenericPipeline].
+//!
+//! These provide runtime parameters for the [crate::plparams] for the pipeline.
+
 use std::path::PathBuf;
 
 use crate::{node, plparams};

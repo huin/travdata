@@ -1,3 +1,5 @@
+//! Parameters for a [crate::processing::GenericPipeline].
+
 use crate::node;
 
 /// ID of a parameter, within the namespace of the [node::Node] that it is for.

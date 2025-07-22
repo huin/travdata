@@ -1,3 +1,5 @@
+//! Processing of a [GenericPipeline].
+
 #[cfg(test)]
 mod tests;
 
