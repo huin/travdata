@@ -8,37 +8,30 @@ pub struct ParamId(pub &'static str);
 
 /// Describes an input parameter for processing.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Param {
+pub struct Param<P> {
     /// ID of the parameter.
     pub param_id: ParamId,
     /// Human-readable description of the parameter.
     pub description: String,
     /// What semenatic type of value of the argument.
-    pub param_type: ParamType,
-}
-
-/// Indicates the required semantic type of an argument.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ParamType {
-    InputPdf,
-    OutputDirectory,
+    pub param_type: P,
 }
 
 /// [Param]s for a single [node::Node].
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Params {
-    pub params: Vec<Param>,
+pub struct Params<P> {
+    pub params: Vec<Param<P>>,
 }
 
 /// A [Param] qualified by its [node::NodeId].
 #[derive(Debug)]
-pub struct NodeParam {
+pub struct NodeParam<P> {
     pub node_id: node::NodeId,
-    pub param: Param,
+    pub param: Param<P>,
 }
 
 /// [NodeParam]s for a collection of [node::Node]s.
 #[derive(Debug)]
-pub struct NodeParams {
-    pub params: Vec<NodeParam>,
+pub struct NodeParams<P> {
+    pub params: Vec<NodeParam<P>>,
 }

@@ -65,23 +65,23 @@ pub enum UnprocessedDependencyReason {
 
 /// Processes a [pipeline::GenericPipeline] using the [crate::systems::GenericSystem]s that it was
 /// given to process the nodes within.
-pub struct GenericProcessor<S>
-where
-    S: node::SpecTrait,
-{
-    system: Rc<dyn systems::GenericSystem<S>>,
+pub struct GenericProcessor<P> {
+    system: Rc<dyn systems::GenericSystem<P>>,
 }
 
-impl<S> GenericProcessor<S>
+impl<P> GenericProcessor<P>
 where
-    S: node::SpecTrait,
+    P: crate::PipelineTypes,
 {
-    pub fn new(system: Rc<dyn systems::GenericSystem<S>>) -> Self {
+    pub fn new(system: Rc<dyn systems::GenericSystem<P>>) -> Self {
         Self { system }
     }
 
-    pub fn resolve_params(&self, nodes: &pipeline::GenericPipeline<S>) -> plparams::NodeParams {
-        plparams::NodeParams {
+    pub fn resolve_params(
+        &self,
+        nodes: &pipeline::GenericPipeline<P::Spec>,
+    ) -> plparams::NodeParams<P::ParamType> {
+        plparams::NodeParams::<P::ParamType> {
             params: nodes
                 .nodes()
                 .flat_map(|node| {
@@ -89,7 +89,7 @@ where
                         .params(node)
                         .params
                         .into_iter()
-                        .map(|param| plparams::NodeParam {
+                        .map(|param| plparams::NodeParam::<P::ParamType> {
                             node_id: node.id.clone(),
                             param,
                         })
@@ -100,25 +100,28 @@ where
 
     pub fn process(
         &self,
-        nodes: &pipeline::GenericPipeline<S>,
-        args: &crate::plargs::ArgSet,
+        nodes: &pipeline::GenericPipeline<P::Spec>,
+        args: &crate::plargs::GenericArgSet<P::ArgValue>,
     ) -> PipelineOutcome {
         let state = GenericProcessingState::new(nodes, args, self.system.clone());
         state.process()
     }
 }
 
-struct GenericProcessingState<'a, S> {
-    nodes: &'a pipeline::GenericPipeline<S>,
-    args: &'a crate::plargs::ArgSet,
+struct GenericProcessingState<'a, P>
+where
+    P: crate::PipelineTypes,
+{
+    nodes: &'a pipeline::GenericPipeline<P::Spec>,
+    args: &'a crate::plargs::GenericArgSet<P::ArgValue>,
 
-    system: Rc<dyn systems::GenericSystem<S>>,
+    system: Rc<dyn systems::GenericSystem<P>>,
 
     // Map from NodeId to the NodeIds that depend on it.
     dep_id_to_dependee_ids: HashMap<node::NodeId, Vec<node::NodeId>>,
 
     outcome: PipelineOutcome,
-    interms: intermediates::IntermediateSet,
+    interms: intermediates::IntermediateSet<P::IntermediateValue>,
     processable_ids: HashSet<node::NodeId>,
     // Map from NodeId to the NodeIds that it depends on. This is dynamically updated to remove
     // dependent NodeIds that have been successfully processed (when the value is empty, the
@@ -126,14 +129,14 @@ struct GenericProcessingState<'a, S> {
     unprocessed_id_to_dep_ids: HashMap<node::NodeId, HashSet<node::NodeId>>,
 }
 
-impl<'a, S> GenericProcessingState<'a, S>
+impl<'a, P> GenericProcessingState<'a, P>
 where
-    S: node::SpecTrait,
+    P: crate::PipelineTypes,
 {
     fn new(
-        nodes: &'a pipeline::GenericPipeline<S>,
-        args: &'a crate::plargs::ArgSet,
-        system: Rc<dyn systems::GenericSystem<S>>,
+        nodes: &'a pipeline::GenericPipeline<P::Spec>,
+        args: &'a crate::plargs::GenericArgSet<P::ArgValue>,
+        system: Rc<dyn systems::GenericSystem<P>>,
     ) -> Self {
         log::debug!("Processing {} nodes total.", nodes.nodes().count());
 
@@ -250,7 +253,7 @@ where
         self.outcome
     }
 
-    fn gather_phase_nodes(&self) -> Vec<&'a node::GenericNode<S>> {
+    fn gather_phase_nodes(&self) -> Vec<&'a node::GenericNode<P::Spec>> {
         self.processable_ids
             .iter()
             .filter_map(|node_id| {
@@ -266,7 +269,7 @@ where
 
     fn process_result(
         &mut self,
-        interm_result: Result<intermediates::Intermediate>,
+        interm_result: Result<P::IntermediateValue>,
         processed_node_id: node::NodeId,
         newly_processable_ids: &mut HashSet<node::NodeId>,
     ) {

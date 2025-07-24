@@ -7,7 +7,6 @@ use map_macro::hashbrown::hash_map;
 use predicates::constant::always;
 
 use crate::{
-    intermediates::{self, IntermediateSet},
     node, plargs,
     processing::{self, NodeOutcome, NodeUnprocessedReason, UnprocessedDependencyReason},
     testutil::*,
@@ -40,7 +39,7 @@ fn test_basic_process_order() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = plargs::ArgSet::default();
+    let args = TestArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -85,7 +84,7 @@ fn test_three_stage_processing() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = plargs::ArgSet::default();
+    let args = plargs::GenericArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -133,7 +132,7 @@ fn test_passes_all_runnable_nodes_together() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = plargs::ArgSet::default();
+    let args = plargs::GenericArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -171,7 +170,7 @@ fn test_handles_direct_loop() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = plargs::ArgSet::default();
+    let args = plargs::GenericArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -213,7 +212,7 @@ fn test_handles_indirect_loop() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = plargs::ArgSet::default();
+    let args = plargs::GenericArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -258,7 +257,7 @@ fn test_handles_unknown_dependency() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = plargs::ArgSet::default();
+    let args = plargs::GenericArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -301,7 +300,7 @@ fn test_handles_system_error() {
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = plargs::ArgSet::default();
+    let args = plargs::GenericArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -343,33 +342,24 @@ fn test_passes_intermediates() {
             always(),
             always(),
         )
-        .returning_st(|_, _, _| {
-            vec![(
-                node_id(FOO_1_ID),
-                Ok(intermediates::Intermediate::JsonData(
-                    serde_json::Value::String("some string".into()),
-                )),
-            )]
-        });
+        .returning_st(|_, _, _| vec![(node_id(FOO_1_ID), Ok(TestIntermediateValue::ValueOne(1)))]);
     sys.expect_process_multiple()
         .once()
         .with(
             ProcessNodesPredicate::new().with_node_ids(&[BAR_1_ID]),
             always(),
-            predicates::function::function(|interms: &IntermediateSet| {
-                match interms.get(&node_id(FOO_1_ID)) {
-                    Some(intermediates::Intermediate::JsonData(serde_json::Value::String(
-                        str_value,
-                    ))) => str_value == "some string",
-                    _ => false,
-                }
+            predicates::function::function(|interms: &TestIntermediateSet| {
+                matches!(
+                    interms.get(&node_id(FOO_1_ID)),
+                    Some(TestIntermediateValue::ValueOne(1))
+                )
             }),
         )
-        .returning_st(|_, _, _| vec![(node_id(BAR_1_ID), Ok(intermediates::Intermediate::NoData))]);
+        .returning_st(|_, _, _| vec![(node_id(BAR_1_ID), Ok(TestIntermediateValue::NoData))]);
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
-    let args = plargs::ArgSet::default();
+    let args = plargs::GenericArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
@@ -408,10 +398,10 @@ fn expect_process_multiple(
 
 fn fake_process_multiple(
     nodes: &[&FakeNode],
-) -> Vec<(node::NodeId, anyhow::Result<intermediates::Intermediate>)> {
+) -> Vec<(node::NodeId, anyhow::Result<TestIntermediateValue>)> {
     nodes
         .iter()
-        .map(|node| (node.id.clone(), Ok(intermediates::Intermediate::NoData)))
+        .map(|node| (node.id.clone(), Ok(TestIntermediateValue::ValueOne(1))))
         .collect()
 }
 

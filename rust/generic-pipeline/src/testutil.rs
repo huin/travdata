@@ -134,30 +134,67 @@ pub fn bar_node(id: &str, deps: &[&str]) -> FakeNode {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum TestParamType {
+    TypeOne,
+    TypeTwo,
+}
+
+pub type TestParam = plparams::Param<TestParamType>;
+pub type TestParams = plparams::Params<TestParamType>;
+
+// TODO: Write tests that use this.
+#[allow(dead_code)]
+pub enum TestArgValue {
+    TypeOne(u16),
+    TypeTwo(u32),
+}
+
+pub type TestArgSet = plargs::GenericArgSet<TestArgValue>;
+
+pub enum TestIntermediateValue {
+    NoData,
+    ValueOne(u16),
+}
+
+pub type TestIntermediateSet = intermediates::IntermediateSet<TestIntermediateValue>;
+
+pub type TestPipeline = pipeline::GenericPipeline<FakeSpec>;
+
+pub struct TestPipelineTypes;
+
+impl crate::PipelineTypes for TestPipelineTypes {
+    type Spec = FakeSpec;
+
+    type ParamType = TestParamType;
+
+    type ArgValue = TestArgValue;
+
+    type IntermediateValue = TestIntermediateValue;
+}
+
+pub type TestProcessor = processing::GenericProcessor<TestPipelineTypes>;
+
 mock! {
     pub FakeSystem {}
 
-    impl systems::GenericSystem<FakeSpec> for FakeSystem {
-        fn params(&self, node: &FakeNode) -> plparams::Params;
+    impl systems::GenericSystem<TestPipelineTypes> for FakeSystem {
+        fn params(&self, node: &FakeNode) -> TestParams;
 
         fn inputs(&self, node: &FakeNode) -> Vec<node::NodeId>;
 
         fn process(
             &self,
             node: &FakeNode,
-            args: &plargs::ArgSet,
-            intermediates: &intermediates::IntermediateSet,
-        ) -> Result<intermediates::Intermediate>;
+            args: &TestArgSet,
+            intermediates: &TestIntermediateSet,
+        ) -> Result<TestIntermediateValue>;
 
         fn process_multiple<'a>(
             &self,
             nodes: &'a [&'a FakeNode],
-            args: &plargs::ArgSet,
-            intermediates: &intermediates::IntermediateSet,
-        ) -> Vec<(node::NodeId, Result<intermediates::Intermediate>)>;
+            args: &plargs::GenericArgSet<TestArgValue>,
+            intermediates: &TestIntermediateSet,
+        ) -> Vec<(node::NodeId, Result<TestIntermediateValue>)>;
     }
 }
-
-pub type TestPipeline = pipeline::GenericPipeline<FakeSpec>;
-
-pub type TestProcessor = processing::GenericProcessor<FakeSpec>;

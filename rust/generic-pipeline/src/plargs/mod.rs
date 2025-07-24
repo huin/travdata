@@ -2,23 +2,22 @@
 //!
 //! These provide runtime parameters for the [crate::plparams] for the pipeline.
 
-use std::path::PathBuf;
-
 use crate::{node, plparams};
 
-/// Typed value of an argument to a [crate::node::Node].
-pub enum Arg {
-    InputPdf(PathBuf),
-    OutputDirectory(PathBuf),
+pub struct GenericArgSet<A> {
+    args: hashbrown::HashMap<ParamKey, A>,
 }
 
-#[derive(Default)]
-pub struct ArgSet {
-    args: hashbrown::HashMap<ParamKey, Arg>,
+impl<A> Default for GenericArgSet<A> {
+    fn default() -> Self {
+        Self {
+            args: Default::default(),
+        }
+    }
 }
 
-impl ArgSet {
-    pub fn set(&mut self, node_id: node::NodeId, param_id: plparams::ParamId, arg: Arg) {
+impl<A> GenericArgSet<A> {
+    pub fn set(&mut self, node_id: node::NodeId, param_id: plparams::ParamId, arg: A) {
         self.args.insert(ParamKey { node_id, param_id }, arg);
     }
 
@@ -26,7 +25,7 @@ impl ArgSet {
         &'a self,
         node_id: &node::NodeId,
         param_id: &plparams::ParamId,
-    ) -> Option<&'a Arg> {
+    ) -> Option<&'a A> {
         self.args.get(&BorrowedParamKey { node_id, param_id })
     }
 }

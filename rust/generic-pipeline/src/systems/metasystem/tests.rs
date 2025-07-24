@@ -15,11 +15,11 @@ fn test_params() {
     let bar_node = Rc::new(FakeNode::default_with_spec(BarSpec::default()));
 
     // GIVEN: the foo_sys will return the given parameters.
-    let new_expected_foo_params = || plparams::Params {
-        params: vec![plparams::Param {
+    let new_expected_foo_params = || TestParams {
+        params: vec![TestParam {
             param_id: plparams::ParamId("foo-param"),
             description: "foo-param description.".into(),
-            param_type: plparams::ParamType::InputPdf,
+            param_type: TestParamType::TypeOne,
         }],
     };
     foo_sys
@@ -31,11 +31,11 @@ fn test_params() {
         .return_once_st(move |_| new_expected_foo_params());
 
     // GIVEN: the bar_sys will return the given parameters.
-    let new_expected_bar_params = || plparams::Params {
-        params: vec![plparams::Param {
+    let new_expected_bar_params = || TestParams {
+        params: vec![TestParam {
             param_id: plparams::ParamId("bar-param"),
             description: "bar-param description.".into(),
-            param_type: plparams::ParamType::OutputDirectory,
+            param_type: TestParamType::TypeTwo,
         }],
     };
     bar_sys
@@ -50,7 +50,8 @@ fn test_params() {
     let foo_sys = Rc::new(foo_sys);
     let bar_sys = Rc::new(bar_sys);
     let mut systems =
-        hashbrown::HashMap::<FakeSpecDiscriminants, Rc<dyn GenericSystem<FakeSpec>>>::new();
+        hashbrown::HashMap::<FakeSpecDiscriminants, Rc<dyn GenericSystem<TestPipelineTypes>>>::new(
+        );
     systems.insert(FakeSpecDiscriminants::Foo, foo_sys.clone());
     systems.insert(FakeSpecDiscriminants::Bar, bar_sys.clone());
     let meta_system = GenericMetaSystem::new(systems);

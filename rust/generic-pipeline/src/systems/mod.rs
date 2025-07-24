@@ -12,27 +12,27 @@ pub use missingsystem::MissingSystem;
 
 /// Required trait for types that perform processing of a [node::Node]. Implementations are
 /// expected to be stateless with regards to nodes, their arguments, outputs, etc.
-pub trait GenericSystem<S>
+pub trait GenericSystem<P>
 where
-    S: node::SpecTrait,
+    P: crate::PipelineTypes,
 {
     /// Returns the parameters for the node, if any.
-    fn params(&self, _node: &node::GenericNode<S>) -> plparams::Params {
+    fn params(&self, _node: &node::GenericNode<P::Spec>) -> plparams::Params<P::ParamType> {
         plparams::Params {
             params: Vec::default(),
         }
     }
 
     /// Returns the set of node IDs that the given node depends on as inputs.
-    fn inputs(&self, node: &node::GenericNode<S>) -> Vec<node::NodeId>;
+    fn inputs(&self, node: &node::GenericNode<P::Spec>) -> Vec<node::NodeId>;
 
     /// Performs processing of the given [node::Node], returning its [intermediates::Intermediate].
     fn process(
         &self,
-        node: &node::GenericNode<S>,
-        args: &plargs::ArgSet,
-        intermediates: &intermediates::IntermediateSet,
-    ) -> Result<intermediates::Intermediate>;
+        node: &node::GenericNode<P::Spec>,
+        args: &plargs::GenericArgSet<P::ArgValue>,
+        intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
+    ) -> Result<P::IntermediateValue>;
 
     /// Performs processing of the given [node::Node]s, returning their
     /// [intermediates::Intermediate]s.
@@ -41,10 +41,10 @@ where
     /// optimise this.
     fn process_multiple<'a>(
         &self,
-        nodes: &'a [&'a node::GenericNode<S>],
-        args: &plargs::ArgSet,
-        intermediates: &intermediates::IntermediateSet,
-    ) -> Vec<(node::NodeId, Result<intermediates::Intermediate>)> {
+        nodes: &'a [&'a node::GenericNode<P::Spec>],
+        args: &plargs::GenericArgSet<P::ArgValue>,
+        intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
+    ) -> Vec<(node::NodeId, Result<P::IntermediateValue>)> {
         nodes
             .iter()
             .map(|&node| (node.id.clone(), self.process(node, args, intermediates)))
