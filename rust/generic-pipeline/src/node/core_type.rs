@@ -1,10 +1,11 @@
-//! Core types used within an extraction configuration [crate::node::Node].
+//! Core types used within an extraction configuration [crate::node::GenericNode].
 //!
 //! Many of these have value validation, so their inner value is private.
 
 use serde::{Deserialize, Serialize};
 
-/// Unique identifier of an extraction configuration [crate::node::Node] within a bundle.
+/// Unique identifier of an extraction configuration [crate::node::GenericNode] within a
+/// [crate::pipeline::GenericPipeline].
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 // TODO: Validate the ID when deserializing.
 pub struct NodeId(String);
@@ -25,7 +26,7 @@ impl TryFrom<String> for NodeId {
 }
 
 /// Tag value that non-uniquely identifies a set of extraction configuration
-/// [crate::node::Node]s.
+/// [crate::node::GenericNode]s.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 // TODO: Validate the ID when deserializing.
 pub struct Tag(String);

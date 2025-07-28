@@ -2,7 +2,7 @@
 
 use crate::node;
 
-/// ID of a parameter, within the namespace of the [node::Node] that it is for.
+/// ID of a parameter, within the namespace of the [node::GenericNode] that it is for.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ParamId(pub &'static str);
 
@@ -17,7 +17,7 @@ pub struct Param<P> {
     pub param_type: P,
 }
 
-/// [Param]s for a single [node::Node].
+/// [Param]s for a single [node::GenericNode].
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Params<P> {
     pub params: Vec<Param<P>>,
@@ -30,7 +30,7 @@ pub struct NodeParam<P> {
     pub param: Param<P>,
 }
 
-/// [NodeParam]s for a collection of [node::Node]s.
+/// [NodeParam]s for a collection of [node::GenericNode]s.
 #[derive(Debug)]
 pub struct NodeParams<P> {
     pub params: Vec<NodeParam<P>>,

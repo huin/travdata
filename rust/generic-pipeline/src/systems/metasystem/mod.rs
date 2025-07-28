@@ -1,6 +1,3 @@
-// TODO: Remove this allowance.
-#![allow(dead_code)]
-
 #[cfg(test)]
 mod tests;
 
@@ -12,8 +9,8 @@ use crate::{
     node::{self, SpecTrait},
 };
 
-/// A system that delegates to other systems based on the [spec::SpecDiscriminants] of any given
-/// [node::Node].
+/// A system that delegates to other systems based on the [SpecTrait::discriminant] of any given
+/// [node::GenericNode]'s `spec`.
 pub struct GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
@@ -26,8 +23,8 @@ impl<P> GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
 {
-    /// Creates a new [MetaSystem] that delegates to the given systems for the given
-    /// [spec::SpecDiscriminants].
+    /// Creates a new [GenericMetaSystem] that delegates to the given systems for the given
+    /// [SpecTrait::discriminant].
     pub fn new(
         systems: hashbrown::HashMap<
             <P::Spec as node::SpecTrait>::Discrim,

@@ -2,7 +2,7 @@ use hashbrown::HashMap;
 
 use crate::node;
 
-/// Immutable set of [node::Node]s, indexed for processing.
+/// Immutable set of [node::GenericNode]s, indexed for processing.
 pub struct GenericPipeline<S> {
     id_to_node: HashMap<node::NodeId, node::GenericNode<S>>,
 }

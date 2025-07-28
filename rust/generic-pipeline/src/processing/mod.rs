@@ -48,7 +48,7 @@ impl PartialEq for NodeOutcome {
     }
 }
 
-/// Describes the reasons for a single [node::Node] being unprocessed.
+/// Describes the reasons for a single [node::GenericNode] being unprocessed.
 #[derive(Debug, PartialEq)]
 pub struct NodeUnprocessedReason {
     pub unprocessed_dependencies: HashMap<node::NodeId, UnprocessedDependencyReason>,

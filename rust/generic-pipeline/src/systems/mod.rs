@@ -1,4 +1,4 @@
-//! Data types that act upon [crate::node::Node] to perform individual parts of an extraction process.
+//! Data types that act upon a [node::GenericNode] to perform individual parts of an pipeline.
 
 mod metasystem;
 mod missingsystem;
@@ -10,8 +10,9 @@ use crate::{intermediates, node, plargs, plparams};
 pub use metasystem::GenericMetaSystem;
 pub use missingsystem::MissingSystem;
 
-/// Required trait for types that perform processing of a [node::Node]. Implementations are
-/// expected to be stateless with regards to nodes, their arguments, outputs, etc.
+/// Required trait for types that perform processing of a [crate::node::GenericNode].
+/// Implementations are expected to be stateless with regards to nodes, their arguments, outputs,
+/// etc.
 pub trait GenericSystem<P>
 where
     P: crate::PipelineTypes,
@@ -26,7 +27,7 @@ where
     /// Returns the set of node IDs that the given node depends on as inputs.
     fn inputs(&self, node: &node::GenericNode<P::Spec>) -> Vec<node::NodeId>;
 
-    /// Performs processing of the given [node::Node], returning its [intermediates::Intermediate].
+    /// Performs processing of the given [node::GenericNode], returning its intermediate value.
     fn process(
         &self,
         node: &node::GenericNode<P::Spec>,
@@ -34,8 +35,8 @@ where
         intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
     ) -> Result<P::IntermediateValue>;
 
-    /// Performs processing of the given [node::Node]s, returning their
-    /// [intermediates::Intermediate]s.
+    /// Performs processing of the given [node::GenericNode]s, returning their
+    /// intermediate value(s).
     ///
     /// The default implementation processes in serial. Specific implementations may choose to
     /// optimise this.

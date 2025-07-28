@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// Used as a fallback when a [crate::systems::GenericSystem] implementation has not been provided
-/// for a [node::Node]'s [crate::node::spec::Spec] type.
+/// for a [node::GenericNode]'s [node::SpecTrait] type.
 pub struct MissingSystem;
 
 impl<P> GenericSystem<P> for MissingSystem
