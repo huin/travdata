@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::node::spec_type::pdf;
+use crate::spec_types::pdf;
 
 /// Specifies the extraction of a tabular region within a Pdf file.
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

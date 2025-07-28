@@ -3,15 +3,8 @@ use googletest::prelude::*;
 use map_macro::hash_set;
 use test_casing::{TestCases, cases, test_casing};
 
-use super::{
-    spec::{
-        es_transform::EsTransform, input_pdf_file::InputPdfFile, output_file_csv::OutputFileCsv,
-        output_file_json::OutputFileJson, pdf_extract_table::PdfExtractTable, *,
-    },
-    spec_type::pdf,
-    *,
-};
-use crate::testutil::{node_id, output_path_buf, tag};
+use super::*;
+use crate::{Node, spec_types::pdf, testutil::*};
 
 const CASES: TestCases<(&'static str, Node)> = cases! {
     [
@@ -141,58 +134,6 @@ fn test_reserialise_case(input: &'static str, expected: Node) -> Result<()> {
     let got_2: Node =
         serde_yaml_ng::from_str(&reserialised).context("deserialising reserialised data")?;
     expect_that!(got_2, eq(&expected));
-
-    Ok(())
-}
-
-// This approach may never be used (might use a more compact representation than YAML), but for now
-// keeping it as a reference example.
-#[gtest]
-fn test_deserialise_multi_doc() -> Result<()> {
-    const INPUT: &str = r#"
-id: foo-pdf
-type: InputPdfFile
-spec: {}
----
-id: thingy-1-extract
-type: PdfExtractTable
-spec:
-  input_pdf: foo-pdf
-  page: 123
-  method: stream
-  rect:
-    left: 24.0
-    right: 58.0
-    top: 110.0
-    bottom: 30.0
----
-id: thingy-1-transform
-type: EsTransform
-spec:
-  input_data: thingy-1-extract
-  code: |
-    // Some code.
----
-id: thingy-1-json-out
-tags: [thingy-1, format/json]
-type: OutputFileJson
-public: true
-spec:
-  input_data: thingy-1-transform
-  filename: thingy-1.json
----
-id: thingy-1-csv-out
-tags: [thingy-1, format/csv]
-type: OutputFileCsv
-public: true
-spec:
-  input_data: thingy-1-transform
-  filename: thingy-1.csv
-"#;
-
-    for document in serde_yaml_ng::Deserializer::from_str(INPUT) {
-        let _node = Node::deserialize(document)?;
-    }
 
     Ok(())
 }
