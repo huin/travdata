@@ -1,3 +1,5 @@
 [workspace]
 resolver = "3"
 members = ["bin", "generic-pipeline", "pipeline"]
+
+# TODO: Refactor to define workspace-wide dependencies.
