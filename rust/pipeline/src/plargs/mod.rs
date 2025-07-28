@@ -5,7 +5,7 @@
 use std::path::PathBuf;
 
 /// Typed value of an argument to a [crate::Node].
-pub enum Arg {
+pub enum ArgValue {
     InputPdf(PathBuf),
     OutputDirectory(PathBuf),
 }

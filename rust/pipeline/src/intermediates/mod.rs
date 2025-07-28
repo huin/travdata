@@ -3,11 +3,8 @@
 
 use std::path::PathBuf;
 
-pub mod es_transform;
-
-pub enum Intermediate {
+pub enum IntermediateValue {
     NoData,
-    EsTransform(es_transform::EsTransform),
     InputFile(PathBuf),
     JsonData(serde_json::Value),
 }

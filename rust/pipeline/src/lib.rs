@@ -24,9 +24,9 @@ impl generic_pipeline::PipelineTypes for PipelineTypes {
 
     type ParamType = plparams::ParamType;
 
-    type ArgValue = plargs::Arg;
+    type ArgValue = plargs::ArgValue;
 
-    type IntermediateValue = intermediates::Intermediate;
+    type IntermediateValue = intermediates::IntermediateValue;
 }
 
 /// Monomorphic form of [generic_pipeline::systems::GenericMetaSystem] used with realm
