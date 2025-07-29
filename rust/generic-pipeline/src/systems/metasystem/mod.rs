@@ -56,8 +56,8 @@ where
         self.system_for(node.spec.discriminant()).params(node)
     }
 
-    fn inputs(&self, _node: &node::GenericNode<P::Spec>) -> Vec<node::NodeId> {
-        todo!()
+    fn inputs(&self, node: &node::GenericNode<P::Spec>) -> Vec<node::NodeId> {
+        self.system_for(node.spec.discriminant()).inputs(node)
     }
 
     fn process(

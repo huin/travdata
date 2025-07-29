@@ -173,6 +173,11 @@ impl crate::PipelineTypes for TestPipelineTypes {
     type IntermediateValue = TestIntermediateValue;
 }
 
+pub type TestSystemMap = hashbrown::HashMap<
+    FakeSpecDiscriminants,
+    std::rc::Rc<dyn systems::GenericSystem<TestPipelineTypes>>,
+>;
+
 pub type TestProcessor = processing::GenericProcessor<TestPipelineTypes>;
 
 mock! {

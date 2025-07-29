@@ -1,4 +1,5 @@
 use googletest::prelude::*;
+use map_macro::hashbrown::hash_map_e;
 
 use super::*;
 use crate::{plparams, testutil::*};
@@ -47,13 +48,10 @@ fn test_params() {
         .return_once_st(move |_| new_expected_bar_params());
 
     // GIVEN: a meta_system that dispatches for Foo and Bar.
-    let foo_sys = Rc::new(foo_sys);
-    let bar_sys = Rc::new(bar_sys);
-    let mut systems =
-        hashbrown::HashMap::<FakeSpecDiscriminants, Rc<dyn GenericSystem<TestPipelineTypes>>>::new(
-        );
-    systems.insert(FakeSpecDiscriminants::Foo, foo_sys.clone());
-    systems.insert(FakeSpecDiscriminants::Bar, bar_sys.clone());
+    let systems: TestSystemMap = hash_map_e! {
+        FakeSpecDiscriminants::Foo => Rc::new(foo_sys),
+        FakeSpecDiscriminants::Bar => Rc::new(bar_sys),
+    };
     let meta_system = GenericMetaSystem::new(systems);
 
     // WHEN: the params are requested for the Foo node.
@@ -69,4 +67,64 @@ fn test_params() {
     // THEN: the single param should be for an output JSON file path.
     let expected_bar_params = new_expected_bar_params();
     expect_that!(got_bar_params, eq(&expected_bar_params));
+}
+
+#[gtest]
+fn test_inputs() {
+    let mut foo_sys = MockFakeSystem::new();
+    let mut bar_sys = MockFakeSystem::new();
+
+    // GIVEN: foo_sys and bar_sys will return clones of a node's spec's dependencies
+    foo_sys
+        .expect_inputs()
+        .withf_st(|node| matches!(node.spec, FakeSpec::Foo(_)))
+        .returning_st(|node| match &node.spec {
+            FakeSpec::Foo(spec) => spec.deps.clone(),
+            _ => vec![],
+        });
+    bar_sys
+        .expect_inputs()
+        .withf_st(|node| matches!(node.spec, FakeSpec::Bar(_)))
+        .returning_st(|node| match &node.spec {
+            FakeSpec::Bar(spec) => spec.deps.clone(),
+            _ => vec![],
+        });
+
+    let systems: TestSystemMap = hash_map_e! {
+        FakeSpecDiscriminants::Foo => Rc::new(foo_sys),
+        FakeSpecDiscriminants::Bar => Rc::new(bar_sys),
+    };
+
+    // GIVEN: a meta_system that dispatches for Foo and Bar.
+    let meta_system = GenericMetaSystem::new(systems);
+
+    // WHEN: the input for a `Foo` node is requested.
+    let foo_inputs = meta_system.inputs(&FakeNode {
+        spec: FooSpec {
+            deps: vec![node_id("foo-dep-1"), node_id("foo-dep-2")],
+            ..Default::default()
+        }
+        .into(),
+        ..Default::default()
+    });
+    // THEN: the expected dependencies are returned.
+    expect_that!(
+        foo_inputs,
+        unordered_elements_are![&node_id("foo-dep-1"), &node_id("foo-dep-2")]
+    );
+
+    // WHEN: the input for a `bar` node is requested.
+    let bar_inputs = meta_system.inputs(&FakeNode {
+        spec: BarSpec {
+            deps: vec![node_id("bar-dep-1"), node_id("bar-dep-2")],
+            ..Default::default()
+        }
+        .into(),
+        ..Default::default()
+    });
+    // THEN: the expected dependencies are returned.
+    expect_that!(
+        bar_inputs,
+        unordered_elements_are![&node_id("bar-dep-1"), &node_id("bar-dep-2")]
+    );
 }
