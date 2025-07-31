@@ -9,6 +9,7 @@ use predicates::constant::always;
 use crate::{
     node, plargs,
     processing::{self, NodeOutcome, NodeUnprocessedReason, UnprocessedDependencyReason},
+    systems::NodeResult,
     testutil::*,
 };
 
@@ -296,7 +297,12 @@ fn test_handles_system_error() {
             always(),
             always(),
         )
-        .returning_st(|_, _, _| vec![(node_id(FOO_1_ID), Err(anyhow!("some error")))]);
+        .returning_st(|_, _, _| {
+            vec![NodeResult {
+                id: node_id(FOO_1_ID),
+                value: Err(anyhow!("some error")),
+            }]
+        });
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
@@ -342,7 +348,12 @@ fn test_passes_intermediates() {
             always(),
             always(),
         )
-        .returning_st(|_, _, _| vec![(node_id(FOO_1_ID), Ok(TestIntermediateValue::ValueOne(1)))]);
+        .returning_st(|_, _, _| {
+            vec![NodeResult {
+                id: node_id(FOO_1_ID),
+                value: Ok(TestIntermediateValue::ValueOne(1)),
+            }]
+        });
     sys.expect_process_multiple()
         .once()
         .with(
@@ -355,7 +366,12 @@ fn test_passes_intermediates() {
                 )
             }),
         )
-        .returning_st(|_, _, _| vec![(node_id(BAR_1_ID), Ok(TestIntermediateValue::NoData))]);
+        .returning_st(|_, _, _| {
+            vec![NodeResult {
+                id: node_id(BAR_1_ID),
+                value: Ok(TestIntermediateValue::NoData),
+            }]
+        });
 
     let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
@@ -396,12 +412,13 @@ fn expect_process_multiple(
         .in_sequence(process_sequence);
 }
 
-fn fake_process_multiple(
-    nodes: &[&FakeNode],
-) -> Vec<(node::NodeId, anyhow::Result<TestIntermediateValue>)> {
+fn fake_process_multiple(nodes: &[&FakeNode]) -> Vec<NodeResult<TestIntermediateValue>> {
     nodes
         .iter()
-        .map(|node| (node.id.clone(), Ok(TestIntermediateValue::ValueOne(1))))
+        .map(|node| NodeResult {
+            id: node.id.clone(),
+            value: Ok(TestIntermediateValue::ValueOne(1)),
+        })
         .collect()
 }
 

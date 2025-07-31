@@ -10,6 +10,24 @@ use crate::{intermediates, node, plargs, plparams};
 pub use metasystem::GenericMetaSystem;
 pub use missingsystem::MissingSystem;
 
+/// Result of processing a node.
+pub struct NodeResult<V> {
+    pub id: node::NodeId,
+    pub value: Result<V>,
+}
+
+impl<V> std::fmt::Debug for NodeResult<V>
+where
+    V: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NodeResult")
+            .field("id", &self.id)
+            .field("value", &self.value)
+            .finish()
+    }
+}
+
 /// Required trait for types that perform processing of a [crate::node::GenericNode].
 /// Implementations are expected to be stateless with regards to nodes, their arguments, outputs,
 /// etc.
@@ -45,10 +63,13 @@ where
         nodes: &'a [&'a node::GenericNode<P::Spec>],
         args: &plargs::GenericArgSet<P::ArgValue>,
         intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
-    ) -> Vec<(node::NodeId, Result<P::IntermediateValue>)> {
+    ) -> Vec<NodeResult<P::IntermediateValue>> {
         nodes
             .iter()
-            .map(|&node| (node.id.clone(), self.process(node, args, intermediates)))
+            .map(|&node| NodeResult {
+                id: node.id.clone(),
+                value: self.process(node, args, intermediates),
+            })
             .collect()
     }
 }

@@ -3,7 +3,9 @@ mod tests;
 
 use std::rc::Rc;
 
-use super::{GenericSystem, MissingSystem};
+use hashbrown::HashMap;
+
+use super::{GenericSystem, MissingSystem, NodeResult};
 use crate::{
     intermediates,
     node::{self, SpecTrait},
@@ -62,19 +64,39 @@ where
 
     fn process(
         &self,
-        _node: &node::GenericNode<P::Spec>,
-        _args: &crate::plargs::GenericArgSet<P::ArgValue>,
-        _intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
+        node: &node::GenericNode<P::Spec>,
+        args: &crate::plargs::GenericArgSet<P::ArgValue>,
+        intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
     ) -> anyhow::Result<P::IntermediateValue> {
-        todo!()
+        self.system_for(node.spec.discriminant())
+            .process(node, args, intermediates)
     }
 
     fn process_multiple<'a>(
         &self,
-        _nodes: &'a [&'a node::GenericNode<P::Spec>],
-        _args: &crate::plargs::GenericArgSet<P::ArgValue>,
-        _intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
-    ) -> Vec<(node::NodeId, anyhow::Result<P::IntermediateValue>)> {
-        todo!()
+        nodes: &'a [&'a node::GenericNode<P::Spec>],
+        args: &crate::plargs::GenericArgSet<P::ArgValue>,
+        intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
+    ) -> Vec<NodeResult<P::IntermediateValue>> {
+        let mut node_groups =
+            HashMap::<<P::Spec as SpecTrait>::Discrim, Vec<&node::GenericNode<P::Spec>>>::new();
+
+        // Group nodes by their discriminant.
+        for node in nodes {
+            let discrim = node.spec.discriminant();
+            node_groups.entry(discrim).or_default().push(node);
+        }
+
+        // Delegate by each group.
+        let mut results = Vec::<NodeResult<P::IntermediateValue>>::with_capacity(nodes.len());
+        for (discrim, node_group) in node_groups.drain() {
+            results.extend(self.system_for(discrim).process_multiple(
+                &node_group,
+                args,
+                intermediates,
+            ));
+        }
+
+        results
     }
 }

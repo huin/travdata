@@ -5,7 +5,7 @@ mod tests;
 
 use std::rc::Rc;
 
-use anyhow::{Result, anyhow};
+use anyhow::anyhow;
 use hashbrown::{HashMap, HashSet};
 
 use crate::{intermediates, node, pipeline, plparams, systems};
@@ -203,18 +203,19 @@ where
                     .process_multiple(&phase_nodes, self.args, &self.interms);
 
             let mut newly_processable_ids = HashSet::new();
-            for (processed_node_id, interm_result) in id_intermediates {
-                if !self.processable_ids.remove(&processed_node_id) {
+            for node_result in id_intermediates {
+                if !self.processable_ids.remove(&node_result.id) {
                     log::error!(
-                        "Node {processed_node_id:?} was processed, despite not being requested to process. Faulty system?",
+                        "Node {:?} was processed, despite not being requested to process. Faulty system?",
+                        node_result.id,
                     );
                     self.outcome
                         .node_outcomes
-                        .insert(processed_node_id, NodeOutcome::Unexpected);
+                        .insert(node_result.id, NodeOutcome::Unexpected);
                     continue;
                 }
 
-                self.process_result(interm_result, processed_node_id, &mut newly_processable_ids);
+                self.process_result(node_result, &mut newly_processable_ids);
             }
 
             for node_id in self.processable_ids.drain() {
@@ -269,31 +270,30 @@ where
 
     fn process_result(
         &mut self,
-        interm_result: Result<P::IntermediateValue>,
-        processed_node_id: node::NodeId,
+        node_result: systems::NodeResult<P::IntermediateValue>,
         newly_processable_ids: &mut HashSet<node::NodeId>,
     ) {
-        match interm_result {
+        match node_result.value {
             Ok(interm) => {
-                log::info!("Node {processed_node_id:?} processed successfully.");
+                log::info!("Node {:?} processed successfully.", node_result.id);
 
-                self.mark_dependent_nodes_processable(&processed_node_id, newly_processable_ids);
+                self.mark_dependent_nodes_processable(&node_result.id, newly_processable_ids);
 
                 self.outcome
                     .node_outcomes
-                    .insert(processed_node_id.clone(), NodeOutcome::Success);
-                self.interms.set(processed_node_id, interm);
+                    .insert(node_result.id.clone(), NodeOutcome::Success);
+                self.interms.set(node_result.id, interm);
             }
             Err(err) => {
-                log::error!("Error processing node {processed_node_id:?}: {err:?}");
+                log::error!("Error processing node {:?}: {err:?}", node_result.id);
                 self.outcome
                     .node_outcomes
-                    .insert(processed_node_id.clone(), NodeOutcome::ProcessErrored(err));
+                    .insert(node_result.id.clone(), NodeOutcome::ProcessErrored(err));
             }
         }
     }
 
-    /// Updates unprocessed_id_to_dep_ids and fnd newly processable nodes in the process.
+    /// Updates unprocessed_id_to_dep_ids and find newly processable nodes in the process.
     fn mark_dependent_nodes_processable(
         &mut self,
         processed_node_id: &node::NodeId,

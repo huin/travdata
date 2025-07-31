@@ -143,8 +143,7 @@ pub enum TestParamType {
 pub type TestParam = plparams::Param<TestParamType>;
 pub type TestParams = plparams::Params<TestParamType>;
 
-// TODO: Write tests that use this.
-#[allow(dead_code)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum TestArgValue {
     TypeOne(u16),
     TypeTwo(u32),
@@ -152,6 +151,7 @@ pub enum TestArgValue {
 
 pub type TestArgSet = plargs::GenericArgSet<TestArgValue>;
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum TestIntermediateValue {
     NoData,
     ValueOne(u16),
@@ -200,6 +200,6 @@ mock! {
             nodes: &'a [&'a FakeNode],
             args: &plargs::GenericArgSet<TestArgValue>,
             intermediates: &TestIntermediateSet,
-        ) -> Vec<(node::NodeId, Result<TestIntermediateValue>)>;
+        ) -> Vec<systems::NodeResult<TestIntermediateValue>>;
     }
 }
