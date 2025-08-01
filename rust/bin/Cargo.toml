@@ -17,7 +17,6 @@ lazy-regex.workspace = true
 log.workspace = true
 lru.workspace = true
 pdfium-render.workspace = true
-regex.workspace = true
 relm4.workspace = true
 relm4-components.workspace = true
 serde.workspace = true
