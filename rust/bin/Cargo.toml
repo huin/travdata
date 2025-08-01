@@ -30,6 +30,7 @@ simple_bar.workspace = true
 simplelog.workspace = true
 tabula.workspace = true
 tempfile.workspace = true
+utils.workspace = true
 v8.workspace = true
 walkdir.workspace = true
 xdg.workspace = true

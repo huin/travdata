@@ -3,8 +3,7 @@ use std::{collections::HashMap, path::PathBuf, sync::mpsc};
 use anyhow::{Result, anyhow};
 use image::ImageBuffer;
 use pdfium_render::prelude::{PdfDocument, PdfRenderConfig, Pdfium};
-
-use crate::mpscutil;
+use utils::mpscutil;
 
 pub type PageImage = ImageBuffer<image::Rgb<u8>, Vec<u8>>;
 

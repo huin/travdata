@@ -8,8 +8,7 @@ mod test;
 use std::{any::Any, collections::HashMap, sync::mpsc};
 
 use anyhow::{Context, Error, Result, anyhow};
-
-use crate::mpscutil;
+use utils::mpscutil;
 
 static INIT_V8: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 

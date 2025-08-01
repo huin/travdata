@@ -7,11 +7,12 @@ use anyhow::{Context, Result};
 use gtk::Application;
 use gtk::prelude::*;
 use relm4::RelmApp;
+use utils::mpscutil;
 
 use crate::{
     extraction::pdf::pdfiumthread::{PdfiumClient, PdfiumServer},
     gui::{self, mainmenu, workers},
-    mpscutil, v8wrapper,
+    v8wrapper,
 };
 
 /// Runs the GUI. Must be called from the main thread.
