@@ -1,7 +1,7 @@
 use googletest::prelude::*;
 use testutils::WrapError;
 
-use super::*;
+use super::{testisolate::IsolateThreadHandleForTest, *};
 
 #[gtest]
 fn test_thread_isolate_create_and_call_function(

@@ -4,10 +4,13 @@
 
 #[cfg(test)]
 mod test;
+#[cfg(any(feature = "testing", test))]
+pub mod testisolate;
 
 use std::{any::Any, collections::HashMap, sync::mpsc};
 
 use anyhow::{Context, Error, Result, anyhow};
+
 use utils::mpscutil;
 
 static INIT_V8: std::sync::OnceLock<()> = std::sync::OnceLock::new();
@@ -376,33 +379,4 @@ pub fn new_v8_function<'s>(
     )
     .ok_or_else(|| try_catch_to_result(try_catch))
     .with_context(|| "could not compile function")
-}
-
-/// Provides a shared [IsolateThreadHandle] for tests. At the time of writing [v8] only supports
-/// creating one [v8::Isolate] per process (even after removing the first).
-#[cfg(test)]
-pub struct IsolateThreadHandleForTest {
-    handle: IsolateThreadHandle,
-}
-
-// Unclear if this is safe to implement, but it's for tests only.
-#[cfg(test)]
-impl std::panic::RefUnwindSafe for IsolateThreadHandleForTest {}
-
-#[cfg(test)]
-impl std::ops::Deref for IsolateThreadHandleForTest {
-    type Target = IsolateThreadHandle;
-
-    fn deref(&self) -> &Self::Target {
-        &self.handle
-    }
-}
-
-#[cfg(test)]
-impl googletest::fixtures::StaticFixture for IsolateThreadHandleForTest {
-    fn set_up_once() -> googletest::Result<Self> {
-        Ok(Self {
-            handle: IsolateThreadHandle::new(),
-        })
-    }
 }

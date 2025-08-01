@@ -14,7 +14,6 @@ use crate::{
     },
     filesio,
     template::loadarg,
-    v8wrapper,
 };
 
 /// Extracts data tables from the Mongoose Traveller 2022 core rules PDF as CSV

@@ -12,7 +12,6 @@ use utils::mpscutil;
 use crate::{
     extraction::pdf::pdfiumthread::{PdfiumClient, PdfiumServer},
     gui::{self, mainmenu, workers},
-    v8wrapper,
 };
 
 /// Runs the GUI. Must be called from the main thread.

@@ -9,7 +9,6 @@ mod fmtutil;
 mod gui;
 mod table;
 mod template;
-mod v8wrapper;
 
 fn main() -> Result<()> {
     cli::run()

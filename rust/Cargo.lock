@@ -3240,6 +3240,7 @@ dependencies = [
  "test-casing",
  "travdata-testutils",
  "travdata-utils",
+ "travdata-v8wrapper",
  "v8",
  "walkdir",
  "xdg",
@@ -3296,6 +3297,18 @@ name = "travdata-utils"
 version = "0.1.0"
 dependencies = [
  "log",
+]
+
+[[package]]
+name = "travdata-v8wrapper"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "googletest",
+ "log",
+ "travdata-testutils",
+ "travdata-utils",
+ "v8",
 ]
 
 [[package]]

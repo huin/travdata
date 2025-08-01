@@ -1,7 +1,6 @@
 use anyhow::{Context, Result, bail};
 
 use crate::table::Table;
-use crate::v8wrapper;
 
 /// Definition of an ECMAScript script.
 #[derive(Debug)]
@@ -93,10 +92,10 @@ pub struct TransformFn {
 mod test {
     use googletest::prelude::*;
     use testutils::WrapError;
+    use v8wrapper::testisolate::IsolateThreadHandleForTest;
 
     use crate::{
         extraction::tableextract::estransform::TransformFn,
-        v8wrapper::{self, IsolateThreadHandleForTest},
     };
     use crate::table::{Row, Table};
 

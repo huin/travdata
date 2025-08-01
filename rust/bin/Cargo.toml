@@ -32,6 +32,7 @@ tabula.workspace = true
 tempfile.workspace = true
 utils.workspace = true
 v8.workspace = true
+v8wrapper.workspace = true
 walkdir.workspace = true
 xdg.workspace = true
 zip.workspace = true
@@ -40,3 +41,4 @@ zip.workspace = true
 googletest.workspace = true
 test-casing.workspace = true
 testutils.workspace = true
+v8wrapper = { features = ["testing"], workspace = true }

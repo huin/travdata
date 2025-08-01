@@ -1,0 +1,18 @@
+[package]
+name = "travdata-v8wrapper"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+googletest = { optional = true, workspace = true }
+log.workspace = true
+utils.workspace = true
+v8.workspace = true
+
+[dev-dependencies]
+googletest.workspace = true
+testutils.workspace = true
+
+[features]
+testing = ["dep:googletest"]

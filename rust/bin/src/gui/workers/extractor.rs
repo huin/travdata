@@ -10,7 +10,7 @@ use crate::{
     extraction::{bookextract, pdf::TableReader},
     filesio::FileIoPath,
     gui::util,
-    template, v8wrapper,
+    template,
 };
 
 /// Initialisation data for [ExtractorWorker].

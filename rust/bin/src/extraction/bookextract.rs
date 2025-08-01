@@ -16,7 +16,7 @@ use super::{
         legacy_transform,
     },
 };
-use crate::{filesio::ReadWriter, table::Table, template, v8wrapper};
+use crate::{filesio::ReadWriter, table::Table, template};
 
 /// Encapsulates the values required to extract tables from book(s).
 pub struct Extractor<'a> {
