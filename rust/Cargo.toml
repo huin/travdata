@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["bin", "generic-pipeline", "pipeline"]
+members = ["bin", "generic-pipeline", "pipeline", "testutils"]
 
 [workspace.dependencies]
 anyhow = "1.0.98"
@@ -45,6 +45,10 @@ zip = "3.0.0"
 [workspace.dependencies.generic-pipeline]
 package = "travdata-generic-pipeline"
 path = "generic-pipeline"
+
+[workspace.dependencies.testutils]
+package = "travdata-testutils"
+path = "testutils"
 
 [workspace.dependencies.pdfium-render]
 # TODO: Check if we need to use feature thread_safe. For now we're serialising

@@ -10,8 +10,6 @@ mod gui;
 mod mpscutil;
 mod table;
 mod template;
-#[cfg(test)]
-mod testutil;
 mod v8wrapper;
 
 fn main() -> Result<()> {

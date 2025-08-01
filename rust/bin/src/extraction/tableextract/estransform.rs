@@ -92,15 +92,13 @@ pub struct TransformFn {
 #[cfg(test)]
 mod test {
     use googletest::prelude::*;
+    use testutils::WrapError;
 
     use crate::{
         extraction::tableextract::estransform::TransformFn,
         v8wrapper::{self, IsolateThreadHandleForTest},
     };
-    use crate::{
-        table::{Row, Table},
-        testutil::WrapError,
-    };
+    use crate::table::{Row, Table};
 
     use super::{ESScript, ESTransformer};
 

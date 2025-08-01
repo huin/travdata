@@ -3238,6 +3238,7 @@ dependencies = [
  "tabula",
  "tempfile",
  "test-casing",
+ "travdata-testutils",
  "v8",
  "walkdir",
  "xdg",
@@ -3279,6 +3280,14 @@ dependencies = [
  "strum_macros",
  "test-casing",
  "travdata-generic-pipeline",
+]
+
+[[package]]
+name = "travdata-testutils"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "googletest",
 ]
 
 [[package]]

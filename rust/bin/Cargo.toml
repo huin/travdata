@@ -38,3 +38,4 @@ zip.workspace = true
 [dev-dependencies]
 googletest.workspace = true
 test-casing.workspace = true
+testutils.workspace = true

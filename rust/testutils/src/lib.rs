@@ -1,3 +1,5 @@
+//! Utilities used in tests in multiple crates within the workspace.
+
 use std::{
     fmt::{Debug, Display},
     marker::PhantomData,
