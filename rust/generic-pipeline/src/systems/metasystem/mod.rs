@@ -3,8 +3,6 @@ mod tests;
 
 use std::rc::Rc;
 
-use hashbrown::HashMap;
-
 use super::{GenericSystem, MissingSystem, NodeResult};
 use crate::{
     intermediates,
@@ -78,8 +76,10 @@ where
         args: &crate::plargs::GenericArgSet<P::ArgValue>,
         intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
     ) -> Vec<NodeResult<P::IntermediateValue>> {
-        let mut node_groups =
-            HashMap::<<P::Spec as SpecTrait>::Discrim, Vec<&node::GenericNode<P::Spec>>>::new();
+        let mut node_groups = hashbrown::HashMap::<
+            <P::Spec as SpecTrait>::Discrim,
+            Vec<&node::GenericNode<P::Spec>>,
+        >::new();
 
         // Group nodes by their discriminant.
         for node in nodes {
