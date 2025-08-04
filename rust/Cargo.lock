@@ -1354,6 +1354,7 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash",
+ "serde",
 ]
 
 [[package]]
@@ -3278,6 +3279,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "googletest",
+ "hashbrown",
  "map-macro",
  "serde",
  "serde_json",

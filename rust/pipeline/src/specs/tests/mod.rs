@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use googletest::prelude::*;
-use map_macro::hash_set;
+use map_macro::{hash_set, hashbrown::hash_map};
 use test_casing::{TestCases, cases, test_casing};
 
 use super::*;
@@ -56,17 +56,20 @@ r#"
 id: thingy-1-transform
 type: EsTransform
 spec:
-  input_data: thingy-1-extract
+  input_data:
+    foo: thingy-1-extract
   code: |
-    // Some code.
+    return foo.bar;
 "#,
             Node{
                 id: node_id("thingy-1-transform"),
                 tags: Default::default(),
                 public: false,
                 spec: Spec::EsTransform(EsTransform {
-                    input_data: node_id("thingy-1-extract"),
-                    code: "// Some code.\n".to_string(),
+                    input_data: hash_map! {
+                        "foo".to_string() => node_id("thingy-1-extract"),
+                    },
+                    code: "return foo.bar;\n".to_string(),
                 }),
             },
         ),

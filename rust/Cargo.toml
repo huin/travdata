@@ -20,7 +20,7 @@ gtk = { version = "0.9.6", package = "gtk4" }
 googletest = { version = "0.14.0", features = ["anyhow"] }
 hex = "0.4.3"
 image = "0.25.6"
-hashbrown = "0.15.4"
+hashbrown = { version = "0.15.4", features = ["serde"] }
 lazy-regex = { version = "3.4.1", features = ["std"] }
 log = "0.4.27"
 lru = "0.14.0"
