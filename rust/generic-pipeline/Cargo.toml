@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow.workspace = true
 hashbrown.workspace = true
+lazy-regex.workspace = true
 log.workspace = true
 serde.workspace = true
 serde_derive.workspace = true
