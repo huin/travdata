@@ -80,19 +80,17 @@ where
     pub fn resolve_params(
         &self,
         nodes: &pipeline::GenericPipeline<P::Spec>,
-    ) -> plparams::NodeParams<P::ParamType> {
-        plparams::NodeParams::<P::ParamType> {
+    ) -> plparams::GenericNodeParams<P::ParamType> {
+        plparams::GenericNodeParams::<P::ParamType> {
             params: nodes
                 .nodes()
                 .flat_map(|node| {
-                    self.system
-                        .params(node)
-                        .params
-                        .into_iter()
-                        .map(|param| plparams::NodeParam::<P::ParamType> {
+                    self.system.params(node).params.into_iter().map(|param| {
+                        plparams::GenericNodeParam::<P::ParamType> {
                             node_id: node.id.clone(),
                             param,
-                        })
+                        }
+                    })
                 })
                 .collect(),
         }
@@ -121,7 +119,7 @@ where
     dep_id_to_dependee_ids: HashMap<node::NodeId, Vec<node::NodeId>>,
 
     outcome: PipelineOutcome,
-    interms: intermediates::IntermediateSet<P::IntermediateValue>,
+    interms: intermediates::GenericIntermediateSet<P::IntermediateValue>,
     processable_ids: HashSet<node::NodeId>,
     // Map from NodeId to the NodeIds that it depends on. This is dynamically updated to remove
     // dependent NodeIds that have been successfully processed (when the value is empty, the
@@ -175,7 +173,7 @@ where
             outcome: PipelineOutcome {
                 node_outcomes: HashMap::with_capacity(nodes.len()),
             },
-            interms: intermediates::IntermediateSet::new(),
+            interms: intermediates::GenericIntermediateSet::new(),
             processable_ids,
             unprocessed_id_to_dep_ids,
         }

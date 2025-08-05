@@ -8,7 +8,7 @@ pub struct ParamId(pub &'static str);
 
 /// Describes an input parameter for processing.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Param<P> {
+pub struct GenericParam<P> {
     /// ID of the parameter.
     pub param_id: ParamId,
     /// Human-readable description of the parameter.
@@ -19,19 +19,19 @@ pub struct Param<P> {
 
 /// [Param]s for a single [node::GenericNode].
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Params<P> {
-    pub params: Vec<Param<P>>,
+pub struct GenericParams<P> {
+    pub params: Vec<GenericParam<P>>,
 }
 
 /// A [Param] qualified by its [node::NodeId].
 #[derive(Debug)]
-pub struct NodeParam<P> {
+pub struct GenericNodeParam<P> {
     pub node_id: node::NodeId,
-    pub param: Param<P>,
+    pub param: GenericParam<P>,
 }
 
 /// [NodeParam]s for a collection of [node::GenericNode]s.
 #[derive(Debug)]
-pub struct NodeParams<P> {
-    pub params: Vec<NodeParam<P>>,
+pub struct GenericNodeParams<P> {
+    pub params: Vec<GenericNodeParam<P>>,
 }

@@ -3,11 +3,11 @@
 
 use crate::node;
 
-pub struct IntermediateSet<V> {
+pub struct GenericIntermediateSet<V> {
     intermediates: hashbrown::HashMap<node::NodeId, V>,
 }
 
-impl<V> Default for IntermediateSet<V> {
+impl<V> Default for GenericIntermediateSet<V> {
     fn default() -> Self {
         Self {
             intermediates: Default::default(),
@@ -15,7 +15,7 @@ impl<V> Default for IntermediateSet<V> {
     }
 }
 
-impl<V> IntermediateSet<V> {
+impl<V> GenericIntermediateSet<V> {
     pub fn new() -> Self {
         Self {
             intermediates: Default::default(),

@@ -52,7 +52,10 @@ impl<P> GenericSystem<P> for GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
 {
-    fn params(&self, node: &node::GenericNode<P::Spec>) -> crate::plparams::Params<P::ParamType> {
+    fn params(
+        &self,
+        node: &node::GenericNode<P::Spec>,
+    ) -> crate::plparams::GenericParams<P::ParamType> {
         self.system_for(node.spec.discriminant()).params(node)
     }
 
@@ -64,7 +67,7 @@ where
         &self,
         node: &node::GenericNode<P::Spec>,
         args: &crate::plargs::GenericArgSet<P::ArgValue>,
-        intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
+        intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
     ) -> anyhow::Result<P::IntermediateValue> {
         self.system_for(node.spec.discriminant())
             .process(node, args, intermediates)
@@ -74,7 +77,7 @@ where
         &self,
         nodes: &'a [&'a node::GenericNode<P::Spec>],
         args: &crate::plargs::GenericArgSet<P::ArgValue>,
-        intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
+        intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
     ) -> Vec<NodeResult<P::IntermediateValue>> {
         let mut node_groups = hashbrown::HashMap::<
             <P::Spec as SpecTrait>::Discrim,

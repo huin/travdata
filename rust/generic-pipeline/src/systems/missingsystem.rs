@@ -23,7 +23,7 @@ where
         &self,
         node: &node::GenericNode<P::Spec>,
         _args: &plargs::GenericArgSet<P::ArgValue>,
-        _intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
+        _intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
     ) -> Result<P::IntermediateValue> {
         Err(anyhow!(
             "node {:?} of type {:?} is processed by MissingSystem that will only produce errors, a system has not been installed for nodes of this type",

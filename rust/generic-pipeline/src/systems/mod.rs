@@ -36,8 +36,8 @@ where
     P: crate::PipelineTypes,
 {
     /// Returns the parameters for the node, if any.
-    fn params(&self, _node: &node::GenericNode<P::Spec>) -> plparams::Params<P::ParamType> {
-        plparams::Params {
+    fn params(&self, _node: &node::GenericNode<P::Spec>) -> plparams::GenericParams<P::ParamType> {
+        plparams::GenericParams {
             params: Vec::default(),
         }
     }
@@ -50,7 +50,7 @@ where
         &self,
         node: &node::GenericNode<P::Spec>,
         args: &plargs::GenericArgSet<P::ArgValue>,
-        intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
+        intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
     ) -> Result<P::IntermediateValue>;
 
     /// Performs processing of the given [node::GenericNode]s, returning their
@@ -62,7 +62,7 @@ where
         &self,
         nodes: &'a [&'a node::GenericNode<P::Spec>],
         args: &plargs::GenericArgSet<P::ArgValue>,
-        intermediates: &intermediates::IntermediateSet<P::IntermediateValue>,
+        intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
     ) -> Vec<NodeResult<P::IntermediateValue>> {
         nodes
             .iter()

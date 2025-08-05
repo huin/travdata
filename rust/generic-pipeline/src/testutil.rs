@@ -140,8 +140,8 @@ pub enum TestParamType {
     TypeTwo,
 }
 
-pub type TestParam = plparams::Param<TestParamType>;
-pub type TestParams = plparams::Params<TestParamType>;
+pub type TestParam = plparams::GenericParam<TestParamType>;
+pub type TestParams = plparams::GenericParams<TestParamType>;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum TestArgValue {
@@ -157,7 +157,7 @@ pub enum TestIntermediateValue {
     ValueOne(u16),
 }
 
-pub type TestIntermediateSet = intermediates::IntermediateSet<TestIntermediateValue>;
+pub type TestIntermediateSet = intermediates::GenericIntermediateSet<TestIntermediateValue>;
 
 pub type TestPipeline = pipeline::GenericPipeline<FakeSpec>;
 
