@@ -8,3 +8,7 @@ pub enum IntermediateValue {
     InputFile(PathBuf),
     JsonData(serde_json::Value),
 }
+
+/// Monomorphic form of [generic_pipeline::intermediates::IntermediateSet].
+pub type IntermediateSet =
+    generic_pipeline::intermediates::GenericIntermediateSet<IntermediateValue>;

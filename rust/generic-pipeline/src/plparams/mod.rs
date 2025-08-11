@@ -23,6 +23,14 @@ pub struct GenericParams<P> {
     pub params: Vec<GenericParam<P>>,
 }
 
+impl<P> Default for GenericParams<P> {
+    fn default() -> Self {
+        Self {
+            params: Default::default(),
+        }
+    }
+}
+
 /// A [Param] qualified by its [node::NodeId].
 #[derive(Debug)]
 pub struct GenericNodeParam<P> {

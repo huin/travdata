@@ -9,3 +9,6 @@ pub enum ArgValue {
     InputPdf(PathBuf),
     OutputDirectory(PathBuf),
 }
+
+/// Monomorphic form of [generic_pipeline::plargs::GenericArgSet].
+pub type ArgSet = generic_pipeline::plargs::GenericArgSet<ArgValue>;
