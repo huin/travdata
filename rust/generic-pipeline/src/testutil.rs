@@ -2,10 +2,14 @@ use anyhow::Result;
 use mockall::mock;
 use serde::{Deserialize, Serialize};
 
-use crate::{intermediates, node, pipeline, plargs, plparams, processing, systems};
+use crate::{
+    intermediates,
+    node::{self, NodeId},
+    pipeline, plargs, plparams, processing, systems,
+};
 
 pub fn node_id(s: &str) -> node::NodeId {
-    s.to_string().try_into().expect("expected valid Id value")
+    NodeId::test_node_id(s)
 }
 
 /// Per-type wrapper of a specific type of extraction configuration node.

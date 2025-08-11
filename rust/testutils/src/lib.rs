@@ -111,3 +111,7 @@ impl From<anyhow::Error> for WrappedError {
         Self(value)
     }
 }
+
+pub trait DefaultForTest {
+    fn default_for_test() -> Self;
+}

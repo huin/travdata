@@ -16,6 +16,13 @@ pub struct NodeId(String);
 impl NodeId {
     const EXPECTED: &str = r#"a string matching ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"#;
 
+    #[cfg(any(test, feature = "testing"))]
+    pub fn test_node_id(s: &str) -> Self {
+        s.to_string()
+            .try_into()
+            .expect("expected valid NodeId value")
+    }
+
     fn valid_regex() -> &'static lazy_regex::Regex {
         lazy_regex::regex!(r#"^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"#)
     }
@@ -82,6 +89,11 @@ pub struct Tag(String);
 
 impl Tag {
     const EXPECTED: &str = r#"a string containing one or more slash delimited components, each matching ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"#;
+
+    #[cfg(any(test, feature = "testing"))]
+    pub fn test_tag(s: &str) -> Self {
+        s.to_string().try_into().expect("expected valid Tag value")
+    }
 
     fn valid_regex() -> &'static lazy_regex::Regex {
         lazy_regex::regex!(

@@ -1,7 +1,11 @@
 use std::{ffi::OsStr, path::Path};
 
+use generic_pipeline::node::Tag;
+
+use crate::NodeId;
+
 pub fn node_id(s: &str) -> crate::NodeId {
-    s.to_string().try_into().expect("expected valid Id value")
+    NodeId::test_node_id(s)
 }
 
 pub fn output_path_buf<S: AsRef<OsStr> + ?Sized>(s: &S) -> crate::spec_types::OutputPathBuf {
@@ -12,5 +16,5 @@ pub fn output_path_buf<S: AsRef<OsStr> + ?Sized>(s: &S) -> crate::spec_types::Ou
 }
 
 pub fn tag(s: &str) -> generic_pipeline::node::Tag {
-    s.to_string().try_into().expect("expected valid Tag value")
+    Tag::test_tag(s)
 }

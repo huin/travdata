@@ -12,8 +12,11 @@ serde_json.workspace = true
 serde_yaml_ng.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
+v8wrapper.workspace = true
 
 [dev-dependencies]
+generic-pipeline = { features = ["testing"], workspace = true }
 googletest.workspace = true
 map-macro.workspace = true
 test-casing.workspace = true
+testutils.workspace = true

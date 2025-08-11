@@ -8,12 +8,14 @@ anyhow.workspace = true
 hashbrown.workspace = true
 lazy-regex.workspace = true
 log.workspace = true
+map-macro = { optional = true, workspace = true }
 serde.workspace = true
 serde_derive.workspace = true
 serde_json.workspace = true
 serde_yaml_ng.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
+testutils = { optional = true, workspace = true }
 
 [dev-dependencies]
 googletest.workspace = true
@@ -22,3 +24,6 @@ mockall.workspace = true
 predicates.workspace = true
 test-casing.workspace = true
 test-log.workspace = true
+
+[features]
+testing = ["dep:map-macro", "dep:testutils"]

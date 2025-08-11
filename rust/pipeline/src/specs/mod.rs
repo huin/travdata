@@ -6,6 +6,8 @@ pub mod output_file_csv;
 pub mod output_file_json;
 pub mod pdf_extract_table;
 #[cfg(test)]
+mod test_defaults;
+#[cfg(test)]
 mod tests;
 
 use serde::{Deserialize, Serialize};
