@@ -7,7 +7,7 @@ use super::{GenericSystem, MissingSystem, NodeResult};
 use crate::{
     intermediates,
     node::{self, SpecTrait},
-    plparams,
+    plinputs, plparams,
 };
 
 /// A system that delegates to other systems based on the [SpecTrait::discriminant] of any given
@@ -61,8 +61,12 @@ where
         self.system_for(node.spec.discriminant()).params(node, reg)
     }
 
-    fn inputs(&self, node: &node::GenericNode<P::Spec>) -> Vec<node::NodeId> {
-        self.system_for(node.spec.discriminant()).inputs(node)
+    fn inputs<'a>(
+        &self,
+        node: &node::GenericNode<P::Spec>,
+        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+    ) {
+        self.system_for(node.spec.discriminant()).inputs(node, reg)
     }
 
     fn process(

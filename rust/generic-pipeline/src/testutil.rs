@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     intermediates,
     node::{self, NodeId},
-    pipeline, plargs, plparams, processing, systems,
+    pipeline, plargs, plinputs, plparams, processing, systems,
 };
 
 pub fn node_id(s: &str) -> node::NodeId {
@@ -106,10 +106,14 @@ impl node::GenericNode<FakeSpec> {
         s
     }
 
-    pub fn deps(&self) -> Vec<node::NodeId> {
-        match &self.spec {
-            FakeSpec::Foo(foo_spec) => foo_spec.deps.clone(),
-            FakeSpec::Bar(bar_spec) => bar_spec.deps.clone(),
+    pub fn add_inputs<'a>(&self, reg: &'a mut plinputs::NodeInputsRegistrator<'a>) {
+        let deps = match &self.spec {
+            FakeSpec::Foo(foo_spec) => &foo_spec.deps,
+            FakeSpec::Bar(bar_spec) => &bar_spec.deps,
+        };
+
+        for dep in deps {
+            reg.add_input(dep);
         }
     }
 }
@@ -194,7 +198,11 @@ mock! {
             params: &'a mut plparams::GenericNodeParamsRegistrator<'a, TestParamType>,
         );
 
-        fn inputs(&self, node: &FakeNode) -> Vec<node::NodeId>;
+        fn inputs<'a>(
+            &self,
+            node: &FakeNode,
+            reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+        );
 
         fn process(
             &self,

@@ -101,18 +101,12 @@ fn test_inputs() {
     // GIVEN: foo_sys and bar_sys will return clones of a node's spec's dependencies
     foo_sys
         .expect_inputs()
-        .withf_st(|node| matches!(node.spec, FakeSpec::Foo(_)))
-        .returning_st(|node| match &node.spec {
-            FakeSpec::Foo(spec) => spec.deps.clone(),
-            _ => vec![],
-        });
+        .withf_st(|node, _| matches!(node.spec, FakeSpec::Foo(_)))
+        .returning_st(|node, reg| node.add_inputs(reg));
     bar_sys
         .expect_inputs()
-        .withf_st(|node| matches!(node.spec, FakeSpec::Bar(_)))
-        .returning_st(|node| match &node.spec {
-            FakeSpec::Bar(spec) => spec.deps.clone(),
-            _ => vec![],
-        });
+        .withf_st(|node, _| matches!(node.spec, FakeSpec::Bar(_)))
+        .returning_st(|node, reg| node.add_inputs(reg));
 
     let systems: TestSystemMap = hash_map_e! {
         FakeSpecDiscriminants::Foo => Rc::new(foo_sys),
@@ -122,34 +116,39 @@ fn test_inputs() {
     // GIVEN: a meta_system that dispatches for Foo and Bar.
     let meta_system = GenericMetaSystem::new(systems);
 
-    // WHEN: the input for a `Foo` node is requested.
-    let foo_inputs = meta_system.inputs(&FakeNode {
-        spec: FooSpec {
-            deps: vec![node_id("foo-dep-1"), node_id("foo-dep-2")],
+    // WHEN: the inputs for `Foo` and `Bar` nodes are requested.
+    let mut reg = plinputs::InputsRegistrator::new();
+    meta_system.inputs(
+        &FakeNode {
+            spec: FooSpec {
+                deps: vec![node_id("foo-dep-1"), node_id("foo-dep-2")],
+                ..Default::default()
+            }
+            .into(),
             ..Default::default()
-        }
-        .into(),
-        ..Default::default()
-    });
-    // THEN: the expected dependencies are returned.
-    expect_that!(
-        foo_inputs,
-        unordered_elements_are![&node_id("foo-dep-1"), &node_id("foo-dep-2")]
+        },
+        &mut reg.for_node(&node_id("foo")),
+    );
+    meta_system.inputs(
+        &FakeNode {
+            spec: BarSpec {
+                deps: vec![node_id("bar-dep-1"), node_id("bar-dep-2")],
+                ..Default::default()
+            }
+            .into(),
+            ..Default::default()
+        },
+        &mut reg.for_node(&node_id("bar")),
     );
 
-    // WHEN: the input for a `bar` node is requested.
-    let bar_inputs = meta_system.inputs(&FakeNode {
-        spec: BarSpec {
-            deps: vec![node_id("bar-dep-1"), node_id("bar-dep-2")],
-            ..Default::default()
-        }
-        .into(),
-        ..Default::default()
-    });
-    // THEN: the expected dependencies are returned.
+    // THEN: the expected dependencies are registered.
+    let inputs = reg.build();
     expect_that!(
-        bar_inputs,
-        unordered_elements_are![&node_id("bar-dep-1"), &node_id("bar-dep-2")]
+        inputs,
+        eq(&hash_map! {
+            node_id("foo") => hash_set! {node_id("foo-dep-1"), node_id("foo-dep-2")},
+            node_id("bar") => hash_set! {node_id("bar-dep-1"), node_id("bar-dep-2")},
+        })
     );
 }
 

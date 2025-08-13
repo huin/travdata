@@ -31,7 +31,8 @@ fn test_basic_process_order() {
 
     // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
     // specs:
-    sys.expect_inputs().returning_st(|node| node.deps());
+    sys.expect_inputs()
+        .returning_st(|node, reg| node.add_inputs(reg));
 
     // GIVEN: distinct process_multiple calls for foo_1_node followed by bar_1_node.
     let mut process_sequence = mockall::Sequence::new();
@@ -74,7 +75,8 @@ fn test_three_stage_processing() {
 
     // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
     // specs: BAR_2_ID -> BAR_1_ID -> FOO_1_ID.
-    sys.expect_inputs().returning_st(|node| node.deps());
+    sys.expect_inputs()
+        .returning_st(|node, reg| node.add_inputs(reg));
 
     // GIVEN: distinct process_multiple calls for FOO_1_ID followed by BAR_1_ID, and then
     // BAR_2_ID.
@@ -123,7 +125,8 @@ fn test_passes_all_runnable_nodes_together() {
     // specs:
     // BAR_1_ID -> FOO_1_ID
     // BAR_2_ID -> FOO_2_ID
-    sys.expect_inputs().returning_st(|node| node.deps());
+    sys.expect_inputs()
+        .returning_st(|node, reg| node.add_inputs(reg));
 
     let mut process_sequence = mockall::Sequence::new();
     // GIVEN: expected call for FOO_1_ID and FOO_2_ID.
@@ -165,7 +168,8 @@ fn test_handles_direct_loop() {
 
     // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
     // specs: FOO_1_ID -> FOO_1_ID
-    sys.expect_inputs().returning_st(|node| node.deps());
+    sys.expect_inputs()
+        .returning_st(|node, reg| node.add_inputs(reg));
 
     // GIVEN: No expected processing calls.
 
@@ -207,7 +211,8 @@ fn test_handles_indirect_loop() {
     // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
     // specs:
     // BAR_1_ID -> FOO_1_ID -> BAR_1_ID
-    sys.expect_inputs().returning_st(|node| node.deps());
+    sys.expect_inputs()
+        .returning_st(|node, reg| node.add_inputs(reg));
 
     // GIVEN: No expected processing calls.
 
@@ -252,7 +257,8 @@ fn test_handles_unknown_dependency() {
 
     // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
     // specs: FOO_1_ID -> "unknown-id"
-    sys.expect_inputs().returning_st(|node| node.deps());
+    sys.expect_inputs()
+        .returning_st(|node, reg| node.add_inputs(reg));
 
     // GIVEN: No expected processing calls.
 
@@ -288,7 +294,8 @@ fn test_handles_system_error() {
     let node_set = TestPipeline::new(vec![foo_node(FOO_1_ID, &[])]);
 
     // GIVEN: inputs() is called for each node.
-    sys.expect_inputs().returning_st(|node| node.deps());
+    sys.expect_inputs()
+        .returning_st(|node, reg| node.add_inputs(reg));
 
     // GIVEN: A process_multiple call that fails with an error.
     sys.expect_process_multiple()
@@ -338,7 +345,8 @@ fn test_passes_intermediates() {
 
     // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
     // specs:
-    sys.expect_inputs().returning_st(|node| node.deps());
+    sys.expect_inputs()
+        .returning_st(|node, reg| node.add_inputs(reg));
 
     // GIVEN: distinct process_multiple calls for foo_1_node followed by bar_1_node.
     sys.expect_process_multiple()

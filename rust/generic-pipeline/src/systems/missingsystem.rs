@@ -4,7 +4,7 @@ use super::GenericSystem;
 use crate::{
     intermediates,
     node::{self, SpecTrait},
-    plargs,
+    plargs, plinputs,
 };
 
 /// Used as a fallback when a [crate::systems::GenericSystem] implementation has not been provided
@@ -15,8 +15,11 @@ impl<P> GenericSystem<P> for MissingSystem
 where
     P: crate::PipelineTypes,
 {
-    fn inputs(&self, _node: &node::GenericNode<P::Spec>) -> Vec<node::NodeId> {
-        vec![]
+    fn inputs<'a>(
+        &self,
+        _node: &node::GenericNode<P::Spec>,
+        _reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+    ) {
     }
 
     fn process(

@@ -2,6 +2,7 @@ pub mod intermediates;
 pub mod node;
 pub mod pipeline;
 pub mod plargs;
+pub mod plinputs;
 pub mod plparams;
 pub mod processing;
 pub mod systems;

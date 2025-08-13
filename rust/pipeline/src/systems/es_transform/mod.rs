@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests;
 
+use generic_pipeline::plinputs;
+
 use crate::plparams;
 
 /// Provides processing support for [EsTransform].
@@ -19,7 +21,7 @@ impl EsTransformSystem {
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for EsTransformSystem {
     fn params<'a>(&self, _node: &crate::Node, _reg: &'a mut plparams::NodeParamsRegistrator<'a>) {}
 
-    fn inputs(&self, _node: &crate::Node) -> Vec<crate::NodeId> {
+    fn inputs<'a>(&self, _node: &crate::Node, _reg: &'a mut plinputs::NodeInputsRegistrator<'a>) {
         todo!()
     }
 

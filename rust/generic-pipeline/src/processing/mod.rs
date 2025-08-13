@@ -8,7 +8,7 @@ use std::rc::Rc;
 use anyhow::anyhow;
 use hashbrown::{HashMap, HashSet};
 
-use crate::{intermediates, node, pipeline, plparams, systems};
+use crate::{intermediates, node, pipeline, plinputs, plparams, systems};
 
 /// Describes the outcome of an entire processing attempt. It does not attempt to contain the
 /// processed data itself, but rather information about the processing.
@@ -131,27 +131,31 @@ where
     ) -> Self {
         log::debug!("Processing {} nodes total.", nodes.nodes().count());
 
+        let mut inputs_reg = plinputs::InputsRegistrator::new();
+        for node in nodes.nodes() {
+            system.inputs(node, &mut inputs_reg.for_node(&node.id));
+        }
+        // Map from NodeId to the NodeIds that it depends on.
+        let unprocessed_id_to_dep_ids = inputs_reg.build();
+
         let mut processable_ids: HashSet<node::NodeId> = HashSet::new();
         // Map from NodeId to the NodeIds that depend on it.
-        let mut dep_id_to_dependee_ids: HashMap<node::NodeId, Vec<node::NodeId>> = HashMap::new();
-        // Map from NodeId to the NodeIds that it depends on. This is dynamically updated to remove
-        // dependent NodeIds that have been successfully processed (when the value is empty, the
-        // key can be scheduled for processing).
-        let mut unprocessed_id_to_dep_ids: HashMap<node::NodeId, HashSet<node::NodeId>> =
-            HashMap::new();
-        for node in nodes.nodes() {
-            let deps = system.inputs(node);
-            if deps.is_empty() {
-                processable_ids.insert(node.id.clone());
-            } else {
-                for dep_id in &deps {
-                    dep_id_to_dependee_ids
-                        .entry_ref(dep_id)
-                        .or_default()
-                        .push(node.id.clone());
-                }
+        let mut dep_id_to_dependee_ids = HashMap::<node::NodeId, Vec<node::NodeId>>::new();
 
-                unprocessed_id_to_dep_ids.insert(node.id.clone(), deps.into_iter().collect());
+        for node in nodes.nodes() {
+            match unprocessed_id_to_dep_ids.get(&node.id) {
+                Some(dependency_ids) if !dependency_ids.is_empty() => {
+                    for dep_id in dependency_ids {
+                        dep_id_to_dependee_ids
+                            .entry_ref(dep_id)
+                            .or_default()
+                            .push(node.id.clone());
+                    }
+                }
+                _ => {
+                    // The node has no dependencies, so it is immediately processable.
+                    processable_ids.insert(node.id.clone());
+                }
             }
         }
 

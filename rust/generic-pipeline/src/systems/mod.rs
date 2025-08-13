@@ -5,7 +5,7 @@ mod missingsystem;
 
 use anyhow::Result;
 
-use crate::{intermediates, node, plargs, plparams};
+use crate::{intermediates, node, plargs, plinputs, plparams};
 
 pub use metasystem::GenericMetaSystem;
 pub use missingsystem::MissingSystem;
@@ -44,7 +44,11 @@ where
     }
 
     /// Returns the set of node IDs that the given node depends on as inputs.
-    fn inputs(&self, node: &node::GenericNode<P::Spec>) -> Vec<node::NodeId>;
+    fn inputs<'a>(
+        &self,
+        node: &node::GenericNode<P::Spec>,
+        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+    );
 
     /// Performs processing of the given [node::GenericNode], returning its intermediate value.
     fn process(
