@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use googletest::prelude::*;
 use hashbrown::{HashMap, HashSet};
-use map_macro::hashbrown::{hash_map_e, hash_set};
+use map_macro::hashbrown::{hash_map, hash_map_e, hash_set};
 
 use super::*;
 use crate::{plparams, testutil::*};
@@ -17,37 +17,44 @@ fn test_params() {
     // GIVEN: a Bar node.
     let bar_node = Rc::new(FakeNode::default_with_spec(BarSpec::default()));
 
+    let foo_param_id = plparams::ParamId::from_static("foo-param");
+    let bar_param_id = plparams::ParamId::from_static("bar-param");
+
     // GIVEN: the foo_sys will return the given parameters.
-    let new_expected_foo_params = || TestParams {
-        params: vec![TestParam {
-            param_id: plparams::ParamId("foo-param"),
-            description: "foo-param description.".into(),
-            param_type: TestParamType::TypeOne,
-        }],
-    };
     foo_sys
         .expect_params()
         .withf_st({
             let foo_node = foo_node.clone();
-            move |node| node == foo_node.as_ref()
+            move |node, _| node == foo_node.as_ref()
         })
-        .return_once_st(move |_| new_expected_foo_params());
+        .return_once_st({
+            let foo_param_id = foo_param_id.clone();
+            move |_, reg| {
+                reg.add_param(
+                    foo_param_id.clone(),
+                    TestParamType::TypeOne,
+                    "foo-param description.".into(),
+                )
+            }
+        });
 
     // GIVEN: the bar_sys will return the given parameters.
-    let new_expected_bar_params = || TestParams {
-        params: vec![TestParam {
-            param_id: plparams::ParamId("bar-param"),
-            description: "bar-param description.".into(),
-            param_type: TestParamType::TypeTwo,
-        }],
-    };
     bar_sys
         .expect_params()
         .withf_st({
             let bar_node = bar_node.clone();
-            move |node| node == bar_node.as_ref()
+            move |node, _| node == bar_node.as_ref()
         })
-        .return_once_st(move |_| new_expected_bar_params());
+        .return_once_st({
+            let bar_param_id = bar_param_id.clone();
+            move |_, reg| {
+                reg.add_param(
+                    bar_param_id.clone(),
+                    TestParamType::TypeTwo,
+                    "bar-param description.".into(),
+                );
+            }
+        });
 
     // GIVEN: a meta_system that dispatches for Foo and Bar.
     let systems: TestSystemMap = hash_map_e! {
@@ -56,19 +63,34 @@ fn test_params() {
     };
     let meta_system = GenericMetaSystem::new(systems);
 
-    // WHEN: the params are requested for the Foo node.
-    let got_foo_params = meta_system.params(&foo_node);
+    // GIVEN: a registrator.
+    let mut reg = TestParams::registrator();
 
-    // THEN: the single param should be for an input PDF file path.
-    let expected_foo_params = new_expected_foo_params();
-    expect_that!(got_foo_params, eq(&expected_foo_params));
+    // WHEN: the params are requested for the Foo and Bar nodes.
+    meta_system.params(&foo_node, &mut reg.for_node(&foo_node.id));
+    meta_system.params(&bar_node, &mut reg.for_node(&bar_node.id));
 
-    // WHEN: the params are requested for the Bar node.
-    let got_bar_params = meta_system.params(&bar_node);
-
-    // THEN: the single param should be for an output JSON file path.
-    let expected_bar_params = new_expected_bar_params();
-    expect_that!(got_bar_params, eq(&expected_bar_params));
+    // THEN: both params should be present in the result.
+    let got_params = reg.build();
+    let want_params = TestParams {
+        params: hash_map! {
+            plparams::ParamKey::new(
+                foo_node.id.clone(),
+                foo_param_id,
+            ) => TestParam {
+                description: "foo-param description.".into(),
+                param_type: TestParamType::TypeOne,
+            },
+            plparams::ParamKey::new(
+                bar_node.id.clone(),
+                bar_param_id,
+            ) => TestParam {
+                description: "bar-param description.".into(),
+                param_type: TestParamType::TypeTwo,
+            },
+        },
+    };
+    expect_that!(got_params, eq(&want_params));
 }
 
 #[gtest]
@@ -136,17 +158,17 @@ fn process_fixture() -> (TestArgSet, TestIntermediateSet) {
     let mut args = TestArgSet::default();
     args.set(
         node_id("foo-1"),
-        plparams::ParamId("param-1"),
+        plparams::ParamId::from_static("param-1"),
         TestArgValue::TypeOne(3),
     );
     args.set(
         node_id("foo-2"),
-        plparams::ParamId("param-1"),
+        plparams::ParamId::from_static("param-1"),
         TestArgValue::TypeOne(4),
     );
     args.set(
         node_id("bar"),
-        plparams::ParamId("param-1"),
+        plparams::ParamId::from_static("param-1"),
         TestArgValue::TypeTwo(4),
     );
 
@@ -169,7 +191,10 @@ fn test_process() {
             node.id == node_id("foo-1")
                 && matches!(node.spec, FakeSpec::Foo(_))
                 && matches!(
-                    args.get(&node_id("foo-1"), &plparams::ParamId("param-1")),
+                    args.get(
+                        &node_id("foo-1"),
+                        &plparams::ParamId::from_static("param-1")
+                    ),
                     Some(&TestArgValue::TypeOne(3))
                 )
                 && matches!(
@@ -184,7 +209,10 @@ fn test_process() {
             node.id == node_id("foo-2")
                 && matches!(node.spec, FakeSpec::Foo(_))
                 && matches!(
-                    args.get(&node_id("foo-2"), &plparams::ParamId("param-1")),
+                    args.get(
+                        &node_id("foo-2"),
+                        &plparams::ParamId::from_static("param-1")
+                    ),
                     Some(&TestArgValue::TypeOne(4))
                 )
                 && matches!(
@@ -199,7 +227,7 @@ fn test_process() {
             node.id == node_id("bar")
                 && matches!(node.spec, FakeSpec::Bar(_))
                 && matches!(
-                    args.get(&node_id("bar"), &plparams::ParamId("param-1")),
+                    args.get(&node_id("bar"), &plparams::ParamId::from_static("param-1")),
                     Some(&TestArgValue::TypeTwo(4))
                 )
                 && matches!(

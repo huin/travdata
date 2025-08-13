@@ -9,9 +9,14 @@ use super::*;
 fn test_params(handle: &&IsolateThreadHandleForTest) -> googletest::Result<()> {
     let system = EsTransformSystem::new(handle.new_context().wrap_error()?);
 
-    let got_params = system.params(&crate::Node {
+    let mut reg = plparams::Params::registrator();
+
+    let node = crate::Node {
         ..DefaultForTest::default_for_test()
-    });
+    };
+
+    system.params(&node, &mut reg.for_node(&node.id));
+    let got_params = reg.build();
 
     expect_that!(got_params.params, is_empty());
 

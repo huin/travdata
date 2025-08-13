@@ -80,20 +80,13 @@ where
     pub fn resolve_params(
         &self,
         nodes: &pipeline::GenericPipeline<P::Spec>,
-    ) -> plparams::GenericNodeParams<P::ParamType> {
-        plparams::GenericNodeParams::<P::ParamType> {
-            params: nodes
-                .nodes()
-                .flat_map(|node| {
-                    self.system.params(node).params.into_iter().map(|param| {
-                        plparams::GenericNodeParam::<P::ParamType> {
-                            node_id: node.id.clone(),
-                            param,
-                        }
-                    })
-                })
-                .collect(),
+        _params: &mut plparams::GenericParamsRegistrator<P::ParamType>,
+    ) -> plparams::GenericParams<P::ParamType> {
+        let mut reg = plparams::GenericParams::<P::ParamType>::registrator();
+        for node in nodes.nodes() {
+            self.system.params(node, &mut reg.for_node(&node.id));
         }
+        reg.build()
     }
 
     pub fn process(

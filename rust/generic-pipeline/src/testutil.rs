@@ -188,7 +188,11 @@ mock! {
     pub FakeSystem {}
 
     impl systems::GenericSystem<TestPipelineTypes> for FakeSystem {
-        fn params(&self, node: &FakeNode) -> TestParams;
+        fn params<'a>(
+            &self,
+            node: &FakeNode,
+            params: &'a mut plparams::GenericNodeParamsRegistrator<'a, TestParamType>,
+        );
 
         fn inputs(&self, node: &FakeNode) -> Vec<node::NodeId>;
 

@@ -13,9 +13,7 @@ use tempfile::{TempDir, tempdir};
 use test_casing::test_casing;
 use testutils::anyhow_downcasts_to;
 
-use crate::{
-    filesio::{FilesIoError, NonRelativePathType, check_fully_relative},
-};
+use crate::filesio::{FilesIoError, NonRelativePathType, check_fully_relative};
 
 use super::{
     FileRead, ReadWriter, Reader,

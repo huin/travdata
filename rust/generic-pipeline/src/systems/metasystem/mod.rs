@@ -7,6 +7,7 @@ use super::{GenericSystem, MissingSystem, NodeResult};
 use crate::{
     intermediates,
     node::{self, SpecTrait},
+    plparams,
 };
 
 /// A system that delegates to other systems based on the [SpecTrait::discriminant] of any given
@@ -52,11 +53,12 @@ impl<P> GenericSystem<P> for GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
 {
-    fn params(
+    fn params<'a>(
         &self,
         node: &node::GenericNode<P::Spec>,
-    ) -> crate::plparams::GenericParams<P::ParamType> {
-        self.system_for(node.spec.discriminant()).params(node)
+        reg: &'a mut plparams::GenericNodeParamsRegistrator<'a, P::ParamType>,
+    ) {
+        self.system_for(node.spec.discriminant()).params(node, reg)
     }
 
     fn inputs(&self, node: &node::GenericNode<P::Spec>) -> Vec<node::NodeId> {

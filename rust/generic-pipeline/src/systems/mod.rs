@@ -35,11 +35,12 @@ pub trait GenericSystem<P>
 where
     P: crate::PipelineTypes,
 {
-    /// Returns the parameters for the node, if any.
-    fn params(&self, _node: &node::GenericNode<P::Spec>) -> plparams::GenericParams<P::ParamType> {
-        plparams::GenericParams {
-            params: Vec::default(),
-        }
+    /// Generates the parameters for the node, if any.
+    fn params<'a>(
+        &self,
+        _node: &node::GenericNode<P::Spec>,
+        _reg: &'a mut plparams::GenericNodeParamsRegistrator<'a, P::ParamType>,
+    ) {
     }
 
     /// Returns the set of node IDs that the given node depends on as inputs.

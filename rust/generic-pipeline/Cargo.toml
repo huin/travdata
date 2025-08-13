@@ -24,6 +24,7 @@ mockall.workspace = true
 predicates.workspace = true
 test-casing.workspace = true
 test-log.workspace = true
+testutils.workspace = true
 
 [features]
 testing = ["dep:map-macro", "dep:testutils"]

@@ -94,9 +94,7 @@ mod test {
     use testutils::WrapError;
     use v8wrapper::testisolate::IsolateThreadHandleForTest;
 
-    use crate::{
-        extraction::tableextract::estransform::TransformFn,
-    };
+    use crate::extraction::tableextract::estransform::TransformFn;
     use crate::table::{Row, Table};
 
     use super::{ESScript, ESTransformer};

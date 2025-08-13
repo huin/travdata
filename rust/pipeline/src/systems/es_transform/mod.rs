@@ -1,8 +1,12 @@
 #[cfg(test)]
 mod tests;
 
+use crate::plparams;
+
 /// Provides processing support for [EsTransform].
 pub struct EsTransformSystem {
+    // TODO: Use v8_ctx.
+    #[allow(dead_code)]
     v8_ctx: v8wrapper::ContextClient,
 }
 
@@ -13,9 +17,7 @@ impl EsTransformSystem {
 }
 
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for EsTransformSystem {
-    fn params(&self, _node: &crate::Node) -> crate::plparams::Params {
-        crate::plparams::Params::default()
-    }
+    fn params<'a>(&self, _node: &crate::Node, _reg: &'a mut plparams::NodeParamsRegistrator<'a>) {}
 
     fn inputs(&self, _node: &crate::Node) -> Vec<crate::NodeId> {
         todo!()
