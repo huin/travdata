@@ -3,7 +3,7 @@ mod tests;
 
 use generic_pipeline::plinputs;
 
-use crate::plparams;
+use crate::{plparams, specs};
 
 /// Provides processing support for [EsTransform].
 pub struct EsTransformSystem {
@@ -21,8 +21,17 @@ impl EsTransformSystem {
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for EsTransformSystem {
     fn params<'a>(&self, _node: &crate::Node, _reg: &'a mut plparams::NodeParamsRegistrator<'a>) {}
 
-    fn inputs<'a>(&self, _node: &crate::Node, _reg: &'a mut plinputs::NodeInputsRegistrator<'a>) {
-        todo!()
+    fn inputs<'a>(&self, node: &crate::Node, reg: &'a mut plinputs::NodeInputsRegistrator<'a>) {
+        let spec = match &node.spec {
+            specs::Spec::EsTransform(spec) => spec,
+            _ => {
+                return;
+            }
+        };
+
+        for dep_id in spec.input_data.values() {
+            reg.add_input(dep_id);
+        }
     }
 
     fn process(
