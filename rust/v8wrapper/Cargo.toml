@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
+# TODO: Remove this.
 googletest = { optional = true, workspace = true }
 log.workspace = true
 utils.workspace = true
