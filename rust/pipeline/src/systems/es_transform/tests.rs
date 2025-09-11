@@ -4,7 +4,7 @@ use map_macro::hashbrown::{hash_map, hash_set};
 use testutils::{DefaultForTest, WrapError};
 use v8wrapper::testisolate::IsolateThreadHandleForTest;
 
-use crate::{specs::EsTransform, testutil::node_id};
+use crate::{intermediates, specs::EsTransform, testutil::node_id};
 
 use super::*;
 
@@ -61,4 +61,63 @@ fn test_inputs(handle: &&IsolateThreadHandleForTest) -> googletest::Result<()> {
 }
 
 #[gtest]
-fn test_process() {}
+fn test_process_syntax_error(handle: &&IsolateThreadHandleForTest) -> googletest::Result<()> {
+    let system = EsTransformSystem::new(handle.new_context().wrap_error()?);
+
+    let node = crate::Node {
+        spec: crate::specs::Spec::EsTransform(EsTransform {
+            code: "I'm invalid ECMAScript!".into(),
+            ..DefaultForTest::default_for_test()
+        }),
+        ..DefaultForTest::default_for_test()
+    };
+
+    let got = system.process(&node, &Default::default(), &Default::default());
+
+    expect_that!(got, err(anything()));
+
+    Ok(())
+}
+
+#[gtest]
+fn test_process_uses_intermediate_values(
+    handle: &&IsolateThreadHandleForTest,
+) -> googletest::Result<()> {
+    let system = EsTransformSystem::new(handle.new_context().wrap_error()?);
+
+    let node = crate::Node {
+        spec: crate::specs::Spec::EsTransform(EsTransform {
+            input_data: hash_map! {
+                "a".into() => node_id("node-a"),
+                "b".into() => node_id("node-b"),
+            },
+            code: r#"
+                return a.foo + " " + b.bar
+            "#
+            .into(),
+        }),
+        ..DefaultForTest::default_for_test()
+    };
+
+    let mut interms = intermediates::IntermediateSet::new();
+    interms.set(
+        node_id("node-a"),
+        intermediates::IntermediateValue::JsonData("foo".into()),
+    );
+    interms.set(
+        node_id("node-b"),
+        intermediates::IntermediateValue::JsonData("bar".into()),
+    );
+    let got = system.process(&node, &Default::default(), &interms);
+
+    expect_that!(
+        got,
+        ok(eq(&intermediates::IntermediateValue::JsonData(
+            serde_json::Value::String("foo bar".into())
+        )))
+    );
+
+    Ok(())
+}
+
+// XXX test that intermediate values are frozen

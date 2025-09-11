@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests;
 
+use anyhow::bail;
 use generic_pipeline::plinputs;
 
 use crate::{plparams, specs};
@@ -36,13 +37,42 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for EsTransf
 
     fn process(
         &self,
-        _node: &crate::Node,
+        node: &crate::Node,
         _args: &crate::plargs::ArgSet,
         _intermediates: &crate::intermediates::IntermediateSet,
     ) -> anyhow::Result<crate::intermediates::IntermediateValue> {
+        let spec = match &node.spec {
+            specs::Spec::EsTransform(spec) => spec,
+            _ => {
+                bail!("node is not of type EsTransform");
+            }
+        };
+
+        let mut arg_names: Vec<&str> = spec.input_data.keys().map(String::as_str).collect();
+        // Sort the argument names for consistent ordering of arguments, in case any EsTransform
+        // nodes rely on ordering.
+        arg_names.sort();
+
+        // XXX use _result
+        let _result = self.v8_ctx.run(|try_catch| {
+            // XXX
+            let func_v8 = v8wrapper::new_v8_function(
+                try_catch,
+                &arg_names,
+                &v8wrapper::ESScriptOrigin {
+                    resource_name: format!("<node/{}>", node.id.as_ref()),
+                    resource_line_offset: 0,
+                    resource_column_offset: todo!(),
+                    script_id: todo!(),
+                },
+                &spec.code,
+            );
+            Ok(())
+        })?;
         // TODO: Use `Object.freeze` to freeze any data passed in. This means that any future
         // batching in `process_multiple` that would require it is not a breaking change.
-        todo!()
+        // todo!()
+        bail!("XXX todo")
     }
 
     // TODO: Optionally implement `process_multiple` as there might be some possible batching

@@ -18,3 +18,13 @@ pub struct EsTransform {
     /// ```
     pub code: String,
 }
+
+#[cfg(test)]
+impl testutils::DefaultForTest for EsTransform {
+    fn default_for_test() -> Self {
+        Self {
+            input_data: Default::default(),
+            code: "return {}".into(),
+        }
+    }
+}

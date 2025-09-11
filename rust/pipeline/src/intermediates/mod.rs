@@ -3,6 +3,7 @@
 
 use std::path::PathBuf;
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum IntermediateValue {
     NoData,
     InputFile(PathBuf),

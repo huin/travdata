@@ -82,6 +82,12 @@ impl<'de> Deserialize<'de> for NodeId {
     }
 }
 
+impl AsRef<str> for NodeId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Tag value that non-uniquely identifies a set of extraction configuration
 /// [crate::node::GenericNode]s.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize)]
