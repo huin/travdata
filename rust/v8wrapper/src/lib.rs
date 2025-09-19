@@ -5,7 +5,7 @@
 #[cfg(test)]
 mod test;
 
-use anyhow::{Context, Error, Result, anyhow, bail};
+use anyhow::{Result, bail};
 
 static INIT_V8: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
@@ -30,8 +30,6 @@ pub fn init_v8_for_testing() {
     });
 }
 
-pub type TryScope<'s, 'p> = v8::TryCatch<'s, v8::HandleScope<'p>>;
-
 /// Origin of some code.
 #[derive(Debug)]
 pub struct ESScriptOrigin {
@@ -39,16 +37,23 @@ pub struct ESScriptOrigin {
     pub resource_line_offset: i32,
     pub resource_column_offset: i32,
     pub script_id: i32,
+    pub is_module: bool,
 }
 
 impl ESScriptOrigin {
-    pub fn make_origin<'s>(
+    pub fn try_make_origin<'s>(
         &self,
-        try_catch: &mut TryScope<'_, 's>,
-    ) -> Result<v8::ScriptOrigin<'s>> {
-        let resource_name_v8 = new_v8_string(try_catch, &self.resource_name)?.try_cast()?;
-        Ok(v8::ScriptOrigin::new(
-            try_catch,
+        scope: &mut v8::HandleScope<'s>,
+    ) -> ExceptionResult<v8::ScriptOrigin<'s>> {
+        let try_catch = &mut v8::TryCatch::new(scope);
+        self.make_origin(try_catch).to_exception_result(try_catch)
+    }
+
+    pub fn make_origin<'s>(&self, scope: &mut v8::HandleScope<'s>) -> Option<v8::ScriptOrigin<'s>> {
+        let resource_name_v8: v8::Local<v8::Value> =
+            v8::String::new(scope, &self.resource_name)?.cast();
+        Some(v8::ScriptOrigin::new(
+            scope,
             resource_name_v8,
             self.resource_line_offset,
             self.resource_column_offset,
@@ -57,7 +62,7 @@ impl ESScriptOrigin {
             None,
             false,
             false,
-            false,
+            self.is_module,
             None,
         ))
     }
@@ -70,6 +75,7 @@ impl Default for ESScriptOrigin {
             resource_line_offset: Default::default(),
             resource_column_offset: Default::default(),
             script_id: -1,
+            is_module: false,
         }
     }
 }
@@ -177,58 +183,34 @@ impl std::fmt::Display for TlsIsolateError {
 
 impl std::error::Error for TlsIsolateError {}
 
-/// Always returns an `Err`, but will use information from the given [v8::TryCatch] if a message is
-/// present.
-pub fn try_catch_to_result(try_catch: &mut TryScope<'_, '_>) -> Error {
-    match try_catch.message() {
-        None => anyhow!("unknown cause"),
-        Some(msg) => {
-            let text = msg.get(try_catch).to_rust_string_lossy(try_catch);
-            let line_number_str = msg
-                .get_line_number(try_catch)
-                .as_ref()
-                .map(usize::to_string)
-                .unwrap_or_else(|| "?".to_string());
-            let src_name = msg
-                .get_script_resource_name(try_catch)
-                .map(|v| v.to_rust_string_lossy(try_catch))
-                .unwrap_or_else(|| "?".to_string());
-            anyhow!("{}:{}: {}", src_name, line_number_str, text)
-        }
-    }
-}
-
-/// Creates a new [v8::String].
+/// Wraps [v8::String::new], translating any thrown exception into an [ExceptionResult].
 pub fn new_v8_string<'s>(
-    try_catch: &mut TryScope<'_, 's>,
-    string: &str,
-) -> Result<v8::Local<'s, v8::String>> {
-    v8::String::new(try_catch, string).ok_or_else(|| try_catch_to_result(try_catch))
+    scope: &mut v8::HandleScope<'s>,
+    value: &str,
+) -> ExceptionResult<v8::Local<'s, v8::String>> {
+    let try_catch = &mut v8::TryCatch::new(scope);
+    v8::String::new(try_catch, value).to_exception_result(try_catch)
 }
 
-/// Creates a new [v8::Number].
-pub fn new_v8_number<'s>(
-    try_catch: &mut TryScope<'_, 's>,
-    number: f64,
-) -> v8::Local<'s, v8::Number> {
-    v8::Number::new(try_catch, number)
-}
-
-/// Creates a new [v8::Function].
+/// Creates a new [v8::Function]. Translates any thrown exception into an [ExceptionResult].
 pub fn new_v8_function<'s>(
-    try_catch: &mut TryScope<'s, '_>,
+    scope: &mut v8::HandleScope<'s>,
     arg_names: &[&str],
     origin: &ESScriptOrigin,
     source: &str,
-) -> anyhow::Result<v8::Local<'s, v8::Function>> {
-    let body_str_v8 = new_v8_string(try_catch, source).context("creating body string")?;
-    let origin_v8 = origin.make_origin(try_catch).context("creating origin")?;
+) -> ExceptionResult<v8::Local<'s, v8::Function>> {
+    let try_catch = &mut v8::TryCatch::new(scope);
+    let body_str_v8 = v8::String::new(try_catch, source).to_exception_result(try_catch)?;
+    let origin_v8 = origin
+        .make_origin(try_catch)
+        .to_exception_result(try_catch)?;
     let mut body_src_v8 = v8::script_compiler::Source::new(body_str_v8, Some(&origin_v8));
 
     let arg_names_v8: Vec<v8::Local<v8::String>> = arg_names
         .iter()
-        .map(|arg_name| new_v8_string(try_catch, arg_name))
-        .collect::<anyhow::Result<Vec<_>>>()?;
+        .map(|arg_name| v8::String::new(try_catch, arg_name))
+        .collect::<Option<Vec<_>>>()
+        .to_exception_result(try_catch)?;
 
     v8::script_compiler::compile_function(
         try_catch,
@@ -238,6 +220,160 @@ pub fn new_v8_function<'s>(
         v8::script_compiler::CompileOptions::NoCompileOptions,
         v8::script_compiler::NoCacheReason::NoReason,
     )
-    .ok_or_else(|| try_catch_to_result(try_catch))
-    .with_context(|| "could not compile function")
+    .to_exception_result(try_catch)
+}
+
+/// Copies all "own" properties from `src` to `dest`.
+pub fn shallow_copy_object_properties<'s, 'a, 'b>(
+    scope: &mut v8::HandleScope<'s>,
+    src: v8::Local<'a, v8::Object>,
+    dest: v8::Local<'b, v8::Object>,
+) -> ExceptionResult<()> {
+    let try_catch = &mut v8::TryCatch::new(scope);
+    let keys = src
+        .get_own_property_names(try_catch, v8::GetPropertyNamesArgs::default())
+        .to_exception_result(try_catch)?;
+    for index in 0..keys.length() {
+        let key = keys
+            .get_index(try_catch, index)
+            .to_exception_result(try_catch)?;
+
+        let value = src.get(try_catch, key).to_exception_result(try_catch)?;
+
+        dest.set(try_catch, key, value)
+            .to_exception_result(try_catch)?;
+    }
+
+    Ok(())
+}
+
+type ExceptionResult<T> = std::result::Result<T, ExceptionError>;
+
+#[derive(Debug)]
+pub enum ExceptionError {
+    NothingCaught,
+    Caught(ExceptionErrorDetail),
+}
+
+#[derive(Debug, Default)]
+pub struct ExceptionErrorDetail {
+    exception: Option<String>,
+    msg: Option<String>,
+    resource_name: Option<String>,
+    line_number: Option<usize>,
+    stack_trace: Option<String>,
+}
+
+impl ExceptionError {
+    fn capture<'s, 'p, P>(try_catch: &mut v8::TryCatch<'s, P>) -> Self
+    where
+        'p: 's,
+        P: AsMut<v8::HandleScope<'p, ()>>,
+        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, ()>>,
+        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, v8::Context>>,
+    {
+        if !try_catch.has_caught() {
+            return ExceptionError::NothingCaught;
+        }
+
+        let mut detail = ExceptionErrorDetail::default();
+        if let Some(exc) = try_catch.exception() {
+            let handle_scope: &mut v8::HandleScope<'p, v8::Context> = try_catch.as_mut();
+            detail.exception = Some(format!(
+                "exception: {}",
+                exc.to_rust_string_lossy(handle_scope)
+            ));
+        }
+
+        if let Some(message) = try_catch.message() {
+            let handle_scope: &mut v8::HandleScope<'p, v8::Context> = try_catch.as_mut();
+            detail.msg = Some(message.get(handle_scope).to_rust_string_lossy(handle_scope));
+            detail.line_number = message.get_line_number(handle_scope);
+            detail.resource_name = message
+                .get_script_resource_name(handle_scope)
+                .map(|v| v.to_rust_string_lossy(handle_scope));
+        }
+
+        Self::Caught(detail)
+    }
+}
+
+impl std::fmt::Display for ExceptionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExceptionError::NothingCaught => {
+                writeln!(
+                    f,
+                    "expected JavaScript exception but none caught, this is likely a bug at the callsite"
+                )
+            }
+            ExceptionError::Caught(detail) => {
+                if let Some(exception) = &detail.exception {
+                    writeln!(f, "JavaScript exception <{exception}>")?;
+                } else {
+                    writeln!(f, "JavaScript exception of unknown type")?;
+                }
+
+                if let Some(msg) = &detail.msg {
+                    writeln!(f, "{msg}")?;
+                }
+
+                match (detail.line_number, &detail.resource_name) {
+                    (Some(line_number), Some(resource_name)) => {
+                        write!(f, "at {resource_name}:{line_number}")?;
+                    }
+                    (None, Some(resource_name)) => {
+                        write!(f, "in {resource_name}")?;
+                    }
+                    (Some(line_number), None) => {
+                        write!(f, "at {line_number}:?")?;
+                    }
+                    _ => {
+                        write!(f, "at unknown location")?;
+                    }
+                }
+
+                Ok(())
+            }
+        }
+    }
+}
+
+impl std::error::Error for ExceptionError {}
+
+pub trait CatchToAnyhowResult<T> {
+    /// Method to convert a value (typically an [Option<v8::Local>]) to an [ExceptionResult] by
+    /// catching an exception with the [v8::TryCatch] when the value is [None]. This is appropriate
+    /// to use whenever the C++ v8 API would return a `MaybeLocal` in its place, implying that an
+    /// exception might have been raised.
+    ///
+    /// The [v8::TryCatch] given must have been used as the scope in the operation that produced
+    /// the [Option].
+    fn to_exception_result<'s, 'p, P>(
+        self,
+        try_catch: &mut v8::TryCatch<'s, P>,
+    ) -> ExceptionResult<T>
+    where
+        'p: 's,
+        P: AsMut<v8::HandleScope<'p, ()>>,
+        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, ()>>,
+        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, v8::Context>>;
+}
+
+impl<T> CatchToAnyhowResult<T> for Option<T> {
+    fn to_exception_result<'s, 'p, P>(
+        self,
+        try_catch: &mut v8::TryCatch<'s, P>,
+    ) -> ExceptionResult<T>
+    where
+        'p: 's,
+        P: AsMut<v8::HandleScope<'p, ()>>,
+        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, ()>>,
+        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, v8::Context>>,
+    {
+        match self {
+            Some(v) => Ok(v),
+            None => Err(ExceptionError::capture(try_catch)),
+        }
+    }
 }
