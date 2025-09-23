@@ -2,6 +2,8 @@
 //! requests against it.
 #![allow(dead_code)]
 
+pub mod modules;
+
 #[cfg(test)]
 mod test;
 
@@ -222,6 +224,9 @@ pub fn new_v8_function<'s>(
     )
     .to_exception_result(try_catch)
 }
+
+// TODO: Look into creating a non-lossy version of to_rust_string_lossy, using
+// `utf8_length` and `write_utf8_v2`.
 
 /// Copies all "own" properties from `src` to `dest`.
 pub fn shallow_copy_object_properties<'s, 'a, 'b>(

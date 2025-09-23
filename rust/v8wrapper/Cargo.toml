@@ -7,12 +7,14 @@ edition = "2024"
 anyhow.workspace = true
 # TODO: Remove this.
 googletest = { optional = true, workspace = true }
+hashbrown.workspace = true
 log.workspace = true
 utils.workspace = true
 v8.workspace = true
 
 [dev-dependencies]
 googletest.workspace = true
+map-macro.workspace = true
 testutils.workspace = true
 
 [features]

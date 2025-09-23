@@ -1,5 +1,6 @@
 use anyhow::{Context, Result, anyhow};
 use googletest::prelude::*;
+use map_macro::hashbrown::hash_map;
 
 use super::*;
 
@@ -220,55 +221,6 @@ fn test_set_and_get_values_in_separate_contexts() -> Result<()> {
 
 #[gtest]
 fn test_modules() -> anyhow::Result<()> {
-    /// Must only be used as a callback from [v8], otherwise UB may occur.
-    fn resolver_callback<'a>(
-        context: v8::Local<'a, v8::Context>,
-        specifier: v8::Local<'a, v8::String>,
-        _import_attributes: v8::Local<'a, v8::FixedArray>,
-        _referrer: v8::Local<'a, v8::Module>,
-    ) -> Option<v8::Local<'a, v8::Module>> {
-        let scope = &mut unsafe {
-            // Safety: [v8::CallbackScope] is marked unsafe for being called outside of a callback.
-            // [resolver_callback] is documented as a callback only.
-            v8::CallbackScope::new(context)
-        };
-        let scope = &mut v8::EscapableHandleScope::new(scope);
-        let scope = &mut v8::ContextScope::new(scope, context);
-
-        let rust_specifier = specifier.to_rust_string_lossy(scope);
-
-        if rust_specifier != "./barmodule.js" {
-            let message = v8::String::new(
-                scope,
-                &format!("unknown module for specifier {:?}", rust_specifier),
-            )
-            .expect("could not create message");
-            let exc = v8::Exception::error(scope, message);
-            scope.throw_exception(exc);
-            return None;
-        }
-
-        let source_string = v8::String::new(
-            scope,
-            r#"
-            export function bar() {
-                return "bar";
-            }
-            "#,
-        )?;
-        let origin: v8::ScriptOrigin = ESScriptOrigin {
-            resource_name: "./barmodule.js".into(),
-            is_module: true,
-            ..Default::default()
-        }
-        .make_origin(scope)?;
-
-        let source = &mut v8::script_compiler::Source::new(source_string, Some(&origin));
-        let module = v8::script_compiler::compile_module(scope, source)?;
-
-        Some(scope.escape(module))
-    }
-
     init_v8_for_testing();
 
     let tls_isolate = TlsIsolate::for_current_thread()?;
@@ -280,7 +232,23 @@ fn test_modules() -> anyhow::Result<()> {
         let ctx = v8::Local::new(scope, ctx_global);
         let scope = &mut v8::ContextScope::new(scope, ctx);
 
-        let source_string = new_v8_string(
+        let modules = modules::ModuleDefs::new(hash_map! {
+            "./barmodule.js".into() => modules::ModuleDef{
+                src: r#"
+                export function bar() {
+                    return "bar";
+                }
+                "#.into(),
+                origin: ESScriptOrigin {
+                    resource_name: "barmodule.js".into(),
+                    is_module: true,
+                    ..Default::default()
+                },
+            },
+        });
+        modules.install_into_context(ctx);
+
+        let top_level_src = new_v8_string(
             scope,
             r#"
             import {bar} from './barmodule.js';
@@ -291,7 +259,7 @@ fn test_modules() -> anyhow::Result<()> {
             "#,
         )?;
 
-        let origin: v8::ScriptOrigin = ESScriptOrigin {
+        let top_level_origin: v8::ScriptOrigin = ESScriptOrigin {
             resource_name: "top_level.js".into(),
             is_module: true,
             ..Default::default()
@@ -301,13 +269,14 @@ fn test_modules() -> anyhow::Result<()> {
         let module = {
             let try_catch = &mut v8::TryCatch::new(scope);
 
-            let mut source = v8::script_compiler::Source::new(source_string, Some(&origin));
+            let mut source =
+                v8::script_compiler::Source::new(top_level_src, Some(&top_level_origin));
             let module = v8::script_compiler::compile_module(try_catch, &mut source)
                 .to_exception_result(try_catch)
                 .context("compiling module")?;
 
             module
-                .instantiate_module(try_catch, resolver_callback)
+                .instantiate_module(try_catch, modules::ModuleDefs::resolver_callback)
                 .to_exception_result(try_catch)
                 .context("instantiating module")?;
 

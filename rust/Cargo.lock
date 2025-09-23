@@ -3314,7 +3314,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "googletest",
+ "hashbrown",
  "log",
+ "map-macro",
  "travdata-testutils",
  "travdata-utils",
  "v8",
