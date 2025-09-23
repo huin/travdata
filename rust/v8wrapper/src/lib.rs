@@ -346,7 +346,7 @@ impl std::fmt::Display for ExceptionError {
 
 impl std::error::Error for ExceptionError {}
 
-pub trait CatchToAnyhowResult<T> {
+pub trait CatchToResult<T> {
     /// Method to convert a value (typically an [Option<v8::Local>]) to an [ExceptionResult] by
     /// catching an exception with the [v8::TryCatch] when the value is [None]. This is appropriate
     /// to use whenever the C++ v8 API would return a `MaybeLocal` in its place, implying that an
@@ -365,7 +365,7 @@ pub trait CatchToAnyhowResult<T> {
         v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, v8::Context>>;
 }
 
-impl<T> CatchToAnyhowResult<T> for Option<T> {
+impl<T> CatchToResult<T> for Option<T> {
     fn to_exception_result<'s, 'p, P>(
         self,
         try_catch: &mut v8::TryCatch<'s, P>,
