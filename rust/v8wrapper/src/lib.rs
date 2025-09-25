@@ -1,5 +1,4 @@
-//! Provides a wrapper of a [v8::Isolate] that can be shared between threads by making serialised
-//! requests against it.
+//! Provides thread-local instances of [v8::Isolate]s.
 #![allow(dead_code)]
 
 pub mod modules;

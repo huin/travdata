@@ -40,4 +40,4 @@ zip.workspace = true
 googletest.workspace = true
 test-casing.workspace = true
 testutils.workspace = true
-v8wrapper = { features = ["testing"], workspace = true }
+v8wrapper.workspace = true

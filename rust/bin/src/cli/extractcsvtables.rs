@@ -65,15 +65,13 @@ pub struct Command {
 
 /// Runs the subcommand.
 pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
+    v8wrapper::init_v8();
+    let tls_isolate = v8wrapper::TlsIsolate::for_current_thread();
+
     let tmpl = cmd.template.load_template()?;
 
     let table_reader = cmd.table_reader.build(&xdg_dirs)?;
-    let isolate_thread = v8wrapper::IsolateThreadHandle::new();
-    let extractor = Extractor::new(
-        &tmpl,
-        table_reader.as_ref(),
-        isolate_thread.create_client().new_context()?,
-    )?;
+    let extractor = Extractor::new(&tmpl, table_reader.as_ref())?;
 
     let output_type = filesio::IoType::resolve_auto(cmd.output_type, &cmd.output);
     let out_writer = output_type
@@ -98,6 +96,8 @@ pub fn run(cmd: &Command, xdg_dirs: xdg::BaseDirectories) -> Result<()> {
     if let Err(err) = table_reader.close() {
         log::warn!("Failed to shut down table reader: {err}");
     }
+
+    drop(tls_isolate);
 
     Ok(())
 }

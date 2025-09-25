@@ -118,21 +118,16 @@ impl Worker for ExtractorWorker {
 
 pub struct MainThreadWorker<'a> {
     table_reader: &'a dyn TableReader,
-    isolate_client: v8wrapper::IsolateThreadClient,
 
     request_sender: mpsc::SyncSender<Work>,
     request_receiver: mpsc::Receiver<Work>,
 }
 
 impl<'a> MainThreadWorker<'a> {
-    pub fn new(
-        table_reader: &'a dyn TableReader,
-        isolate_client: v8wrapper::IsolateThreadClient,
-    ) -> Self {
+    pub fn new(table_reader: &'a dyn TableReader) -> Self {
         let (request_sender, request_receiver) = mpsc::sync_channel(0);
         Self {
             table_reader,
-            isolate_client,
             request_sender,
             request_receiver,
         }
@@ -152,7 +147,6 @@ impl<'a> MainThreadWorker<'a> {
         drop(self.request_sender);
 
         let table_reader = self.table_reader;
-        let isolate_client = self.isolate_client;
         let request_receiver = self.request_receiver;
 
         loop {
@@ -164,7 +158,7 @@ impl<'a> MainThreadWorker<'a> {
                 }
             };
 
-            work.run(table_reader, &isolate_client);
+            work.run(table_reader);
         }
     }
 }
@@ -198,30 +192,19 @@ impl Work {
         }
     }
 
-    fn run(
-        &mut self,
-        table_reader: &dyn TableReader,
-        isolate_client: &v8wrapper::IsolateThreadClient,
-    ) {
-        if let Err(err) = self.run_inner(table_reader, isolate_client) {
+    fn run(&mut self, table_reader: &dyn TableReader) {
+        if let Err(err) = self.run_inner(table_reader) {
             self.sender.send(Output::Failure(err));
         }
     }
 
-    fn run_inner(
-        &mut self,
-        table_reader: &dyn TableReader,
-        isolate_client: &v8wrapper::IsolateThreadClient,
-    ) -> Result<()> {
+    fn run_inner(&mut self, table_reader: &dyn TableReader) -> Result<()> {
         let out_writer = self
             .request
             .out_io
             .new_read_writer()
             .with_context(|| "Opening output writer.")?;
-        let ctx_client = isolate_client
-            .new_context()
-            .context("creating new v8 Context")?;
-        let extractor = bookextract::Extractor::new(&self.request.tmpl, table_reader, ctx_client)
+        let extractor = bookextract::Extractor::new(&self.request.tmpl, table_reader)
             .with_context(|| "Preparing extractor.")?;
 
         let spec = bookextract::ExtractSpec {

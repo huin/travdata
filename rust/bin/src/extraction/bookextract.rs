@@ -77,12 +77,8 @@ pub trait ExtractEvents {
 
 impl<'a> Extractor<'a> {
     /// Create a new [Extractor].
-    pub fn new(
-        tmpl: &'a template::Book,
-        tabula_client: &'a dyn TableReader,
-        ctx_client: v8wrapper::ContextClient,
-    ) -> Result<Self> {
-        let mut estrn = ESTransformer::new(ctx_client);
+    pub fn new(tmpl: &'a template::Book, tabula_client: &'a dyn TableReader) -> Result<Self> {
+        let mut estrn = ESTransformer::new().context("initialising ESTransformer")?;
         run_ecma_scripts(&mut estrn, &tmpl.scripts)?;
 
         Ok(Self {
@@ -256,9 +252,8 @@ impl<'a> Extractor<'a> {
                     function_body: es_transform.src.clone(),
                     origin: v8wrapper::ESScriptOrigin {
                         resource_name: out_table.transform_name.clone(),
-                        resource_line_offset: 0,
-                        resource_column_offset: 0,
-                        script_id: 0,
+                        is_module: false,
+                        ..Default::default()
                     },
                 };
                 self.estrn
@@ -278,9 +273,8 @@ fn run_ecma_scripts(estrn: &mut ESTransformer, scripts: &[template::Script]) -> 
                 source: script.code.clone(),
                 origin: v8wrapper::ESScriptOrigin {
                     resource_name: script.name.clone(),
-                    resource_line_offset: 0,
-                    resource_column_offset: 0,
-                    script_id: 0,
+                    is_module: false,
+                    ..Default::default()
                 },
             })
             .with_context(|| format!("running script {:?}", script.name))?;

@@ -21,12 +21,9 @@ pub fn run(
     xdg_dirs: xdg::BaseDirectories,
 ) -> Result<()> {
     let result: Result<()> = thread::scope(|s| {
-        let isolate_thread = v8wrapper::IsolateThreadHandle::new();
+        v8wrapper::init_v8();
 
-        let worker = workers::extractor::MainThreadWorker::new(
-            table_reader.as_ref(),
-            isolate_thread.create_client(),
-        );
+        let worker = workers::extractor::MainThreadWorker::new(table_reader.as_ref());
 
         // Run the PdfiumServer in its own dedicated thread, to serialise access to the
         // pdfium_render library.
