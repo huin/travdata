@@ -40,7 +40,7 @@ impl TemplateArgs {
         preload.load(file_io.as_ref(), load_arg)
     }
 
-    fn file_io(&self) -> Result<Box<dyn filesio::Reader>> {
+    fn file_io(&self) -> Result<Box<dyn filesio::Reader<'_>>> {
         let cfg_type = filesio::IoType::resolve_auto(None, &self.template);
 
         cfg_type
