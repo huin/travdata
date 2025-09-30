@@ -251,7 +251,7 @@ pub fn shallow_copy_object_properties<'s, 'a, 'b>(
     Ok(())
 }
 
-type ExceptionResult<T> = std::result::Result<T, ExceptionError>;
+pub type ExceptionResult<T> = std::result::Result<T, ExceptionError>;
 
 #[derive(Debug)]
 pub enum ExceptionError {

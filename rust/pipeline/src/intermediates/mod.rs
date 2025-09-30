@@ -7,9 +7,10 @@ use std::path::PathBuf;
 pub enum IntermediateValue {
     NoData,
     InputFile(PathBuf),
+    JsContext(v8::Global<v8::Context>),
     JsonData(serde_json::Value),
 }
 
-/// Monomorphic form of [generic_pipeline::intermediates::IntermediateSet].
+/// Monomorphic form of [generic_pipeline::intermediates::GenericIntermediateSet].
 pub type IntermediateSet =
     generic_pipeline::intermediates::GenericIntermediateSet<IntermediateValue>;

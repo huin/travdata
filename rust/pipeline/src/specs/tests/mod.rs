@@ -54,8 +54,9 @@ spec:
         (
 r#"
 id: thingy-1-transform
-type: EsTransform
+type: JsTransform
 spec:
+  context: js-context-id
   input_data:
     foo: thingy-1-extract
   code: |
@@ -65,7 +66,8 @@ spec:
                 id: node_id("thingy-1-transform"),
                 tags: Default::default(),
                 public: false,
-                spec: Spec::EsTransform(EsTransform {
+                spec: Spec::JsTransform(JsTransform {
+                    context: node_id("js-context-id"),
                     input_data: hash_map! {
                         "foo".to_string() => node_id("thingy-1-extract"),
                     },

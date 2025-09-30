@@ -10,8 +10,10 @@ hashbrown.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml_ng.workspace = true
+serde_v8.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
+v8.workspace = true
 v8wrapper.workspace = true
 
 [dev-dependencies]

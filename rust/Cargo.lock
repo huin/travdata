@@ -3284,6 +3284,7 @@ dependencies = [
  "map-macro",
  "serde",
  "serde_json",
+ "serde_v8",
  "serde_yaml_ng",
  "strum",
  "strum_macros",
@@ -3291,6 +3292,7 @@ dependencies = [
  "travdata-generic-pipeline",
  "travdata-testutils",
  "travdata-v8wrapper",
+ "v8",
 ]
 
 [[package]]
