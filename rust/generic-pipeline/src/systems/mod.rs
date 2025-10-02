@@ -40,15 +40,18 @@ where
         &self,
         _node: &node::GenericNode<P::Spec>,
         _reg: &'a mut plparams::GenericNodeParamsRegistrator<'a, P::ParamType>,
-    ) {
+    ) -> Result<()> {
+        Ok(())
     }
 
     /// Returns the set of node IDs that the given node depends on as inputs.
     fn inputs<'a>(
         &self,
-        node: &node::GenericNode<P::Spec>,
-        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
-    );
+        _node: &node::GenericNode<P::Spec>,
+        _reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+    ) -> Result<()> {
+        Ok(())
+    }
 
     /// Performs processing of the given [node::GenericNode], returning its intermediate value.
     fn process(

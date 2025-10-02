@@ -106,7 +106,7 @@ impl node::GenericNode<FakeSpec> {
         s
     }
 
-    pub fn add_inputs<'a>(&self, reg: &'a mut plinputs::NodeInputsRegistrator<'a>) {
+    pub fn add_inputs<'a>(&self, reg: &'a mut plinputs::NodeInputsRegistrator<'a>) -> Result<()> {
         let deps = match &self.spec {
             FakeSpec::Foo(foo_spec) => &foo_spec.deps,
             FakeSpec::Bar(bar_spec) => &bar_spec.deps,
@@ -115,6 +115,8 @@ impl node::GenericNode<FakeSpec> {
         for dep in deps {
             reg.add_input(dep);
         }
+
+        Ok(())
     }
 }
 
@@ -196,13 +198,13 @@ mock! {
             &self,
             node: &FakeNode,
             params: &'a mut plparams::GenericNodeParamsRegistrator<'a, TestParamType>,
-        );
+        ) -> Result<()>;
 
         fn inputs<'a>(
             &self,
             node: &FakeNode,
             reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
-        );
+        ) -> Result<()>;
 
         fn process(
             &self,

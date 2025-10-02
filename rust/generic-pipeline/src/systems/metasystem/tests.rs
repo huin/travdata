@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{Result, anyhow};
 use googletest::prelude::*;
 use hashbrown::{HashMap, HashSet};
 use map_macro::hashbrown::{hash_map, hash_map_e, hash_set};
@@ -7,7 +7,7 @@ use super::*;
 use crate::{plparams, testutil::*};
 
 #[gtest]
-fn test_params() {
+fn test_params() -> Result<()> {
     let mut foo_sys = MockFakeSystem::new();
     let mut bar_sys = MockFakeSystem::new();
 
@@ -34,7 +34,8 @@ fn test_params() {
                     foo_param_id.clone(),
                     TestParamType::TypeOne,
                     "foo-param description.".into(),
-                )
+                );
+                Ok(())
             }
         });
 
@@ -53,6 +54,7 @@ fn test_params() {
                     TestParamType::TypeTwo,
                     "bar-param description.".into(),
                 );
+                Ok(())
             }
         });
 
@@ -67,8 +69,8 @@ fn test_params() {
     let mut reg = TestParams::registrator();
 
     // WHEN: the params are requested for the Foo and Bar nodes.
-    meta_system.params(&foo_node, &mut reg.for_node(&foo_node.id));
-    meta_system.params(&bar_node, &mut reg.for_node(&bar_node.id));
+    meta_system.params(&foo_node, &mut reg.for_node(&foo_node.id))?;
+    meta_system.params(&bar_node, &mut reg.for_node(&bar_node.id))?;
 
     // THEN: both params should be present in the result.
     let got_params = reg.build();
@@ -91,10 +93,12 @@ fn test_params() {
         },
     };
     expect_that!(got_params, eq(&want_params));
+
+    Ok(())
 }
 
 #[gtest]
-fn test_inputs() {
+fn test_inputs() -> Result<()> {
     let mut foo_sys = MockFakeSystem::new();
     let mut bar_sys = MockFakeSystem::new();
 
@@ -128,7 +132,7 @@ fn test_inputs() {
             ..Default::default()
         },
         &mut reg.for_node(&node_id("foo")),
-    );
+    )?;
     meta_system.inputs(
         &FakeNode {
             spec: BarSpec {
@@ -139,7 +143,7 @@ fn test_inputs() {
             ..Default::default()
         },
         &mut reg.for_node(&node_id("bar")),
-    );
+    )?;
 
     // THEN: the expected dependencies are registered.
     let inputs = reg.build();
@@ -150,6 +154,8 @@ fn test_inputs() {
             node_id("bar") => hash_set! {node_id("bar-dep-1"), node_id("bar-dep-2")},
         })
     );
+
+    Ok(())
 }
 
 fn process_fixture() -> (TestArgSet, TestIntermediateSet) {

@@ -4,7 +4,7 @@ use googletest::prelude::*;
 use map_macro::hashbrown::{hash_map, hash_set};
 use testutils::DefaultForTest;
 
-use crate::{intermediates, specs::JsTransform, testutil::node_id};
+use crate::{intermediates, plparams, specs::JsTransform, testutil::node_id};
 
 use super::*;
 
@@ -21,7 +21,7 @@ fn test_params() -> Result<()> {
         ..DefaultForTest::default_for_test()
     };
 
-    system.params(&node, &mut reg.for_node(&node.id));
+    system.params(&node, &mut reg.for_node(&node.id))?;
     let got_params = reg.build();
 
     expect_that!(got_params.params, is_empty());
@@ -52,7 +52,7 @@ fn test_inputs() -> Result<()> {
         ..DefaultForTest::default_for_test()
     };
 
-    system.inputs(&node, &mut reg.for_node(&node.id));
+    system.inputs(&node, &mut reg.for_node(&node.id))?;
     let got_inputs = reg.build();
 
     expect_that!(

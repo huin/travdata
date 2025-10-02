@@ -3,6 +3,8 @@ mod tests;
 
 use std::rc::Rc;
 
+use anyhow::Result;
+
 use super::{GenericSystem, MissingSystem, NodeResult};
 use crate::{
     intermediates,
@@ -57,7 +59,7 @@ where
         &self,
         node: &node::GenericNode<P::Spec>,
         reg: &'a mut plparams::GenericNodeParamsRegistrator<'a, P::ParamType>,
-    ) {
+    ) -> Result<()> {
         self.system_for(node.spec.discriminant()).params(node, reg)
     }
 
@@ -65,7 +67,7 @@ where
         &self,
         node: &node::GenericNode<P::Spec>,
         reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
-    ) {
+    ) -> Result<()> {
         self.system_for(node.spec.discriminant()).inputs(node, reg)
     }
 

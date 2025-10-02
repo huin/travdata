@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{Result, bail};
 
 use crate::{intermediates, specs};
 
@@ -11,16 +11,6 @@ impl JsContextSystem {
 }
 
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsContextSystem {
-    fn inputs<'a>(
-        &self,
-        _node: &generic_pipeline::node::GenericNode<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::Spec,
-        >,
-        _reg: &'a mut generic_pipeline::plinputs::NodeInputsRegistrator<'a>,
-    ) {
-        // JsContext currently has no dependencies.
-    }
-
     fn process(
         &self,
         node: &generic_pipeline::node::GenericNode<
@@ -32,8 +22,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsContex
         _intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue,
         >,
-    ) -> anyhow::Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
-    {
+    ) -> Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue> {
         if !matches!(&node.spec, specs::Spec::JsContext(_)) {
             bail!("node is not of type JsContext");
         }

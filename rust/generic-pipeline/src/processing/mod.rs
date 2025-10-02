@@ -5,7 +5,7 @@ mod tests;
 
 use std::rc::Rc;
 
-use anyhow::anyhow;
+use anyhow::{Result, anyhow};
 use hashbrown::{HashMap, HashSet};
 
 use crate::{intermediates, node, pipeline, plinputs, plparams, systems};
@@ -80,22 +80,21 @@ where
     pub fn resolve_params(
         &self,
         nodes: &pipeline::GenericPipeline<P::Spec>,
-        _params: &mut plparams::GenericParamsRegistrator<P::ParamType>,
-    ) -> plparams::GenericParams<P::ParamType> {
+    ) -> Result<plparams::GenericParams<P::ParamType>> {
         let mut reg = plparams::GenericParams::<P::ParamType>::registrator();
         for node in nodes.nodes() {
-            self.system.params(node, &mut reg.for_node(&node.id));
+            self.system.params(node, &mut reg.for_node(&node.id))?;
         }
-        reg.build()
+        Ok(reg.build())
     }
 
     pub fn process(
         &self,
         nodes: &pipeline::GenericPipeline<P::Spec>,
         args: &crate::plargs::GenericArgSet<P::ArgValue>,
-    ) -> PipelineOutcome {
-        let state = GenericProcessingState::new(nodes, args, self.system.clone());
-        state.process()
+    ) -> Result<PipelineOutcome> {
+        let state = GenericProcessingState::new(nodes, args, self.system.clone())?;
+        Ok(state.process())
     }
 }
 
@@ -128,12 +127,12 @@ where
         nodes: &'a pipeline::GenericPipeline<P::Spec>,
         args: &'a crate::plargs::GenericArgSet<P::ArgValue>,
         system: Rc<dyn systems::GenericSystem<P>>,
-    ) -> Self {
+    ) -> Result<Self> {
         log::debug!("Processing {} nodes total.", nodes.nodes().count());
 
         let mut inputs_reg = plinputs::InputsRegistrator::new();
         for node in nodes.nodes() {
-            system.inputs(node, &mut inputs_reg.for_node(&node.id));
+            system.inputs(node, &mut inputs_reg.for_node(&node.id))?;
         }
         // Map from NodeId to the NodeIds that it depends on.
         let unprocessed_id_to_dep_ids = inputs_reg.build();
@@ -159,7 +158,7 @@ where
             }
         }
 
-        Self {
+        Ok(Self {
             nodes,
             args,
 
@@ -173,7 +172,7 @@ where
             interms: intermediates::GenericIntermediateSet::new(),
             processable_ids,
             unprocessed_id_to_dep_ids,
-        }
+        })
     }
 
     fn process(mut self) -> PipelineOutcome {
