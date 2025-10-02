@@ -1,12 +1,12 @@
 //! Concrete specialisations of [generic_pipeline::node::GenericNode]s.
 
-pub mod input_pdf_file;
-pub mod js_context;
-pub mod js_transform;
-pub mod output_file_csv;
-pub mod output_file_json;
-pub mod pdf_extract_table;
+mod input_pdf_file;
+mod js_context;
+mod js_transform;
 mod output_directory;
+mod output_file_csv;
+mod output_file_json;
+mod pdf_extract_table;
 #[cfg(test)]
 mod test_defaults;
 #[cfg(test)]
