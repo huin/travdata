@@ -6,6 +6,7 @@ pub mod js_transform;
 pub mod output_file_csv;
 pub mod output_file_json;
 pub mod pdf_extract_table;
+mod output_directory;
 #[cfg(test)]
 mod test_defaults;
 #[cfg(test)]
@@ -16,6 +17,7 @@ use serde::{Deserialize, Serialize};
 pub use input_pdf_file::InputPdfFile;
 pub use js_context::JsContext;
 pub use js_transform::JsTransform;
+pub use output_directory::OutputDirectory;
 pub use output_file_csv::OutputFileCsv;
 pub use output_file_json::OutputFileJson;
 pub use pdf_extract_table::PdfExtractTable;
@@ -28,6 +30,7 @@ pub enum Spec {
     InputPdfFile(InputPdfFile),
     JsContext(JsContext),
     JsTransform(JsTransform),
+    OutputDirectory(OutputDirectory),
     OutputFileCsv(OutputFileCsv),
     OutputFileJson(OutputFileJson),
     PdfExtractTable(PdfExtractTable),

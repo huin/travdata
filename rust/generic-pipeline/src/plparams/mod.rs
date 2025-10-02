@@ -9,7 +9,7 @@ use crate::node;
 pub struct ParamId(&'static str);
 
 impl ParamId {
-    pub fn from_static(id: &'static str) -> Self {
+    pub const fn from_static(id: &'static str) -> Self {
         Self(id)
     }
 }
