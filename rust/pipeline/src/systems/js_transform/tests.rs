@@ -13,7 +13,7 @@ fn test_params() -> Result<()> {
     v8wrapper::init_v8_for_testing();
     let tls_isolate = v8wrapper::TlsIsolate::for_current_thread()?;
 
-    let system = JsTransformSystem::new();
+    let system = JsTransformSystem;
 
     let mut reg = plparams::Params::registrator();
 
@@ -35,7 +35,7 @@ fn test_inputs() -> Result<()> {
     v8wrapper::init_v8_for_testing();
     let tls_isolate = v8wrapper::TlsIsolate::for_current_thread()?;
 
-    let system = JsTransformSystem::new();
+    let system = JsTransformSystem;
 
     let mut reg = plinputs::InputsRegistrator::new();
 
@@ -75,7 +75,7 @@ fn test_process_syntax_error() -> Result<()> {
     v8wrapper::init_v8_for_testing();
     let tls_isolate = v8wrapper::TlsIsolate::for_current_thread()?;
 
-    let system = JsTransformSystem::new();
+    let system = JsTransformSystem;
 
     let node = crate::Node {
         spec: crate::specs::Spec::JsTransform(JsTransform {
@@ -98,7 +98,7 @@ fn test_process_uses_intermediate_values() -> Result<()> {
     v8wrapper::init_v8_for_testing();
     let tls_isolate = v8wrapper::TlsIsolate::for_current_thread()?;
 
-    let system = JsTransformSystem::new();
+    let system = JsTransformSystem;
 
     let node = crate::Node {
         spec: crate::specs::Spec::JsTransform(JsTransform {

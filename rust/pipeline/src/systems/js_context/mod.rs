@@ -4,12 +4,6 @@ use crate::{intermediates, specs};
 
 pub struct JsContextSystem;
 
-impl JsContextSystem {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsContextSystem {
     fn process(
         &self,

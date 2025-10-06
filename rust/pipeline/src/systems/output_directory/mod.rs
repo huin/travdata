@@ -34,7 +34,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
 
     fn process(
         &self,
-        _node: &generic_pipeline::node::GenericNode<
+        node: &generic_pipeline::node::GenericNode<
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::Spec,
         >,
         args: &generic_pipeline::plargs::GenericArgSet<
@@ -45,7 +45,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
         >,
     ) -> anyhow::Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
     {
-        args.get(&_node.id, &PARAM_PATH)
+        args.get(&node.id, &PARAM_PATH)
             .ok_or_else(|| anyhow!("argument {:?} not set", PARAM_PATH))
             .and_then(|arg_value| match arg_value {
                 ArgValue::OutputDirectory(path) => Ok(path.clone()),

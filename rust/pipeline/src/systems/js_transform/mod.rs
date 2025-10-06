@@ -14,12 +14,6 @@ use crate::{
 #[derive(Default)]
 pub struct JsTransformSystem;
 
-impl JsTransformSystem {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransformSystem {
     fn inputs<'a>(
         &self,
