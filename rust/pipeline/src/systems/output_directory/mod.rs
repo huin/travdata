@@ -45,8 +45,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
         >,
     ) -> anyhow::Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
     {
-        args.get(&node.id, &PARAM_PATH)
-            .ok_or_else(|| anyhow!("argument {:?} not set", PARAM_PATH))
+        args.require(&node.id, &PARAM_PATH)
             .and_then(|arg_value| match arg_value {
                 ArgValue::OutputDirectory(path) => Ok(path.clone()),
                 _ => Err(anyhow!(

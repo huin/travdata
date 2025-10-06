@@ -39,8 +39,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         let spec: &JsTransform = node.spec.try_cast_spec()?;
 
         let global_context = intermediates
-            .get(&spec.context)
-            .ok_or_else(|| anyhow!("context {:?} does not exist", spec.context))
+            .require(&spec.context)
             .and_then(|global_context| match global_context {
                 intermediates::IntermediateValue::JsContext(global_context) => Ok(global_context),
                 _ => Err(anyhow!(
@@ -85,8 +84,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
                 .iter()
                 .map(|(arg_name, node_id)| -> Result<v8::Local<v8::Value>> {
                     intermediates
-                        .get(node_id)
-                        .ok_or_else(|| anyhow!("missing intermediate value from node"))
+                        .require(node_id)
                         .and_then(|value| match value {
                             intermediates::IntermediateValue::JsonData(json_value) => {
                                 Ok(json_value)
