@@ -1,7 +1,12 @@
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Result, anyhow};
 use generic_pipeline::plparams::ParamId;
 
-use crate::{intermediates::IntermediateValue, plargs::ArgValue, plparams, specs};
+use crate::{
+    intermediates::IntermediateValue,
+    plargs::ArgValue,
+    plparams,
+    specs::{OutputDirectory, TryCastSpec},
+};
 
 pub struct OutputDirectorySystem;
 
@@ -18,12 +23,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ParamType,
         >,
     ) -> Result<()> {
-        let spec = match &node.spec {
-            specs::Spec::OutputDirectory(spec) => spec,
-            _ => {
-                bail!("node is not of type OutputDirectory");
-            }
-        };
+        let spec: &OutputDirectory = node.spec.try_cast_spec()?;
         reg.add_param(
             PARAM_PATH,
             plparams::ParamType::OutputDirectory,

@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests;
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow};
 use generic_pipeline::plinputs;
 use v8wrapper::CatchToResult;
 
 use crate::{
     NodeId, intermediates,
-    specs::{JsTransform, Spec},
+    specs::{JsTransform, Spec, TryCastSpec},
 };
 
 /// Provides processing support for [crate::specs::Spec::JsTransform].
@@ -18,15 +18,6 @@ impl JsTransformSystem {
     pub fn new() -> Self {
         Self
     }
-
-    fn cast_spec(spec: &Spec) -> Result<&JsTransform> {
-        match spec {
-            Spec::JsTransform(spec) => Ok(spec),
-            _ => {
-                bail!("node is not of type JsTransform");
-            }
-        }
-    }
 }
 
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransformSystem {
@@ -35,7 +26,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         node: &crate::Node,
         reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
     ) -> Result<()> {
-        let spec = Self::cast_spec(&node.spec)?;
+        let spec: &JsTransform = Spec::try_cast_spec(&node.spec)?;
 
         reg.add_input(&spec.context);
         for dep_id in spec.input_data.values() {
@@ -51,12 +42,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         _args: &crate::plargs::ArgSet,
         intermediates: &crate::intermediates::IntermediateSet,
     ) -> anyhow::Result<crate::intermediates::IntermediateValue> {
-        let spec = match &node.spec {
-            Spec::JsTransform(spec) => spec,
-            _ => {
-                bail!("node is not of type JsTransform");
-            }
-        };
+        let spec: &JsTransform = node.spec.try_cast_spec()?;
 
         let global_context = intermediates
             .get(&spec.context)
