@@ -2,6 +2,8 @@
 //!
 //! These provide runtime parameters for the [crate::plparams] for the pipeline.
 
+use anyhow::{Result, anyhow};
+
 use crate::{node, plparams};
 
 pub struct GenericArgSet<A> {
@@ -27,6 +29,18 @@ impl<A> GenericArgSet<A> {
         param_id: &plparams::ParamId,
     ) -> Option<&'a A> {
         self.args.get(&BorrowedParamKey { node_id, param_id })
+    }
+
+    pub fn require<'a>(
+        &'a self,
+        node_id: &node::NodeId,
+        param_id: &plparams::ParamId,
+    ) -> Result<&'a A> {
+        self.get(node_id, param_id).ok_or_else(|| {
+            anyhow!(
+                "required argument value for node {node_id:?} with parameter ID {param_id:?} not found (bug: missing parameter or argument)"
+            )
+        })
     }
 }
 
