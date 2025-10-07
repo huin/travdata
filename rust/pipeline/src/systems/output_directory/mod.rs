@@ -1,7 +1,7 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use generic_pipeline::plparams::ParamId;
 
-use crate::{intermediates, plargs::ArgValue, plparams, specs::OutputDirectory};
+use crate::{intermediates, plargs, plparams, specs};
 
 pub struct OutputDirectorySystem;
 
@@ -18,7 +18,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ParamType,
         >,
     ) -> Result<()> {
-        let spec = <&OutputDirectory>::try_from(&node.spec)?;
+        let spec = <&specs::OutputDirectory>::try_from(&node.spec)?;
         reg.add_param(
             PARAM_PATH,
             plparams::ParamType::OutputDirectory,
@@ -41,15 +41,8 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
     ) -> anyhow::Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
     {
         args.require(&node.id, &PARAM_PATH)
-            .and_then(|arg_value| match arg_value {
-                ArgValue::OutputDirectory(path) => Ok(path.clone()),
-                _ => Err(anyhow!(
-                    "argument {:?} should be of type OutputDirectory, but got {:?}",
-                    PARAM_PATH,
-                    arg_value,
-                )),
-            })
-            .map(intermediates::OutputDirectory)
+            .and_then(<&plargs::OutputDirectory>::try_from)
+            .map(|arg_value| intermediates::OutputDirectory(arg_value.0.clone()))
             .map(intermediates::IntermediateValue::from)
     }
 }
