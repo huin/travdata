@@ -83,6 +83,7 @@ type: OutputFileJson
 public: true
 spec:
   input_data: thingy-1-transform
+  directory: output-directory
   filename: thingy-1.json
             "#,
             Node{
@@ -94,6 +95,7 @@ spec:
                 public: true,
                 spec: Spec::OutputFileJson(OutputFileJson {
                     input_data: node_id("thingy-1-transform"),
+                    directory: node_id("output-directory"),
                     filename: output_path_buf("thingy-1.json"),
                 }),
             },
@@ -106,6 +108,7 @@ type: OutputFileCsv
 public: true
 spec:
   input_data: thingy-1-transform
+  directory: output-directory
   filename: thingy-1.csv
             "#,
             Node{
@@ -117,6 +120,7 @@ spec:
                 public: true,
                 spec: Spec::OutputFileCsv(OutputFileCsv {
                     input_data: node_id("thingy-1-transform"),
+                    directory: node_id("output-directory"),
                     filename: output_path_buf("thingy-1.csv"),
                 }),
             },

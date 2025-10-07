@@ -6,5 +6,6 @@ use crate::spec_types;
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct OutputFileJson {
     pub input_data: crate::NodeId,
+    pub directory: crate::NodeId,
     pub filename: spec_types::OutputPathBuf,
 }
