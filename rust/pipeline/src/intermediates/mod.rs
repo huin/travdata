@@ -3,15 +3,38 @@
 
 use std::path::PathBuf;
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum IntermediateValue {
-    NoData,
-    InputFile(PathBuf),
-    JsContext(v8::Global<v8::Context>),
-    JsonData(serde_json::Value),
-    OutputDirectory(PathBuf),
-}
+use crate::impl_enum_conversions;
 
 /// Monomorphic form of [generic_pipeline::intermediates::GenericIntermediateSet].
 pub type IntermediateSet =
     generic_pipeline::intermediates::GenericIntermediateSet<IntermediateValue>;
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum IntermediateValue {
+    NoData(NoData),
+    InputFile(InputFile),
+    JsContext(JsContext),
+    JsonData(JsonData),
+    OutputDirectory(OutputDirectory),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct NoData;
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct InputFile(pub PathBuf);
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct JsContext(pub v8::Global<v8::Context>);
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct JsonData(pub serde_json::Value);
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct OutputDirectory(pub PathBuf);
+
+impl_enum_conversions!(IntermediateValue, NoData, "intermediate value");
+impl_enum_conversions!(IntermediateValue, InputFile, "intermediate value");
+impl_enum_conversions!(IntermediateValue, JsContext, "intermediate value");
+impl_enum_conversions!(IntermediateValue, JsonData, "intermediate value");
+impl_enum_conversions!(IntermediateValue, OutputDirectory, "intermediate value");

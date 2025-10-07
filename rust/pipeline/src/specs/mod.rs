@@ -12,9 +12,9 @@ mod test_defaults;
 #[cfg(test)]
 mod tests;
 
-use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 
+use crate::impl_enum_conversions;
 pub use input_pdf_file::InputPdfFile;
 pub use js_context::JsContext;
 pub use js_transform::JsTransform;
@@ -45,31 +45,10 @@ impl generic_pipeline::node::SpecTrait for Spec {
     }
 }
 
-pub trait TryCastSpec<T> {
-    fn try_cast_spec(&self) -> Result<&T>;
-}
-
-fn cast_error(spec: &Spec, expected_type_name: &str) -> anyhow::Error {
-    anyhow!("node is not of type {}, got {:?}", expected_type_name, spec)
-}
-
-macro_rules! impl_try_cast_for {
-    ($variant_and_type:ident) => {
-        impl TryCastSpec<$variant_and_type> for Spec {
-            fn try_cast_spec(&self) -> Result<&$variant_and_type> {
-                match self {
-                    Spec::$variant_and_type(spec) => Ok(spec),
-                    _ => Err(cast_error(self, stringify!($variant_and_type))),
-                }
-            }
-        }
-    };
-}
-
-impl_try_cast_for!(InputPdfFile);
-impl_try_cast_for!(JsContext);
-impl_try_cast_for!(JsTransform);
-impl_try_cast_for!(OutputDirectory);
-impl_try_cast_for!(OutputFileCsv);
-impl_try_cast_for!(OutputFileJson);
-impl_try_cast_for!(PdfExtractTable);
+impl_enum_conversions!(Spec, InputPdfFile, "node");
+impl_enum_conversions!(Spec, JsContext, "node");
+impl_enum_conversions!(Spec, JsTransform, "node");
+impl_enum_conversions!(Spec, OutputDirectory, "node");
+impl_enum_conversions!(Spec, OutputFileCsv, "node");
+impl_enum_conversions!(Spec, OutputFileJson, "node");
+impl_enum_conversions!(Spec, PdfExtractTable, "node");

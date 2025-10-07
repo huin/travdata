@@ -23,6 +23,6 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsContex
 
         let global_context = v8wrapper::try_with_isolate(|tls_isolate| tls_isolate.new_ctx())?;
 
-        Ok(intermediates::IntermediateValue::JsContext(global_context))
+        Ok(intermediates::JsContext(global_context).into())
     }
 }

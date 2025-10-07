@@ -1,3 +1,4 @@
+mod enum_conversion;
 pub mod intermediates;
 pub mod plargs;
 pub mod plparams;

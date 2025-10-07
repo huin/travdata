@@ -122,24 +122,20 @@ fn test_process_uses_intermediate_values() -> Result<()> {
     let mut interms = intermediates::IntermediateSet::new();
     interms.set(
         node_id("context-id"),
-        intermediates::IntermediateValue::JsContext(context),
+        intermediates::JsContext(context).into(),
     );
     interms.set(
         node_id("node-a"),
-        intermediates::IntermediateValue::JsonData("foo".into()),
+        intermediates::JsonData("foo".into()).into(),
     );
     interms.set(
         node_id("node-b"),
-        intermediates::IntermediateValue::JsonData("bar".into()),
+        intermediates::JsonData("bar".into()).into(),
     );
     let got = system.process(&node, &Default::default(), &interms);
 
-    expect_that!(
-        got,
-        ok(eq(&intermediates::IntermediateValue::JsonData(
-            serde_json::Value::String("foo bar".into())
-        )))
-    );
+    let expected = intermediates::JsonData(serde_json::Value::String("foo bar".into())).into();
+    expect_that!(got, ok(eq(&expected)));
 
     drop(tls_isolate);
     Ok(())

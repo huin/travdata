@@ -5,10 +5,7 @@ use anyhow::{Context, Result, anyhow};
 use generic_pipeline::plinputs;
 use v8wrapper::CatchToResult;
 
-use crate::{
-    NodeId, intermediates,
-    specs::{JsTransform, Spec, TryCastSpec},
-};
+use crate::{NodeId, intermediates, specs::JsTransform};
 
 /// Provides processing support for [crate::specs::Spec::JsTransform].
 #[derive(Default)]
@@ -20,7 +17,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         node: &crate::Node,
         reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
     ) -> Result<()> {
-        let spec: &JsTransform = Spec::try_cast_spec(&node.spec)?;
+        let spec = <&JsTransform>::try_from(&node.spec)?;
 
         reg.add_input(&spec.context);
         for dep_id in spec.input_data.values() {
@@ -36,7 +33,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         _args: &crate::plargs::ArgSet,
         intermediates: &crate::intermediates::IntermediateSet,
     ) -> anyhow::Result<crate::intermediates::IntermediateValue> {
-        let spec: &JsTransform = node.spec.try_cast_spec()?;
+        let spec: &JsTransform = (&node.spec).try_into()?;
 
         let global_context = intermediates
             .require(&spec.context)
@@ -59,7 +56,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
 
         let result = v8wrapper::try_with_isolate(|tls_isolate| -> Result<serde_json::Value> {
             let scope = &mut tls_isolate.scope();
-            let ctx = v8::Local::new(scope, global_context);
+            let ctx = v8::Local::new(scope, &global_context.0);
             let scope = &mut v8::ContextScope::new(scope, ctx);
 
             let arg_names: Vec<&str> = arg_refs.iter().map(|(arg_name, _)| *arg_name).collect();
@@ -92,7 +89,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
                             _ => Err(anyhow!("argument is not JsonData, got {value:?}")),
                         })
                         .and_then(|value| {
-                            serde_v8::to_v8(try_catch, value)
+                            serde_v8::to_v8(try_catch, &value.0)
                                 .context("converting JsonData to v8::Value")
                             // TODO: Use `Object.freeze` to freeze any data passed in. This means
                             // that any future batching in `process_multiple` that would require it
@@ -116,7 +113,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
             Ok(result)
         })??;
 
-        Ok(intermediates::IntermediateValue::JsonData(result))
+        Ok(intermediates::JsonData(result).into())
     }
 
     // TODO: Optionally implement `process_multiple` as there might be some possible batching
