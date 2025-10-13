@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use generic_pipeline::plparams::ParamId;
 
 use crate::{intermediates, plargs, plparams, specs};
@@ -40,9 +40,16 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
         >,
     ) -> anyhow::Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
     {
-        args.require(&node.id, &PARAM_PATH)
+        let output_directory = args
+            .require(&node.id, &PARAM_PATH)
             .and_then(<&plargs::OutputDirectory>::try_from)
-            .map(|arg_value| intermediates::OutputDirectory(arg_value.0.clone()))
-            .map(intermediates::IntermediateValue::from)
+            .map(|arg_value| intermediates::OutputDirectory(arg_value.0.clone()))?;
+
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .create(&output_directory.0)
+            .context("creating OutputDirectory")?;
+
+        Ok(intermediates::IntermediateValue::from(output_directory))
     }
 }
