@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use anyhow::{Context, anyhow};
+use anyhow::Context;
 use generic_pipeline::systems::GenericSystem;
 
 use crate::{intermediates, specs};
@@ -44,12 +44,8 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileJsonSystem {
             .and_then(<&intermediates::JsonData>::try_from)
             .context("getting data to output")?;
 
-        let output_path = directory.0.join(&spec.filename);
-        std::fs::DirBuilder::new()
-            .recursive(true)
-            .create(output_path.parent().ok_or_else(|| {
-                anyhow!("output data path {output_path:?} does not have a parent directory")
-            })?)
+        let output_path = directory
+            .create_parent_dirs_for_file(&spec.filename)
             .context("creating parent directory for output data")?;
 
         let mut output_file = std::fs::File::create(output_path)?;

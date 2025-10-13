@@ -49,12 +49,8 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileCsvSystem {
             .as_array()
             .ok_or_else(|| anyhow!("output data is not a JSON array"))?;
 
-        let output_path = directory.0.join(&spec.filename);
-        std::fs::DirBuilder::new()
-            .recursive(true)
-            .create(output_path.parent().ok_or_else(|| {
-                anyhow!("output data path {output_path:?} does not have a parent directory")
-            })?)
+        let output_path = directory
+            .create_parent_dirs_for_file(&spec.filename)
             .context("creating parent directory for output data")?;
 
         let mut output = csv::WriterBuilder::new()
