@@ -1,7 +1,8 @@
 //! Types used within extraction configuration specification types.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 pub mod pdf;
@@ -11,11 +12,20 @@ pub mod pdf;
 // TODO: Validate the path when deserializing. Should be a relative-and-subdir-only value.
 pub struct OutputPathBuf(PathBuf);
 
-impl TryFrom<PathBuf> for OutputPathBuf {
-    type Error = anyhow::Error;
+impl AsRef<Path> for OutputPathBuf {
+    fn as_ref(&self) -> &Path {
+        &self.0
+    }
+}
 
-    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+impl OutputPathBuf {
+    // TODO: Ideally this would be a TryFrom, but there's a conflicting blanket impl in the stdlib,
+    // and I haven't debugged how to avoid that.
+    pub fn new<P>(value: P) -> Result<Self>
+    where
+        P: Into<PathBuf> + AsRef<Path>,
+    {
         // TODO: Validate the path.
-        Ok(Self(value))
+        Ok(Self(value.into()))
     }
 }
