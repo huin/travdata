@@ -12,13 +12,14 @@ const CASES: TestCases<(&'static str, Node)> = cases! {
             r#"
 id: foo-pdf
 type: InputPdfFile
-spec: {}
+spec:
+  description: input PDF file
             "#,
             Node{
                 id: node_id("foo-pdf"),
                 tags: Default::default(),
                 public: false,
-                spec: Spec::InputPdfFile(InputPdfFile),
+                spec: Spec::InputPdfFile(InputPdfFile { description: "input PDF file".into() }),
             },
         ),
         (

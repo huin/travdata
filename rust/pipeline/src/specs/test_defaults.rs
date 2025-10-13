@@ -9,7 +9,9 @@ impl testutils::DefaultForTest for Spec {
 
 impl testutils::DefaultForTest for InputPdfFile {
     fn default_for_test() -> Self {
-        Self
+        Self {
+            description: "default input PDF description".into(),
+        }
     }
 }
 
