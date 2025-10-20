@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize, de::Visitor};
 ///
 /// NOTE: In the PDF coordinate system, the origin (0,0) is at the bottom left of page. Therefore
 /// for a valid [PdfRect] the following must be true: `left <= right && bottom <= top`.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PdfRect {
     /// Horizontal coordinate of the left hand side of the rectangle.
     pub left: PdfPoints,
@@ -16,13 +16,49 @@ pub struct PdfRect {
     pub bottom: PdfPoints,
 }
 
+impl PdfRect {
+    fn width(&self) -> PdfPoints {
+        self.right - self.left
+    }
+
+    fn height(&self) -> PdfPoints {
+        self.top - self.bottom
+    }
+
+    fn to_tabula_rectangle(self) -> tabula::Rectangle {
+        tabula::Rectangle::new(
+            self.left.to_f32(),
+            self.top.to_f32(),
+            self.width().to_f32(),
+            self.height().to_f32(),
+        )
+    }
+
+    pub fn to_tabula_rectangle_page_area(&self) -> (i32, tabula::Rectangle) {
+        (
+            tabula::ABSOLUTE_AREA_CALCULATION_MODE,
+            self.to_tabula_rectangle(),
+        )
+    }
+}
+
 /// Extraction algorithm for Tabula to use.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TabulaExtractionMethod {
     Guess,
     Lattice,
     Stream,
+}
+
+impl TabulaExtractionMethod {
+    pub fn to_tabula_extraction_method(self) -> tabula::ExtractionMethod {
+        match self {
+            TabulaExtractionMethod::Stream => tabula::ExtractionMethod::Basic,
+            TabulaExtractionMethod::Guess => tabula::ExtractionMethod::Decide,
+            TabulaExtractionMethod::Lattice => tabula::ExtractionMethod::Spreadsheet,
+        }
+    }
 }
 
 /// Measurement of space within a Pdf page, 1 = 1/72 of an inch.

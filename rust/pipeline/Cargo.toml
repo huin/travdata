@@ -14,6 +14,8 @@ serde_yaml_ng.workspace = true
 serde_v8.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
+tabula.workspace = true
+tempfile.workspace = true
 v8.workspace = true
 v8wrapper.workspace = true
 

@@ -3289,6 +3289,8 @@ dependencies = [
  "serde_yaml_ng",
  "strum",
  "strum_macros",
+ "tabula",
+ "tempfile",
  "test-casing",
  "travdata-generic-pipeline",
  "travdata-testutils",

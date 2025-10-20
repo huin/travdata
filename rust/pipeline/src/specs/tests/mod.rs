@@ -27,7 +27,7 @@ spec:
 id: thingy-1-extract
 type: PdfExtractTable
 spec:
-  input_pdf: foo-pdf
+  pdf: foo-pdf
   page: 123
   method: stream
   rect:
@@ -41,6 +41,7 @@ spec:
                 tags: Default::default(),
                 public: false,
                 spec: Spec::PdfExtractTable(PdfExtractTable {
+                    pdf: node_id("foo-pdf"),
                     page: 123,
                     method: pdf::TabulaExtractionMethod::Stream,
                     rect: pdf::PdfRect {
