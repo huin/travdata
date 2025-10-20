@@ -39,7 +39,7 @@ impl OutputDirectory {
     /// Creates parent directories for the given file (relative to the output directory), and
     /// returns the path to the file.
     pub fn create_parent_dirs_for_file(&self, file_path: &OutputPathBuf) -> Result<PathBuf> {
-        let qualified_file_path = self.0.join(&file_path);
+        let qualified_file_path = self.0.join(file_path);
         std::fs::DirBuilder::new()
             .recursive(true)
             .create(qualified_file_path.parent().ok_or_else(|| {
