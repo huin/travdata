@@ -8,6 +8,7 @@ members = [
   "utils",
   "v8wrapper",
 ]
+exclude = ["deps/tabula-rs"]
 
 [workspace.dependencies]
 anyhow = "1.0.98"
@@ -22,6 +23,7 @@ hex = "0.4.3"
 image = "0.25.6"
 hashbrown = { version = "0.15.4", features = ["serde"] }
 lazy-regex = { version = "3.4.1", features = ["std"] }
+lazy_static = "1.5.0"
 log = "0.4.27"
 lru = "0.14.0"
 map-macro = { version = "0.3.0", features = ["hashbrown"] }

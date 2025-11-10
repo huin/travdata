@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize, de::Visitor};
 
-/// Defines a page-aligned rectangular region within a page of a PDF.
+/// Defines a page-aligned rectangular region within a page of a PDF, using the Tabula origin at
+/// the top-left of the page, rather than the standard PDF origin at the bottom left.
 ///
-/// NOTE: In the PDF coordinate system, the origin (0,0) is at the bottom left of page. Therefore
-/// for a valid [PdfRect] the following must be true: `left <= right && bottom <= top`.
+/// NOTE: In the Tabula coordinate system, the origin (0,0) is at the top left of page. Therefore
+/// for a valid [PdfRect] the following must be true: `left <= right && top <= bottom`.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct PdfRect {
+pub struct TabulaPdfRect {
     /// Horizontal coordinate of the left hand side of the rectangle.
     pub left: PdfPoints,
     /// Vertical coordinate of the top of the rectangle.
@@ -16,13 +17,13 @@ pub struct PdfRect {
     pub bottom: PdfPoints,
 }
 
-impl PdfRect {
+impl TabulaPdfRect {
     fn width(&self) -> PdfPoints {
         self.right - self.left
     }
 
     fn height(&self) -> PdfPoints {
-        self.top - self.bottom
+        self.bottom - self.top
     }
 
     fn to_tabula_rectangle(self) -> tabula::Rectangle {

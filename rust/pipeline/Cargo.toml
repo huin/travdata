@@ -22,6 +22,7 @@ v8wrapper.workspace = true
 [dev-dependencies]
 generic-pipeline = { features = ["testing"], workspace = true }
 googletest.workspace = true
+lazy_static.workspace = true
 map-macro.workspace = true
 test-casing.workspace = true
 testutils.workspace = true

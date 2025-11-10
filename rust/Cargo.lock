@@ -3282,6 +3282,7 @@ dependencies = [
  "csv",
  "googletest",
  "hashbrown",
+ "lazy_static",
  "map-macro",
  "serde",
  "serde_json",

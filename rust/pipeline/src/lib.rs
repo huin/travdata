@@ -5,6 +5,7 @@ pub mod plparams;
 pub mod spec_types;
 pub mod specs;
 pub mod systems;
+pub mod tabula_wrapper;
 #[cfg(test)]
 mod testutil;
 

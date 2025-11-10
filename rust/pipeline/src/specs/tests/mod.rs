@@ -44,7 +44,7 @@ spec:
                     pdf: node_id("foo-pdf"),
                     page: 123,
                     method: pdf::TabulaExtractionMethod::Stream,
-                    rect: pdf::PdfRect {
+                    rect: pdf::TabulaPdfRect {
                         left: pdf::PdfPoints::from_f32(24.0),
                         top: pdf::PdfPoints::from_f32(110.0),
                         right: pdf::PdfPoints::from_f32(58.0),

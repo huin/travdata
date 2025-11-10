@@ -1,26 +1,33 @@
+#[cfg(test)]
+mod tests;
+
 use std::path::Path;
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Result, anyhow, bail};
 use hashbrown::HashMap;
-use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
-    Node, NodeResult, intermediates, plargs::ArgSet, spec_types::pdf::TabulaExtractionMethod, specs,
+    Node, NodeResult, intermediates,
+    plargs::ArgSet,
+    spec_types::pdf::TabulaExtractionMethod,
+    specs,
+    tabula_wrapper::{self, TabulaExtractionRequest, TabulaExtractor},
 };
 
 /// System to extract table(s) from a PDF file using Tabula.
-pub struct TabulaPdfExtractTableSystem<'env> {
+pub struct TabulaPdfExtractTableSystem<'t> {
     // TODO: client handle to talk to a worker thread that can be running on the main thread so
-    // that the pipeline's processing doesn't have to be.
-    tabula_env: tabula::TabulaEnv<'env>,
+    // that the pipeline's processing doesn't have to be. If this turns out to be necessary, which
+    // it might not be.
+    tabula: &'t dyn TabulaExtractor,
 }
 
-impl<'env> TabulaPdfExtractTableSystem<'env> {
+impl<'t> TabulaPdfExtractTableSystem<'t> {
     /// Creates a [TabulaPdfExtractTableSystem] that delegates to the [tabula::TabulaEnv] in order
     /// to perform the extraction.
-    pub fn new(tabula_env: tabula::TabulaEnv<'env>) -> Self {
-        Self { tabula_env }
+    pub fn new(tabula: &'t dyn TabulaExtractor) -> Self {
+        Self { tabula }
     }
 
     fn extract_table_group(
@@ -28,33 +35,22 @@ impl<'env> TabulaPdfExtractTableSystem<'env> {
         pdf_path: &Path,
         group: &ExtractGroupKey,
         node_specs: &[NodeSpec],
-    ) -> Result<JsonTableSet> {
+    ) -> Result<tabula_wrapper::JsonTableSet> {
         let page_areas: Vec<_> = node_specs
             .iter()
             .map(|node_spec| node_spec.spec.rect.to_tabula_rectangle_page_area())
             .collect();
-        let tabula = self
-            .tabula_env
-            .configure_tabula(
-                Some(&page_areas),
-                Some(&[group.page]),
-                tabula::OutputFormat::Json,
-                false,
-                group.method.to_tabula_extraction_method(),
-                false,
-                None,
-            )
-            .with_context(|| "configuring Tabula to extract table")?;
 
-        let extracted_file = tempfile::NamedTempFile::new()
-            .context("creating temporary file for extracting PDF table data")?;
-        tabula
-            .parse_document_into(pdf_path, extracted_file.path())
-            .context("extracting PDF table data")?;
-        let result: JsonTableSet =
-            serde_json::from_reader(extracted_file).context("parsing extracted PDF table data")?;
-
-        Ok(result)
+        self.tabula.extract_tables(TabulaExtractionRequest {
+            pdf_path: pdf_path.to_path_buf(),
+            password: None,
+            page: group.page,
+            guess: false,
+            // TODO: Decide if newlines should be retained, or if it should be configurable.
+            use_returns: false,
+            page_areas,
+            method: group.method.to_tabula_extraction_method(),
+        })
     }
 
     fn extract_table_group_to_intermediates(
@@ -105,7 +101,7 @@ impl<'env> TabulaPdfExtractTableSystem<'env> {
         }
     }
 
-    fn convert_tabula_table_to_table_json(tabula_table: JsonTable) -> Value {
+    fn convert_tabula_table_to_table_json(tabula_table: tabula_wrapper::JsonTable) -> Value {
         Value::Array(
             tabula_table
                 .data
@@ -226,37 +222,6 @@ impl<'env> generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
 
         results
     }
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(transparent)]
-struct JsonTableSet(pub Vec<JsonTable>);
-
-#[allow(dead_code)]
-#[derive(Deserialize, Debug)]
-struct JsonTable {
-    pub extraction_method: String,
-    pub page_number: i32,
-    pub top: f32,
-    pub left: f32,
-    pub width: f32,
-    pub height: f32,
-    pub right: f32,
-    pub bottom: f32,
-    pub data: Vec<JsonRow>,
-}
-
-#[derive(Deserialize, Debug)]
-struct JsonRow(pub Vec<JsonCell>);
-
-#[allow(dead_code)]
-#[derive(Deserialize, Debug)]
-struct JsonCell {
-    pub top: f32,
-    pub left: f32,
-    pub width: f32,
-    pub height: f32,
-    pub text: String,
 }
 
 struct NodeSpec<'a> {
