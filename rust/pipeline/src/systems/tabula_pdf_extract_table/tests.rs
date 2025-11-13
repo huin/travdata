@@ -19,6 +19,8 @@ lazy_static! {
         tabula::TabulaVM::new("../target/debug/tabula.jar", true);
 }
 
+// TODO: Consider merging the error and success tests together.
+
 #[derive(Debug)]
 struct NodeTestCase {
     skip: bool,
@@ -246,8 +248,7 @@ struct NodeExpectError {
 const EXTRACTS_TABLES_ERROR_TEST_CASES: test_casing::TestCases<NodeErrorTestCase> = cases! {
     [
         NodeErrorTestCase {
-            // TODO: fix this case.
-            skip: true,
+            skip: false,
             nodes: vec![
                 Node {
                     id: node_id("no-tables-in-region"),
@@ -268,12 +269,11 @@ const EXTRACTS_TABLES_ERROR_TEST_CASES: test_casing::TestCases<NodeErrorTestCase
             expected_errors: &[
                 NodeExpectError {
                     node_id: "no-tables-in-region",
-                    error_contains: Some("no table data in region"),
+                    error_contains: Some("no table in region"),
                 },
             ],
         },
         NodeErrorTestCase {
-            // TODO: fix this case.
             skip: true,
             nodes: vec![
                 Node {
@@ -295,13 +295,12 @@ const EXTRACTS_TABLES_ERROR_TEST_CASES: test_casing::TestCases<NodeErrorTestCase
             expected_errors: &[
                 NodeExpectError {
                     node_id: "two-tables-in-region",
-                    error_contains: Some("no table data in region"),
+                    error_contains: Some("no table in region"),
                 },
             ],
         },
         NodeErrorTestCase {
-            // TODO: fix this case.
-            skip: true,
+            skip: false,
             nodes: vec![
                 Node {
                     id: node_id("no-tables-in-region"),
@@ -337,14 +336,15 @@ const EXTRACTS_TABLES_ERROR_TEST_CASES: test_casing::TestCases<NodeErrorTestCase
             expected_errors: &[
                 NodeExpectError {
                     node_id: "no-tables-in-region",
-                    error_contains: Some("no table data in region"),
+                    error_contains: Some("no table in region"),
                 },
                 NodeExpectError {
                     node_id: "two-tables-in-region",
-                    error_contains: Some("no table data in region"),
+                    error_contains: Some("multiple (2) tables in region"),
                 },
             ],
         },
+        // TODO: Add test case(s) with mixed error/success nodes.
         // TODO: Add test case(s) with overlapping regions.
     ]
 };
@@ -378,10 +378,7 @@ fn test_multi_process_errors(test_case: NodeErrorTestCase) -> Result<()> {
     let interms = test_data_interms();
     let got_results = system.process_multiple(&node_refs, &Default::default(), &interms);
 
-    let got_mapped_results: HashMap<NodeId, Result<intermediates::IntermediateValue>> = got_results
-        .into_iter()
-        .map(|node_result| (node_result.id, node_result.value))
-        .collect();
+    let got_mapped_results = node_results_to_hashmap(got_results);
 
     let got_node_ids: HashSet<NodeId> = got_mapped_results.keys().cloned().collect();
     expect_that!(got_node_ids, eq(&expected_node_ids));
@@ -394,8 +391,8 @@ fn test_multi_process_errors(test_case: NodeErrorTestCase) -> Result<()> {
         ) {
             (Some(expected_error_contains), Some(Err(got_error))) => {
                 expect_that!(
-                    got_error.to_string(),
-                    contains_substring(expected_error_contains),
+                    got_error,
+                    displays_as(contains_substring(expected_error_contains)),
                     "for node_id {:?}",
                     node_id,
                 );
@@ -449,4 +446,13 @@ fn table_slice_to_to_json_value(table_slice: &[&[&str]]) -> serde_json::Value {
             })
             .collect(),
     )
+}
+
+fn node_results_to_hashmap(
+    node_results: Vec<crate::NodeResult>,
+) -> HashMap<NodeId, Result<intermediates::IntermediateValue>> {
+    node_results
+        .into_iter()
+        .map(|node_result| (node_result.id, node_result.value))
+        .collect()
 }

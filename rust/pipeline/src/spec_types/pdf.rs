@@ -26,7 +26,7 @@ impl TabulaPdfRect {
         self.bottom - self.top
     }
 
-    fn to_tabula_rectangle(self) -> tabula::Rectangle {
+    pub fn to_tabula_rectangle(self) -> tabula::Rectangle {
         tabula::Rectangle::new(
             self.left.to_f32(),
             self.top.to_f32(),

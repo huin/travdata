@@ -10,7 +10,7 @@ use serde_json::Value;
 use crate::{
     Node, NodeResult, intermediates,
     plargs::ArgSet,
-    spec_types::pdf::TabulaExtractionMethod,
+    spec_types::pdf::{self, TabulaExtractionMethod},
     specs,
     tabula_wrapper::{self, TabulaExtractionRequest, TabulaExtractor},
 };
@@ -60,6 +60,9 @@ impl<'t> TabulaPdfExtractTableSystem<'t> {
         group: &ExtractGroupKey,
         node_specs: &[NodeSpec],
     ) {
+        // TODO: group node_specs into non-overlapping groups to extract separately, to avoid
+        // ambiguity (at the very least, lattice method can output [0,many] tables).
+
         let table_set = match self.extract_table_group(pdf_path, group, node_specs) {
             Ok(table_set) => table_set,
             Err(err) => {
@@ -73,49 +76,32 @@ impl<'t> TabulaPdfExtractTableSystem<'t> {
             }
         };
 
-        if table_set.0.len() != node_specs.len() {
-            for node_spec in node_specs {
-                results.push(NodeResult {
-                    id: node_spec.node.id.clone(),
-                    value: Err(anyhow!(
-                        "bug: mismatch in extracted table set length ({}) from that expected ({})",
-                        table_set.0.len(),
-                        node_specs.len(),
-                    )),
-                });
-            }
-            return;
-        }
+        let mut table_set_iter = table_set.0.into_iter().peekable();
+        for node_spec in node_specs {
+            let mut found_table: TableMatch = TableMatch::None;
 
-        for (tabula_table, node_spec) in table_set.0.into_iter().zip(node_specs.iter()) {
-            // TODO: Consider if in future the raw JsonTableSet should be returned, which could be
-            // specifed via an option on the specs.
+            // Consume tables within the node_spec's region until one falls outside of it.
+            while let Some(table) =
+                table_set_iter.next_if(|table| is_json_table_within(table, &node_spec.spec.rect))
+            {
+                found_table.add_match(table);
+            }
+
+            let value: Result<intermediates::IntermediateValue> = match found_table {
+                TableMatch::None => Err(anyhow!("no table in region")),
+                TableMatch::One(table) => {
+                    // TODO: Consider if in future the raw JsonTableSet should be returned, which
+                    // could be specifed via an option on the specs.
+                    Ok(intermediates::JsonData(convert_tabula_table_to_table_json(table)).into())
+                }
+                TableMatch::Many(n) => Err(anyhow!("multiple ({n}) tables in region")),
+            };
 
             results.push(NodeResult {
                 id: node_spec.node.id.clone(),
-                value: Ok(
-                    intermediates::JsonData(Self::convert_tabula_table_to_table_json(tabula_table))
-                        .into(),
-                ),
+                value,
             });
         }
-    }
-
-    fn convert_tabula_table_to_table_json(tabula_table: tabula_wrapper::JsonTable) -> Value {
-        Value::Array(
-            tabula_table
-                .data
-                .into_iter()
-                .map(|row| {
-                    Value::Array(
-                        row.0
-                            .into_iter()
-                            .map(|field| Value::String(field.text))
-                            .collect(),
-                    )
-                })
-                .collect(),
-        )
     }
 }
 
@@ -237,4 +223,46 @@ struct NodeSpec<'a> {
 struct ExtractGroupKey {
     page: i32,
     method: TabulaExtractionMethod,
+}
+
+fn is_json_table_within(json_table: &tabula_wrapper::JsonTable, rect: &pdf::TabulaPdfRect) -> bool {
+    json_table.top >= rect.top.to_f32()
+        && json_table.bottom <= rect.bottom.to_f32()
+        && json_table.left >= rect.left.to_f32()
+        && json_table.right <= rect.right.to_f32()
+}
+
+fn convert_tabula_table_to_table_json(tabula_table: tabula_wrapper::JsonTable) -> Value {
+    Value::Array(
+        tabula_table
+            .data
+            .into_iter()
+            .map(|row| {
+                Value::Array(
+                    row.0
+                        .into_iter()
+                        .map(|field| Value::String(field.text))
+                        .collect(),
+                )
+            })
+            .collect(),
+    )
+}
+
+enum TableMatch {
+    None,
+    One(tabula_wrapper::JsonTable),
+    Many(usize),
+}
+
+impl TableMatch {
+    fn add_match(&mut self, table: tabula_wrapper::JsonTable) {
+        use TableMatch::*;
+
+        *self = match self {
+            None => One(table),
+            One(_) => Many(2),
+            Many(n) => Many(n.saturating_add(1)),
+        }
+    }
 }
