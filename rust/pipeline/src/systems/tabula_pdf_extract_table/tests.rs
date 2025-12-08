@@ -1,13 +1,14 @@
 use anyhow::Result;
 use generic_pipeline::systems::GenericSystem;
 use googletest::prelude::*;
-use hashbrown::{HashMap, HashSet};
-use test_casing::{cases, test_casing};
+use hashbrown::HashMap;
 use testutils::DefaultForTest;
 
 use crate::{
-    Node, NodeId, intermediates, spec_types::pdf,
-    tabula_wrapper::singlethreaded::SingleThreadedTabulaExtractor, testutil::node_id,
+    Node, NodeId, intermediates,
+    spec_types::pdf,
+    tabula_wrapper::singlethreaded::SingleThreadedTabulaExtractor,
+    testutil::{MatcherBox, NodeExpected, check_results, node_id},
 };
 
 use super::TabulaPdfExtractTableSystem;
@@ -15,427 +16,275 @@ use super::TabulaPdfExtractTableSystem;
 use lazy_static::lazy_static;
 
 lazy_static! {
-    static ref VM: anyhow::Result<tabula::TabulaVM> =
+    static ref VM: Result<tabula::TabulaVM> =
         tabula::TabulaVM::new("../target/debug/tabula.jar", true);
 }
 
-// TODO: Consider merging the error and success tests together.
-
-#[derive(Debug)]
-struct NodeTestCase {
-    skip: bool,
-    nodes: Vec<Node>,
-    expected_output: &'static [NodeOutput],
-}
-
-#[derive(Debug)]
-struct NodeOutput {
-    node_id: &'static str,
-    data: &'static [&'static [&'static str]],
-}
-
-const EXTRACTS_TABLES_TEST_CASES: test_casing::TestCases<NodeTestCase> = cases! {
-    [
-        NodeTestCase {
-            skip: false,
-            nodes: vec![
-                Node {
-                    id: node_id("node-one"),
-                    spec: crate::specs::PdfExtractTable {
-                        pdf: node_id("pdf-file"),
-                        page: 1,
-                        method: pdf::TabulaExtractionMethod::Lattice,
-                        rect: pdf::TabulaPdfRect {
-                            left: 52.0.into(),
-                            top: 88.0.into(),
-                            right: (52.0 + 489.0).into(),
-                            bottom: (88.0 + 67.0).into(),
-                        },
-                    }.into(),
-                    ..DefaultForTest::default_for_test()
-                },
-            ],
-            expected_output: &[
-                NodeOutput {
-                    node_id: "node-one",
-                    data: &[
-                        &["Heading 1", "Heading 2", "Heading 3"],
-                        &["r1c1", "r1c2", "r1c3"],
-                        &["r2c1", "r2c2", "r2c3"],
-                    ],
-                },
-            ],
-        },
-        NodeTestCase {
-            skip: false,
-            nodes: vec![
-                Node {
-                    id: node_id("node-one"),
-                    spec: crate::specs::PdfExtractTable {
-                        pdf: node_id("pdf-file"),
-                        page: 1,
-                        method: pdf::TabulaExtractionMethod::Stream,
-                        rect: pdf::TabulaPdfRect {
-                            left: 52.0.into(),
-                            top: 186.0.into(),
-                            right: (52.0 + 489.0).into(),
-                            bottom: (186.0 + 67.0).into(),
-                        },
-                    }.into(),
-                    ..DefaultForTest::default_for_test()
-                },
-            ],
-            expected_output: &[
-                NodeOutput {
-                    node_id: "node-one",
-                    data: &[
-                        &["Heading 1", "Heading 2", "Heading 3"],
-                        &["r1c1", "r1c2", "r1c3"],
-                        &["r2c1", "r2c2", "r2c3"],
-                    ],
-                },
-            ],
-        },
-        NodeTestCase {
-            // TODO: fix this case.
-            skip: true,
-            nodes: vec![
-                Node {
-                    id: node_id("node-one"),
-                    spec: crate::specs::PdfExtractTable {
-                        pdf: node_id("pdf-file"),
-                        page: 1,
-                        method: pdf::TabulaExtractionMethod::Lattice,
-                        rect: pdf::TabulaPdfRect {
-                            left: 52.0.into(),
-                            top: 275.0.into(),
-                            right: (52.0 + 489.0).into(),
-                            bottom: (275.0 + 149.0).into(),
-                        },
-                    }.into(),
-                    ..DefaultForTest::default_for_test()
-                },
-            ],
-            expected_output: &[
-                NodeOutput {
-                    node_id: "node-one",
-                    data: &[
-                        &["Heading 1", "Heading 2", "Heading 3"],
-                        &["r1c1", "r1c2", "r1c3"],
-                        &["r2c1", "r2c2", "r2c3"],
-                        &["r3c1", "r3c2", "r3c3"],
-                        &["r4c1", "r4c2", "r4c3"],
-                    ],
-                },
-            ],
-        },
-        NodeTestCase {
-            // TODO: fix this case.
-            skip: true,
-            nodes: vec![
-                Node {
-                    id: node_id("first-table-only"),
-                    spec: crate::specs::PdfExtractTable {
-                        pdf: node_id("pdf-file"),
-                        page: 1,
-                        method: pdf::TabulaExtractionMethod::Lattice,
-                        rect: pdf::TabulaPdfRect {
-                            left: 52.0.into(),
-                            top: 275.0.into(),
-                            right: (52.0 + 489.0).into(),
-                            bottom: (275.0 + 65.0).into(),
-                        },
-                    }.into(),
-                    ..DefaultForTest::default_for_test()
-                },
-                Node {
-                    id: node_id("both-tables"),
-                    spec: crate::specs::PdfExtractTable {
-                        pdf: node_id("pdf-file"),
-                        page: 1,
-                        method: pdf::TabulaExtractionMethod::Lattice,
-                        rect: pdf::TabulaPdfRect {
-                            left: 52.0.into(),
-                            top: 275.0.into(),
-                            right: (52.0 + 489.0).into(),
-                            bottom: (275.0 + 149.0).into(),
-                        },
-                    }.into(),
-                    ..DefaultForTest::default_for_test()
-                },
-            ],
-            expected_output: &[
-                NodeOutput {
-                    node_id: "first-table-only",
-                    data: &[
-                        &["Heading 1", "Heading 2", "Heading 3"],
-                        &["r1c1", "r1c2", "r1c3"],
-                        &["r2c1", "r2c2", "r2c3"],
-                    ],
-                },
-                NodeOutput {
-                    node_id: "both-tables",
-                    data: &[
-                        &["Heading 1", "Heading 2", "Heading 3"],
-                        &["r1c1", "r1c2", "r1c3"],
-                        &["r2c1", "r2c2", "r2c3"],
-                        &["r3c1", "r3c2", "r3c3"],
-                        &["r4c1", "r4c2", "r4c3"],
-                    ],
-                },
-            ],
-        },
-        // TODO: Add test case(s) with overlapping regions.
-    ]
-};
-
-#[test]
-fn test_multi_process_extracts_tables_len() {
-    assert_eq!(4, EXTRACTS_TABLES_TEST_CASES.into_iter().count());
-}
-
-#[test_casing(4, EXTRACTS_TABLES_TEST_CASES)]
 #[gtest]
-fn test_multi_process_extracts_tables(test_case: NodeTestCase) -> Result<()> {
-    if test_case.skip {
-        return Ok(());
-    }
+fn test_extracts_single_table_lattice() -> Result<()> {
+    let node_expecteds = vec![NodeExpected {
+        node: Node {
+            id: node_id("node-one"),
+            spec: crate::specs::PdfExtractTable {
+                pdf: node_id("pdf-file"),
+                page: 1,
+                method: pdf::TabulaExtractionMethod::Lattice,
+                rect: pdf::TabulaPdfRect {
+                    left: 52.0.into(),
+                    top: 88.0.into(),
+                    right: (52.0 + 489.0).into(),
+                    bottom: (88.0 + 67.0).into(),
+                },
+            }
+            .into(),
+            ..DefaultForTest::default_for_test()
+        },
+        expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
+            &["Heading 1", "Heading 2", "Heading 3"],
+            &["r1c1", "r1c2", "r1c3"],
+            &["r2c1", "r2c2", "r2c3"],
+        ])))),
+    }];
 
-    let vm = VM.as_ref().unwrap();
-    let env = vm.attach()?;
-    let extractor = SingleThreadedTabulaExtractor::new(env);
-    let system = TabulaPdfExtractTableSystem::new(&extractor);
-
-    let node_refs: Vec<&Node> = test_case.nodes.iter().collect();
-
-    let expected_interms: HashMap<NodeId, intermediates::IntermediateValue> = test_case
-        .expected_output
-        .iter()
-        .map(|node_output| {
-            (
-                node_id(node_output.node_id),
-                intermediates::JsonData(table_slice_to_to_json_value(node_output.data)).into(),
-            )
-        })
-        .collect();
-
-    let interms = test_data_interms();
-    let got_results = system.process_multiple(&node_refs, &Default::default(), &interms);
-
-    let got_interims: HashMap<NodeId, intermediates::IntermediateValue> = got_results
-        .into_iter()
-        .map(|node_result| Ok((node_result.id, node_result.value?)))
-        .collect::<anyhow::Result<HashMap<_, _>>>()?;
-
-    expect_that!(got_interims, eq(&expected_interms));
-
+    let actual_results_map = do_multi_process(&node_expecteds)?;
+    check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
 
-#[derive(Debug)]
-struct NodeErrorTestCase {
-    skip: bool,
-    nodes: Vec<Node>,
-    expected_errors: &'static [NodeExpectError],
-}
-
-#[derive(Debug)]
-struct NodeExpectError {
-    node_id: &'static str,
-    error_contains: Option<&'static str>,
-}
-
-const EXTRACTS_TABLES_ERROR_TEST_CASES: test_casing::TestCases<NodeErrorTestCase> = cases! {
-    [
-        NodeErrorTestCase {
-            skip: false,
-            nodes: vec![
-                Node {
-                    id: node_id("no-tables-in-region"),
-                    spec: crate::specs::PdfExtractTable {
-                        pdf: node_id("pdf-file"),
-                        page: 1,
-                        method: pdf::TabulaExtractionMethod::Lattice,
-                        rect: pdf::TabulaPdfRect {
-                            left: 52.0.into(),
-                            top: 27.0.into(),
-                            right: (52.0 + 489.0).into(),
-                            bottom: (27.0 + 22.0).into(),
-                        },
-                    }.into(),
-                    ..DefaultForTest::default_for_test()
-                },
-            ],
-            expected_errors: &[
-                NodeExpectError {
-                    node_id: "no-tables-in-region",
-                    error_contains: Some("no table in region"),
-                },
-            ],
-        },
-        NodeErrorTestCase {
-            skip: true,
-            nodes: vec![
-                Node {
-                    id: node_id("two-tables-in-region"),
-                    spec: crate::specs::PdfExtractTable {
-                        pdf: node_id("pdf-file"),
-                        page: 1,
-                        method: pdf::TabulaExtractionMethod::Lattice,
-                        rect: pdf::TabulaPdfRect {
-                            left: 52.0.into(),
-                            top: 275.0.into(),
-                            right: (52.0 + 489.0).into(),
-                            bottom: (275.0 + 149.0).into(),
-                        },
-                    }.into(),
-                    ..DefaultForTest::default_for_test()
-                },
-            ],
-            expected_errors: &[
-                NodeExpectError {
-                    node_id: "two-tables-in-region",
-                    error_contains: Some("no table in region"),
-                },
-            ],
-        },
-        NodeErrorTestCase {
-            skip: false,
-            nodes: vec![
-                Node {
-                    id: node_id("no-tables-in-region"),
-                    spec: crate::specs::PdfExtractTable {
-                        pdf: node_id("pdf-file"),
-                        page: 1,
-                        method: pdf::TabulaExtractionMethod::Lattice,
-                        rect: pdf::TabulaPdfRect {
-                            left: 52.0.into(),
-                            top: 27.0.into(),
-                            right: (52.0 + 489.0).into(),
-                            bottom: (27.0 + 22.0).into(),
-                        },
-                    }.into(),
-                    ..DefaultForTest::default_for_test()
-                },
-                Node {
-                    id: node_id("two-tables-in-region"),
-                    spec: crate::specs::PdfExtractTable {
-                        pdf: node_id("pdf-file"),
-                        page: 1,
-                        method: pdf::TabulaExtractionMethod::Lattice,
-                        rect: pdf::TabulaPdfRect {
-                            left: 52.0.into(),
-                            top: 275.0.into(),
-                            right: (52.0 + 489.0).into(),
-                            bottom: (275.0 + 149.0).into(),
-                        },
-                    }.into(),
-                    ..DefaultForTest::default_for_test()
-                },
-            ],
-            expected_errors: &[
-                NodeExpectError {
-                    node_id: "no-tables-in-region",
-                    error_contains: Some("no table in region"),
-                },
-                NodeExpectError {
-                    node_id: "two-tables-in-region",
-                    error_contains: Some("multiple (2) tables in region"),
-                },
-            ],
-        },
-        // TODO: Add test case(s) with mixed error/success nodes.
-        // TODO: Add test case(s) with overlapping regions.
-    ]
-};
-
-#[test]
-fn test_multi_process_errors_when_multiple_tables_match_len() {
-    assert_eq!(3, EXTRACTS_TABLES_ERROR_TEST_CASES.into_iter().count());
-}
-
-#[test_casing(3, EXTRACTS_TABLES_ERROR_TEST_CASES)]
 #[gtest]
-fn test_multi_process_errors(test_case: NodeErrorTestCase) -> Result<()> {
-    if test_case.skip {
-        return Ok(());
-    }
-
-    let vm = VM.as_ref().unwrap();
-    let env = vm.attach()?;
-    let extractor = SingleThreadedTabulaExtractor::new(env);
-
-    let system = TabulaPdfExtractTableSystem::new(&extractor);
-
-    let node_refs: Vec<&Node> = test_case.nodes.iter().collect();
-
-    let expected_node_ids: HashSet<NodeId> = test_case
-        .expected_errors
-        .iter()
-        .map(|node_error| node_id(node_error.node_id))
-        .collect();
-
-    let interms = test_data_interms();
-    let got_results = system.process_multiple(&node_refs, &Default::default(), &interms);
-
-    let got_mapped_results = node_results_to_hashmap(got_results);
-
-    let got_node_ids: HashSet<NodeId> = got_mapped_results.keys().cloned().collect();
-    expect_that!(got_node_ids, eq(&expected_node_ids));
-
-    for expected_node_error in test_case.expected_errors {
-        let node_id = node_id(expected_node_error.node_id);
-        match (
-            expected_node_error.error_contains,
-            got_mapped_results.get(&node_id),
-        ) {
-            (Some(expected_error_contains), Some(Err(got_error))) => {
-                expect_that!(
-                    got_error,
-                    displays_as(contains_substring(expected_error_contains)),
-                    "for node_id {:?}",
-                    node_id,
-                );
+fn test_extracts_single_table_stream() -> Result<()> {
+    let node_expecteds = vec![NodeExpected {
+        node: Node {
+            id: node_id("node-one"),
+            spec: crate::specs::PdfExtractTable {
+                pdf: node_id("pdf-file"),
+                page: 1,
+                method: pdf::TabulaExtractionMethod::Stream,
+                rect: pdf::TabulaPdfRect {
+                    left: 52.0.into(),
+                    top: 186.0.into(),
+                    right: (52.0 + 489.0).into(),
+                    bottom: (186.0 + 67.0).into(),
+                },
             }
-            (Some(_), Some(Ok(got_value))) => {
-                expect_true!(
-                    false,
-                    "for node_id {:?}: produced unexpected success value {:?}",
-                    node_id,
-                    got_value,
-                );
-            }
-            (None, Some(Err(got_error))) => {
-                expect_true!(
-                    false,
-                    "for node_id {:?}: produced unexpected error {:?}",
-                    node_id,
-                    got_error,
-                );
-            }
-            (None, Some(Ok(_))) => {
-                // Expected success.
-            }
-            (_, None) => {
-                // Failure case covered by checking presence of ID set.
-            }
-        }
-    }
+            .into(),
+            ..DefaultForTest::default_for_test()
+        },
+        expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
+            &["Heading 1", "Heading 2", "Heading 3"],
+            &["r1c1", "r1c2", "r1c3"],
+            &["r2c1", "r2c2", "r2c3"],
+        ])))),
+    }];
 
+    let actual_results_map = do_multi_process(&node_expecteds)?;
+    check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
 
-fn test_data_interms() -> intermediates::IntermediateSet {
-    let mut interms = intermediates::IntermediateSet::new();
-    interms.set(
-        node_id("pdf-file"),
-        intermediates::InputFile("./test_data/tables.pdf".into()).into(),
-    );
-    interms
+#[gtest]
+fn test_rejects_lattice_in_two_parts() -> Result<()> {
+    let node_expecteds = vec![NodeExpected {
+        node: Node {
+            id: node_id("node-one"),
+            spec: crate::specs::PdfExtractTable {
+                pdf: node_id("pdf-file"),
+                page: 1,
+                method: pdf::TabulaExtractionMethod::Lattice,
+                rect: pdf::TabulaPdfRect {
+                    left: 52.0.into(),
+                    top: 275.0.into(),
+                    right: (52.0 + 489.0).into(),
+                    bottom: (275.0 + 149.0).into(),
+                },
+            }
+            .into(),
+            ..DefaultForTest::default_for_test()
+        },
+        expected: MatcherBox::new(err(displays_as(contains_substring(
+            "multiple (2) tables in region",
+        )))),
+    }];
+
+    let actual_results_map = do_multi_process(&node_expecteds)?;
+    check_results(&actual_results_map, node_expecteds);
+    Ok(())
 }
 
-fn table_slice_to_to_json_value(table_slice: &[&[&str]]) -> serde_json::Value {
-    serde_json::Value::Array(
+#[gtest]
+fn test_extracts_single_table_and_rejects_overlapping_split_table() -> Result<()> {
+    let node_expecteds = vec![
+        NodeExpected {
+            node: Node {
+                id: node_id("first-table-only"),
+                spec: crate::specs::PdfExtractTable {
+                    pdf: node_id("pdf-file"),
+                    page: 1,
+                    method: pdf::TabulaExtractionMethod::Lattice,
+                    rect: pdf::TabulaPdfRect {
+                        left: 52.0.into(),
+                        top: 275.0.into(),
+                        right: (52.0 + 489.0).into(),
+                        bottom: (275.0 + 65.0).into(),
+                    },
+                }
+                .into(),
+                ..DefaultForTest::default_for_test()
+            },
+            expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
+                &["Heading 1", "Heading 2", "Heading 3"],
+                &["r1c1", "r1c2", "r1c3"],
+                &["r2c1", "r2c2", "r2c3"],
+            ])))),
+        },
+        NodeExpected {
+            node: Node {
+                id: node_id("both-tables"),
+                spec: crate::specs::PdfExtractTable {
+                    pdf: node_id("pdf-file"),
+                    page: 1,
+                    method: pdf::TabulaExtractionMethod::Lattice,
+                    rect: pdf::TabulaPdfRect {
+                        left: 52.0.into(),
+                        top: 275.0.into(),
+                        right: (52.0 + 489.0).into(),
+                        bottom: (275.0 + 149.0).into(),
+                    },
+                }
+                .into(),
+                ..DefaultForTest::default_for_test()
+            },
+            expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
+                &["Heading 1", "Heading 2", "Heading 3"],
+                &["r1c1", "r1c2", "r1c3"],
+                &["r2c1", "r2c2", "r2c3"],
+                &["r3c1", "r3c2", "r3c3"],
+                &["r4c1", "r4c2", "r4c3"],
+            ])))),
+        },
+    ];
+
+    let _actual_results_map = do_multi_process(&node_expecteds)?;
+    // TODO: Fix this case.
+    // check_results(&actual_results_map, node_expecteds);
+    Ok(())
+}
+
+#[gtest]
+fn test_rejects_single_empty_region() -> Result<()> {
+    let node_expecteds = vec![NodeExpected {
+        node: Node {
+            id: node_id("no-tables-in-region"),
+            spec: crate::specs::PdfExtractTable {
+                pdf: node_id("pdf-file"),
+                page: 1,
+                method: pdf::TabulaExtractionMethod::Lattice,
+                rect: pdf::TabulaPdfRect {
+                    left: 52.0.into(),
+                    top: 27.0.into(),
+                    right: (52.0 + 489.0).into(),
+                    bottom: (27.0 + 22.0).into(),
+                },
+            }
+            .into(),
+            ..DefaultForTest::default_for_test()
+        },
+        expected: MatcherBox::new(err(displays_as(contains_substring("no table in region")))),
+    }];
+
+    let actual_results_map = do_multi_process(&node_expecteds)?;
+    check_results(&actual_results_map, node_expecteds);
+    Ok(())
+}
+
+#[gtest]
+fn test_rejects_single_region_with_multiple_tables() -> Result<()> {
+    let node_expecteds = vec![NodeExpected {
+        node: Node {
+            id: node_id("two-tables-in-region"),
+            spec: crate::specs::PdfExtractTable {
+                pdf: node_id("pdf-file"),
+                page: 1,
+                method: pdf::TabulaExtractionMethod::Lattice,
+                rect: pdf::TabulaPdfRect {
+                    left: 52.0.into(),
+                    top: 275.0.into(),
+                    right: (52.0 + 489.0).into(),
+                    bottom: (275.0 + 149.0).into(),
+                },
+            }
+            .into(),
+            ..DefaultForTest::default_for_test()
+        },
+        expected: MatcherBox::new(err(displays_as(contains_substring(
+            "multiple (2) tables in region",
+        )))),
+    }];
+
+    let actual_results_map = do_multi_process(&node_expecteds)?;
+    check_results(&actual_results_map, node_expecteds);
+    Ok(())
+}
+
+#[gtest]
+fn test_rejects_two_overlapping_regions_with_zero_and_two_tables_respectively() -> Result<()> {
+    // The intent of this test is that the two tables matched by the second node do not get
+    // mistakenly attributed one each to the nodes.
+    let node_expecteds = vec![
+        NodeExpected {
+            node: Node {
+                id: node_id("no-tables-in-region"),
+                spec: crate::specs::PdfExtractTable {
+                    pdf: node_id("pdf-file"),
+                    page: 1,
+                    method: pdf::TabulaExtractionMethod::Lattice,
+                    rect: pdf::TabulaPdfRect {
+                        left: 52.0.into(),
+                        top: 27.0.into(),
+                        right: (52.0 + 489.0).into(),
+                        bottom: (27.0 + 22.0).into(),
+                    },
+                }
+                .into(),
+                ..DefaultForTest::default_for_test()
+            },
+            expected: MatcherBox::new(err(displays_as(contains_substring("no table in region")))),
+        },
+        NodeExpected {
+            node: Node {
+                id: node_id("two-tables-in-region"),
+                spec: crate::specs::PdfExtractTable {
+                    pdf: node_id("pdf-file"),
+                    page: 1,
+                    method: pdf::TabulaExtractionMethod::Lattice,
+                    rect: pdf::TabulaPdfRect {
+                        left: 52.0.into(),
+                        top: 275.0.into(),
+                        right: (52.0 + 489.0).into(),
+                        bottom: (275.0 + 149.0).into(),
+                    },
+                }
+                .into(),
+                ..DefaultForTest::default_for_test()
+            },
+            expected: MatcherBox::new(err(displays_as(contains_substring(
+                "multiple (2) tables in region",
+            )))),
+        },
+    ];
+
+    let actual_results_map = do_multi_process(&node_expecteds)?;
+    check_results(&actual_results_map, node_expecteds);
+    Ok(())
+}
+
+// TODO: Add test case(s) with mixed error/success nodes.
+// TODO: Add test case(s) with overlapping regions.
+
+fn table_slice_to_to_intermediates_json_data(
+    table_slice: &[&[&str]],
+) -> intermediates::IntermediateValue {
+    intermediates::JsonData(serde_json::Value::Array(
         table_slice
             .iter()
             .map(|&static_row| {
@@ -445,14 +294,43 @@ fn table_slice_to_to_json_value(table_slice: &[&[&str]]) -> serde_json::Value {
                     .collect()
             })
             .collect(),
-    )
+    ))
+    .into()
 }
 
-fn node_results_to_hashmap(
-    node_results: Vec<crate::NodeResult>,
-) -> HashMap<NodeId, Result<intermediates::IntermediateValue>> {
-    node_results
-        .into_iter()
-        .map(|node_result| (node_result.id, node_result.value))
-        .collect()
+fn do_multi_process<'a, 'm>(
+    node_expecteds: &'m [NodeExpected<'a>],
+) -> Result<HashMap<NodeId, Result<intermediates::IntermediateValue>>>
+where
+    'a: 'm,
+{
+    let vm = VM.as_ref().unwrap();
+    let env = vm.attach()?;
+    let extractor = SingleThreadedTabulaExtractor::new(env);
+    let system = TabulaPdfExtractTableSystem::new(&extractor);
+
+    let node_refs: Vec<&Node> = node_expecteds
+        .iter()
+        .map(|node_expected| &node_expected.node)
+        .collect();
+
+    let interms = test_data_interms();
+    let actual_results = system.process_multiple(&node_refs, &Default::default(), &interms);
+
+    let actual_results_map: HashMap<NodeId, Result<intermediates::IntermediateValue>> =
+        actual_results
+            .into_iter()
+            .map(|node_result| (node_result.id, node_result.value))
+            .collect::<HashMap<_, _>>();
+
+    Ok(actual_results_map)
+}
+
+fn test_data_interms() -> intermediates::IntermediateSet {
+    let mut interms = intermediates::IntermediateSet::new();
+    interms.set(
+        node_id("pdf-file"),
+        intermediates::InputFile("./test_data/tables.pdf".into()).into(),
+    );
+    interms
 }

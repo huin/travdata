@@ -20,6 +20,12 @@ pub enum IntermediateValue {
     OutputDirectory(OutputDirectory),
 }
 
+impl PartialEq<IntermediateValue> for &IntermediateValue {
+    fn eq(&self, other: &IntermediateValue) -> bool {
+        <IntermediateValue as PartialEq>::eq(self, other)
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct NoData;
 
