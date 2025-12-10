@@ -1,4 +1,9 @@
+#[cfg(test)]
+mod tests;
+
 use serde::{Deserialize, Serialize, de::Visitor};
+#[cfg(test)]
+use testutils::DefaultForTest;
 
 /// Defines a page-aligned rectangular region within a page of a PDF, using the Tabula origin at
 /// the top-left of the page, rather than the standard PDF origin at the bottom left.
@@ -17,7 +22,34 @@ pub struct TabulaPdfRect {
     pub bottom: PdfPoints,
 }
 
+#[cfg(test)]
+impl DefaultForTest for TabulaPdfRect {
+    fn default_for_test() -> Self {
+        Self {
+            left: PdfPoints::from_f32(0.0),
+            top: PdfPoints::from_f32(1.0),
+            right: PdfPoints::from_f32(2.0),
+            bottom: PdfPoints::from_f32(3.0),
+        }
+    }
+}
+
 impl TabulaPdfRect {
+    // Returns true iff the two rectangles are overlapping, including if two sides are touching.
+    pub fn is_overlapping(&self, other: &Self) -> bool {
+        self.left <= other.right
+            && other.left <= self.right
+            && self.top <= other.bottom
+            && other.top <= self.bottom
+    }
+}
+
+impl TabulaPdfRect {
+    /// Returns true iff `left <= right && top <= bottom`.
+    pub fn is_valid(&self) -> bool {
+        self.left <= self.right && self.top <= self.bottom
+    }
+
     fn width(&self) -> PdfPoints {
         self.right - self.left
     }
@@ -63,7 +95,7 @@ impl TabulaExtractionMethod {
 }
 
 /// Measurement of space within a Pdf page, 1 = 1/72 of an inch.
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct PdfPoints(i64);
 
 impl PdfPoints {
