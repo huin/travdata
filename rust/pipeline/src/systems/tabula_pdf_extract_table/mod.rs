@@ -60,9 +60,6 @@ impl<'t> TabulaPdfExtractTableSystem<'t> {
         group: &ExtractGroupKey,
         node_specs: &[NodeSpec],
     ) {
-        // TODO: group node_specs into non-overlapping groups to extract separately, to avoid
-        // ambiguity (at the very least, lattice method can output [0,many] tables).
-
         let table_set = match self.extract_table_group(pdf_path, group, node_specs) {
             Ok(table_set) => table_set,
             Err(err) => {
@@ -102,6 +99,18 @@ impl<'t> TabulaPdfExtractTableSystem<'t> {
                 value,
             });
         }
+    }
+
+    fn extract_table_group_to_intermediates_without_overlapping(
+        &self,
+        results: &mut Vec<NodeResult>,
+        pdf_path: &Path,
+        group: &ExtractGroupKey,
+        node_specs: Vec<NodeSpec>,
+    ) {
+        grouped_non_overlapping_slices(node_specs, |node_specs| {
+            self.extract_table_group_to_intermediates(results, pdf_path, group, node_specs)
+        });
     }
 }
 
@@ -150,8 +159,10 @@ impl<'env> generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
     ) -> Vec<NodeResult> {
         let mut results = Vec::with_capacity(nodes.len());
 
-        let mut pdf_group_to_node_specs =
-            HashMap::<crate::NodeId, HashMap<ExtractGroupKey, Vec<NodeSpec>>>::new();
+        let mut pdf_group_to_node_specs: HashMap<
+            crate::NodeId,
+            HashMap<ExtractGroupKey, Vec<NodeSpec>>,
+        > = HashMap::new();
         for node in nodes {
             let spec = match <&specs::PdfExtractTable>::try_from(&node.spec) {
                 Ok(spec) => spec,
@@ -196,11 +207,11 @@ impl<'env> generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
             };
 
             // Perform the batch extraction.
-            for (group, node_specs) in &group_to_node_specs {
-                self.extract_table_group_to_intermediates(
+            for (group, node_specs) in group_to_node_specs {
+                self.extract_table_group_to_intermediates_without_overlapping(
                     &mut results,
                     pdf_path,
-                    group,
+                    &group,
                     node_specs,
                 );
             }
@@ -230,6 +241,34 @@ fn is_json_table_within(json_table: &tabula_wrapper::JsonTable, rect: &pdf::Tabu
         && json_table.bottom <= rect.bottom.to_f32()
         && json_table.left >= rect.left.to_f32()
         && json_table.right <= rect.right.to_f32()
+}
+
+fn grouped_non_overlapping_slices<C: FnMut(&[NodeSpec])>(
+    mut node_specs: Vec<NodeSpec>,
+    mut group_callback: C,
+) {
+    // Group node_specs into non-overlapping groups to extract separately, to avoid ambiguity (at
+    // the very least, lattice method can output [0,many] tables).
+    let mut group_start: usize = 0;
+    while group_start < node_specs.len() {
+        let mut group_end = group_start + 1;
+        let search_range = group_end..node_specs.len();
+        for i in search_range {
+            let node_i = &node_specs[i];
+            let node_overlaps = node_specs[group_start..group_end]
+                .iter()
+                .any(|node_in_group| node_in_group.spec.rect.is_overlapping(&node_i.spec.rect));
+
+            // If the node at [i] doesn't overlap anything already in the group, then we can
+            // include it in the group.
+            if !node_overlaps {
+                node_specs.swap(i, group_end);
+                group_end += 1;
+            }
+        }
+        group_callback(&node_specs[group_start..group_end]);
+        group_start = group_end;
+    }
 }
 
 fn convert_tabula_table_to_table_json(tabula_table: tabula_wrapper::JsonTable) -> Value {
