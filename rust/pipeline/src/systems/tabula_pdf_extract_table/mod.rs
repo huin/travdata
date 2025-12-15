@@ -112,6 +112,46 @@ impl<'t> TabulaPdfExtractTableSystem<'t> {
             self.extract_table_group_to_intermediates(results, pdf_path, group, node_specs)
         });
     }
+
+    fn extract_groups(
+        &self,
+        intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
+            intermediates::IntermediateValue,
+        >,
+        results: &mut Vec<generic_pipeline::systems::NodeResult<intermediates::IntermediateValue>>,
+        pdf_group_to_node_specs: HashMap<
+            generic_pipeline::node::NodeId,
+            HashMap<ExtractGroupKey, Vec<NodeSpec<'_>>>,
+        >,
+    ) {
+        for (pdf_id, group_to_node_specs) in pdf_group_to_node_specs {
+            // Get path to the PDF for this group of extractions.
+            let pdf_path = match intermediates
+                .require(&pdf_id)
+                .and_then(<&intermediates::InputFile>::try_from)
+            {
+                Ok(input_file) => &input_file.0,
+                Err(err) => {
+                    for (_, node_specs) in &group_to_node_specs {
+                        for node_spec in node_specs {
+                            results.push(NodeResult {
+                                id: node_spec.node.id.clone(),
+                                value: Err(anyhow!("{err:?}")),
+                            });
+                        }
+                    }
+                    continue;
+                }
+            };
+
+            // Perform the batch extraction.
+            for (group, node_specs) in group_to_node_specs {
+                self.extract_table_group_to_intermediates_without_overlapping(
+                    results, pdf_path, &group, node_specs,
+                );
+            }
+        }
+    }
 }
 
 impl<'env> generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
@@ -159,66 +199,46 @@ impl<'env> generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
     ) -> Vec<NodeResult> {
         let mut results = Vec::with_capacity(nodes.len());
 
-        let mut pdf_group_to_node_specs: HashMap<
-            crate::NodeId,
-            HashMap<ExtractGroupKey, Vec<NodeSpec>>,
-        > = HashMap::new();
-        for node in nodes {
-            let spec = match <&specs::PdfExtractTable>::try_from(&node.spec) {
-                Ok(spec) => spec,
-                Err(err) => {
-                    results.push(NodeResult {
-                        id: node.id.clone(),
-                        value: Err(err),
-                    });
-                    continue;
-                }
-            };
+        let pdf_group_to_node_specs = group_nodes_for_extraction(nodes, &mut results);
 
-            pdf_group_to_node_specs
-                .entry_ref(&spec.pdf)
-                .or_default()
-                .entry(ExtractGroupKey {
-                    page: spec.page,
-                    method: spec.method,
-                })
-                .or_default()
-                .push(NodeSpec { node, spec });
-        }
-
-        for (pdf_id, group_to_node_specs) in pdf_group_to_node_specs {
-            // Get path to the PDF for this group of extractions.
-            let pdf_path = match intermediates
-                .require(&pdf_id)
-                .and_then(<&intermediates::InputFile>::try_from)
-            {
-                Ok(input_file) => &input_file.0,
-                Err(err) => {
-                    for (_, node_specs) in &group_to_node_specs {
-                        for node_spec in node_specs {
-                            results.push(NodeResult {
-                                id: node_spec.node.id.clone(),
-                                value: Err(anyhow!("{err:?}")),
-                            });
-                        }
-                    }
-                    continue;
-                }
-            };
-
-            // Perform the batch extraction.
-            for (group, node_specs) in group_to_node_specs {
-                self.extract_table_group_to_intermediates_without_overlapping(
-                    &mut results,
-                    pdf_path,
-                    &group,
-                    node_specs,
-                );
-            }
-        }
+        self.extract_groups(intermediates, &mut results, pdf_group_to_node_specs);
 
         results
     }
+}
+
+/// Groups nodes for extraction by [ExtractGroupKey], to reduce the number of calls into Tabula.
+fn group_nodes_for_extraction<'a>(
+    nodes: &'a [&'a generic_pipeline::node::GenericNode<specs::Spec>],
+    results: &mut Vec<generic_pipeline::systems::NodeResult<intermediates::IntermediateValue>>,
+) -> HashMap<generic_pipeline::node::NodeId, HashMap<ExtractGroupKey, Vec<NodeSpec<'a>>>> {
+    let mut pdf_group_to_node_specs: HashMap<
+        crate::NodeId,
+        HashMap<ExtractGroupKey, Vec<NodeSpec>>,
+    > = HashMap::new();
+    for node in nodes {
+        let spec = match <&specs::PdfExtractTable>::try_from(&node.spec) {
+            Ok(spec) => spec,
+            Err(err) => {
+                results.push(NodeResult {
+                    id: node.id.clone(),
+                    value: Err(err),
+                });
+                continue;
+            }
+        };
+
+        pdf_group_to_node_specs
+            .entry_ref(&spec.pdf)
+            .or_default()
+            .entry(ExtractGroupKey {
+                page: spec.page,
+                method: spec.method,
+            })
+            .or_default()
+            .push(NodeSpec { node, spec });
+    }
+    pdf_group_to_node_specs
 }
 
 struct NodeSpec<'a> {
