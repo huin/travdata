@@ -3,6 +3,7 @@ resolver = "3"
 members = [
   "bin",
   "generic-pipeline",
+  "gui",
   "pipeline",
   "testutils",
   "utils",
@@ -17,6 +18,15 @@ borsh = { version = "1.7.0", features = ["derive"] }
 clap = { version = "4.6.1", features = ["derive"] }
 csv = "1.4.0"
 ctrlc = "3.5.2"
+egui = "0.35.0"
+eframe = { version = "0.35.0", default-features = false, features = [
+  "accesskit",     # Make egui compatible with screen readers. NOTE: adds a lot of dependencies.
+  "default_fonts", # Embed the default egui fonts.
+  "glow",          # Use the glow rendering backend. Alternative: "wgpu".
+  "persistence",   # Enable restoring app state when restarting the app.
+  "wayland",       # To support Linux (and CI)
+  "x11",           # To support older Linux distributions (restores one of the default features)
+] }
 gtk = { version = "0.11.4", package = "gtk4" }
 googletest = { version = "0.14.3", features = ["anyhow"] }
 hex = "0.4.3"
@@ -31,6 +41,7 @@ mockall = "0.15.0"
 predicates = "3.1.4"
 relm4 = "0.11.0"
 relm4-components = "0.11.0"
+rfd = "0.17.2"
 serde = { version = "1.0.228", features = ["std", "serde_derive"] }
 serde_derive = "1.0.228"
 serde_json = "1.0.150"

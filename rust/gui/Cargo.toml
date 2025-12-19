@@ -1,0 +1,16 @@
+[package]
+name = "gui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe.workspace = true
+egui.workspace = true
+egui_inbox = "0.12.0"
+generic-pipeline.workspace = true
+log.workspace = true
+pipeline.workspace = true
+rfd.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+simplelog.workspace = true

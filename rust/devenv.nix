@@ -10,6 +10,12 @@ in
     JDK = builtins.toString "${jdk.out}/lib/openjdk/lib/server";
     GSETTINGS_SCHEMA_DIR = "${pkgs.gtk4}/share/gsettings-schemas/gtk4-${pkgs.gtk4.version}/glib-2.0/schemas/";
     PDFIUM_DYNAMIC_LIB_PATH = "${pkgs.pdfium-binaries}/lib";
+    LD_LIBRARY_PATH = with pkgs; lib.makeLibraryPath [
+      libGL
+      libxkbcommon
+      wayland-protocols
+      wayland
+    ];
   };
 
   # https://devenv.sh/packages/
@@ -18,11 +24,15 @@ in
     gtk4.debug
     gtk4.dev
     gtk4.devdoc
+    libGL
+    libxkbcommon
     mask
     pkg-config
     pdfium-binaries
     # TODO: Consider using the devenv builtin pre-commit support in future.
     pre-commit
+    wayland
+    wayland-protocols
   ];
 
   enterShell = ''
