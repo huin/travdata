@@ -8,7 +8,7 @@ where
 {
     fn default_for_test() -> Self {
         Self {
-            id: NodeId::test_node_id("node-id"),
+            id: NodeId::default_for_test(),
             tags: hash_set![],
             public: true,
             spec: S::default_for_test(),

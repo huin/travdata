@@ -2,6 +2,8 @@
 //!
 //! Many of these have value validation, so their inner value is private.
 
+#[cfg(any(test, feature = "testing"))]
+mod test_defaults;
 #[cfg(test)]
 mod tests;
 
@@ -39,7 +41,7 @@ impl NodeId {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "testing"))]
     fn new_unchecked(value: String) -> Self {
         Self(value)
     }
