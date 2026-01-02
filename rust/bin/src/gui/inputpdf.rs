@@ -115,6 +115,7 @@ impl SimpleComponent for InputPdfSelector {
                         filters: vec![pdf_filter.clone()],
                     },
                     text: "Select Input PDF",
+                    icon: None,
                     recently_opened_files: recent_input_pdfs,
                     max_recent_files: 10,
                 })

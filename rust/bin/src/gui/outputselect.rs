@@ -133,6 +133,7 @@ impl SimpleComponent for OutputSelector {
                         filters: vec![],
                     },
                     text: "Output Folder",
+                    icon: None,
                     recently_opened_files: recent_output_dirs,
                     max_recent_files: 10,
                 })
