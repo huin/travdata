@@ -6,7 +6,7 @@ pub mod modules;
 #[cfg(test)]
 mod test;
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 
 static INIT_V8: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
@@ -42,15 +42,18 @@ pub struct ESScriptOrigin {
 }
 
 impl ESScriptOrigin {
-    pub fn try_make_origin<'s>(
+    pub fn try_make_origin<'s, S>(
         &self,
-        scope: &mut v8::HandleScope<'s>,
+        scope: &mut v8::ScopeStorage<S>,
     ) -> ExceptionResult<v8::ScriptOrigin<'s>> {
         let try_catch = &mut v8::TryCatch::new(scope);
         self.make_origin(try_catch).to_exception_result(try_catch)
     }
 
-    pub fn make_origin<'s>(&self, scope: &mut v8::HandleScope<'s>) -> Option<v8::ScriptOrigin<'s>> {
+    pub fn make_origin<'s>(
+        &self,
+        scope: &mut v8::PinScope<'s, '_>,
+    ) -> Option<v8::ScriptOrigin<'s>> {
         let resource_name_v8: v8::Local<v8::Value> =
             v8::String::new(scope, &self.resource_name)?.cast();
         Some(v8::ScriptOrigin::new(
@@ -151,7 +154,7 @@ impl TlsIsolateGuard {
         &mut self.isolate
     }
 
-    pub fn scope<'s>(&'s mut self) -> v8::HandleScope<'s, ()> {
+    pub fn scope<'s>(&'s mut self) -> v8::ScopeStorage<v8::HandleScope<'s, ()>> {
         v8::HandleScope::new(&mut self.isolate)
     }
 
@@ -269,12 +272,12 @@ pub struct ExceptionErrorDetail {
 }
 
 impl ExceptionError {
-    fn capture<'s, 'p, P>(try_catch: &mut v8::TryCatch<'s, P>) -> Self
+    fn capture<'s, 'p, P>(try_catch: &mut v8::TryCatch<'s, 'p, P>) -> Self
     where
         'p: 's,
         P: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, v8::Context>>,
+        v8::TryCatch<'s, 'p, P>: AsMut<v8::HandleScope<'p, ()>>,
+        v8::TryCatch<'s, 'p, P>: AsMut<v8::HandleScope<'p, v8::Context>>,
     {
         if !try_catch.has_caught() {
             return ExceptionError::NothingCaught;
@@ -355,25 +358,25 @@ pub trait CatchToResult<T> {
     /// the [Option].
     fn to_exception_result<'s, 'p, P>(
         self,
-        try_catch: &mut v8::TryCatch<'s, P>,
+        try_catch: &mut v8::TryCatch<'s, 'p, P>,
     ) -> ExceptionResult<T>
     where
         'p: 's,
         P: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, v8::Context>>;
+        v8::TryCatch<'s, 'p, P>: AsMut<v8::HandleScope<'p, ()>>,
+        v8::TryCatch<'s, 'p, P>: AsMut<v8::HandleScope<'p, v8::Context>>;
 }
 
 impl<T> CatchToResult<T> for Option<T> {
     fn to_exception_result<'s, 'p, P>(
         self,
-        try_catch: &mut v8::TryCatch<'s, P>,
+        try_catch: &mut v8::TryCatch<'s, 'p, P>,
     ) -> ExceptionResult<T>
     where
         'p: 's,
         P: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, v8::Context>>,
+        v8::TryCatch<'s, 'p, P>: AsMut<v8::HandleScope<'p, ()>>,
+        v8::TryCatch<'s, 'p, P>: AsMut<v8::HandleScope<'p, v8::Context>>,
     {
         match self {
             Some(v) => Ok(v),

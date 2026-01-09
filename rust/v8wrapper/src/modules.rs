@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{pin::pin, rc::Rc};
 
 use hashbrown::HashMap;
 
@@ -47,13 +47,18 @@ impl ModuleDefs {
         _import_attributes: v8::Local<'a, v8::FixedArray>,
         _referrer: v8::Local<'a, v8::Module>,
     ) -> Option<v8::Local<'a, v8::Module>> {
-        let scope = &mut unsafe {
-            // Safety: [v8::CallbackScope] is marked unsafe for being called outside of a callback.
-            // [resolver_callback] is documented as a callback only.
-            v8::CallbackScope::new(context)
-        };
-        let scope = &mut v8::EscapableHandleScope::new(scope);
-        let scope = &mut v8::ContextScope::new(scope, context);
+        // SAFETY: `CallbackScope` can be safely constructed from `Local<Context>`
+        v8::callback_scope!(unsafe scope, context);
+
+        // let scope = unsafe {
+        //     // SAFETY: [v8::CallbackScope] is documented as unsafe for being called outside of a
+        //     // callback. [resolver_callback] is documented as a callback only.
+        //     v8::CallbackScope::new(context)
+        // };
+        // let scope = pin!(scope);
+        // let mut scope = scope.init();
+        // v8::escapable_handle_scope!(let scope, &mut scope);
+        // v8::scope_with_context!(let scope, scope, context);
 
         let modules = match context.get_slot::<ModuleDefs>() {
             Some(modules) => modules,
@@ -92,6 +97,7 @@ impl ModuleDefs {
         let source = &mut v8::script_compiler::Source::new(module_src_v8, Some(&origin_v8));
         let module = v8::script_compiler::compile_module(scope, source)?;
 
-        Some(scope.escape(module))
+        // let module = scope.escape(module);
+        Some(module)
     }
 }
