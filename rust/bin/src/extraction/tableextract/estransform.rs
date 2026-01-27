@@ -26,17 +26,17 @@ impl ESTransformer {
     /// Runs the given script within the context. Useful to define common code to be used by
     /// transforms.
     pub fn run_script(&mut self, script: ESScript) -> Result<()> {
-        let result = v8wrapper::try_with_isolate(|tls_isolate| {
-            let scope = &mut tls_isolate.scope();
+        v8wrapper::try_with_isolate(|tls_isolate| {
+            v8::scope!(let scope, tls_isolate.isolate());
             let ctx = v8::Local::new(scope, &self.ctx);
-            let scope = &mut v8::ContextScope::new(scope, ctx);
+            v8::scope_with_context!(let scope, scope, ctx);
 
             let origin_v8 = script.origin.try_make_origin(scope)?;
             let source_str_v8 = v8wrapper::new_v8_string(scope, &script.source)
                 .with_context(|| "could not create source code string")?;
 
             let result = {
-                let try_catch = &mut v8::TryCatch::new(scope);
+                v8::tc_scope!(let try_catch, scope);
                 let script_v8 = v8::Script::compile(try_catch, source_str_v8, Some(&origin_v8))
                     .to_exception_result(try_catch)
                     .with_context(|| "could not compile script")?;
@@ -55,17 +55,15 @@ impl ESTransformer {
             }
 
             Ok(())
-        })?;
-
-        result
+        })?
     }
 
     /// Performs a table transformation.
     pub fn transform(&self, func: TransformFn, tables: Vec<Table>) -> Result<Table> {
-        let result = v8wrapper::try_with_isolate(|tls_isolate| {
-            let scope = &mut tls_isolate.scope();
+        v8wrapper::try_with_isolate(|tls_isolate| {
+            v8::scope!(let scope, tls_isolate.isolate());
             let ctx = v8::Local::new(scope, &self.ctx);
-            let scope = &mut v8::ContextScope::new(scope, ctx);
+            v8::scope_with_context!(let scope, scope, ctx);
 
             let origin_v8 = func.origin.try_make_origin(scope)?;
             let body_str_v8 = v8wrapper::new_v8_string(scope, &func.function_body)
@@ -76,7 +74,7 @@ impl ESTransformer {
                 .with_context(|| "could not create argument name")?;
 
             let result_v8: v8::Local<'_, v8::Value> = {
-                let try_catch = &mut v8::TryCatch::new(scope);
+                v8::tc_scope!(let try_catch, scope);
                 let function_v8 = v8::script_compiler::compile_function(
                     try_catch,
                     &mut body_v8,
@@ -89,7 +87,7 @@ impl ESTransformer {
                 .with_context(|| "could not compile transform function")?;
 
                 let in_tables_v8: v8::Local<'_, v8::Value> =
-                    serde_v8::to_v8(try_catch.as_mut(), &tables)?;
+                    serde_v8::to_v8(try_catch, &tables)?;
 
                 let global = try_catch.get_current_context().global(try_catch);
                 function_v8
@@ -100,9 +98,7 @@ impl ESTransformer {
             let out_table_v8: Table = serde_v8::from_v8(scope, result_v8)?;
 
             Ok(out_table_v8)
-        })?;
-
-        result
+        })?
     }
 }
 
