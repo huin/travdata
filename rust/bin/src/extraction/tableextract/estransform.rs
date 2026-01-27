@@ -86,8 +86,7 @@ impl ESTransformer {
                 .to_exception_result(try_catch)
                 .with_context(|| "could not compile transform function")?;
 
-                let in_tables_v8: v8::Local<'_, v8::Value> =
-                    serde_v8::to_v8(try_catch, &tables)?;
+                let in_tables_v8: v8::Local<'_, v8::Value> = serde_v8::to_v8(try_catch, &tables)?;
 
                 let global = try_catch.get_current_context().global(try_catch);
                 function_v8

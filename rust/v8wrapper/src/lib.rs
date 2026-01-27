@@ -1,5 +1,5 @@
 //! Provides thread-local instances of [v8::Isolate]s.
-#![allow(dead_code)]
+#![expect(dead_code)]
 
 pub mod modules;
 

@@ -116,7 +116,7 @@ pub struct ZipReadWriter {
     // For reading existing files:
     zip_reader: ZipReader,
     // For creating/overwriting or reading new/overwritten files. Allow dead code because it must live until `ReadWriter::close` completes
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     read_write_tempdir: TempDir,
     read_writer: DirReadWriter,
 }

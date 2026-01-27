@@ -4,6 +4,7 @@ use relm4::prelude::*;
 use crate::gui::util;
 
 /// Component for a [gtk::Entry].
+#[expect(dead_code)]
 pub struct TextEntry {
     buffer: gtk::EntryBuffer,
     notify_id: Option<glib::signal::SignalHandlerId>,

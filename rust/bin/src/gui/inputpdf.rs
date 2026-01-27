@@ -15,7 +15,6 @@ use crate::gui::util;
 #[derive(Debug)]
 pub enum Input {
     /// Sepecifies the currently selected input PDF file path.
-    #[allow(clippy::enum_variant_names)]
     InputPdf(PathBuf),
 }
 

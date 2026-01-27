@@ -27,7 +27,6 @@ pub struct TabulaExtractionRequest {
 pub struct JsonTableSet(pub Vec<JsonTable>);
 
 /// A single extracted table from a PDF file.
-#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct JsonTable {
     pub extraction_method: String,
@@ -46,7 +45,6 @@ pub struct JsonTable {
 pub struct JsonRow(pub Vec<JsonCell>);
 
 /// A single extracted table cell from a PDF file.
-#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct JsonCell {
     pub top: f32,

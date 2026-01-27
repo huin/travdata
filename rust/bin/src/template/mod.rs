@@ -1,6 +1,6 @@
 //! Defines the internal representation of extraction templates.
 
-#![allow(dead_code)]
+#![expect(dead_code)]
 
 pub mod loadarg;
 pub mod serialised;

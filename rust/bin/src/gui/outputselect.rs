@@ -39,7 +39,6 @@ pub struct Init {
 }
 
 /// Relm4 component to select Travdata extraction output destination file/folder.
-#[allow(dead_code)]
 pub struct OutputSelector {
     output_io: Option<FileIoPath>,
     output_dir: Controller<OpenButton>,

@@ -211,7 +211,7 @@ enum Request {
 
 struct LoadedDocument<'a> {
     // TODO: Use field, or remove.
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     path: PathBuf,
     document: PdfDocument<'a>,
 }

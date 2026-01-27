@@ -23,7 +23,7 @@ pub enum Input {
     Noop,
     ShowError(String),
     ImportTemplate(template::Book),
-    #[allow(clippy::enum_variant_names)]
+    #[expect(clippy::enum_variant_names)]
     ExtractorInput(extract::Input),
     MainMenuAction(mainmenu::Action),
 }

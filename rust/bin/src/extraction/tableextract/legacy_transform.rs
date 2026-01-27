@@ -263,10 +263,10 @@ fn split_column(cfg: &SplitColumn, mut table: Table) -> Result<Table> {
 fn wrap_row_every_n(cfg: &WrapRowEveryN, table: Table) -> Table {
     let num_cells: usize = table.iter().map(|row| row.len()).sum();
     let num_out_rows = num_cells / cfg.num_columns
-        + if num_cells % cfg.num_columns > 0 {
-            1
-        } else {
+        + if num_cells.is_multiple_of(cfg.num_columns) {
             0
+        } else {
+            1
         };
 
     let mut out_table = Table(Vec::with_capacity(num_out_rows));

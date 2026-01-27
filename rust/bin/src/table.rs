@@ -8,7 +8,6 @@ use serde_derive::{Deserialize, Serialize};
 
 use crate::extraction::pdf::tabulareader;
 
-#[allow(dead_code)]
 type CsvResult<T> = std::result::Result<T, csv::Error>;
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -16,8 +15,8 @@ type CsvResult<T> = std::result::Result<T, csv::Error>;
 pub struct Table(pub Vec<Row>);
 
 impl Table {
-    #[allow(dead_code)]
     /// Reads a [Table] encoded as CSV.
+    #[expect(unused)]
     pub fn read_csv(r: &mut dyn std::io::Read) -> Result<Self> {
         let mut csv_reader = csv::ReaderBuilder::new().flexible(true).from_reader(r);
         let rows: Vec<Row> = csv_reader

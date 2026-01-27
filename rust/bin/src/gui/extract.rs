@@ -16,14 +16,13 @@ use super::workers::extractor;
 pub enum Input {
     // External:
     Template(Option<template::Book>),
-    #[allow(clippy::enum_variant_names)]
+    #[expect(clippy::enum_variant_names)]
     InputPdf(Option<PathBuf>),
     OutputIo(Option<FileIoPath>),
 
     // Internal:
     StartExtraction,
     CancelExtraction,
-    #[allow(private_interfaces)]
     Progress(extractor::Output),
 }
 

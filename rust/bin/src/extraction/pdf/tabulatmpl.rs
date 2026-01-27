@@ -36,7 +36,6 @@ impl From<ExtractionMethod> for template::TabulaExtractionMethod {
 
 // NOTE: In the PDF coordinate system, the origin (0,0) is at the bottom left of page. Therefore
 // for a valid [TemplateEntry] the following must be true: `x1 <= x2 && y1 <= y2`.
-#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct TemplateEntry {
     pub page: i32,

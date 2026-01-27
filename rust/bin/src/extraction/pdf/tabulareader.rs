@@ -10,7 +10,7 @@ use crate::{extraction::pdf::TableReader, template};
 #[serde(transparent)]
 pub struct JsonTableSet(pub Vec<JsonTable>);
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct JsonTable {
     pub extraction_method: String,
@@ -27,7 +27,7 @@ pub struct JsonTable {
 #[derive(Deserialize, Debug)]
 pub struct JsonRow(pub Vec<JsonCell>);
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Deserialize, Debug)]
 pub struct JsonCell {
     pub top: f32,
