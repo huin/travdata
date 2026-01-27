@@ -11,9 +11,9 @@ fn test_thread_isolate_create_and_call_function() -> Result<()> {
     let tls_isolate = TlsIsolate::for_current_thread()?;
 
     let result: f64 = try_with_isolate(|tls_isolate| -> Result<f64> {
-        let scope = &mut tls_isolate.scope();
+        v8::scope!(let scope, tls_isolate.isolate());
         let ctx = v8::Context::new(scope, v8::ContextOptions::default());
-        let scope = &mut v8::ContextScope::new(scope, ctx);
+        v8::scope_with_context!(let scope, scope, ctx);
 
         let func_v8 = new_v8_function(
             scope,
@@ -26,7 +26,7 @@ fn test_thread_isolate_create_and_call_function() -> Result<()> {
         let arg1_v8 = v8::Number::new(scope, 3.0);
 
         let result_v8 = {
-            let try_catch = &mut v8::TryCatch::new(scope);
+            v8::tc_scope!(let try_catch, scope);
             func_v8
                 .call(try_catch, global.into(), &[arg1_v8.into()])
                 .to_exception_result(try_catch)
@@ -62,9 +62,9 @@ fn test_thread_isolate_create_store_and_later_use_function() -> Result<()> {
 
     // Given a function is created on the first context's global.
     try_with_isolate(|tls_isolate| -> Result<()> {
-        let scope = &mut tls_isolate.scope();
+        v8::scope!(let scope, tls_isolate.isolate());
         let ctx = v8::Local::new(scope, &ctx_1);
-        let scope = &mut v8::ContextScope::new(scope, ctx);
+        v8::scope_with_context!(let scope, scope, ctx);
 
         let func_v8 = new_v8_function(
             scope,
@@ -78,7 +78,7 @@ fn test_thread_isolate_create_store_and_later_use_function() -> Result<()> {
             new_v8_string(scope, FUNC_NAME).context("creating function name string")?;
 
         {
-            let try_catch = &mut v8::TryCatch::new(scope);
+            v8::tc_scope!(let try_catch, scope);
             global
                 .set(try_catch, func_name_v8.into(), func_v8.into())
                 .to_exception_result(try_catch)
@@ -90,15 +90,15 @@ fn test_thread_isolate_create_store_and_later_use_function() -> Result<()> {
 
     // Then calling the function in the first context should work and return the expected answer.
     let result = try_with_isolate(|tls_isolate| -> Result<f64> {
-        let scope = &mut tls_isolate.scope();
+        v8::scope!(let scope, tls_isolate.isolate());
         let ctx = v8::Local::new(scope, &ctx_1);
-        let scope = &mut v8::ContextScope::new(scope, ctx);
+        v8::scope_with_context!(let scope, scope, ctx);
 
         let global = scope.get_current_context().global(scope);
         let func_name_v8 =
             new_v8_string(scope, FUNC_NAME).context("creating function name string")?;
 
-        let try_catch = &mut v8::TryCatch::new(scope);
+        v8::tc_scope!(let try_catch, scope);
         let func_v8 = global
             .get(try_catch, func_name_v8.into())
             .context("getting function from global object")?
@@ -122,15 +122,15 @@ fn test_thread_isolate_create_store_and_later_use_function() -> Result<()> {
 
     // Then the function should not be present in the second context.
     let func_existed_on_other_context = try_with_isolate(|tls_isolate| -> Result<bool> {
-        let scope = &mut tls_isolate.scope();
+        v8::scope!(let scope, tls_isolate.isolate());
         let ctx = v8::Local::new(scope, &ctx_2);
-        let scope = &mut v8::ContextScope::new(scope, ctx);
+        v8::scope_with_context!(let scope, scope, ctx);
 
         let global = scope.get_current_context().global(scope);
         let func_name_v8 =
             new_v8_string(scope, FUNC_NAME).context("creating function name string")?;
 
-        let try_catch = &mut v8::TryCatch::new(scope);
+        v8::tc_scope!(let try_catch, scope);
         let func_v8 = global
             .get(try_catch, func_name_v8.into())
             .context("getting function from global object")?;
@@ -151,16 +151,16 @@ fn test_set_and_get_values_in_separate_contexts() -> Result<()> {
         ctx_global: &v8::Global<v8::Context>,
         value: &str,
     ) -> Result<()> {
-        let scope = &mut tls_isolate.scope();
+        v8::scope!(let scope, tls_isolate.isolate());
         let ctx = v8::Local::new(scope, ctx_global);
-        let scope = &mut v8::ContextScope::new(scope, ctx);
+        v8::scope_with_context!(let scope, scope, ctx);
 
         let key = new_v8_string(scope, "foo")?;
         let value = new_v8_string(scope, value)?;
 
         let global_obj = ctx.global(scope);
 
-        let try_catch = &mut v8::TryCatch::new(scope);
+        v8::tc_scope!(let try_catch, scope);
         global_obj
             .set(try_catch, key.cast(), value.cast())
             .to_exception_result(try_catch)?;
@@ -172,14 +172,14 @@ fn test_set_and_get_values_in_separate_contexts() -> Result<()> {
         tls_isolate: &mut TlsIsolateGuard,
         ctx_global: &v8::Global<v8::Context>,
     ) -> Result<String> {
-        let scope = &mut tls_isolate.scope();
+        v8::scope!(let scope, tls_isolate.isolate());
         let ctx = v8::Local::new(scope, ctx_global);
-        let scope = &mut v8::ContextScope::new(scope, ctx);
+        v8::scope_with_context!(let scope, scope, ctx);
 
         let global_obj = ctx.global(scope);
         let key = new_v8_string(scope, "foo")?;
 
-        let try_catch = &mut v8::TryCatch::new(scope);
+        v8::tc_scope!(let try_catch, scope);
         Ok(global_obj
             .get(try_catch, key.cast())
             .to_exception_result(try_catch)?
@@ -228,17 +228,17 @@ fn test_modules() -> anyhow::Result<()> {
     try_with_isolate(|tls_isolate| -> Result<()> {
         let ctx_global = tls_isolate.new_ctx();
 
-        let scope = &mut tls_isolate.scope();
+        v8::scope!(let scope, tls_isolate.isolate());
         let ctx = v8::Local::new(scope, ctx_global);
-        let scope = &mut v8::ContextScope::new(scope, ctx);
+        v8::scope_with_context!(let scope, scope, ctx);
 
         let modules = modules::ModuleDefs::new(hash_map! {
             "./barmodule.js".into() => modules::ModuleDef{
                 src: r#"
-                export function bar() {
-                    return "bar";
-                }
-                "#.into(),
+                 export function bar() {
+                     return "bar";
+                 }
+                 "#.into(),
                 origin: ESScriptOrigin {
                     resource_name: "barmodule.js".into(),
                     is_module: true,
@@ -251,12 +251,12 @@ fn test_modules() -> anyhow::Result<()> {
         let top_level_src = new_v8_string(
             scope,
             r#"
-            import {bar} from './barmodule.js';
+             import {bar} from './barmodule.js';
 
-            export function foo() {
-                return "foo " + bar();
-            }
-            "#,
+             export function foo() {
+                 return "foo " + bar();
+             }
+             "#,
         )?;
 
         let top_level_origin: v8::ScriptOrigin = ESScriptOrigin {
@@ -267,7 +267,7 @@ fn test_modules() -> anyhow::Result<()> {
         .try_make_origin(scope)?;
 
         let module = {
-            let try_catch = &mut v8::TryCatch::new(scope);
+            v8::tc_scope!(let try_catch, scope);
 
             let mut source =
                 v8::script_compiler::Source::new(top_level_src, Some(&top_level_origin));
@@ -306,12 +306,12 @@ fn test_modules() -> anyhow::Result<()> {
             &[],
             &origin,
             r#"
-            return foo();
-            "#,
+             return foo();
+             "#,
         )?;
 
         let result_v8 = {
-            let try_catch = &mut v8::TryCatch::new(scope);
+            v8::tc_scope!(let try_catch, scope);
             func_v8
                 .call(try_catch, module_namespace, &[])
                 .to_exception_result(try_catch)

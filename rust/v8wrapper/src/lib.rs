@@ -42,15 +42,18 @@ pub struct ESScriptOrigin {
 }
 
 impl ESScriptOrigin {
-    pub fn try_make_origin<'s>(
+    pub fn try_make_origin<'scope, 'iso>(
         &self,
-        scope: &mut v8::HandleScope<'s>,
-    ) -> ExceptionResult<v8::ScriptOrigin<'s>> {
-        let try_catch = &mut v8::TryCatch::new(scope);
+        scope: &mut v8::PinScope<'scope, 'iso>,
+    ) -> ExceptionResult<v8::ScriptOrigin<'scope>> {
+        v8::tc_scope!(let try_catch, scope);
         self.make_origin(try_catch).to_exception_result(try_catch)
     }
 
-    pub fn make_origin<'s>(&self, scope: &mut v8::HandleScope<'s>) -> Option<v8::ScriptOrigin<'s>> {
+    pub fn make_origin<'scope, 'iso>(
+        &self,
+        scope: &mut v8::PinScope<'scope, 'iso>,
+    ) -> Option<v8::ScriptOrigin<'scope>> {
         let resource_name_v8: v8::Local<v8::Value> =
             v8::String::new(scope, &self.resource_name)?.cast();
         Some(v8::ScriptOrigin::new(
@@ -151,14 +154,10 @@ impl TlsIsolateGuard {
         &mut self.isolate
     }
 
-    pub fn scope<'s>(&'s mut self) -> v8::HandleScope<'s, ()> {
-        v8::HandleScope::new(&mut self.isolate)
-    }
-
     pub fn new_ctx(&mut self) -> v8::Global<v8::Context> {
-        let mut scope = self.scope();
-        let ctx = v8::Context::new(&mut scope, v8::ContextOptions::default());
-        v8::Global::new(&mut scope, ctx)
+        v8::scope!(let scope, &mut self.isolate);
+        let ctx = v8::Context::new(scope, v8::ContextOptions::default());
+        v8::Global::new(scope, ctx)
     }
 }
 
@@ -185,22 +184,22 @@ impl std::fmt::Display for TlsIsolateError {
 impl std::error::Error for TlsIsolateError {}
 
 /// Wraps [v8::String::new], translating any thrown exception into an [ExceptionResult].
-pub fn new_v8_string<'s>(
-    scope: &mut v8::HandleScope<'s>,
+pub fn new_v8_string<'scope, 'iso>(
+    scope: &mut v8::PinScope<'scope, 'iso>,
     value: &str,
-) -> ExceptionResult<v8::Local<'s, v8::String>> {
-    let try_catch = &mut v8::TryCatch::new(scope);
+) -> ExceptionResult<v8::Local<'scope, v8::String>> {
+    v8::tc_scope!(let try_catch, scope);
     v8::String::new(try_catch, value).to_exception_result(try_catch)
 }
 
 /// Creates a new [v8::Function]. Translates any thrown exception into an [ExceptionResult].
-pub fn new_v8_function<'s>(
-    scope: &mut v8::HandleScope<'s>,
+pub fn new_v8_function<'scope, 'iso>(
+    scope: &mut v8::PinScope<'scope, 'iso>,
     arg_names: &[&str],
     origin: &ESScriptOrigin,
     source: &str,
-) -> ExceptionResult<v8::Local<'s, v8::Function>> {
-    let try_catch = &mut v8::TryCatch::new(scope);
+) -> ExceptionResult<v8::Local<'scope, v8::Function>> {
+    v8::tc_scope!(let try_catch, scope);
     let body_str_v8 = v8::String::new(try_catch, source).to_exception_result(try_catch)?;
     let origin_v8 = origin
         .make_origin(try_catch)
@@ -228,12 +227,12 @@ pub fn new_v8_function<'s>(
 // `utf8_length` and `write_utf8_v2`.
 
 /// Copies all "own" properties from `src` to `dest`.
-pub fn shallow_copy_object_properties<'s, 'a, 'b>(
-    scope: &mut v8::HandleScope<'s>,
+pub fn shallow_copy_object_properties<'scope, 'iso, 'a, 'b>(
+    scope: &mut v8::PinScope<'scope, 'iso>,
     src: v8::Local<'a, v8::Object>,
     dest: v8::Local<'b, v8::Object>,
 ) -> ExceptionResult<()> {
-    let try_catch = &mut v8::TryCatch::new(scope);
+    v8::tc_scope!(let try_catch, scope);
     let keys = src
         .get_own_property_names(try_catch, v8::GetPropertyNamesArgs::default())
         .to_exception_result(try_catch)?;
@@ -269,33 +268,27 @@ pub struct ExceptionErrorDetail {
 }
 
 impl ExceptionError {
-    fn capture<'s, 'p, P>(try_catch: &mut v8::TryCatch<'s, P>) -> Self
-    where
-        'p: 's,
-        P: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, v8::Context>>,
-    {
+    fn capture<'scope, 'iso, 'obj, 'pin>(
+        try_catch: &mut v8::PinnedRef<'pin, v8::TryCatch<'scope, 'obj, v8::HandleScope<'iso>>>,
+    ) -> Self {
         if !try_catch.has_caught() {
             return ExceptionError::NothingCaught;
         }
 
         let mut detail = ExceptionErrorDetail::default();
         if let Some(exc) = try_catch.exception() {
-            let handle_scope: &mut v8::HandleScope<'p, v8::Context> = try_catch.as_mut();
             detail.exception = Some(format!(
                 "exception: {}",
-                exc.to_rust_string_lossy(handle_scope)
+                exc.to_rust_string_lossy(try_catch)
             ));
         }
 
         if let Some(message) = try_catch.message() {
-            let handle_scope: &mut v8::HandleScope<'p, v8::Context> = try_catch.as_mut();
-            detail.msg = Some(message.get(handle_scope).to_rust_string_lossy(handle_scope));
-            detail.line_number = message.get_line_number(handle_scope);
+            detail.msg = Some(message.get(try_catch).to_rust_string_lossy(try_catch));
+            detail.line_number = message.get_line_number(try_catch);
             detail.resource_name = message
-                .get_script_resource_name(handle_scope)
-                .map(|v| v.to_rust_string_lossy(handle_scope));
+                .get_script_resource_name(try_catch)
+                .map(|v| v.to_rust_string_lossy(try_catch));
         }
 
         Self::Caught(detail)
@@ -353,28 +346,17 @@ pub trait CatchToResult<T> {
     ///
     /// The [v8::TryCatch] given must have been used as the scope in the operation that produced
     /// the [Option].
-    fn to_exception_result<'s, 'p, P>(
+    fn to_exception_result<'scope, 'iso, 'obj, 'pin>(
         self,
-        try_catch: &mut v8::TryCatch<'s, P>,
-    ) -> ExceptionResult<T>
-    where
-        'p: 's,
-        P: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, v8::Context>>;
+        try_catch: &mut v8::PinnedRef<'pin, v8::TryCatch<'scope, 'obj, v8::HandleScope<'iso>>>,
+    ) -> ExceptionResult<T>;
 }
 
 impl<T> CatchToResult<T> for Option<T> {
-    fn to_exception_result<'s, 'p, P>(
+    fn to_exception_result<'scope, 'iso, 'obj, 'pin>(
         self,
-        try_catch: &mut v8::TryCatch<'s, P>,
-    ) -> ExceptionResult<T>
-    where
-        'p: 's,
-        P: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, ()>>,
-        v8::TryCatch<'s, P>: AsMut<v8::HandleScope<'p, v8::Context>>,
-    {
+        try_catch: &mut v8::PinnedRef<'pin, v8::TryCatch<'scope, 'obj, v8::HandleScope<'iso>>>,
+    ) -> ExceptionResult<T> {
         match self {
             Some(v) => Ok(v),
             None => Err(ExceptionError::capture(try_catch)),
