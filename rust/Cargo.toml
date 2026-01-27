@@ -25,7 +25,7 @@ hashbrown = { version = "0.16.1", features = ["serde"] }
 lazy-regex = { version = "3.4.1", features = ["std"] }
 lazy_static = "1.5.0"
 log = "0.4.27"
-lru = "0.16.2"
+lru = "0.16.3"
 map-macro = { version = "0.3.0", features = ["hashbrown"] }
 mockall = "0.14.0"
 predicates = "3.1.3"
