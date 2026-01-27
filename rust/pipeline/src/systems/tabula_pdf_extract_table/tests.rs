@@ -481,7 +481,7 @@ fn test_grouped_non_overlapping_regions(node_order: [usize; 3]) -> Result<()> {
         ..DefaultForTest::default_for_test()
     };
 
-    let nodes = vec![node_a, node_b, node_c];
+    let nodes = [node_a, node_b, node_c];
     let node_specs: Vec<NodeSpec> = node_order
         .iter()
         .map(|node_index| {

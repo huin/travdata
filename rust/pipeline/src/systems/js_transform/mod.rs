@@ -55,13 +55,13 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         arg_refs.sort_by_key(|(arg_name, _)| *arg_name);
 
         let result = v8wrapper::try_with_isolate(|tls_isolate| -> Result<serde_json::Value> {
-            let scope = &mut tls_isolate.scope();
+            v8::scope!(let scope, tls_isolate.isolate());
             let ctx = v8::Local::new(scope, &global_context.0);
-            let scope = &mut v8::ContextScope::new(scope, ctx);
+            v8::scope_with_context!(let scope, scope, ctx);
 
             let arg_names: Vec<&str> = arg_refs.iter().map(|(arg_name, _)| *arg_name).collect();
 
-            let try_catch = &mut v8::TryCatch::new(scope);
+            v8::tc_scope!(let try_catch, scope);
 
             // Create the transformation function.
             let func = v8wrapper::new_v8_function(
