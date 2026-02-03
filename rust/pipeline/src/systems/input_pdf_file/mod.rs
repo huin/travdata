@@ -41,9 +41,9 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for InputPdf
     ) -> anyhow::Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
     {
         let input_pdf = args
-            .require(&node.id, &PARAM_PATH)
-            .and_then(<&plargs::OutputDirectory>::try_from)
-            .map(|arg_value| intermediates::InputFile(arg_value.0.clone()))?;
+            .require(&node.id, &PARAM_PATH)?
+            .try_into()
+            .map(|arg_value: &plargs::InputPdf| intermediates::InputFile(arg_value.0.clone()))?;
 
         if !std::fs::exists(&input_pdf.0).context("checking for existance of input PDF")? {
             bail!("input PDF does not exist at path {:?}", input_pdf.0);

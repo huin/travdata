@@ -40,10 +40,10 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
         >,
     ) -> anyhow::Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
     {
-        let output_directory = args
-            .require(&node.id, &PARAM_PATH)
-            .and_then(<&plargs::OutputDirectory>::try_from)
-            .map(|arg_value| intermediates::OutputDirectory(arg_value.0.clone()))?;
+        let output_directory_arg: &plargs::OutputDirectory =
+            args.require(&node.id, &PARAM_PATH)?.try_into()?;
+
+        let output_directory = intermediates::OutputDirectory(output_directory_arg.0.clone());
 
         std::fs::DirBuilder::new()
             .recursive(true)

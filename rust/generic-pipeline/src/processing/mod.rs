@@ -5,42 +5,45 @@ mod tests;
 
 use std::rc::Rc;
 
-use anyhow::{Result, anyhow};
 use hashbrown::{HashMap, HashSet};
 
-use crate::{intermediates, node, pipeline, plinputs, plparams, systems};
+use crate::{PipelineTypes, intermediates, node, pipeline, plinputs, plparams, systems};
 
 /// Describes the outcome of an entire processing attempt. It does not attempt to contain the
 /// processed data itself, but rather information about the processing.
 #[derive(Debug, PartialEq)]
-pub struct PipelineOutcome {
-    pub node_outcomes: HashMap<node::NodeId, NodeOutcome>,
+pub struct PipelineOutcome<SE: std::fmt::Debug> {
+    pub node_results: HashMap<node::NodeId, Result<(), NodeError<SE>>>,
 }
 
 /// Describes the outcome of a single node.
 #[derive(Debug)]
-pub enum NodeOutcome {
-    /// Node processed successfully.
-    Success,
+pub enum NodeError<SE: std::fmt::Debug> {
     /// Node processed, but unexpectedly. Dependent nodes not processed.
     Unexpected,
     /// Attempted to process the node, but resulted in an error.
-    ProcessErrored(anyhow::Error),
+    ProcessErrored(SE),
+    /// System did not process a node when requested to.
+    SystemUnprocessed,
     /// No attempt was made to process the node.
     Unprocessed(NodeUnprocessedReason),
     /// Processing encountered an internal error, likely a bug.
-    InternalError(anyhow::Error),
+    InternalError(String),
 }
 
 /// NOTE: the equality comparison does not check any form of equality for underlying errors in the
-/// case of [NodeOutcome::ProcessErrored] or [NodeOutcome::InternalError], instead regarding them
-/// as equal on the basis of variant selection equality.
-impl PartialEq for NodeOutcome {
+/// case of [NodeOutcome::InternalError], instead regarding them as equal on the basis of variant
+/// selection equality.
+impl<SE> PartialEq for NodeError<SE>
+where
+    SE: std::fmt::Debug + PartialEq,
+{
     fn eq(&self, other: &Self) -> bool {
-        use NodeOutcome::*;
+        use NodeError::*;
         match (self, other) {
-            (Success, Success) => true,
-            (ProcessErrored(_), ProcessErrored(_)) => true,
+            (Unexpected, Unexpected) => true,
+            (ProcessErrored(self_err), ProcessErrored(other_err)) => self_err == other_err,
+            (SystemUnprocessed, SystemUnprocessed) => true,
             (Unprocessed(unproc_self), Unprocessed(unproc_other)) => unproc_self == unproc_other,
             (InternalError(_), InternalError(_)) => true,
             _ => false,
@@ -69,10 +72,7 @@ pub struct GenericProcessor<P> {
     system: Rc<dyn systems::GenericSystem<P>>,
 }
 
-impl<P> GenericProcessor<P>
-where
-    P: crate::PipelineTypes,
-{
+impl<P: PipelineTypes> GenericProcessor<P> {
     pub fn new(system: Rc<dyn systems::GenericSystem<P>>) -> Self {
         Self { system }
     }
@@ -80,7 +80,7 @@ where
     pub fn resolve_params(
         &self,
         nodes: &pipeline::GenericPipeline<P::Spec>,
-    ) -> Result<plparams::GenericParams<P::ParamType>> {
+    ) -> Result<plparams::GenericParams<P::ParamType>, P::SystemError> {
         let mut reg = plparams::GenericParams::<P::ParamType>::registrator();
         for node in nodes.nodes() {
             self.system.params(node, &mut reg.for_node(&node.id))?;
@@ -92,16 +92,13 @@ where
         &self,
         nodes: &pipeline::GenericPipeline<P::Spec>,
         args: &crate::plargs::GenericArgSet<P::ArgValue>,
-    ) -> Result<PipelineOutcome> {
-        let state = GenericProcessingState::new(nodes, args, self.system.clone())?;
-        Ok(state.process())
+    ) -> PipelineOutcome<P::SystemError> {
+        let state = GenericProcessingState::new(nodes, args, self.system.clone());
+        state.process()
     }
 }
 
-struct GenericProcessingState<'a, P>
-where
-    P: crate::PipelineTypes,
-{
+struct GenericProcessingState<'a, P: PipelineTypes> {
     nodes: &'a pipeline::GenericPipeline<P::Spec>,
     args: &'a crate::plargs::GenericArgSet<P::ArgValue>,
 
@@ -110,7 +107,7 @@ where
     // Map from NodeId to the NodeIds that depend on it.
     dep_id_to_dependee_ids: HashMap<node::NodeId, Vec<node::NodeId>>,
 
-    outcome: PipelineOutcome,
+    outcome: PipelineOutcome<P::SystemError>,
     interms: intermediates::GenericIntermediateSet<P::IntermediateValue>,
     processable_ids: HashSet<node::NodeId>,
     // Map from NodeId to the NodeIds that it depends on. This is dynamically updated to remove
@@ -119,21 +116,30 @@ where
     unprocessed_id_to_dep_ids: HashMap<node::NodeId, HashSet<node::NodeId>>,
 }
 
-impl<'a, P> GenericProcessingState<'a, P>
-where
-    P: crate::PipelineTypes,
-{
+impl<'a, P: PipelineTypes> GenericProcessingState<'a, P> {
+    // TODO: we shouldn't process _all_ nodes, just selected ones, and all they depend on.
+    // As such, the state setup should be much lighter.
     fn new(
         nodes: &'a pipeline::GenericPipeline<P::Spec>,
         args: &'a crate::plargs::GenericArgSet<P::ArgValue>,
         system: Rc<dyn systems::GenericSystem<P>>,
-    ) -> Result<Self> {
+    ) -> Self {
         log::debug!("Processing {} nodes total.", nodes.nodes().count());
+
+        let mut outcome = PipelineOutcome::<P::SystemError> {
+            node_results: HashMap::with_capacity(nodes.len()),
+        };
 
         let mut inputs_reg = plinputs::InputsRegistrator::new();
         for node in nodes.nodes() {
-            system.inputs(node, &mut inputs_reg.for_node(&node.id))?;
+            let mut reg_for_node = inputs_reg.for_node(&node.id);
+            if let Err(err) = system.inputs(node, &mut reg_for_node) {
+                outcome
+                    .node_results
+                    .insert(node.id.clone(), Err(NodeError::ProcessErrored(err)));
+            }
         }
+
         // Map from NodeId to the NodeIds that it depends on.
         let unprocessed_id_to_dep_ids = inputs_reg.build();
 
@@ -158,7 +164,7 @@ where
             }
         }
 
-        Ok(Self {
+        Self {
             nodes,
             args,
 
@@ -166,16 +172,14 @@ where
 
             dep_id_to_dependee_ids,
 
-            outcome: PipelineOutcome {
-                node_outcomes: HashMap::with_capacity(nodes.len()),
-            },
+            outcome,
             interms: intermediates::GenericIntermediateSet::new(),
             processable_ids,
             unprocessed_id_to_dep_ids,
-        })
+        }
     }
 
-    fn process(mut self) -> PipelineOutcome {
+    fn process(mut self) -> PipelineOutcome<P::SystemError> {
         while !self.processable_ids.is_empty() {
             log::debug!(
                 "Processing {} nodes in this pass.",
@@ -204,8 +208,8 @@ where
                         node_result.id,
                     );
                     self.outcome
-                        .node_outcomes
-                        .insert(node_result.id, NodeOutcome::Unexpected);
+                        .node_results
+                        .insert(node_result.id, Err(NodeError::Unexpected));
                     continue;
                 }
 
@@ -213,13 +217,12 @@ where
             }
 
             for node_id in self.processable_ids.drain() {
-                let err = anyhow!(
-                    "Node {node_id:?} was not processed, despite being requested to process. Faulty system?",
+                log::error!(
+                    "Node {node_id:?} was not processed, despite being requested to process. Faulty system?"
                 );
-                log::error!("{err:?}");
                 self.outcome
-                    .node_outcomes
-                    .insert(node_id, NodeOutcome::ProcessErrored(err));
+                    .node_results
+                    .insert(node_id, Err(NodeError::SystemUnprocessed));
             }
 
             self.processable_ids.extend(newly_processable_ids.drain());
@@ -227,9 +230,9 @@ where
 
         for (unprocessed_id, mut dep_ids) in self.unprocessed_id_to_dep_ids.drain() {
             log::error!("Node {unprocessed_id:?} was not processed.");
-            self.outcome.node_outcomes.insert(
+            self.outcome.node_results.insert(
                 unprocessed_id,
-                NodeOutcome::Unprocessed(NodeUnprocessedReason {
+                Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: dep_ids
                         .drain()
                         .map(|dep_id| {
@@ -241,7 +244,7 @@ where
                             (dep_id, reason)
                         })
                         .collect(),
-                }),
+                })),
             );
         }
 
@@ -264,7 +267,7 @@ where
 
     fn process_result(
         &mut self,
-        node_result: systems::NodeResult<P::IntermediateValue>,
+        node_result: systems::NodeResult<P>,
         newly_processable_ids: &mut HashSet<node::NodeId>,
     ) {
         match node_result.value {
@@ -274,15 +277,15 @@ where
                 self.mark_dependent_nodes_processable(&node_result.id, newly_processable_ids);
 
                 self.outcome
-                    .node_outcomes
-                    .insert(node_result.id.clone(), NodeOutcome::Success);
+                    .node_results
+                    .insert(node_result.id.clone(), Ok(()));
                 self.interms.set(node_result.id, interm);
             }
             Err(err) => {
                 log::error!("Error processing node {:?}: {err:?}", node_result.id);
                 self.outcome
-                    .node_outcomes
-                    .insert(node_result.id.clone(), NodeOutcome::ProcessErrored(err));
+                    .node_results
+                    .insert(node_result.id.clone(), Err(NodeError::ProcessErrored(err)));
             }
         }
     }
@@ -303,13 +306,13 @@ where
             match self.unprocessed_id_to_dep_ids.entry_ref(dependee_id) {
                 EntryRef::Occupied(mut occupied_entry) => {
                     if !occupied_entry.get_mut().remove(processed_node_id) {
-                        let err = anyhow!(
+                        let err = format!(
                             "Could not remove node {processed_node_id:?} from node {dependee_id:?}'s unprocessed dependencies. Bug in processor?"
                         );
                         log::error!("{err:?}");
                         self.outcome
-                            .node_outcomes
-                            .insert(dependee_id.clone(), NodeOutcome::InternalError(err));
+                            .node_results
+                            .insert(dependee_id.clone(), Err(NodeError::InternalError(err)));
                     }
                     if occupied_entry.get().is_empty() {
                         let removed = occupied_entry.remove_entry();
@@ -318,13 +321,13 @@ where
                     }
                 }
                 EntryRef::Vacant(_vacant_entry) => {
-                    let err = anyhow!(
+                    let err = format!(
                         "Unexpected vacant entry for dependees of {processed_node_id:?}. Bug in processor?",
                     );
                     log::error!("{err:?}");
                     self.outcome
-                        .node_outcomes
-                        .insert(dependee_id.clone(), NodeOutcome::InternalError(err));
+                        .node_results
+                        .insert(dependee_id.clone(), Err(NodeError::InternalError(err)));
                 }
             }
         }

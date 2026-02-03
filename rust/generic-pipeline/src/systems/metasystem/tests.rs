@@ -1,4 +1,3 @@
-use anyhow::{Result, anyhow};
 use googletest::prelude::*;
 use hashbrown::{HashMap, HashSet};
 use map_macro::hashbrown::{hash_map, hash_map_e, hash_set};
@@ -63,7 +62,8 @@ fn test_params() -> Result<()> {
         FakeSpecDiscriminants::Foo => Rc::new(foo_sys),
         FakeSpecDiscriminants::Bar => Rc::new(bar_sys),
     };
-    let meta_system = GenericMetaSystem::new(systems);
+    let meta_system =
+        GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError::ErrorOne));
 
     // GIVEN: a registrator.
     let mut reg = TestParams::registrator();
@@ -118,7 +118,8 @@ fn test_inputs() -> Result<()> {
     };
 
     // GIVEN: a meta_system that dispatches for Foo and Bar.
-    let meta_system = GenericMetaSystem::new(systems);
+    let meta_system =
+        GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError::ErrorOne));
 
     // WHEN: the inputs for `Foo` and `Bar` nodes are requested.
     let mut reg = plinputs::InputsRegistrator::new();
@@ -240,7 +241,7 @@ fn test_process() {
                     Some(&TestIntermediateValue::ValueOne(2))
                 )
         })
-        .returning_st(|_node, _args, _intermediates| Err(anyhow!("some error")));
+        .returning_st(|_node, _args, _intermediates| Err(TestSystemError::ErrorOne));
 
     let systems: TestSystemMap = hash_map_e! {
         FakeSpecDiscriminants::Foo => Rc::new(foo_sys),
@@ -248,7 +249,8 @@ fn test_process() {
     };
 
     // GIVEN: a meta_system that dispatches for Foo and Bar.
-    let meta_system = GenericMetaSystem::new(systems);
+    let meta_system =
+        GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError::ErrorOne));
 
     let (args, intermediates) = process_fixture();
 
@@ -321,7 +323,7 @@ fn test_process_multiple() {
                 },
                 NodeResult {
                     id: node_id("foo-2"),
-                    value: Err(anyhow!("some error")),
+                    value: Err(TestSystemError::ErrorOne),
                 },
             ]
         });
@@ -349,7 +351,8 @@ fn test_process_multiple() {
     };
 
     // GIVEN: a meta_system that dispatches for Foo and Bar.
-    let meta_system = GenericMetaSystem::new(systems);
+    let meta_system =
+        GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError::ErrorOne));
 
     let (args, intermediates) = process_fixture();
 

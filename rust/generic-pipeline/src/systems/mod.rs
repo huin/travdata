@@ -1,24 +1,25 @@
 //! Data types that act upon a [node::GenericNode] to perform individual parts of an pipeline.
 
 mod metasystem;
-mod missingsystem;
 
-use anyhow::Result;
-
-use crate::{intermediates, node, plargs, plinputs, plparams};
+use crate::{PipelineTypes, intermediates, node, plargs, plinputs, plparams};
 
 pub use metasystem::GenericMetaSystem;
-pub use missingsystem::MissingSystem;
 
 /// Result of processing a node.
-pub struct NodeResult<V> {
+pub struct NodeResult<P>
+where
+    P: PipelineTypes,
+{
     pub id: node::NodeId,
-    pub value: Result<V>,
+    pub value: Result<P::IntermediateValue, P::SystemError>,
 }
 
-impl<V> std::fmt::Debug for NodeResult<V>
+impl<P> std::fmt::Debug for NodeResult<P>
 where
-    V: std::fmt::Debug,
+    P: PipelineTypes,
+    P::IntermediateValue: std::fmt::Debug,
+    P::SystemError: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NodeResult")
@@ -40,16 +41,16 @@ where
         &self,
         _node: &node::GenericNode<P::Spec>,
         _reg: &'a mut plparams::GenericNodeParamsRegistrator<'a, P::ParamType>,
-    ) -> Result<()> {
+    ) -> Result<(), P::SystemError> {
         Ok(())
     }
 
-    /// Returns the set of node IDs that the given node depends on as inputs.
+    /// Registers the set of node IDs that the given node depends on as inputs.
     fn inputs<'a>(
         &self,
         _node: &node::GenericNode<P::Spec>,
         _reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
-    ) -> Result<()> {
+    ) -> Result<(), P::SystemError> {
         Ok(())
     }
 
@@ -59,7 +60,7 @@ where
         node: &node::GenericNode<P::Spec>,
         args: &plargs::GenericArgSet<P::ArgValue>,
         intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
-    ) -> Result<P::IntermediateValue>;
+    ) -> Result<P::IntermediateValue, P::SystemError>;
 
     /// Performs processing of the given [node::GenericNode]s, returning their
     /// intermediate value(s).
@@ -71,10 +72,11 @@ where
         nodes: &'a [&'a node::GenericNode<P::Spec>],
         args: &plargs::GenericArgSet<P::ArgValue>,
         intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
-    ) -> Vec<NodeResult<P::IntermediateValue>> {
+        // TODO: maybe this should return `impl Iterator` instead of an allocated vector
+    ) -> Vec<NodeResult<P>> {
         nodes
             .iter()
-            .map(|&node| NodeResult {
+            .map(|&node| NodeResult::<P> {
                 id: node.id.clone(),
                 value: self.process(node, args, intermediates),
             })

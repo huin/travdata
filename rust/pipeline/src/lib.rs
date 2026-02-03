@@ -15,7 +15,7 @@ pub type NodeId = generic_pipeline::node::NodeId;
 pub type Node = generic_pipeline::node::GenericNode<specs::Spec>;
 
 /// Monomorphic form of [generic_pipeline::systems::NodeResult] used with real implementations.
-pub type NodeResult = generic_pipeline::systems::NodeResult<intermediates::IntermediateValue>;
+pub type NodeResult = generic_pipeline::systems::NodeResult<PipelineTypes>;
 
 /// Specific [generic_pipeline::pipeline::GenericPipeline] used in actual processing.
 pub type Pipeline = generic_pipeline::pipeline::GenericPipeline<specs::Spec>;
@@ -32,6 +32,8 @@ impl generic_pipeline::PipelineTypes for PipelineTypes {
     type ArgValue = plargs::ArgValue;
 
     type IntermediateValue = intermediates::IntermediateValue;
+
+    type SystemError = anyhow::Error;
 }
 
 /// Monomorphic form of [generic_pipeline::systems::GenericMetaSystem] used with realm

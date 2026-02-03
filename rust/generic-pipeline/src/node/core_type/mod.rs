@@ -7,8 +7,14 @@ mod test_defaults;
 #[cfg(test)]
 mod tests;
 
-use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, thiserror::Error)]
+#[error("got {value:?} which is not {expected}")]
+pub struct ValueError<V> {
+    pub value: V,
+    pub expected: &'static str,
+}
 
 /// Unique identifier of an extraction configuration [crate::node::GenericNode] within a
 /// [crate::pipeline::GenericPipeline].
@@ -16,7 +22,7 @@ use serde::{Deserialize, Serialize};
 pub struct NodeId(String);
 
 impl NodeId {
-    const EXPECTED: &str = r#"a string matching ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"#;
+    const EXPECTED: &str = r#"a node ID string matching ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"#;
 
     #[cfg(any(test, feature = "testing"))]
     pub fn test_node_id(s: &str) -> Self {
@@ -54,20 +60,24 @@ impl From<&NodeId> for NodeId {
 }
 
 impl TryFrom<&str> for NodeId {
-    type Error = anyhow::Error;
+    type Error = ValueError<String>;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::try_from_string(value)
-            .map_err(|value| anyhow!("NodeId: got {value:?} which is not {}", Self::EXPECTED))
+        Self::try_from_string(value).map_err(|value| ValueError {
+            value: value.to_string(),
+            expected: Self::EXPECTED,
+        })
     }
 }
 
 impl TryFrom<String> for NodeId {
-    type Error = anyhow::Error;
+    type Error = ValueError<String>;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        Self::try_from_string(value)
-            .map_err(|value| anyhow!("NodeId: got {value:?} which is not {}", Self::EXPECTED))
+        Self::try_from_string(value).map_err(|value| ValueError {
+            value,
+            expected: Self::EXPECTED,
+        })
     }
 }
 
@@ -96,7 +106,7 @@ impl AsRef<str> for NodeId {
 pub struct Tag(String);
 
 impl Tag {
-    const EXPECTED: &str = r#"a string containing one or more slash delimited components, each matching ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"#;
+    const EXPECTED: &str = r#"a valid tag string containing one or more slash delimited components, each matching ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"#;
 
     #[cfg(any(test, feature = "testing"))]
     pub fn test_tag(s: &str) -> Self {
@@ -128,20 +138,24 @@ impl Tag {
 }
 
 impl TryFrom<&str> for Tag {
-    type Error = anyhow::Error;
+    type Error = ValueError<String>;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::try_from_string(value)
-            .map_err(|value| anyhow!("Tag: got {value:?} which is not {}", Self::EXPECTED))
+        Self::try_from_string(value).map_err(|value| ValueError {
+            value: value.to_string(),
+            expected: Self::EXPECTED,
+        })
     }
 }
 
 impl TryFrom<String> for Tag {
-    type Error = anyhow::Error;
+    type Error = ValueError<String>;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        Self::try_from_string(value)
-            .map_err(|value| anyhow!("Tag: got {value:?} which is not {}", Self::EXPECTED))
+        Self::try_from_string(value).map_err(|value| ValueError {
+            value,
+            expected: Self::EXPECTED,
+        })
     }
 }
 

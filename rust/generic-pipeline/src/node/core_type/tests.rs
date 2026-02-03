@@ -19,7 +19,7 @@ fn test_node_id_valid_cases_len() {
 
 #[test_casing(4, NODE_ID_VALID_CASES)]
 #[gtest]
-fn test_node_id_valid(input: &'static str) -> anyhow::Result<()> {
+fn test_node_id_valid(input: &'static str) -> Result<()> {
     let expected = NodeId::new_unchecked(input.into());
 
     expect_that!(NodeId::try_from(input), ok(eq(&expected)));
@@ -54,7 +54,7 @@ fn test_node_id_invalid_cases_len() {
 
 #[test_casing(8, NODE_ID_INVALID_CASES)]
 #[gtest]
-fn test_node_id_invalid(input: &'static str) -> anyhow::Result<()> {
+fn test_node_id_invalid(input: &'static str) -> Result<()> {
     expect_that!(NodeId::try_from(input), err(anything()));
     expect_that!(NodeId::try_from(input.to_string()), err(anything()));
 
@@ -81,7 +81,7 @@ fn test_tag_valid_cases_len() {
 
 #[test_casing(5, TAG_VALID_CASES)]
 #[gtest]
-fn test_tag_valid(input: &'static str) -> anyhow::Result<()> {
+fn test_tag_valid(input: &'static str) -> Result<()> {
     let expected = Tag::new_unchecked(input.into());
 
     expect_that!(Tag::try_from(input), ok(eq(&expected)));
@@ -116,7 +116,7 @@ fn test_tag_invalid_cases_len() {
 
 #[test_casing(11, TAG_INVALID_CASES)]
 #[gtest]
-fn test_tag_invalid(input: &'static str) -> anyhow::Result<()> {
+fn test_tag_invalid(input: &'static str) -> Result<()> {
     expect_that!(Tag::try_from(input), err(anything()));
     expect_that!(Tag::try_from(input.to_string()), err(anything()));
 

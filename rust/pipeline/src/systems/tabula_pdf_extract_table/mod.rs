@@ -118,7 +118,7 @@ impl<'t> TabulaPdfExtractTableSystem<'t> {
         intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
             intermediates::IntermediateValue,
         >,
-        results: &mut Vec<generic_pipeline::systems::NodeResult<intermediates::IntermediateValue>>,
+        results: &mut Vec<NodeResult>,
         pdf_group_to_node_specs: HashMap<
             generic_pipeline::node::NodeId,
             HashMap<ExtractGroupKey, Vec<NodeSpec<'_>>>,
@@ -128,6 +128,7 @@ impl<'t> TabulaPdfExtractTableSystem<'t> {
             // Get path to the PDF for this group of extractions.
             let pdf_path = match intermediates
                 .require(&pdf_id)
+                .map_err(anyhow::Error::from)
                 .and_then(<&intermediates::InputFile>::try_from)
             {
                 Ok(input_file) => &input_file.0,
@@ -172,7 +173,7 @@ impl<'env> generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
         node: &Node,
         args: &ArgSet,
         intermediates: &intermediates::IntermediateSet,
-    ) -> Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue> {
+    ) -> Result<intermediates::IntermediateValue, anyhow::Error> {
         let mut result = self.process_multiple(&[node], args, intermediates);
         if result.len() != 1 {
             bail!(
@@ -210,7 +211,7 @@ impl<'env> generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
 /// Groups nodes for extraction by [ExtractGroupKey], to reduce the number of calls into Tabula.
 fn group_nodes_for_extraction<'a>(
     nodes: &'a [&'a generic_pipeline::node::GenericNode<specs::Spec>],
-    results: &mut Vec<generic_pipeline::systems::NodeResult<intermediates::IntermediateValue>>,
+    results: &mut Vec<NodeResult>,
 ) -> HashMap<generic_pipeline::node::NodeId, HashMap<ExtractGroupKey, Vec<NodeSpec<'a>>>> {
     let mut pdf_group_to_node_specs: HashMap<
         crate::NodeId,

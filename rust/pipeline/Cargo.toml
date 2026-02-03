@@ -18,6 +18,7 @@ tabula.workspace = true
 tempfile.workspace = true
 v8.workspace = true
 v8wrapper.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 generic-pipeline = { features = ["testing"], workspace = true }

@@ -1,7 +1,7 @@
 #[macro_export(local_inner_macros)]
 macro_rules! impl_enum_conversions {
     ($enum_type:ident, $variant_and_type:ident, $value_name:literal) => {
-        impl<'a> TryFrom<&'a $enum_type> for &'a $variant_and_type {
+        impl<'a> ::std::convert::TryFrom<&'a $enum_type> for &'a $variant_and_type {
             type Error = ::anyhow::Error;
 
             fn try_from(value: &'a $enum_type) -> ::std::result::Result<Self, Self::Error> {
@@ -17,7 +17,7 @@ macro_rules! impl_enum_conversions {
             }
         }
 
-        impl std::convert::From<$variant_and_type> for $enum_type {
+        impl ::std::convert::From<$variant_and_type> for $enum_type {
             fn from(value: $variant_and_type) -> $enum_type {
                 $enum_type::$variant_and_type(value)
             }

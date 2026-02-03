@@ -35,13 +35,13 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileCsvSystem {
         >,
     ) -> anyhow::Result<intermediates::IntermediateValue> {
         let spec = <&specs::OutputFileCsv>::try_from(&node.spec)?;
-        let directory = intermediates
-            .require(&spec.directory)
-            .and_then(<&intermediates::OutputDirectory>::try_from)
+        let directory: &intermediates::OutputDirectory = intermediates
+            .require(&spec.directory)?
+            .try_into()
             .context("getting output directory")?;
-        let data = intermediates
-            .require(&spec.input_data)
-            .and_then(<&intermediates::JsonData>::try_from)
+        let data: &intermediates::JsonData = intermediates
+            .require(&spec.input_data)?
+            .try_into()
             .context("getting data to output")?;
 
         let data = data

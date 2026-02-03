@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use generic_pipeline::plinputs;
 use v8wrapper::CatchToResult;
 
@@ -35,15 +35,10 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
     ) -> anyhow::Result<crate::intermediates::IntermediateValue> {
         let spec: &JsTransform = (&node.spec).try_into()?;
 
-        let global_context = intermediates
-            .require(&spec.context)
-            .and_then(|global_context| match global_context {
-                intermediates::IntermediateValue::JsContext(global_context) => Ok(global_context),
-                _ => Err(anyhow!(
-                    "specified context node {:?} is not a JsContext: {global_context:?}",
-                    spec.context,
-                )),
-            })?;
+        let global_context: &intermediates::JsContext = intermediates
+            .require(&spec.context)?
+            .try_into()
+            .with_context(|| format!("from specified context node {:?}", spec.context))?;
 
         let mut arg_refs: Vec<(&str, &NodeId)> = spec
             .input_data
@@ -80,21 +75,16 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
             let args: Vec<v8::Local<v8::Value>> = arg_refs
                 .iter()
                 .map(|(arg_name, node_id)| -> Result<v8::Local<v8::Value>> {
-                    intermediates
-                        .require(node_id)
-                        .and_then(|value| match value {
-                            intermediates::IntermediateValue::JsonData(json_value) => {
-                                Ok(json_value)
-                            }
-                            _ => Err(anyhow!("argument is not JsonData, got {value:?}")),
-                        })
-                        .and_then(|value| {
-                            serde_v8::to_v8(try_catch, &value.0)
-                                .context("converting JsonData to v8::Value")
-                            // TODO: Use `Object.freeze` to freeze any data passed in. This means
-                            // that any future batching in `process_multiple` that would require it
-                            // is not a breaking change. todo!()
-                        })
+                    let arg_json_value: &intermediates::JsonData = intermediates
+                        .require(node_id)?
+                        .try_into()
+                        .with_context(|| format!("from specified args node {node_id:?}"))?;
+
+                    serde_v8::to_v8(try_catch, &arg_json_value.0)
+                        .context("converting JsonData to v8::Value")
+                        // TODO: Use `Object.freeze` to freeze any data passed in. This means
+                        // that any future batching in `process_multiple` that would require it
+                        // is not a breaking change. todo!()
                         .with_context(|| format!("for argument {arg_name:?} from node {node_id:?}"))
                 })
                 .collect::<Result<Vec<_>>>()?;

@@ -2,9 +2,18 @@
 //!
 //! These provide runtime parameters for the [crate::plparams] for the pipeline.
 
-use anyhow::{Result, anyhow};
-
 use crate::{node, plparams};
+
+#[derive(Debug, thiserror::Error)]
+pub enum ArgError {
+    #[error(
+        "required argument value for node {node_id:?} with parameter ID {param_id:?} not found (bug: missing parameter or argument)"
+    )]
+    NotFound {
+        node_id: node::NodeId,
+        param_id: plparams::ParamId,
+    },
+}
 
 pub struct GenericArgSet<A> {
     args: hashbrown::HashMap<ParamKey, A>,
@@ -35,12 +44,12 @@ impl<A> GenericArgSet<A> {
         &'a self,
         node_id: &node::NodeId,
         param_id: &plparams::ParamId,
-    ) -> Result<&'a A> {
-        self.get(node_id, param_id).ok_or_else(|| {
-            anyhow!(
-                "required argument value for node {node_id:?} with parameter ID {param_id:?} not found (bug: missing parameter or argument)"
-            )
-        })
+    ) -> Result<&'a A, ArgError> {
+        self.get(node_id, param_id)
+            .ok_or_else(|| ArgError::NotFound {
+                node_id: node_id.clone(),
+                param_id: param_id.clone(),
+            })
     }
 }
 

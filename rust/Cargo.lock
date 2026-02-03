@@ -3382,7 +3382,6 @@ dependencies = [
 name = "travdata-generic-pipeline"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "googletest",
  "hashbrown",
  "lazy-regex",
@@ -3398,6 +3397,7 @@ dependencies = [
  "strum_macros",
  "test-casing",
  "test-log",
+ "thiserror 2.0.18",
  "travdata-testutils",
 ]
 
@@ -3420,6 +3420,7 @@ dependencies = [
  "tabula",
  "tempfile",
  "test-casing",
+ "thiserror 2.0.18",
  "travdata-generic-pipeline",
  "travdata-testutils",
  "travdata-v8wrapper",

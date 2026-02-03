@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use anyhow::anyhow;
 use googletest::prelude::*;
 use hashbrown::HashSet;
 use map_macro::hashbrown::hash_map;
@@ -8,7 +7,7 @@ use predicates::constant::always;
 
 use crate::{
     node, plargs,
-    processing::{self, NodeOutcome, NodeUnprocessedReason, UnprocessedDependencyReason},
+    processing::{self, NodeError, NodeUnprocessedReason, UnprocessedDependencyReason},
     systems::NodeResult,
     testutil::*,
 };
@@ -49,12 +48,12 @@ fn test_basic_process_order() {
     // THEN:
     expect_that!(
         outcome,
-        ok(eq(&processing::PipelineOutcome {
-            node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeOutcome::Success,
-                node_id(BAR_1_ID) => NodeOutcome::Success,
+        eq(&processing::PipelineOutcome::<TestSystemError> {
+            node_results: hash_map! {
+                node_id(FOO_1_ID) => Ok(()),
+                node_id(BAR_1_ID) => Ok(()),
             },
-        })),
+        }),
     );
 
     // THEN: the expected process_multiple calls will have been made.
@@ -95,13 +94,13 @@ fn test_three_stage_processing() {
     // THEN: the outcome reflects the successfully processed nodes.
     expect_that!(
         outcome,
-        ok(eq(&processing::PipelineOutcome {
-            node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeOutcome::Success,
-                node_id(BAR_1_ID) => NodeOutcome::Success,
-                node_id(BAR_2_ID) => NodeOutcome::Success,
+        eq(&processing::PipelineOutcome {
+            node_results: hash_map! {
+                node_id(FOO_1_ID) => Ok(()),
+                node_id(BAR_1_ID) => Ok(()),
+                node_id(BAR_2_ID) => Ok(()),
             },
-        })),
+        }),
     );
 
     // THEN: the expected process_multiple calls will have been made.
@@ -144,14 +143,14 @@ fn test_passes_all_runnable_nodes_together() {
     // THEN: the outcome reflects the successfully processed nodes.
     expect_that!(
         outcome,
-        ok(eq(&processing::PipelineOutcome {
-            node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeOutcome::Success,
-                node_id(FOO_2_ID) => NodeOutcome::Success,
-                node_id(BAR_1_ID) => NodeOutcome::Success,
-                node_id(BAR_2_ID) => NodeOutcome::Success,
+        eq(&processing::PipelineOutcome {
+            node_results: hash_map! {
+                node_id(FOO_1_ID) => Ok(()),
+                node_id(FOO_2_ID) => Ok(()),
+                node_id(BAR_1_ID) => Ok(()),
+                node_id(BAR_2_ID) => Ok(()),
             },
-        })),
+        }),
     );
 
     // THEN: the expected process_multiple calls will have been made.
@@ -183,15 +182,15 @@ fn test_handles_direct_loop() {
     // THEN: the outcome reflects the unprocessed dependency loop.
     expect_that!(
         outcome,
-        ok(eq(&processing::PipelineOutcome {
-            node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeOutcome::Unprocessed(NodeUnprocessedReason {
+        eq(&processing::PipelineOutcome {
+            node_results: hash_map! {
+                node_id(FOO_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
                         node_id(FOO_1_ID) => UnprocessedDependencyReason::Unprocessed,
                     }
-                }),
+                })),
             },
-        })),
+        }),
     );
 
     // THEN: no process_multiple calls will have been made.
@@ -226,20 +225,20 @@ fn test_handles_indirect_loop() {
     // THEN: the outcome reflects the unprocessed dependency loop.
     expect_that!(
         outcome,
-        ok(eq(&processing::PipelineOutcome {
-            node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeOutcome::Unprocessed(NodeUnprocessedReason {
+        eq(&processing::PipelineOutcome {
+            node_results: hash_map! {
+                node_id(FOO_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
                         node_id(BAR_1_ID) => UnprocessedDependencyReason::Unprocessed,
                     }
-                }),
-                node_id(BAR_1_ID) => NodeOutcome::Unprocessed(NodeUnprocessedReason {
+                })),
+                node_id(BAR_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
                         node_id(FOO_1_ID) => UnprocessedDependencyReason::Unprocessed,
                     }
-                }),
+                })),
             },
-        })),
+        }),
     );
 
     // THEN: no process_multiple calls will have been made.
@@ -271,15 +270,15 @@ fn test_handles_unknown_dependency() {
 
     expect_that!(
         outcome,
-        ok(eq(&processing::PipelineOutcome {
-            node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeOutcome::Unprocessed(NodeUnprocessedReason {
+        eq(&processing::PipelineOutcome {
+            node_results: hash_map! {
+                node_id(FOO_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
                         node_id(UNKNOWN_ID) => UnprocessedDependencyReason::Unknown,
                     }
-                }),
+                })),
             },
-        })),
+        }),
     );
 
     // THEN: no process_multiple calls will have been made.
@@ -307,7 +306,7 @@ fn test_handles_system_error() {
         .returning_st(|_, _, _| {
             vec![NodeResult {
                 id: node_id(FOO_1_ID),
-                value: Err(anyhow!("some error")),
+                value: Err(TestSystemError::ErrorOne),
             }]
         });
 
@@ -320,13 +319,13 @@ fn test_handles_system_error() {
 
     expect_that!(
         outcome,
-        ok(eq(&processing::PipelineOutcome {
-            node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeOutcome::ProcessErrored(
-                    anyhow::Error::msg("error message, content does not matter"),
-                ),
+        eq(&processing::PipelineOutcome {
+            node_results: hash_map! {
+                node_id(FOO_1_ID) => Err(NodeError::ProcessErrored(
+                    TestSystemError::ErrorOne,
+                )),
             },
-        })),
+        }),
     );
 
     // THEN: no process_multiple calls will have been made.
@@ -391,12 +390,12 @@ fn test_passes_intermediates() {
     // THEN:
     expect_that!(
         outcome,
-        ok(eq(&processing::PipelineOutcome {
-            node_outcomes: hash_map! {
-                node_id(FOO_1_ID) => NodeOutcome::Success,
-                node_id(BAR_1_ID) => NodeOutcome::Success,
+        eq(&processing::PipelineOutcome {
+            node_results: hash_map! {
+                node_id(FOO_1_ID) => Ok(()),
+                node_id(BAR_1_ID) => Ok(()),
             },
-        })),
+        }),
     );
 
     // THEN: the expected process_multiple calls will have been made.
@@ -420,7 +419,7 @@ fn expect_process_multiple(
         .in_sequence(process_sequence);
 }
 
-fn fake_process_multiple(nodes: &[&FakeNode]) -> Vec<NodeResult<TestIntermediateValue>> {
+fn fake_process_multiple(nodes: &[&FakeNode]) -> Vec<NodeResult<TestPipelineTypes>> {
     nodes
         .iter()
         .map(|node| NodeResult {

@@ -1,4 +1,3 @@
-use anyhow::Result;
 use mockall::mock;
 use serde::{Deserialize, Serialize};
 
@@ -106,7 +105,10 @@ impl node::GenericNode<FakeSpec> {
         s
     }
 
-    pub fn add_inputs<'a>(&self, reg: &'a mut plinputs::NodeInputsRegistrator<'a>) -> Result<()> {
+    pub fn add_inputs<'a>(
+        &self,
+        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+    ) -> Result<(), TestSystemError> {
         let deps = match &self.spec {
             FakeSpec::Foo(foo_spec) => &foo_spec.deps,
             FakeSpec::Bar(bar_spec) => &bar_spec.deps,
@@ -181,7 +183,23 @@ impl crate::PipelineTypes for TestPipelineTypes {
     type ArgValue = TestArgValue;
 
     type IntermediateValue = TestIntermediateValue;
+
+    type SystemError = TestSystemError;
 }
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum TestSystemError {
+    ErrorOne,
+    ErrorTwo,
+}
+
+impl std::fmt::Display for TestSystemError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
+impl std::error::Error for TestSystemError {}
 
 pub type TestSystemMap = hashbrown::HashMap<
     FakeSpecDiscriminants,
@@ -198,26 +216,26 @@ mock! {
             &self,
             node: &FakeNode,
             params: &'a mut plparams::GenericNodeParamsRegistrator<'a, TestParamType>,
-        ) -> Result<()>;
+        ) -> Result<(), TestSystemError>;
 
         fn inputs<'a>(
             &self,
             node: &FakeNode,
             reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
-        ) -> Result<()>;
+        ) -> Result<(), TestSystemError>;
 
         fn process(
             &self,
             node: &FakeNode,
             args: &TestArgSet,
             intermediates: &TestIntermediateSet,
-        ) -> Result<TestIntermediateValue>;
+        ) -> Result<TestIntermediateValue, TestSystemError>;
 
         fn process_multiple<'a>(
             &self,
             nodes: &'a [&'a FakeNode],
             args: &plargs::GenericArgSet<TestArgValue>,
             intermediates: &TestIntermediateSet,
-        ) -> Vec<systems::NodeResult<TestIntermediateValue>>;
+        ) -> Vec<systems::NodeResult<TestPipelineTypes>>;
     }
 }
