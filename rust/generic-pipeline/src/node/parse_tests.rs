@@ -1,8 +1,8 @@
 use googletest::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use test_casing::{TestCases, cases, test_casing};
 
-use crate::testutil::*;
+use crate::{node, testutil::node_id};
 
 const CASES: TestCases<(&'static str, FakeNode)> = cases! {
     [
@@ -88,4 +88,47 @@ spec:
     }
 
     Ok(())
+}
+
+pub type FakeNode = node::GenericNode<FakeSpec>;
+
+/// Per-type wrapper of a specific type of extraction configuration node.
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(tag = "type", content = "spec")]
+pub enum FakeSpec {
+    Foo(FooSpec),
+    Bar(BarSpec),
+}
+
+impl From<FooSpec> for FakeSpec {
+    fn from(value: FooSpec) -> Self {
+        Self::Foo(value)
+    }
+}
+
+impl From<BarSpec> for FakeSpec {
+    fn from(value: BarSpec) -> Self {
+        Self::Bar(value)
+    }
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct FooSpec {
+    pub value: String,
+    pub deps: Vec<node::NodeId>,
+}
+
+impl Default for FooSpec {
+    fn default() -> Self {
+        Self {
+            value: "foo-value".into(),
+            deps: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct BarSpec {
+    pub value: String,
+    pub deps: Vec<node::NodeId>,
 }

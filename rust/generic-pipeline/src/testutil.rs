@@ -1,5 +1,4 @@
 use mockall::mock;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     intermediates,
@@ -12,8 +11,7 @@ pub fn node_id(s: &str) -> node::NodeId {
 }
 
 /// Per-type wrapper of a specific type of extraction configuration node.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(tag = "type", content = "spec")]
+#[derive(Debug, Eq, PartialEq)]
 pub enum FakeSpec {
     Foo(FooSpec),
     Bar(BarSpec),
@@ -31,7 +29,7 @@ impl From<BarSpec> for FakeSpec {
     }
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct FooSpec {
     pub value: String,
     pub deps: Vec<node::NodeId>,
@@ -46,7 +44,7 @@ impl Default for FooSpec {
     }
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct BarSpec {
     pub value: String,
     pub deps: Vec<node::NodeId>,
