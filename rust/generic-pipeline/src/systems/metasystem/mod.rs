@@ -4,11 +4,13 @@ mod tests;
 use std::rc::Rc;
 
 use super::{GenericSystem, NodeResult};
-use crate::{
-    intermediates,
-    node::{self, SpecTrait},
-    plinputs, plparams,
-};
+use crate::{intermediates, node, plinputs, plparams};
+
+pub trait DiscriminatedSpec {
+    type Discrim: std::fmt::Debug + Eq + std::hash::Hash;
+
+    fn discriminant(&self) -> Self::Discrim;
+}
 
 pub type MissingSystemErrorFn<D, E> = dyn Fn(D) -> E;
 
@@ -17,25 +19,27 @@ pub type MissingSystemErrorFn<D, E> = dyn Fn(D) -> E;
 pub struct GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
+    P::Spec: DiscriminatedSpec,
 {
-    systems: hashbrown::HashMap<<P::Spec as node::SpecTrait>::Discrim, Rc<dyn GenericSystem<P>>>,
+    systems: hashbrown::HashMap<<P::Spec as DiscriminatedSpec>::Discrim, Rc<dyn GenericSystem<P>>>,
     missing_system_error:
-        Box<MissingSystemErrorFn<<P::Spec as node::SpecTrait>::Discrim, P::SystemError>>,
+        Box<MissingSystemErrorFn<<P::Spec as DiscriminatedSpec>::Discrim, P::SystemError>>,
 }
 
 impl<P> GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
+    P::Spec: DiscriminatedSpec,
 {
     /// Creates a new [GenericMetaSystem] that delegates to the given systems for the given
     /// [SpecTrait::discriminant].
     pub fn new(
         systems: hashbrown::HashMap<
-            <P::Spec as node::SpecTrait>::Discrim,
+            <P::Spec as DiscriminatedSpec>::Discrim,
             Rc<dyn GenericSystem<P>>,
         >,
         missing_system_error: Box<
-            MissingSystemErrorFn<<P::Spec as node::SpecTrait>::Discrim, P::SystemError>,
+            MissingSystemErrorFn<<P::Spec as DiscriminatedSpec>::Discrim, P::SystemError>,
         >,
     ) -> Self {
         Self {
@@ -46,7 +50,7 @@ where
 
     fn system_for(
         &self,
-        spec_type: <P::Spec as node::SpecTrait>::Discrim,
+        spec_type: <P::Spec as DiscriminatedSpec>::Discrim,
     ) -> Result<&dyn GenericSystem<P>, P::SystemError> {
         self.systems
             .get(&spec_type)
@@ -58,6 +62,7 @@ where
 impl<P> GenericSystem<P> for GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
+    P::Spec: DiscriminatedSpec,
 {
     fn params<'a>(
         &self,
@@ -92,7 +97,7 @@ where
         intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
     ) -> Vec<NodeResult<P>> {
         let mut node_groups = hashbrown::HashMap::<
-            <P::Spec as SpecTrait>::Discrim,
+            <P::Spec as DiscriminatedSpec>::Discrim,
             Vec<&node::GenericNode<P::Spec>>,
         >::new();
 

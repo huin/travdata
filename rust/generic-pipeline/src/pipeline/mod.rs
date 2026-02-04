@@ -7,10 +7,7 @@ pub struct GenericPipeline<S> {
     id_to_node: HashMap<node::NodeId, node::GenericNode<S>>,
 }
 
-impl<S> GenericPipeline<S>
-where
-    S: node::SpecTrait,
-{
+impl<S> GenericPipeline<S> {
     pub fn new(nodes: impl IntoIterator<Item = node::GenericNode<S>>) -> Self {
         let id_to_node = nodes
             .into_iter()

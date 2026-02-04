@@ -13,7 +13,7 @@ mod testutil;
 pub trait PipelineTypes {
     /// Type of the [node::GenericNode::spec] field expected by the [systems::GenericSystem]
     /// implementation.
-    type Spec: node::SpecTrait;
+    type Spec: std::fmt::Debug + for<'a> serde::Deserialize<'a> + Eq + PartialEq + serde::Serialize;
     /// Parameter type emitted by the [systems::GenericSystem] implementation.
     type ParamType;
     /// Argument type expected by the [systems::GenericSystem] implementation.

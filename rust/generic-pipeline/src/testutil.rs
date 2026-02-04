@@ -12,20 +12,11 @@ pub fn node_id(s: &str) -> node::NodeId {
 }
 
 /// Per-type wrapper of a specific type of extraction configuration node.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, strum_macros::EnumDiscriminants)]
-#[strum_discriminants(derive(Hash))]
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "type", content = "spec")]
 pub enum FakeSpec {
     Foo(FooSpec),
     Bar(BarSpec),
-}
-
-impl node::SpecTrait for FakeSpec {
-    type Discrim = FakeSpecDiscriminants;
-
-    fn discriminant(&self) -> Self::Discrim {
-        self.into()
-    }
 }
 
 impl From<FooSpec> for FakeSpec {
@@ -96,15 +87,6 @@ impl node::GenericNode<FakeSpec> {
         }
     }
 
-    pub fn modified<F>(self, f: F) -> Self
-    where
-        F: FnOnce(&mut Self),
-    {
-        let mut s = self;
-        f(&mut s);
-        s
-    }
-
     pub fn add_inputs<'a>(
         &self,
         reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
@@ -147,19 +129,10 @@ pub fn bar_node(id: &str, deps: &[&str]) -> FakeNode {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum TestParamType {
-    TypeOne,
-    TypeTwo,
-}
-
-pub type TestParam = plparams::GenericParam<TestParamType>;
-pub type TestParams = plparams::GenericParams<TestParamType>;
+pub struct TestParamType {}
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum TestArgValue {
-    TypeOne(u16),
-    TypeTwo(u32),
-}
+pub struct TestArgValue {}
 
 pub type TestArgSet = plargs::GenericArgSet<TestArgValue>;
 
@@ -200,11 +173,6 @@ impl std::fmt::Display for TestSystemError {
 }
 
 impl std::error::Error for TestSystemError {}
-
-pub type TestSystemMap = hashbrown::HashMap<
-    FakeSpecDiscriminants,
-    std::rc::Rc<dyn systems::GenericSystem<TestPipelineTypes>>,
->;
 
 pub type TestProcessor = processing::GenericProcessor<TestPipelineTypes>;
 

@@ -4,7 +4,7 @@ mod metasystem;
 
 use crate::{PipelineTypes, intermediates, node, plargs, plinputs, plparams};
 
-pub use metasystem::GenericMetaSystem;
+pub use metasystem::{DiscriminatedSpec, GenericMetaSystem};
 
 /// Result of processing a node.
 pub struct NodeResult<P>

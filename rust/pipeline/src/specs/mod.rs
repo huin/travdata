@@ -37,7 +37,7 @@ pub enum Spec {
     PdfExtractTable(PdfExtractTable),
 }
 
-impl generic_pipeline::node::SpecTrait for Spec {
+impl generic_pipeline::systems::DiscriminatedSpec for Spec {
     type Discrim = SpecDiscriminants;
 
     fn discriminant(&self) -> Self::Discrim {

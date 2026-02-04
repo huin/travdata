@@ -12,14 +12,6 @@ use serde::{Deserialize, Serialize};
 
 pub use core_type::{NodeId, Tag};
 
-pub trait SpecTrait:
-    std::fmt::Debug + for<'a> Deserialize<'a> + Eq + PartialEq + Serialize
-{
-    type Discrim: std::fmt::Debug + Eq + std::hash::Hash;
-
-    fn discriminant(&self) -> Self::Discrim;
-}
-
 /// Generic wrapper and properties of an extraction configuration node.
 ///
 /// `S` is the spec type.
