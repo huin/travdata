@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use googletest::prelude::*;
-use map_macro::{hash_set, hashbrown::hash_map};
+use map_macro::hashbrown::{hash_map, hash_set};
 use test_casing::{TestCases, cases, test_casing};
 
 use super::*;
