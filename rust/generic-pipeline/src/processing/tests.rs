@@ -3,140 +3,188 @@ use std::result::Result;
 
 use googletest::prelude::*;
 use hashbrown::HashSet;
-use map_macro::hashbrown::hash_map;
-use mockall::mock;
-use predicates::constant::always;
+use map_macro::hashbrown::{hash_map, hash_set};
 
 use crate::{
-    intermediates, node, pipeline, plargs, plinputs, plparams, processing,
-    processing::{NodeError, NodeUnprocessedReason, UnprocessedDependencyReason},
-    systems,
-    systems::NodeResult,
+    intermediates::{self, IntermediateError},
+    node, pipeline, plargs, plinputs, plparams,
+    processing::{self, NodeError, NodeUnprocessedReason, UnprocessedDependencyReason},
+    systems::{self, NodeResult},
     testutil::node_id,
 };
 
-const FOO_1_ID: &str = "foo-1-id";
-const FOO_2_ID: &str = "foo-2-id";
-const BAR_1_ID: &str = "bar-1-id";
-const BAR_2_ID: &str = "bar-2-id";
+const NODE_1_ID: &str = "node-1-id";
+const NODE_2_ID: &str = "node-2-id";
+const NODE_3_ID: &str = "node-3-id";
+const NODE_4_ID: &str = "node-4-id";
 
 #[gtest]
 #[test_log::test]
-fn test_basic_process_order() {
-    let mut sys = MockFakeSystem::new();
+fn test_feeds_processed_dependency() {
+    let sys = FakeSystem::new();
 
-    // GIVEN: nodes where BAR_1_ID will depend on FOO_1_ID.
+    let stored_values = StoredValues::new();
+
+    // GIVEN: nodes where NODE_3_ID will depend on NODE_1_ID.
     let node_set = TestPipeline::new(vec![
-        foo_node(FOO_1_ID, &[]),
-        bar_node(BAR_1_ID, &[FOO_1_ID]),
+        value_node(NODE_1_ID, "dependency_value"),
+        store_node(NODE_2_ID, NODE_1_ID, stored_values.clone()),
     ]);
 
-    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
-    // specs:
-    sys.expect_inputs()
-        .returning_st(|node, reg| node.add_inputs(reg));
-
-    // GIVEN: distinct process_multiple calls for foo_1_node followed by bar_1_node.
-    let mut process_sequence = mockall::Sequence::new();
-    expect_process_multiple(&mut process_sequence, &mut sys, &[FOO_1_ID]);
-    expect_process_multiple(&mut process_sequence, &mut sys, &[BAR_1_ID]);
-
-    let sys = Rc::new(sys);
-    let processor = TestProcessor::new(sys.clone());
+    let processor = TestProcessor::new(sys);
     let args = TestArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
 
-    // THEN:
+    // THEN: all nodes should be reported as successful.
+    // TODO: Refactor this common value where every node ID is successful.
     expect_that!(
         outcome,
         eq(&processing::PipelineOutcome::<TestSystemError> {
             node_results: hash_map! {
-                node_id(FOO_1_ID) => Ok(()),
-                node_id(BAR_1_ID) => Ok(()),
+                node_id(NODE_1_ID) => Ok(()),
+                node_id(NODE_2_ID) => Ok(()),
             },
         }),
     );
 
-    // THEN: the expected process_multiple calls will have been made.
-    // (this is implicitly checked by the mock when dropped)
+    // THEN: the dependency value should have been stored.
+    expect_that!(
+        *stored_values.0.borrow(),
+        eq(&vec!["dependency_value".to_string()])
+    );
+}
+
+#[gtest]
+#[test_log::test]
+fn test_feeds_argument() {
+    let sys = FakeSystem::new();
+
+    let stored_values = StoredValues::new();
+
+    // GIVEN: nodes where NODE_3_ID will depend on NODE_1_ID.
+    let node_set = TestPipeline::new(vec![
+        value_from_arg_node(NODE_1_ID),
+        store_node(NODE_2_ID, NODE_1_ID, stored_values.clone()),
+    ]);
+
+    let processor = TestProcessor::new(sys);
+    let mut args = TestArgSet::default();
+    args.set(
+        node_id(NODE_1_ID),
+        plparams::ParamId::from_static(FakeSystem::PARAM_NAME),
+        TestArgValue("arg_value".into()),
+    );
+
+    // WHEN: processing is requested on the nodes.
+    let outcome = processor.process(&node_set, &args);
+
+    // THEN: all nodes should be reported as successful.
+    expect_that!(
+        outcome,
+        eq(&processing::PipelineOutcome::<TestSystemError> {
+            node_results: hash_map! {
+                node_id(NODE_1_ID) => Ok(()),
+                node_id(NODE_2_ID) => Ok(()),
+            },
+        }),
+    );
+
+    // THEN: the dependency value should have been stored.
+    expect_that!(
+        *stored_values.0.borrow(),
+        eq(&vec!["arg_value".to_string()])
+    );
+}
+
+#[gtest]
+#[test_log::test]
+fn test_errors_on_missing_argument() {
+    let sys = FakeSystem::new();
+
+    let stored_values = StoredValues::new();
+
+    // GIVEN: nodes where NODE_3_ID will depend on NODE_1_ID.
+    let node_set = TestPipeline::new(vec![
+        value_from_arg_node(NODE_1_ID),
+        store_node(NODE_2_ID, NODE_1_ID, stored_values.clone()),
+    ]);
+
+    let processor = TestProcessor::new(sys);
+    let args = TestArgSet::default();
+
+    // WHEN: processing is requested on the nodes.
+    let outcome = processor.process(&node_set, &args);
+
+    // THEN: all nodes should be reported as successful.
+    expect_that!(
+        outcome,
+        eq(&processing::PipelineOutcome::<TestSystemError> {
+            node_results: hash_map! {
+                node_id(NODE_1_ID) => Err(NodeError::ProcessErrored(TestSystemError::Arg(plargs::ArgError::NotFound{
+                    node_id: node_id(NODE_1_ID),
+                    param_id: plparams::ParamId::from_static(FakeSystem::PARAM_NAME),
+                }))),
+                node_id(NODE_2_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason{
+                    unprocessed_dependencies: hash_map![node_id(NODE_1_ID) => UnprocessedDependencyReason::Unprocessed],
+                })),
+            },
+        }),
+    );
 }
 
 #[gtest]
 #[test_log::test]
 fn test_three_stage_processing() {
-    let mut sys = MockFakeSystem::new();
+    let sys = FakeSystem::new();
 
-    // GIVEN: nodes where BAR_2_ID will depend on BAR_1_ID which depends on FOO_1_ID.
+    let stored_values = StoredValues::new();
+
+    // GIVEN: nodes where NODE_3_ID will depend on NODE_1_ID.
     let node_set = TestPipeline::new(vec![
-        foo_node(FOO_1_ID, &[]),
-        bar_node(BAR_1_ID, &[FOO_1_ID]),
-        bar_node(BAR_2_ID, &[BAR_1_ID]),
+        value_node(NODE_1_ID, "foo"),
+        value_node(NODE_2_ID, "bar"),
+        concat_node(NODE_3_ID, &[NODE_1_ID, NODE_2_ID]),
+        store_node(NODE_4_ID, NODE_3_ID, stored_values.clone()),
     ]);
 
-    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
-    // specs: BAR_2_ID -> BAR_1_ID -> FOO_1_ID.
-    sys.expect_inputs()
-        .returning_st(|node, reg| node.add_inputs(reg));
-
-    // GIVEN: distinct process_multiple calls for FOO_1_ID followed by BAR_1_ID, and then
-    // BAR_2_ID.
-    let mut process_sequence = mockall::Sequence::new();
-    expect_process_multiple(&mut process_sequence, &mut sys, &[FOO_1_ID]);
-    expect_process_multiple(&mut process_sequence, &mut sys, &[BAR_1_ID]);
-    expect_process_multiple(&mut process_sequence, &mut sys, &[BAR_2_ID]);
-
-    let sys = Rc::new(sys);
-    let processor = TestProcessor::new(sys.clone());
-    let args = plargs::GenericArgSet::default();
+    let processor = TestProcessor::new(sys);
+    let args = TestArgSet::default();
 
     // WHEN: processing is requested on the nodes.
     let outcome = processor.process(&node_set, &args);
 
-    // THEN: the outcome reflects the successfully processed nodes.
+    // THEN: all nodes should be reported as successful.
     expect_that!(
         outcome,
-        eq(&processing::PipelineOutcome {
+        eq(&processing::PipelineOutcome::<TestSystemError> {
             node_results: hash_map! {
-                node_id(FOO_1_ID) => Ok(()),
-                node_id(BAR_1_ID) => Ok(()),
-                node_id(BAR_2_ID) => Ok(()),
+                node_id(NODE_1_ID) => Ok(()),
+                node_id(NODE_2_ID) => Ok(()),
+                node_id(NODE_3_ID) => Ok(()),
+                node_id(NODE_4_ID) => Ok(()),
             },
         }),
     );
 
-    // THEN: the expected process_multiple calls will have been made.
-    // (this is implicitly checked by the mock when dropped)
+    // THEN: the concatenated values should have been stored.
+    expect_that!(*stored_values.0.borrow(), eq(&vec!["foo,bar".to_string()]));
 }
 
 #[gtest]
 #[test_log::test]
 fn test_passes_all_runnable_nodes_together() {
-    let mut sys = MockFakeSystem::new();
+    let sys = FakeSystem::new();
 
-    // GIVEN: nodes where BAR_1_ID will depend on FOO_1_ID, and BAR_2_ID will depend on FOO_2_ID.
+    // GIVEN: nodes where NODE_3_ID will depend on NODE_1_ID, and NODE_4_ID will depend on NODE_2_ID.
     let node_set = TestPipeline::new(vec![
-        foo_node(FOO_1_ID, &[]),
-        foo_node(FOO_2_ID, &[]),
-        bar_node(BAR_1_ID, &[FOO_1_ID]),
-        bar_node(BAR_2_ID, &[FOO_2_ID]),
+        value_node(NODE_1_ID, "foo"),
+        value_node(NODE_2_ID, "bar"),
+        store_node(NODE_3_ID, NODE_1_ID, StoredValues::new()),
+        store_node(NODE_4_ID, NODE_2_ID, StoredValues::new()),
     ]);
 
-    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
-    // specs:
-    // BAR_1_ID -> FOO_1_ID
-    // BAR_2_ID -> FOO_2_ID
-    sys.expect_inputs()
-        .returning_st(|node, reg| node.add_inputs(reg));
-
-    let mut process_sequence = mockall::Sequence::new();
-    // GIVEN: expected call for FOO_1_ID and FOO_2_ID.
-    expect_process_multiple(&mut process_sequence, &mut sys, &[FOO_1_ID, FOO_2_ID]);
-    // GIVEN: expected call for BAR_1_ID and BAR_2_ID.
-    expect_process_multiple(&mut process_sequence, &mut sys, &[BAR_1_ID, BAR_2_ID]);
-
-    let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
     let args = plargs::GenericArgSet::default();
 
@@ -148,34 +196,32 @@ fn test_passes_all_runnable_nodes_together() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                node_id(FOO_1_ID) => Ok(()),
-                node_id(FOO_2_ID) => Ok(()),
-                node_id(BAR_1_ID) => Ok(()),
-                node_id(BAR_2_ID) => Ok(()),
+                node_id(NODE_1_ID) => Ok(()),
+                node_id(NODE_2_ID) => Ok(()),
+                node_id(NODE_3_ID) => Ok(()),
+                node_id(NODE_4_ID) => Ok(()),
             },
         }),
     );
 
-    // THEN: the expected process_multiple calls will have been made.
-    // (this is implicitly checked by the mock when dropped)
+    // THEN: the calls should be grouped as expected.
+    expect_that!(
+        *sys.process_sets.borrow(),
+        eq(&vec![
+            hash_set![node_id(NODE_1_ID), node_id(NODE_2_ID)],
+            hash_set![node_id(NODE_3_ID), node_id(NODE_4_ID)],
+        ])
+    );
 }
 
 #[gtest]
 #[test_log::test]
 fn test_handles_direct_loop() {
-    let mut sys = MockFakeSystem::new();
+    let sys = FakeSystem::new();
 
-    // GIVEN: nodes where FOO_1_ID depends on itself.
-    let node_set = TestPipeline::new(vec![foo_node(FOO_1_ID, &[FOO_1_ID])]);
+    // GIVEN: nodes where NODE_1_ID depends on itself.
+    let node_set = TestPipeline::new(vec![concat_node(NODE_1_ID, &[NODE_1_ID])]);
 
-    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
-    // specs: FOO_1_ID -> FOO_1_ID
-    sys.expect_inputs()
-        .returning_st(|node, reg| node.add_inputs(reg));
-
-    // GIVEN: No expected processing calls.
-
-    let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
     let args = plargs::GenericArgSet::default();
 
@@ -187,38 +233,30 @@ fn test_handles_direct_loop() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                node_id(FOO_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
+                node_id(NODE_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
-                        node_id(FOO_1_ID) => UnprocessedDependencyReason::Unprocessed,
+                        node_id(NODE_1_ID) => UnprocessedDependencyReason::Unprocessed,
                     }
                 })),
             },
         }),
     );
 
-    // THEN: no process_multiple calls will have been made.
+    // THEN: no process* calls have been made.
+    expect_that!(*sys.process_sets.borrow(), is_empty());
 }
 
 #[gtest]
 #[test_log::test]
 fn test_handles_indirect_loop() {
-    let mut sys = MockFakeSystem::new();
+    let sys = FakeSystem::new();
 
-    // GIVEN: nodes where FOO_1_ID depends on BAR_1_ID which depends on FOO_1_ID, forming a loop.
+    // GIVEN: nodes where NODE_1_ID depends on NODE_3_ID which depends on NODE_1_ID, forming a loop.
     let node_set = TestPipeline::new(vec![
-        foo_node(FOO_1_ID, &[BAR_1_ID]),
-        bar_node(BAR_1_ID, &[FOO_1_ID]),
+        concat_node(NODE_1_ID, &[NODE_3_ID]),
+        concat_node(NODE_3_ID, &[NODE_1_ID]),
     ]);
 
-    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
-    // specs:
-    // BAR_1_ID -> FOO_1_ID -> BAR_1_ID
-    sys.expect_inputs()
-        .returning_st(|node, reg| node.add_inputs(reg));
-
-    // GIVEN: No expected processing calls.
-
-    let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
     let args = plargs::GenericArgSet::default();
 
@@ -230,21 +268,22 @@ fn test_handles_indirect_loop() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                node_id(FOO_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
+                node_id(NODE_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
-                        node_id(BAR_1_ID) => UnprocessedDependencyReason::Unprocessed,
+                        node_id(NODE_3_ID) => UnprocessedDependencyReason::Unprocessed,
                     }
                 })),
-                node_id(BAR_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
+                node_id(NODE_3_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
-                        node_id(FOO_1_ID) => UnprocessedDependencyReason::Unprocessed,
+                        node_id(NODE_1_ID) => UnprocessedDependencyReason::Unprocessed,
                     }
                 })),
             },
         }),
     );
 
-    // THEN: no process_multiple calls will have been made.
+    // THEN: no process* calls have been made.
+    expect_that!(*sys.process_sets.borrow(), is_empty());
 }
 
 #[gtest]
@@ -252,19 +291,11 @@ fn test_handles_indirect_loop() {
 fn test_handles_unknown_dependency() {
     const UNKNOWN_ID: &str = "unknown-id";
 
-    let mut sys = MockFakeSystem::new();
+    let sys = FakeSystem::new();
 
-    // GIVEN: nodes where FOO_1_ID depends on BAR_1_ID which depends on FOO_1_ID, forming a loop.
-    let node_set = TestPipeline::new(vec![foo_node(FOO_1_ID, &[UNKNOWN_ID])]);
+    // GIVEN: nodes where NODE_1_ID depends on NODE_3_ID which depends on NODE_1_ID, forming a loop.
+    let node_set = TestPipeline::new(vec![concat_node(NODE_1_ID, &[UNKNOWN_ID])]);
 
-    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
-    // specs: FOO_1_ID -> "unknown-id"
-    sys.expect_inputs()
-        .returning_st(|node, reg| node.add_inputs(reg));
-
-    // GIVEN: No expected processing calls.
-
-    let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
     let args = plargs::GenericArgSet::default();
 
@@ -275,7 +306,7 @@ fn test_handles_unknown_dependency() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                node_id(FOO_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
+                node_id(NODE_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
                         node_id(UNKNOWN_ID) => UnprocessedDependencyReason::Unknown,
                     }
@@ -284,36 +315,23 @@ fn test_handles_unknown_dependency() {
         }),
     );
 
-    // THEN: no process_multiple calls will have been made.
+    // THEN: no process* calls have been made.
+    expect_that!(*sys.process_sets.borrow(), is_empty());
 }
 
 #[gtest]
 #[test_log::test]
 fn test_handles_system_error() {
-    let mut sys = MockFakeSystem::new();
+    let sys = FakeSystem::new();
 
-    // GIVEN: nodes where FOO_1_ID depends on BAR_1_ID which depends on FOO_1_ID, forming a loop.
-    let node_set = TestPipeline::new(vec![foo_node(FOO_1_ID, &[])]);
+    // GIVEN: nodes that will error when processed.
+    let node_set = TestPipeline::new(vec![
+        // TODO: uncomment these and fix the implementation.
+        // error_node(NODE_1_ID, SystemErrorWhen::Params),
+        // error_node(NODE_2_ID, SystemErrorWhen::Inputs),
+        error_node(NODE_3_ID, SystemErrorWhen::Process),
+    ]);
 
-    // GIVEN: inputs() is called for each node.
-    sys.expect_inputs()
-        .returning_st(|node, reg| node.add_inputs(reg));
-
-    // GIVEN: A process_multiple call that fails with an error.
-    sys.expect_process_multiple()
-        .with(
-            ProcessNodesPredicate::new().with_node_ids(&[FOO_1_ID]),
-            always(),
-            always(),
-        )
-        .returning_st(|_, _, _| {
-            vec![NodeResult {
-                id: node_id(FOO_1_ID),
-                value: Err(TestSystemError::ErrorOne),
-            }]
-        });
-
-    let sys = Rc::new(sys);
     let processor = TestProcessor::new(sys.clone());
     let args = plargs::GenericArgSet::default();
 
@@ -324,212 +342,107 @@ fn test_handles_system_error() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                node_id(FOO_1_ID) => Err(NodeError::ProcessErrored(
-                    TestSystemError::ErrorOne,
+                // TODO: uncomment these and fix the implementation.
+                // node_id(NODE_1_ID) => Err(NodeError::ProcessErrored(
+                //     TestSystemError::SystemError,
+                // )),
+                // node_id(NODE_2_ID) => Err(NodeError::ProcessErrored(
+                //     TestSystemError::SystemError,
+                // )),
+                node_id(NODE_3_ID) => Err(NodeError::ProcessErrored(
+                    TestSystemError::System,
                 )),
             },
         }),
     );
 
-    // THEN: no process_multiple calls will have been made.
-}
-
-#[gtest]
-#[test_log::test]
-fn test_passes_intermediates() {
-    let mut sys = MockFakeSystem::new();
-
-    // GIVEN: nodes where BAR_1_ID will depend on FOO_1_ID.
-    let node_set = TestPipeline::new(vec![
-        foo_node(FOO_1_ID, &[]),
-        bar_node(BAR_1_ID, &[FOO_1_ID]),
-    ]);
-
-    // GIVEN: inputs() is called for each node, resulting in the dependencies spcified in the
-    // specs:
-    sys.expect_inputs()
-        .returning_st(|node, reg| node.add_inputs(reg));
-
-    // GIVEN: distinct process_multiple calls for foo_1_node followed by bar_1_node.
-    sys.expect_process_multiple()
-        .once()
-        .with(
-            ProcessNodesPredicate::new().with_node_ids(&[FOO_1_ID]),
-            always(),
-            always(),
-        )
-        .returning_st(|_, _, _| {
-            vec![NodeResult {
-                id: node_id(FOO_1_ID),
-                value: Ok(TestIntermediateValue::ValueOne(1)),
-            }]
-        });
-    sys.expect_process_multiple()
-        .once()
-        .with(
-            ProcessNodesPredicate::new().with_node_ids(&[BAR_1_ID]),
-            always(),
-            predicates::function::function(|interms: &TestIntermediateSet| {
-                matches!(
-                    interms.get(&node_id(FOO_1_ID)),
-                    Some(TestIntermediateValue::ValueOne(1))
-                )
-            }),
-        )
-        .returning_st(|_, _, _| {
-            vec![NodeResult {
-                id: node_id(BAR_1_ID),
-                value: Ok(TestIntermediateValue::NoData),
-            }]
-        });
-
-    let sys = Rc::new(sys);
-    let processor = TestProcessor::new(sys.clone());
-    let args = plargs::GenericArgSet::default();
-
-    // WHEN: processing is requested on the nodes.
-    let outcome = processor.process(&node_set, &args);
-
-    // THEN:
+    // THEN: only NODE_3_ID should have been processed, as the other two failed on preconditions to
+    // process.
     expect_that!(
-        outcome,
-        eq(&processing::PipelineOutcome {
-            node_results: hash_map! {
-                node_id(FOO_1_ID) => Ok(()),
-                node_id(BAR_1_ID) => Ok(()),
-            },
-        }),
+        *sys.process_sets.borrow(),
+        eq(&vec![hash_set![node_id(NODE_3_ID)],])
     );
-
-    // THEN: the expected process_multiple calls will have been made.
-    // (this is implicitly checked by the mock when dropped)
-}
-
-fn expect_process_multiple(
-    process_sequence: &mut mockall::Sequence,
-    sys: &mut MockFakeSystem,
-    node_ids: &[&str],
-) {
-    let mut nodes_predicate = ProcessNodesPredicate::new();
-    for id_str in node_ids {
-        nodes_predicate.add_node_id(id_str);
-    }
-
-    sys.expect_process_multiple()
-        .once()
-        .with(nodes_predicate, always(), always())
-        .returning_st(|nodes, _, _| fake_process_multiple(nodes))
-        .in_sequence(process_sequence);
-}
-
-fn fake_process_multiple(nodes: &[&FakeNode]) -> Vec<NodeResult<TestPipelineTypes>> {
-    nodes
-        .iter()
-        .map(|node| NodeResult {
-            id: node.id.clone(),
-            value: Ok(TestIntermediateValue::ValueOne(1)),
-        })
-        .collect()
-}
-
-struct ProcessNodesPredicate {
-    want_ids: HashSet<node::NodeId>,
-}
-
-impl ProcessNodesPredicate {
-    fn new() -> Self {
-        Self {
-            want_ids: HashSet::new(),
-        }
-    }
-
-    fn with_node_ids(mut self, id_strs: &[&str]) -> Self {
-        for id_str in id_strs {
-            self.add_node_id(id_str);
-        }
-        self
-    }
-
-    fn add_node_id(&mut self, id_str: &str) {
-        self.want_ids.insert(node_id(id_str));
-    }
-}
-
-impl std::fmt::Display for ProcessNodesPredicate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut fmt_ids: Vec<_> = self
-            .want_ids
-            .iter()
-            .map(|node_id| format!("{node_id:?}"))
-            .collect();
-        fmt_ids.sort();
-        write!(
-            f,
-            "&[&FakeNode] slice containing node IDs [{}]",
-            fmt_ids.join(", ")
-        )
-    }
-}
-
-impl predicates::reflection::PredicateReflection for ProcessNodesPredicate {}
-
-impl mockall::Predicate<[&FakeNode]> for ProcessNodesPredicate {
-    fn eval(&self, variable: &[&FakeNode]) -> bool {
-        let got_ids: HashSet<node::NodeId> = variable.iter().map(|node| node.id.clone()).collect();
-        got_ids == self.want_ids
-    }
 }
 
 /// Per-type wrapper of a specific type of extraction configuration node.
-#[derive(Debug, Eq, PartialEq)]
-pub enum FakeSpec {
-    Foo(FooSpec),
-    Bar(BarSpec),
+#[derive(Debug)]
+enum FakeSpec {
+    Value(ValueSpec),
+    ValueFromArg(ValueFromArgSpec),
+    Concat(ConcatSpec),
+    Store(StoreSpec),
+    Error(SystemErrorWhen),
 }
 
-impl From<FooSpec> for FakeSpec {
-    fn from(value: FooSpec) -> Self {
-        Self::Foo(value)
+impl From<ValueSpec> for FakeSpec {
+    fn from(value: ValueSpec) -> Self {
+        Self::Value(value)
     }
 }
 
-impl From<BarSpec> for FakeSpec {
-    fn from(value: BarSpec) -> Self {
-        Self::Bar(value)
+impl From<ValueFromArgSpec> for FakeSpec {
+    fn from(value: ValueFromArgSpec) -> Self {
+        Self::ValueFromArg(value)
+    }
+}
+
+impl From<ConcatSpec> for FakeSpec {
+    fn from(value: ConcatSpec) -> Self {
+        Self::Concat(value)
+    }
+}
+
+impl From<StoreSpec> for FakeSpec {
+    fn from(value: StoreSpec) -> Self {
+        Self::Store(value)
     }
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct FooSpec {
-    pub value: String,
-    pub deps: Vec<node::NodeId>,
+struct ValueSpec {
+    value: String,
 }
 
-impl Default for FooSpec {
+impl Default for ValueSpec {
     fn default() -> Self {
         Self {
-            value: "foo-value".into(),
-            deps: Default::default(),
+            value: "value".into(),
         }
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub struct BarSpec {
-    pub value: String,
-    pub deps: Vec<node::NodeId>,
+#[derive(Debug, Default, Eq, PartialEq)]
+struct ValueFromArgSpec;
+
+#[derive(Debug, Default, Eq, PartialEq)]
+struct ConcatSpec {
+    deps: Vec<node::NodeId>,
 }
 
-impl Default for BarSpec {
-    fn default() -> Self {
-        Self {
-            value: "bar-value".into(),
-            deps: Default::default(),
-        }
+#[derive(Debug, Eq, PartialEq)]
+struct StoredValues(std::cell::RefCell<Vec<String>>);
+
+impl StoredValues {
+    fn new() -> Rc<Self> {
+        Rc::new(StoredValues(std::cell::RefCell::new(Vec::with_capacity(1))))
     }
 }
 
-pub type FakeNode = node::GenericNode<FakeSpec>;
+#[derive(Debug, Eq, PartialEq)]
+struct StoreSpec {
+    dep: node::NodeId,
+    stored_values: Rc<StoredValues>,
+}
+
+#[derive(Debug)]
+#[expect(dead_code)]
+enum SystemErrorWhen {
+    Params,
+    Inputs,
+    Process,
+}
+
+type FakeNode = node::GenericNode<FakeSpec>;
 
 impl Default for FakeNode {
     fn default() -> Self {
@@ -537,84 +450,77 @@ impl Default for FakeNode {
             id: node_id("default-node-id"),
             tags: Default::default(),
             public: Default::default(),
-            spec: FooSpec::default().into(),
+            spec: ValueSpec::default().into(),
         }
     }
 }
 
-impl node::GenericNode<FakeSpec> {
-    pub fn default_with_spec<S>(spec: S) -> Self
-    where
-        S: Into<FakeSpec>,
-    {
-        Self {
-            id: node_id("foo"),
-            tags: Default::default(),
-            public: false,
-            spec: spec.into(),
-        }
-    }
-
-    pub fn add_inputs<'a>(
-        &self,
-        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
-    ) -> Result<(), TestSystemError> {
-        let deps = match &self.spec {
-            FakeSpec::Foo(foo_spec) => &foo_spec.deps,
-            FakeSpec::Bar(bar_spec) => &bar_spec.deps,
-        };
-
-        for dep in deps {
-            reg.add_input(dep);
-        }
-
-        Ok(())
-    }
-}
-
-pub fn foo_node(id: &str, deps: &[&str]) -> FakeNode {
+fn value_node(id: &str, value: &str) -> FakeNode {
     FakeNode {
         id: node_id(id),
-        spec: FooSpec {
-            deps: deps.iter().map(|s| node_id(s)).collect(),
-            ..Default::default()
+        spec: ValueSpec {
+            value: value.into(),
         }
         .into(),
         ..Default::default()
     }
 }
 
-pub fn bar_node(id: &str, deps: &[&str]) -> FakeNode {
+fn value_from_arg_node(id: &str) -> FakeNode {
     FakeNode {
         id: node_id(id),
-        spec: BarSpec {
+        spec: ValueFromArgSpec.into(),
+        ..Default::default()
+    }
+}
+
+fn concat_node(id: &str, deps: &[&str]) -> FakeNode {
+    FakeNode {
+        id: node_id(id),
+        spec: ConcatSpec {
             deps: deps.iter().map(|s| node_id(s)).collect(),
-            ..Default::default()
         }
         .into(),
         ..Default::default()
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub struct TestParamType {}
-
-#[derive(Debug, Eq, PartialEq)]
-pub struct TestArgValue {}
-
-pub type TestArgSet = plargs::GenericArgSet<TestArgValue>;
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum TestIntermediateValue {
-    NoData,
-    ValueOne(u16),
+fn store_node(id: &str, dep: &str, stored_values: Rc<StoredValues>) -> FakeNode {
+    FakeNode {
+        id: node_id(id),
+        spec: StoreSpec {
+            dep: node_id(dep),
+            stored_values,
+        }
+        .into(),
+        ..Default::default()
+    }
 }
 
-pub type TestIntermediateSet = intermediates::GenericIntermediateSet<TestIntermediateValue>;
+fn error_node(id: &str, when: SystemErrorWhen) -> FakeNode {
+    FakeNode {
+        id: node_id(id),
+        spec: FakeSpec::Error(when),
+        ..Default::default()
+    }
+}
 
-pub type TestPipeline = pipeline::GenericPipeline<FakeSpec>;
+#[derive(Debug, Eq, PartialEq)]
+struct TestParamType;
 
-pub struct TestPipelineTypes;
+#[derive(Debug, Eq, PartialEq)]
+struct TestArgValue(String);
+
+type TestArgSet = plargs::GenericArgSet<TestArgValue>;
+
+#[derive(Debug, Eq, PartialEq)]
+struct TestIntermediateValue(String);
+
+type TestIntermediateSet = intermediates::GenericIntermediateSet<TestIntermediateValue>;
+
+type TestPipeline = pipeline::GenericPipeline<FakeSpec>;
+
+struct TestPipelineTypes;
 
 impl crate::PipelineTypes for TestPipelineTypes {
     type Spec = FakeSpec;
@@ -628,10 +534,20 @@ impl crate::PipelineTypes for TestPipelineTypes {
     type SystemError = TestSystemError;
 }
 
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
+enum TestSystemError {
+    // NeverError is for cases that should never occur (where the processor has broken a basic
+    // contract).
+    Never(NeverReason),
+    System,
+    Arg(#[from] plargs::ArgError),
+    Intermediate(#[from] intermediates::IntermediateError),
+}
+
 #[derive(Debug, Eq, PartialEq)]
-pub enum TestSystemError {
-    ErrorOne,
-    ErrorTwo,
+enum NeverReason {
+    MissingInput(IntermediateError),
+    OutOfOrder,
 }
 
 impl std::fmt::Display for TestSystemError {
@@ -640,38 +556,155 @@ impl std::fmt::Display for TestSystemError {
     }
 }
 
-impl std::error::Error for TestSystemError {}
+type TestProcessor = processing::GenericProcessor<TestPipelineTypes>;
 
-pub type TestProcessor = processing::GenericProcessor<TestPipelineTypes>;
+struct FakeSystem {
+    process_sets: std::cell::RefCell<Vec<HashSet<node::NodeId>>>,
+}
 
-mock! {
-    pub FakeSystem {}
+impl FakeSystem {
+    const PARAM_NAME: &str = "test_param";
 
-    impl systems::GenericSystem<TestPipelineTypes> for FakeSystem {
-        fn params<'a>(
-            &self,
-            node: &FakeNode,
-            params: &'a mut plparams::GenericNodeParamsRegistrator<'a, TestParamType>,
-        ) -> Result<(), TestSystemError>;
+    fn new() -> Rc<Self> {
+        Rc::new(Self {
+            process_sets: Default::default(),
+        })
+    }
 
-        fn inputs<'a>(
-            &self,
-            node: &FakeNode,
-            reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
-        ) -> Result<(), TestSystemError>;
+    fn do_process(
+        &self,
+        node: &FakeNode,
+        args: &TestArgSet,
+        intermediates: &TestIntermediateSet,
+    ) -> Result<TestIntermediateValue, TestSystemError> {
+        use FakeSpec::*;
+        Ok(match &node.spec {
+            Value(value_spec) => TestIntermediateValue(value_spec.value.clone()),
+            ValueFromArg(_) => {
+                let arg =
+                    args.require(&node.id, &plparams::ParamId::from_static(Self::PARAM_NAME))?;
+                TestIntermediateValue(arg.0.clone())
+            }
+            Concat(concat_spec) => {
+                let parts: Vec<&str> = concat_spec
+                    .deps
+                    .iter()
+                    .map(|dep| {
+                        intermediates
+                            .require(dep)
+                            .map(|intermediate| intermediate.0.as_str())
+                            .map_err(NeverReason::MissingInput)
+                            .map_err(TestSystemError::Never)
+                    })
+                    .collect::<Result<Vec<&str>, TestSystemError>>()?;
 
-        fn process(
-            &self,
-            node: &FakeNode,
-            args: &TestArgSet,
-            intermediates: &TestIntermediateSet,
-        ) -> Result<TestIntermediateValue, TestSystemError>;
+                TestIntermediateValue(parts.join(","))
+            }
+            Store(store_spec) => {
+                let value = intermediates.require(&store_spec.dep)?;
+                store_spec
+                    .stored_values
+                    .0
+                    .borrow_mut()
+                    .push(value.0.clone());
+                TestIntermediateValue("".into())
+            }
+            Error(SystemErrorWhen::Process) => {
+                return Err(TestSystemError::System);
+            }
+            Error(_) => {
+                // The processor should never reach this point, it should have probed all other
+                // "whens" before getting to processing.
+                return Err(TestSystemError::Never(NeverReason::OutOfOrder));
+            }
+        })
+    }
+}
 
-        fn process_multiple<'a>(
-            &self,
-            nodes: &'a [&'a FakeNode],
-            args: &plargs::GenericArgSet<TestArgValue>,
-            intermediates: &TestIntermediateSet,
-        ) -> Vec<systems::NodeResult<TestPipelineTypes>>;
+impl systems::GenericSystem<TestPipelineTypes> for FakeSystem {
+    fn params<'a>(
+        &self,
+        node: &FakeNode,
+        params: &'a mut plparams::GenericNodeParamsRegistrator<'a, TestParamType>,
+    ) -> Result<(), TestSystemError> {
+        use FakeSpec::*;
+        match &node.spec {
+            Value(_) => {}
+            ValueFromArg(_) => {
+                params.add_param(
+                    plparams::ParamId::from_static(Self::PARAM_NAME),
+                    TestParamType,
+                    "Test parameter description.".to_string(),
+                );
+            }
+            Concat(_) => {}
+            Store(_) => {}
+            Error(SystemErrorWhen::Params) => {
+                return Err(TestSystemError::System);
+            }
+            Error(_) => {}
+        }
+        Ok(())
+    }
+
+    fn inputs<'a>(
+        &self,
+        node: &FakeNode,
+        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+    ) -> Result<(), TestSystemError> {
+        use FakeSpec::*;
+        match &node.spec {
+            Value(_) => {}
+            ValueFromArg(_) => {}
+            Concat(concat_spec) => {
+                for dep in &concat_spec.deps {
+                    reg.add_input(dep);
+                }
+            }
+            Store(store_spec) => {
+                reg.add_input(&store_spec.dep);
+            }
+            Error(SystemErrorWhen::Inputs) => {
+                return Err(TestSystemError::System);
+            }
+            Error(_) => {}
+        }
+        Ok(())
+    }
+
+    fn process(
+        &self,
+        node: &FakeNode,
+        args: &TestArgSet,
+        intermediates: &TestIntermediateSet,
+    ) -> Result<TestIntermediateValue, TestSystemError> {
+        self.process_sets
+            .borrow_mut()
+            .push(hash_set![node.id.clone()]);
+        self.do_process(node, args, intermediates)
+    }
+
+    fn process_multiple<'a>(
+        &self,
+        nodes: &'a [&'a node::GenericNode<<TestPipelineTypes as crate::PipelineTypes>::Spec>],
+        args: &plargs::GenericArgSet<<TestPipelineTypes as crate::PipelineTypes>::ArgValue>,
+        intermediates: &intermediates::GenericIntermediateSet<
+            <TestPipelineTypes as crate::PipelineTypes>::IntermediateValue,
+        >,
+    ) -> Vec<NodeResult<TestPipelineTypes>> {
+        self.process_sets
+            .borrow_mut()
+            .push(nodes.iter().map(|node| &node.id).cloned().collect());
+
+        nodes
+            .iter()
+            .map(|node| {
+                let value = self.do_process(node, args, intermediates);
+                NodeResult {
+                    id: node.id.clone(),
+                    value,
+                }
+            })
+            .collect()
     }
 }

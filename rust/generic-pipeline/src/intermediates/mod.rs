@@ -3,7 +3,7 @@
 
 use crate::node;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum IntermediateError {
     #[error(
         "required intermediate value from node {node_id:?} not found (bug: missing dependency)"

@@ -4,7 +4,7 @@
 
 use crate::{node, plparams};
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum ArgError {
     #[error(
         "required argument value for node {node_id:?} with parameter ID {param_id:?} not found (bug: missing parameter or argument)"
