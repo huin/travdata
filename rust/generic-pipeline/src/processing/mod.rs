@@ -32,7 +32,7 @@ pub enum NodeError<SE: std::fmt::Debug> {
 }
 
 /// NOTE: the equality comparison does not check any form of equality for underlying errors in the
-/// case of [NodeOutcome::InternalError], instead regarding them as equal on the basis of variant
+/// case of [NodeError::InternalError], instead regarding them as equal on the basis of variant
 /// selection equality.
 impl<SE> PartialEq for NodeError<SE>
 where

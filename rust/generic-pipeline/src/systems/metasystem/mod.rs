@@ -14,8 +14,8 @@ pub trait DiscriminatedSpec {
 
 pub type MissingSystemErrorFn<D, E> = dyn Fn(D) -> E;
 
-/// A system that delegates to other systems based on the [SpecTrait::discriminant] of any given
-/// [node::GenericNode]'s `spec`.
+/// A system that delegates to other systems based on the [DiscriminatedSpec::discriminant] of any
+/// given [node::GenericNode]'s `spec`.
 pub struct GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
