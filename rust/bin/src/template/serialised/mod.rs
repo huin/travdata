@@ -37,7 +37,7 @@ impl Display for PreloadError {
 }
 
 /// Data known from preloading the extraction template, which provides information for supplying
-/// specifying [LoadArgs].
+/// specifying [template::loadarg::TemplateArgs].
 #[derive(Debug)]
 pub struct PreloadData {
     /// Set of book identifiers found in the preloaded data, if the format supports multiple books.
@@ -66,9 +66,9 @@ pub struct LoadArg {
 }
 
 /// Preloaded extraction template data that may or may not need further data prior to calling
-/// [PreloadedTemplate::load].
+/// [template::serialised::PreloadedTemplate::load].
 pub trait PreloadedTemplate: std::fmt::Debug + Send {
-    /// Returns an acceptable parameter for [VersionLoader::load] if there is a single possible
+    /// Returns an acceptable parameter for [PreloadedTemplate::load] if there is a single possible
     /// option. Otherwise returns `None` to indicate that specific argument must be provided.
     fn default_load_arg(&self) -> Option<LoadArg>;
 

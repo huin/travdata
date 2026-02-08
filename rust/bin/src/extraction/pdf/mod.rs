@@ -40,7 +40,7 @@ pub trait TableReader {
     fn close(self: Box<Self>) -> Result<()>;
 }
 
-/// CLI arguments relating to [CachableTableReader].
+/// CLI arguments relating to configuring a [TableReader].
 #[derive(Args, Clone, Debug, Default)]
 pub struct TableReaderArgs {
     /// Path to Tabula JAR file.

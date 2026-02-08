@@ -5,7 +5,7 @@ use clap::Args;
 
 use crate::{filesio, template};
 
-/// CLI arguments relating to [root::Config].
+/// CLI arguments relating to [template::Book].
 #[derive(Args, Clone, Debug)]
 pub struct TemplateArgs {
     /// Path to the extraction template. This must be either a directory or ZIP file containing the

@@ -9,7 +9,7 @@ use testutils::DefaultForTest;
 /// the top-left of the page, rather than the standard PDF origin at the bottom left.
 ///
 /// NOTE: In the Tabula coordinate system, the origin (0,0) is at the top left of page. Therefore
-/// for a valid [PdfRect] the following must be true: `left <= right && top <= bottom`.
+/// for a valid [TabulaPdfRect] the following must be true: `left <= right && top <= bottom`.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct TabulaPdfRect {
     /// Horizontal coordinate of the left hand side of the rectangle.

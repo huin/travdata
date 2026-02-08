@@ -32,7 +32,7 @@ where
     P::Spec: DiscriminatedSpec,
 {
     /// Creates a new [GenericMetaSystem] that delegates to the given systems for the given
-    /// [SpecTrait::discriminant].
+    /// [DiscriminatedSpec::discriminant].
     pub fn new(
         systems: hashbrown::HashMap<
             <P::Spec as DiscriminatedSpec>::Discrim,
