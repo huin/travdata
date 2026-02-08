@@ -294,15 +294,13 @@ fn test_handles_unknown_dependency() {
 
 #[gtest]
 #[test_log::test]
-fn test_handles_system_error() {
+fn test_process_system_error() {
     let sys = FakeSystem::new();
 
     // GIVEN: nodes that will error when processed.
     let node_set = TestPipeline::new(vec![
-        // TODO: uncomment these and fix the implementation.
-        // error_node(NODE_1_ID, SystemErrorWhen::Params),
-        // error_node(NODE_2_ID, SystemErrorWhen::Inputs),
-        error_node(NODE_3_ID, SystemErrorWhen::Process),
+        error_node(NODE_1_ID, SystemErrorWhen::Inputs),
+        error_node(NODE_2_ID, SystemErrorWhen::Process),
     ]);
 
     let processor = TestProcessor::new(sys.clone());
@@ -315,26 +313,38 @@ fn test_handles_system_error() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                // TODO: uncomment these and fix the implementation.
-                // node_id(NODE_1_ID) => Err(NodeError::ProcessErrored(
-                //     TestSystemError::SystemError,
-                // )),
-                // node_id(NODE_2_ID) => Err(NodeError::ProcessErrored(
-                //     TestSystemError::SystemError,
-                // )),
-                node_id(NODE_3_ID) => Err(NodeError::ProcessErrored(
+                node_id(NODE_1_ID) => Err(NodeError::ProcessErrored(
+                    TestSystemError::System,
+                )),
+                node_id(NODE_2_ID) => Err(NodeError::ProcessErrored(
                     TestSystemError::System,
                 )),
             },
         }),
     );
 
-    // THEN: only NODE_3_ID should have been processed, as the other two failed on preconditions to
+    // THEN: only NODE_2_ID should have been processed, as the other two failed on preconditions to
     // process.
     expect_that!(
         *sys.process_sets.borrow(),
-        eq(&vec![hash_set![node_id(NODE_3_ID)],])
+        eq(&vec![hash_set![node_id(NODE_2_ID)],])
     );
+}
+
+#[gtest]
+#[test_log::test]
+fn test_resolve_params_handles_system_error() {
+    let sys = FakeSystem::new();
+
+    // GIVEN: nodes that will error when processed.
+    let node_set = TestPipeline::new(vec![error_node(NODE_1_ID, SystemErrorWhen::Params)]);
+
+    let processor = TestProcessor::new(sys.clone());
+
+    // WHEN: parameter resolution is requested on the nodes.
+    let param_result = processor.resolve_params(&node_set);
+
+    expect_that!(param_result, err(eq(&TestSystemError::System)));
 }
 
 /// Per-type wrapper of a specific type of extraction configuration node.
@@ -408,7 +418,6 @@ struct StoreSpec {
 }
 
 #[derive(Debug)]
-#[expect(dead_code)]
 enum SystemErrorWhen {
     Params,
     Inputs,
