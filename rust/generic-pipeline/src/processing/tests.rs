@@ -38,16 +38,7 @@ fn test_feeds_processed_dependency() {
     let outcome = processor.process(&node_set, &args);
 
     // THEN: all nodes should be reported as successful.
-    // TODO: Refactor this common value where every node ID is successful.
-    expect_that!(
-        outcome,
-        eq(&processing::PipelineOutcome::<TestSystemError> {
-            node_results: hash_map! {
-                node_id(NODE_1_ID) => Ok(()),
-                node_id(NODE_2_ID) => Ok(()),
-            },
-        }),
-    );
+    expect_that!(outcome, eq(&outcome_all_okay(node_set)));
 
     // THEN: the dependency value should have been stored.
     expect_that!(
@@ -81,15 +72,7 @@ fn test_feeds_argument() {
     let outcome = processor.process(&node_set, &args);
 
     // THEN: all nodes should be reported as successful.
-    expect_that!(
-        outcome,
-        eq(&processing::PipelineOutcome::<TestSystemError> {
-            node_results: hash_map! {
-                node_id(NODE_1_ID) => Ok(()),
-                node_id(NODE_2_ID) => Ok(()),
-            },
-        }),
-    );
+    expect_that!(outcome, eq(&outcome_all_okay(node_set)));
 
     // THEN: the dependency value should have been stored.
     expect_that!(
@@ -156,17 +139,7 @@ fn test_three_stage_processing() {
     let outcome = processor.process(&node_set, &args);
 
     // THEN: all nodes should be reported as successful.
-    expect_that!(
-        outcome,
-        eq(&processing::PipelineOutcome::<TestSystemError> {
-            node_results: hash_map! {
-                node_id(NODE_1_ID) => Ok(()),
-                node_id(NODE_2_ID) => Ok(()),
-                node_id(NODE_3_ID) => Ok(()),
-                node_id(NODE_4_ID) => Ok(()),
-            },
-        }),
-    );
+    expect_that!(outcome, eq(&outcome_all_okay(node_set)));
 
     // THEN: the concatenated values should have been stored.
     expect_that!(*stored_values.0.borrow(), eq(&vec!["foo,bar".to_string()]));
@@ -502,6 +475,15 @@ fn error_node(id: &str, when: SystemErrorWhen) -> FakeNode {
         id: node_id(id),
         spec: FakeSpec::Error(when),
         ..Default::default()
+    }
+}
+
+fn outcome_all_okay(pipeline: TestPipeline) -> processing::PipelineOutcome<TestSystemError> {
+    processing::PipelineOutcome {
+        node_results: pipeline
+            .nodes()
+            .map(|node| (node.id.clone(), Ok(())))
+            .collect(),
     }
 }
 
