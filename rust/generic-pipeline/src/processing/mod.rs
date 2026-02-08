@@ -148,6 +148,9 @@ impl<'a, P: PipelineTypes> GenericProcessingState<'a, P> {
         let mut dep_id_to_dependee_ids = HashMap::<node::NodeId, Vec<node::NodeId>>::new();
 
         for node in nodes.nodes() {
+            if outcome.node_results.contains_key(&node.id) {
+                continue;
+            }
             match unprocessed_id_to_dep_ids.get(&node.id) {
                 Some(dependency_ids) if !dependency_ids.is_empty() => {
                     for dep_id in dependency_ids {
