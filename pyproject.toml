@@ -17,10 +17,10 @@ travdata_cli = "travdata.cli.cli:main"
 travdata_gui = "travdata.gui.gui:main"
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.3.0"
-mypy = "^1.9.0"
+black = ">=24.3.0"
+mypy = ">=1.9.0"
 pylint = "^3.1.0"
-pytest = "^8.0.2"
+pytest = ">=9.0.3,<10"
 testfixtures = "^8.0.0"
 trove-classifiers = "^2024.3.3"
 types-pyinstaller = "^6.5.0.20240311"
