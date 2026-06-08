@@ -7,6 +7,8 @@ pub mod specs;
 pub mod systems;
 pub mod tabula_wrapper;
 #[cfg(test)]
+mod tests;
+#[cfg(test)]
 mod testutil;
 
 pub type NodeId = generic_pipeline::node::NodeId;

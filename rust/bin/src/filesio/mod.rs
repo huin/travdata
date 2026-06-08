@@ -73,7 +73,7 @@ impl<'a> FileWrite<'a> {
         self.delegate.commit()
     }
 
-    #[expect(dead_code)]
+    #[cfg_attr(not(test), expect(dead_code))]
     pub fn discard(self) -> Result<()> {
         self.delegate.discard()
     }

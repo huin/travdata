@@ -3452,6 +3452,7 @@ dependencies = [
  "googletest",
  "hashbrown 0.16.1",
  "lazy_static",
+ "log",
  "map-macro",
  "serde",
  "serde_json",

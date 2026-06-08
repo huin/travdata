@@ -1,4 +1,5 @@
 pub mod singlethreaded;
+pub mod threadeddispatch;
 
 use std::path::PathBuf;
 

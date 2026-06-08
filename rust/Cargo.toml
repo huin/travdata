@@ -1,6 +1,5 @@
 [workspace]
 resolver = "3"
-edition = "2024"
 members = [
   "bin",
   "generic-pipeline",
@@ -55,6 +54,10 @@ zip = "7.0.0"
 [workspace.dependencies.generic-pipeline]
 package = "travdata-generic-pipeline"
 path = "generic-pipeline"
+
+[workspace.dependencies.pipeline]
+package = "travdata-pipeline"
+path = "pipeline"
 
 [workspace.dependencies.testutils]
 package = "travdata-testutils"
