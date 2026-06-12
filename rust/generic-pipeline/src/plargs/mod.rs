@@ -2,7 +2,10 @@
 //!
 //! These provide runtime parameters for the [crate::plparams] for the pipeline.
 
-use crate::{node, plparams};
+use crate::{
+    node,
+    plparams::{self, BorrowedParamKey, ParamKey},
+};
 
 #[derive(Debug, Eq, PartialEq, thiserror::Error)]
 pub enum ArgError {
@@ -32,12 +35,16 @@ impl<A> GenericArgSet<A> {
         self.args.insert(ParamKey { node_id, param_id }, arg);
     }
 
+    pub fn set_key(&mut self, key: ParamKey, arg: A) {
+        self.args.insert(key, arg);
+    }
+
     pub fn get<'a>(
         &'a self,
         node_id: &node::NodeId,
         param_id: &plparams::ParamId,
     ) -> Option<&'a A> {
-        self.args.get(&BorrowedParamKey { node_id, param_id })
+        self.args.get(&BorrowedParamKey::new(node_id, param_id))
     }
 
     pub fn require<'a>(
@@ -50,23 +57,5 @@ impl<A> GenericArgSet<A> {
                 node_id: node_id.clone(),
                 param_id: param_id.clone(),
             })
-    }
-}
-
-#[derive(Eq, Hash, PartialEq)]
-struct ParamKey {
-    node_id: node::NodeId,
-    param_id: plparams::ParamId,
-}
-
-#[derive(Hash)]
-struct BorrowedParamKey<'a> {
-    node_id: &'a node::NodeId,
-    param_id: &'a plparams::ParamId,
-}
-
-impl<'a> hashbrown::Equivalent<ParamKey> for BorrowedParamKey<'a> {
-    fn equivalent(&self, key: &ParamKey) -> bool {
-        self.node_id == &key.node_id && self.param_id == &key.param_id
     }
 }

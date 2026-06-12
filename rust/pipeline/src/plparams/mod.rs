@@ -7,6 +7,9 @@ pub enum ParamType {
     OutputDirectory,
 }
 
+/// Monomorphic form of [generic_pipeline::plparams::GenericParam].
+pub type Param = generic_pipeline::plparams::GenericParam<ParamType>;
+
 /// Monomorphic form of [generic_pipeline::plparams::GenericParams].
 pub type Params = generic_pipeline::plparams::GenericParams<ParamType>;
 

@@ -16,17 +16,17 @@ use crate::{
 };
 
 /// System to extract table(s) from a PDF file using Tabula.
-pub struct TabulaPdfExtractTableSystem<'t> {
+pub struct TabulaPdfExtractTableSystem {
     // TODO: client handle to talk to a worker thread that can be running on the main thread so
     // that the pipeline's processing doesn't have to be. If this turns out to be necessary, which
     // it might not be.
-    tabula: &'t dyn TabulaExtractor,
+    tabula: Box<dyn TabulaExtractor>,
 }
 
-impl<'t> TabulaPdfExtractTableSystem<'t> {
+impl TabulaPdfExtractTableSystem {
     /// Creates a [TabulaPdfExtractTableSystem] that delegates to the [tabula::TabulaEnv] in order
     /// to perform the extraction.
-    pub fn new(tabula: &'t dyn TabulaExtractor) -> Self {
+    pub fn new(tabula: Box<dyn TabulaExtractor>) -> Self {
         Self { tabula }
     }
 
@@ -155,8 +155,8 @@ impl<'t> TabulaPdfExtractTableSystem<'t> {
     }
 }
 
-impl<'env> generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
-    for TabulaPdfExtractTableSystem<'env>
+impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
+    for TabulaPdfExtractTableSystem
 {
     fn inputs<'a>(
         &self,

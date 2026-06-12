@@ -1,19 +1,20 @@
-use std::sync::mpsc;
+use std::{marker::PhantomData, rc::Rc, sync::mpsc};
 
-use crate::tabula_wrapper::{self, TabulaExtractionRequest, TabulaExtractor, singlethreaded};
+use crate::tabula_wrapper::{self, TabulaExtractor, singlethreaded};
 
 /// ServingExtractor should be created and run on the main thread.
-pub struct ServingExtractor<'env> {
-    // XXX think about how to shut this down.
+pub struct ExtractorServer<'env> {
+    forbid_send: PhantomData<Rc<()>>,
     extractor: singlethreaded::SingleThreadedTabulaExtractor<'env>,
-    request_sender: mpsc::Sender<ServeRequest>,
+    request_sender: mpsc::SyncSender<ServeRequest>,
     request_receiver: mpsc::Receiver<ServeRequest>,
 }
 
-impl<'env> ServingExtractor<'env> {
+impl<'env> ExtractorServer<'env> {
     pub fn new(extractor: singlethreaded::SingleThreadedTabulaExtractor<'env>) -> Self {
-        let (request_sender, request_receiver) = mpsc::channel();
+        let (request_sender, request_receiver) = mpsc::sync_channel(0);
         Self {
+            forbid_send: PhantomData,
             extractor,
             request_sender,
             request_receiver,
@@ -27,44 +28,59 @@ impl<'env> ServingExtractor<'env> {
     }
 
     pub fn run(self) {
-        log::info!("Starting up ServingExtractor.");
+        log::info!("Starting up ExtractorServer.");
+
+        // Ensure that that we terminate the loop below when the client is dropped externally.
+        drop(self.request_sender);
+        let request_receiver = self.request_receiver;
+        let extractor = self.extractor;
+
         loop {
-            match self.request_receiver.recv() {
+            match request_receiver.recv() {
                 Ok(ServeRequest::ExtractTables(Request {
                     request,
                     response_sender,
                 })) => {
-                    let result = self.serve_extract_tables(request);
+                    let result = extractor.extract_tables(request);
                     if let Err(err) = response_sender.send(result) {
                         log::warn!("Could not send extracted tables response: {err:?}.");
                     }
                 }
-                Ok(ServeRequest::Stop) | Err(_) => {
-                    log::info!("Shutting down ServingExtractor.");
-                    break;
+                Err(_) => {
+                    log::info!("Request channel closed; terminating ExtractorServer worker loop.");
+                    return;
                 }
             }
         }
-    }
-
-    fn serve_extract_tables(
-        &self,
-        request: TabulaExtractionRequest,
-    ) -> anyhow::Result<tabula_wrapper::JsonTableSet> {
-        self.extractor.extract_tables(request)
     }
 }
 
 enum ServeRequest {
     ExtractTables(Request),
-    Stop,
 }
 
 struct Request {
     request: tabula_wrapper::TabulaExtractionRequest,
-    response_sender: mpsc::Sender<anyhow::Result<tabula_wrapper::JsonTableSet>>,
+    response_sender: mpsc::SyncSender<anyhow::Result<tabula_wrapper::JsonTableSet>>,
 }
 
+#[derive(Clone)]
 pub struct ExtractorClient {
-    request_sender: mpsc::Sender<ServeRequest>,
+    request_sender: mpsc::SyncSender<ServeRequest>,
+}
+
+impl tabula_wrapper::TabulaExtractor for ExtractorClient {
+    fn extract_tables(
+        &self,
+        request: super::TabulaExtractionRequest,
+    ) -> anyhow::Result<tabula_wrapper::JsonTableSet> {
+        let (response_sender, response_receiver) = mpsc::sync_channel(0);
+        self.request_sender
+            .send(ServeRequest::ExtractTables(Request {
+                request,
+                response_sender,
+            }))?;
+
+        response_receiver.recv()?
+    }
 }

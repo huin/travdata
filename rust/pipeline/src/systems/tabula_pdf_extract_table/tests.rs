@@ -1,30 +1,24 @@
-use anyhow::Result;
 use generic_pipeline::systems::GenericSystem;
 use googletest::prelude::*;
 use hashbrown::HashMap;
 use test_casing::{TestCases, cases, test_casing};
-use testutils::DefaultForTest;
+use testutils::{DefaultForTest, WrapError};
 
 use crate::{
     Node, NodeId, intermediates,
     spec_types::pdf,
     specs,
     systems::tabula_pdf_extract_table::grouped_non_overlapping_slices,
-    tabula_wrapper::singlethreaded::SingleThreadedTabulaExtractor,
-    testutil::{MatcherBox, NodeExpected, check_results, node_id},
+    tabula_wrapper::threadeddispatch::ExtractorClient,
+    testutil::{self, MatcherBox, NodeExpected, check_results, node_id},
 };
 
 use super::{NodeSpec, TabulaPdfExtractTableSystem};
 
-use lazy_static::lazy_static;
-
-lazy_static! {
-    static ref VM: Result<tabula::TabulaVM> =
-        tabula::TabulaVM::new("../target/debug/tabula.jar", true);
-}
-
 #[gtest]
-fn test_extracts_single_table_lattice() -> Result<()> {
+fn test_extracts_single_table_lattice(
+    tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
+) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
             id: node_id("node-one"),
@@ -49,13 +43,16 @@ fn test_extracts_single_table_lattice() -> Result<()> {
         ])))),
     }];
 
-    let actual_results_map = do_multi_process(&node_expecteds)?;
+    let actual_results_map =
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
 
 #[gtest]
-fn test_extracts_single_table_stream() -> Result<()> {
+fn test_extracts_single_table_stream(
+    tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
+) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
             id: node_id("node-one"),
@@ -80,13 +77,16 @@ fn test_extracts_single_table_stream() -> Result<()> {
         ])))),
     }];
 
-    let actual_results_map = do_multi_process(&node_expecteds)?;
+    let actual_results_map =
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
 
 #[gtest]
-fn test_rejects_lattice_in_two_parts() -> Result<()> {
+fn test_rejects_lattice_in_two_parts(
+    tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
+) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
             id: node_id("node-one"),
@@ -109,13 +109,16 @@ fn test_rejects_lattice_in_two_parts() -> Result<()> {
         )))),
     }];
 
-    let actual_results_map = do_multi_process(&node_expecteds)?;
+    let actual_results_map =
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
 
 #[gtest]
-fn test_extracts_single_table_and_rejects_overlapping_split_table() -> Result<()> {
+fn test_extracts_single_table_and_rejects_overlapping_split_table(
+    tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
+) -> Result<()> {
     let node_expecteds = vec![
         NodeExpected {
             node: Node {
@@ -163,13 +166,16 @@ fn test_extracts_single_table_and_rejects_overlapping_split_table() -> Result<()
         },
     ];
 
-    let actual_results_map = do_multi_process(&node_expecteds)?;
+    let actual_results_map =
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
 
 #[gtest]
-fn test_rejects_single_empty_region() -> Result<()> {
+fn test_rejects_single_empty_region(
+    tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
+) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
             id: node_id("no-tables-in-region"),
@@ -190,13 +196,16 @@ fn test_rejects_single_empty_region() -> Result<()> {
         expected: MatcherBox::new(err(displays_as(contains_substring("no table in region")))),
     }];
 
-    let actual_results_map = do_multi_process(&node_expecteds)?;
+    let actual_results_map =
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
 
 #[gtest]
-fn test_rejects_single_region_with_multiple_tables() -> Result<()> {
+fn test_rejects_single_region_with_multiple_tables(
+    tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
+) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
             id: node_id("two-tables-in-region"),
@@ -219,13 +228,16 @@ fn test_rejects_single_region_with_multiple_tables() -> Result<()> {
         )))),
     }];
 
-    let actual_results_map = do_multi_process(&node_expecteds)?;
+    let actual_results_map =
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
 
 #[gtest]
-fn test_multiple_tables_with_overlaps() -> Result<()> {
+fn test_multiple_tables_with_overlaps(
+    tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
+) -> Result<()> {
     // All nodes extract different subsets of table 1.
     let node_expecteds = vec![
         NodeExpected {
@@ -298,13 +310,16 @@ fn test_multiple_tables_with_overlaps() -> Result<()> {
         },
     ];
 
-    let actual_results_map = do_multi_process(&node_expecteds)?;
+    let actual_results_map =
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
 
 #[gtest]
-fn test_rejects_two_overlapping_regions_with_zero_and_two_tables_respectively() -> Result<()> {
+fn test_rejects_two_overlapping_regions_with_zero_and_two_tables_respectively(
+    tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
+) -> Result<()> {
     // The intent of this test is that the two tables matched by the second node do not get
     // mistakenly attributed one each to the nodes.
     let node_expecteds = vec![
@@ -350,7 +365,8 @@ fn test_rejects_two_overlapping_regions_with_zero_and_two_tables_respectively() 
         },
     ];
 
-    let actual_results_map = do_multi_process(&node_expecteds)?;
+    let actual_results_map =
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
@@ -373,15 +389,13 @@ fn table_slice_to_to_intermediates_json_data(
 }
 
 fn do_multi_process<'a, 'm>(
+    extractor: ExtractorClient,
     node_expecteds: &'m [NodeExpected<'a>],
-) -> Result<HashMap<NodeId, Result<intermediates::IntermediateValue>>>
+) -> ::anyhow::Result<HashMap<NodeId, ::anyhow::Result<intermediates::IntermediateValue>>>
 where
     'a: 'm,
 {
-    let vm = VM.as_ref().unwrap();
-    let env = vm.attach()?;
-    let extractor = SingleThreadedTabulaExtractor::new(env);
-    let system = TabulaPdfExtractTableSystem::new(&extractor);
+    let system = TabulaPdfExtractTableSystem::new(Box::new(extractor));
 
     let node_refs: Vec<&Node> = node_expecteds
         .iter()
@@ -391,7 +405,7 @@ where
     let interms = test_data_interms();
     let actual_results = system.process_multiple(&node_refs, &Default::default(), &interms);
 
-    let actual_results_map: HashMap<NodeId, Result<intermediates::IntermediateValue>> =
+    let actual_results_map: HashMap<NodeId, ::anyhow::Result<intermediates::IntermediateValue>> =
         actual_results
             .into_iter()
             .map(|node_result| (node_result.id, node_result.value))
@@ -488,7 +502,7 @@ fn test_grouped_non_overlapping_regions(node_order: [usize; 3]) -> Result<()> {
             let node = &nodes[*node_index];
             Ok(NodeSpec {
                 node,
-                spec: <&specs::PdfExtractTable>::try_from(&node.spec)?,
+                spec: <&specs::PdfExtractTable>::try_from(&node.spec).wrap_error()?,
             })
         })
         .collect::<Result<Vec<_>>>()?;

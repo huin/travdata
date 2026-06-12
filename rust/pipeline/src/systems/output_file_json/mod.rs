@@ -16,7 +16,7 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileJsonSystem {
         >,
         reg: &'a mut generic_pipeline::plinputs::NodeInputsRegistrator<'a>,
     ) -> anyhow::Result<()> {
-        let spec = <&specs::OutputFileCsv>::try_from(&node.spec)?;
+        let spec = <&specs::OutputFileJson>::try_from(&node.spec)?;
         reg.add_input(&spec.input_data);
         reg.add_input(&spec.directory);
         Ok(())

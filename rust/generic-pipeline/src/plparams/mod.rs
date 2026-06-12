@@ -36,17 +36,34 @@ pub struct GenericNodeParam<P> {
     pub param: GenericParam<P>,
 }
 
-/// Key for a parameter within [GenericParams::params].
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ParamKey {
-    node_id: node::NodeId,
-    param_id: ParamId,
+    pub node_id: node::NodeId,
+    pub param_id: ParamId,
 }
 
 impl ParamKey {
     /// Creates a new [ParamKey].
     pub fn new(node_id: node::NodeId, param_id: ParamId) -> Self {
         Self { node_id, param_id }
+    }
+}
+
+#[derive(Hash)]
+pub(crate) struct BorrowedParamKey<'a> {
+    node_id: &'a node::NodeId,
+    param_id: &'a ParamId,
+}
+
+impl<'a> BorrowedParamKey<'a> {
+    pub(crate) fn new(node_id: &'a node::NodeId, param_id: &'a ParamId) -> Self {
+        Self { node_id, param_id }
+    }
+}
+
+impl<'a> hashbrown::Equivalent<ParamKey> for BorrowedParamKey<'a> {
+    fn equivalent(&self, key: &ParamKey) -> bool {
+        self.node_id == &key.node_id && self.param_id == &key.param_id
     }
 }
 

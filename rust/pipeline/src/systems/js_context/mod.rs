@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 
 use crate::{intermediates, specs};
 
@@ -21,7 +21,8 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsContex
             bail!("node is not of type JsContext");
         }
 
-        let global_context = v8wrapper::try_with_isolate(|tls_isolate| tls_isolate.new_ctx())?;
+        let global_context = v8wrapper::try_with_isolate(|tls_isolate| tls_isolate.new_ctx())
+            .context("accessing JS context")?;
 
         Ok(intermediates::JsContext(global_context).into())
     }
