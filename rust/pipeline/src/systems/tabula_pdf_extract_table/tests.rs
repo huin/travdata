@@ -10,30 +10,23 @@ use crate::{
     specs,
     systems::tabula_pdf_extract_table::grouped_non_overlapping_slices,
     tabula_wrapper::threadeddispatch::ExtractorClient,
-    testutil::{self, MatcherBox, NodeExpected, check_results, node_id},
+    testutil::{self, MatcherBox, NodeExpected, TestDataTables, check_results, node_id},
 };
 
 use super::{NodeSpec, TabulaPdfExtractTableSystem};
 
 #[gtest]
 fn test_extracts_single_table_lattice(
+    test_data_tables: &&TestDataTables,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
 ) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
             id: node_id("node-one"),
-            spec: crate::specs::PdfExtractTable {
-                pdf: node_id("pdf-file"),
-                page: 1,
-                method: pdf::TabulaExtractionMethod::Lattice,
-                rect: pdf::TabulaPdfRect {
-                    left: 52.0.into(),
-                    top: 88.0.into(),
-                    right: (52.0 + 489.0).into(),
-                    bottom: (88.0 + 67.0).into(),
-                },
-            }
-            .into(),
+            spec: test_data_tables
+                .table_1
+                .to_pdf_extract_table("pdf-file")
+                .into(),
             ..DefaultForTest::default_for_test()
         },
         expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
@@ -51,23 +44,16 @@ fn test_extracts_single_table_lattice(
 
 #[gtest]
 fn test_extracts_single_table_stream(
+    test_data_tables: &&TestDataTables,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
 ) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
             id: node_id("node-one"),
-            spec: crate::specs::PdfExtractTable {
-                pdf: node_id("pdf-file"),
-                page: 1,
-                method: pdf::TabulaExtractionMethod::Stream,
-                rect: pdf::TabulaPdfRect {
-                    left: 52.0.into(),
-                    top: 186.0.into(),
-                    right: (52.0 + 489.0).into(),
-                    bottom: (186.0 + 67.0).into(),
-                },
-            }
-            .into(),
+            spec: test_data_tables
+                .table_2
+                .to_pdf_extract_table("pdf-file")
+                .into(),
             ..DefaultForTest::default_for_test()
         },
         expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
@@ -85,23 +71,17 @@ fn test_extracts_single_table_stream(
 
 #[gtest]
 fn test_rejects_lattice_in_two_parts(
+    test_data_tables: &&TestDataTables,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
 ) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
             id: node_id("node-one"),
-            spec: crate::specs::PdfExtractTable {
-                pdf: node_id("pdf-file"),
-                page: 1,
-                method: pdf::TabulaExtractionMethod::Lattice,
-                rect: pdf::TabulaPdfRect {
-                    left: 52.0.into(),
-                    top: 275.0.into(),
-                    right: (52.0 + 489.0).into(),
-                    bottom: (275.0 + 149.0).into(),
-                },
-            }
-            .into(),
+            spec: test_data_tables
+                .table_3_1
+                .try_union_with(&test_data_tables.table_3_2)?
+                .to_pdf_extract_table("pdf-file")
+                .into(),
             ..DefaultForTest::default_for_test()
         },
         expected: MatcherBox::new(err(displays_as(contains_substring(
@@ -117,24 +97,17 @@ fn test_rejects_lattice_in_two_parts(
 
 #[gtest]
 fn test_extracts_single_table_and_rejects_overlapping_split_table(
+    test_data_tables: &&TestDataTables,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
 ) -> Result<()> {
     let node_expecteds = vec![
         NodeExpected {
             node: Node {
                 id: node_id("first-table-only"),
-                spec: crate::specs::PdfExtractTable {
-                    pdf: node_id("pdf-file"),
-                    page: 1,
-                    method: pdf::TabulaExtractionMethod::Lattice,
-                    rect: pdf::TabulaPdfRect {
-                        left: 52.0.into(),
-                        top: 275.0.into(),
-                        right: (52.0 + 489.0).into(),
-                        bottom: (275.0 + 65.0).into(),
-                    },
-                }
-                .into(),
+                spec: test_data_tables
+                    .table_3_1
+                    .to_pdf_extract_table("pdf-file")
+                    .into(),
                 ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
@@ -146,18 +119,11 @@ fn test_extracts_single_table_and_rejects_overlapping_split_table(
         NodeExpected {
             node: Node {
                 id: node_id("both-tables"),
-                spec: crate::specs::PdfExtractTable {
-                    pdf: node_id("pdf-file"),
-                    page: 1,
-                    method: pdf::TabulaExtractionMethod::Lattice,
-                    rect: pdf::TabulaPdfRect {
-                        left: 52.0.into(),
-                        top: 275.0.into(),
-                        right: (52.0 + 489.0).into(),
-                        bottom: (275.0 + 149.0).into(),
-                    },
-                }
-                .into(),
+                spec: test_data_tables
+                    .table_3_1
+                    .try_union_with(&test_data_tables.table_3_2)?
+                    .to_pdf_extract_table("pdf-file")
+                    .into(),
                 ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(err(displays_as(contains_substring(
@@ -174,23 +140,16 @@ fn test_extracts_single_table_and_rejects_overlapping_split_table(
 
 #[gtest]
 fn test_rejects_single_empty_region(
+    test_data_tables: &&TestDataTables,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
 ) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
             id: node_id("no-tables-in-region"),
-            spec: crate::specs::PdfExtractTable {
-                pdf: node_id("pdf-file"),
-                page: 1,
-                method: pdf::TabulaExtractionMethod::Lattice,
-                rect: pdf::TabulaPdfRect {
-                    left: 52.0.into(),
-                    top: 27.0.into(),
-                    right: (52.0 + 489.0).into(),
-                    bottom: (27.0 + 22.0).into(),
-                },
-            }
-            .into(),
+            spec: test_data_tables
+                .no_table
+                .to_pdf_extract_table("pdf-file")
+                .into(),
             ..DefaultForTest::default_for_test()
         },
         expected: MatcherBox::new(err(displays_as(contains_substring("no table in region")))),
@@ -204,23 +163,17 @@ fn test_rejects_single_empty_region(
 
 #[gtest]
 fn test_rejects_single_region_with_multiple_tables(
+    test_data_tables: &&TestDataTables,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
 ) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
             id: node_id("two-tables-in-region"),
-            spec: crate::specs::PdfExtractTable {
-                pdf: node_id("pdf-file"),
-                page: 1,
-                method: pdf::TabulaExtractionMethod::Lattice,
-                rect: pdf::TabulaPdfRect {
-                    left: 52.0.into(),
-                    top: 275.0.into(),
-                    right: (52.0 + 489.0).into(),
-                    bottom: (275.0 + 149.0).into(),
-                },
-            }
-            .into(),
+            spec: test_data_tables
+                .table_3_1
+                .try_union_with(&test_data_tables.table_3_2)?
+                .to_pdf_extract_table("pdf-file")
+                .into(),
             ..DefaultForTest::default_for_test()
         },
         expected: MatcherBox::new(err(displays_as(contains_substring(
@@ -236,6 +189,7 @@ fn test_rejects_single_region_with_multiple_tables(
 
 #[gtest]
 fn test_multiple_tables_with_overlaps(
+    test_data_tables: &&TestDataTables,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
 ) -> Result<()> {
     // All nodes extract different subsets of table 1.
@@ -243,18 +197,10 @@ fn test_multiple_tables_with_overlaps(
         NodeExpected {
             node: Node {
                 id: node_id("table-1-complete"),
-                spec: crate::specs::PdfExtractTable {
-                    pdf: node_id("pdf-file"),
-                    page: 1,
-                    method: pdf::TabulaExtractionMethod::Lattice,
-                    rect: pdf::TabulaPdfRect {
-                        left: 52.0.into(),
-                        top: 88.0.into(),
-                        right: (52.0 + 489.0).into(),
-                        bottom: (88.0 + 65.0).into(),
-                    },
-                }
-                .into(),
+                spec: test_data_tables
+                    .table_1
+                    .to_pdf_extract_table("pdf-file")
+                    .into(),
                 ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
@@ -266,18 +212,10 @@ fn test_multiple_tables_with_overlaps(
         NodeExpected {
             node: Node {
                 id: node_id("table-1-headings-only"),
-                spec: crate::specs::PdfExtractTable {
-                    pdf: node_id("pdf-file"),
-                    page: 1,
-                    method: pdf::TabulaExtractionMethod::Lattice,
-                    rect: pdf::TabulaPdfRect {
-                        left: 52.0.into(),
-                        top: 88.0.into(),
-                        right: (52.0 + 489.0).into(),
-                        bottom: (88.0 + 27.0).into(),
-                    },
-                }
-                .into(),
+                spec: test_data_tables
+                    .table_1_heading
+                    .to_pdf_extract_table("pdf-file")
+                    .into(),
                 ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[&[
@@ -289,18 +227,10 @@ fn test_multiple_tables_with_overlaps(
         NodeExpected {
             node: Node {
                 id: node_id("table-1-data-rows-only"),
-                spec: crate::specs::PdfExtractTable {
-                    pdf: node_id("pdf-file"),
-                    page: 1,
-                    method: pdf::TabulaExtractionMethod::Lattice,
-                    rect: pdf::TabulaPdfRect {
-                        left: 52.0.into(),
-                        top: 109.0.into(),
-                        right: (52.0 + 489.0).into(),
-                        bottom: (109.0 + 46.0).into(),
-                    },
-                }
-                .into(),
+                spec: test_data_tables
+                    .table_1_rows
+                    .to_pdf_extract_table("pdf-file")
+                    .into(),
                 ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
@@ -318,6 +248,7 @@ fn test_multiple_tables_with_overlaps(
 
 #[gtest]
 fn test_rejects_two_overlapping_regions_with_zero_and_two_tables_respectively(
+    test_data_tables: &&TestDataTables,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
 ) -> Result<()> {
     // The intent of this test is that the two tables matched by the second node do not get
@@ -326,18 +257,10 @@ fn test_rejects_two_overlapping_regions_with_zero_and_two_tables_respectively(
         NodeExpected {
             node: Node {
                 id: node_id("no-tables-in-region"),
-                spec: crate::specs::PdfExtractTable {
-                    pdf: node_id("pdf-file"),
-                    page: 1,
-                    method: pdf::TabulaExtractionMethod::Lattice,
-                    rect: pdf::TabulaPdfRect {
-                        left: 52.0.into(),
-                        top: 275.0.into(),
-                        right: (52.0 + 489.0).into(),
-                        bottom: (275.0 + 22.0).into(),
-                    },
-                }
-                .into(),
+                spec: test_data_tables
+                    .no_table
+                    .to_pdf_extract_table("pdf-file")
+                    .into(),
                 ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(err(displays_as(contains_substring("no table in region")))),
@@ -345,18 +268,11 @@ fn test_rejects_two_overlapping_regions_with_zero_and_two_tables_respectively(
         NodeExpected {
             node: Node {
                 id: node_id("two-tables-in-region"),
-                spec: crate::specs::PdfExtractTable {
-                    pdf: node_id("pdf-file"),
-                    page: 1,
-                    method: pdf::TabulaExtractionMethod::Lattice,
-                    rect: pdf::TabulaPdfRect {
-                        left: 52.0.into(),
-                        top: 275.0.into(),
-                        right: (52.0 + 489.0).into(),
-                        bottom: (275.0 + 149.0).into(),
-                    },
-                }
-                .into(),
+                spec: test_data_tables
+                    .table_3_1
+                    .try_union_with(&test_data_tables.table_3_2)?
+                    .to_pdf_extract_table("pdf-file")
+                    .into(),
                 ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(err(displays_as(contains_substring(

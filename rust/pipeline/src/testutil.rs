@@ -8,8 +8,14 @@ use anyhow::Result;
 use generic_pipeline::node::Tag;
 use googletest::{matcher::Matcher, prelude::*};
 use hashbrown::{HashMap, HashSet};
+use serde::Deserialize;
 
-use crate::{Node, NodeId, intermediates, tabula_wrapper};
+use crate::{
+    Node, NodeId, intermediates,
+    spec_types::pdf::{TabulaExtractionMethod, TabulaPdfRect},
+    specs::PdfExtractTable,
+    tabula_wrapper,
+};
 
 pub fn node_id(s: &str) -> crate::NodeId {
     NodeId::test_node_id(s)
@@ -160,5 +166,52 @@ impl ConsumableFixture for TestDirectory {
     fn set_up() -> googletest::Result<Self> {
         let dir = tempfile::TempDir::with_prefix("travdata-pipeline-test")?;
         Ok(Self { dir })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TestDataTables {
+    pub table_1: TestDataTable,
+    pub table_1_heading: TestDataTable,
+    pub table_1_rows: TestDataTable,
+    pub table_2: TestDataTable,
+    pub table_3_1: TestDataTable,
+    pub table_3_2: TestDataTable,
+    pub no_table: TestDataTable,
+}
+
+impl StaticFixture for TestDataTables {
+    fn set_up_once() -> googletest::Result<Self> {
+        let f = std::fs::File::open("test_data/tables-templates.json")?;
+        let data: Self = serde_json::from_reader(f)?;
+        Ok(data)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TestDataTable {
+    pub page: i32,
+    pub method: TabulaExtractionMethod,
+    pub rect: TabulaPdfRect,
+}
+
+impl TestDataTable {
+    pub fn to_pdf_extract_table(&self, pdf_node_id: &str) -> PdfExtractTable {
+        PdfExtractTable {
+            pdf: node_id(pdf_node_id),
+            page: self.page,
+            method: self.method,
+            rect: self.rect,
+        }
+    }
+
+    pub fn try_union_with(&self, other: &Self) -> googletest::Result<Self> {
+        verify_eq!(self.page, other.page)?;
+        verify_eq!(self.method, other.method)?;
+        Ok(Self {
+            page: self.page,
+            method: self.method,
+            rect: self.rect.union_with(&other.rect),
+        })
     }
 }

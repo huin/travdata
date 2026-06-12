@@ -1,0 +1,72 @@
+{
+  "table_1": {
+    "page": 1,
+    "method": "lattice",
+    "rect": {
+      "left": 52.0,
+      "top": 88.0,
+      "right": 541.0,
+      "bottom": 155.0
+    }
+  },
+  "table_1_heading": {
+    "page": 1,
+    "method": "lattice",
+    "rect": {
+      "left": 52.0,
+      "top": 88.0,
+      "right": 541.0,
+      "bottom": 115.0
+    }
+  },
+  "table_1_rows": {
+    "page": 1,
+    "method": "lattice",
+    "rect": {
+      "left": 52.0,
+      "top": 109.0,
+      "right": 541.0,
+      "bottom": 155.0
+    }
+  },
+  "table_2": {
+    "page": 1,
+    "method": "stream",
+    "rect": {
+      "left": 52.0,
+      "top": 186.0,
+      "right": 541.0,
+      "bottom": 253.0
+    }
+  },
+  "table_3_1": {
+    "page": 1,
+    "method": "lattice",
+    "rect": {
+      "left": 52.0,
+      "top": 278.0,
+      "right": 541.0,
+      "bottom": 343.0
+    }
+  },
+  "table_3_2": {
+    "page": 1,
+    "method": "lattice",
+    "rect": {
+      "left": 52.0,
+      "top": 380.0,
+      "right": 541.0,
+      "bottom": 424.0
+    }
+  },
+  "no_table": {
+    "page": 1,
+    "method": "lattice",
+    "rect": {
+      "left": 52.0,
+      "top": 27.0,
+      "right": 541.0,
+      "bottom": 49.0
+    }
+  }
+}

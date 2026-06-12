@@ -15,13 +15,10 @@ use crate::{
     MetaSystem, Node, PipelineTypes,
     plargs::{self, ArgSet, ArgValue},
     plparams::{Param, ParamType},
-    spec_types::{OutputPathBuf, pdf},
-    specs::{
-        InputPdfFile, JsContext, OutputDirectory, OutputFileJson, PdfExtractTable, Spec,
-        SpecDiscriminants,
-    },
+    spec_types::OutputPathBuf,
+    specs::{InputPdfFile, JsContext, OutputDirectory, OutputFileJson, Spec, SpecDiscriminants},
     systems,
-    testutil::{self, node_id},
+    testutil::{self, TestDataTables, node_id},
 };
 use testutils::{DefaultForTest, WrapError};
 
@@ -48,6 +45,7 @@ fn new_metasystem(tabula_extractor_fixture: &&testutil::TabulaExtractorFixture) 
 fn test_e2e_small_pipeline(
     test_dir: testutil::TestDirectory,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
+    test_data_tables: &&TestDataTables,
 ) -> Result<()> {
     v8wrapper::init_v8_for_testing();
     let tls_isolate = TlsIsolate::for_current_thread().wrap_error()?;
@@ -77,17 +75,10 @@ fn test_e2e_small_pipeline(
         },
         Node {
             id: node_id("read-table-1"),
-            spec: Spec::PdfExtractTable(PdfExtractTable {
-                pdf: node_id("input-pdf"),
-                page: 1,
-                method: pdf::TabulaExtractionMethod::Lattice,
-                rect: pdf::TabulaPdfRect {
-                    left: 52.0.into(),
-                    top: 88.0.into(),
-                    right: (52.0 + 489.0).into(),
-                    bottom: (88.0 + 67.0).into(),
-                },
-            }),
+            spec: test_data_tables
+                .table_1
+                .to_pdf_extract_table("input-pdf")
+                .into(),
             ..DefaultForTest::default_for_test()
         },
         Node {

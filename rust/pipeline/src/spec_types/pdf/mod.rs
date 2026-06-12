@@ -35,12 +35,25 @@ impl DefaultForTest for TabulaPdfRect {
 }
 
 impl TabulaPdfRect {
-    // Returns true iff the two rectangles are overlapping, including if two sides are touching.
+    /// Returns true iff the two rectangles are overlapping, including if two sides are touching.
     pub fn is_overlapping(&self, other: &Self) -> bool {
         self.left <= other.right
             && other.left <= self.right
             && self.top <= other.bottom
             && other.top <= self.bottom
+    }
+
+    /// Performs a crude union of the two rectangles, such that both are contained within the
+    /// returned value. Not a strict union, as it may also include other space besides the original
+    /// two rectangles.
+    #[cfg(test)]
+    pub fn union_with(&self, other: &Self) -> Self {
+        Self {
+            left: self.left.min(other.left),
+            top: self.top.min(other.top),
+            right: self.right.max(other.right),
+            bottom: self.bottom.max(other.bottom),
+        }
     }
 }
 
