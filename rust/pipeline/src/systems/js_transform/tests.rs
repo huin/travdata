@@ -1,6 +1,7 @@
 use generic_pipeline::systems::GenericSystem;
 use googletest::prelude::*;
 use map_macro::hashbrown::{hash_map, hash_set};
+use serde_json::json;
 use testutils::{DefaultForTest, WrapError};
 
 use crate::{
@@ -117,15 +118,15 @@ fn test_process_uses_intermediate_values(_tls_isolate_fixture: &TlsIsolateFixtur
     );
     interms.set(
         node_id("node-a"),
-        intermediates::JsonData("foo".into()).into(),
+        intermediates::JsonData(json!("foo")).into(),
     );
     interms.set(
         node_id("node-b"),
-        intermediates::JsonData("bar".into()).into(),
+        intermediates::JsonData(json!("bar")).into(),
     );
     let got = system.process(&node, &Default::default(), &interms);
 
-    let expected = intermediates::JsonData(serde_json::Value::String("foo bar".into())).into();
+    let expected = intermediates::JsonData(json!("foo bar")).into();
     expect_that!(got, ok(eq(&expected)));
 
     Ok(())
