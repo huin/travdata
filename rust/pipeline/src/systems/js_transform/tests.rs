@@ -1,18 +1,18 @@
-use anyhow::Result;
 use generic_pipeline::systems::GenericSystem;
 use googletest::prelude::*;
 use map_macro::hashbrown::{hash_map, hash_set};
-use testutils::DefaultForTest;
+use testutils::{DefaultForTest, WrapError};
 
-use crate::{intermediates, plparams, specs::JsTransform, testutil::node_id};
+use crate::{
+    intermediates, plparams,
+    specs::JsTransform,
+    testutil::{TlsIsolateFixture, node_id},
+};
 
 use super::*;
 
 #[gtest]
-fn test_params() -> Result<()> {
-    v8wrapper::init_v8_for_testing();
-    let tls_isolate = v8wrapper::TlsIsolate::for_current_thread()?;
-
+fn test_params(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
     let system = JsTransformSystem;
 
     let mut reg = plparams::Params::registrator();
@@ -21,20 +21,17 @@ fn test_params() -> Result<()> {
         ..DefaultForTest::default_for_test()
     };
 
-    system.params(&node, &mut reg.for_node(&node.id))?;
+    system
+        .params(&node, &mut reg.for_node(&node.id))
+        .wrap_error()?;
     let got_params = reg.build();
 
     expect_that!(got_params.params, is_empty());
-
-    drop(tls_isolate);
     Ok(())
 }
 
 #[gtest]
-fn test_inputs() -> Result<()> {
-    v8wrapper::init_v8_for_testing();
-    let tls_isolate = v8wrapper::TlsIsolate::for_current_thread()?;
-
+fn test_inputs(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
     let system = JsTransformSystem;
 
     let mut reg = plinputs::InputsRegistrator::new();
@@ -52,7 +49,9 @@ fn test_inputs() -> Result<()> {
         ..DefaultForTest::default_for_test()
     };
 
-    system.inputs(&node, &mut reg.for_node(&node.id))?;
+    system
+        .inputs(&node, &mut reg.for_node(&node.id))
+        .wrap_error()?;
     let got_inputs = reg.build();
 
     expect_that!(
@@ -66,15 +65,11 @@ fn test_inputs() -> Result<()> {
         })
     );
 
-    drop(tls_isolate);
     Ok(())
 }
 
 #[gtest]
-fn test_process_syntax_error() -> Result<()> {
-    v8wrapper::init_v8_for_testing();
-    let tls_isolate = v8wrapper::TlsIsolate::for_current_thread()?;
-
+fn test_process_syntax_error(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
     let system = JsTransformSystem;
 
     let node = crate::Node {
@@ -89,15 +84,11 @@ fn test_process_syntax_error() -> Result<()> {
 
     expect_that!(got, err(anything()));
 
-    drop(tls_isolate);
     Ok(())
 }
 
 #[gtest]
-fn test_process_uses_intermediate_values() -> Result<()> {
-    v8wrapper::init_v8_for_testing();
-    let tls_isolate = v8wrapper::TlsIsolate::for_current_thread()?;
-
+fn test_process_uses_intermediate_values(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
     let system = JsTransformSystem;
 
     let node = crate::Node {
@@ -137,7 +128,6 @@ fn test_process_uses_intermediate_values() -> Result<()> {
     let expected = intermediates::JsonData(serde_json::Value::String("foo bar".into())).into();
     expect_that!(got, ok(eq(&expected)));
 
-    drop(tls_isolate);
     Ok(())
 }
 

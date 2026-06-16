@@ -9,7 +9,6 @@ use googletest::prelude::*;
 use hashbrown::HashMap;
 use map_macro::hashbrown::{hash_map, hash_map_e};
 use serde_json::json;
-use v8wrapper::TlsIsolate;
 
 use crate::{
     MetaSystem, Node, PipelineTypes,
@@ -21,7 +20,7 @@ use crate::{
         SpecDiscriminants,
     },
     systems,
-    testutil::{self, TestDataTables, node_id},
+    testutil::{self, TestDataTables, TlsIsolateFixture, node_id},
 };
 use testutils::{DefaultForTest, WrapError};
 
@@ -46,13 +45,11 @@ fn new_metasystem(tabula_extractor_fixture: &&testutil::TabulaExtractorFixture) 
 
 #[gtest]
 fn test_e2e_small_pipeline(
+    _tls_isolate_fixture: &TlsIsolateFixture,
     test_dir: testutil::TestDirectory,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
     test_data_tables: &&TestDataTables,
 ) -> Result<()> {
-    v8wrapper::init_v8_for_testing();
-    let tls_isolate = TlsIsolate::for_current_thread().wrap_error()?;
-
     let system = new_metasystem(tabula_extractor_fixture);
     let processor = generic_pipeline::processing::GenericProcessor::new(Rc::new(system));
 
@@ -224,8 +221,6 @@ fn test_e2e_small_pipeline(
             ["r4c1", "r4c2", "r4c3"],
         ]))
     );
-
-    drop(tls_isolate);
 
     Ok(())
 }

@@ -9,6 +9,7 @@ use generic_pipeline::node::Tag;
 use googletest::{matcher::Matcher, prelude::*};
 use hashbrown::{HashMap, HashSet};
 use serde::Deserialize;
+use testutils::WrapError;
 
 use crate::{
     Node, NodeId, intermediates,
@@ -114,6 +115,23 @@ pub fn check_results<'a, 'm>(
                 // Failure case covered by checking equality of ID set.
             }
         }
+    }
+}
+
+pub struct TlsIsolateFixture {
+    tls_isolate: v8wrapper::TlsIsolate,
+}
+
+impl Fixture for TlsIsolateFixture {
+    fn set_up() -> googletest::Result<Self> {
+        v8wrapper::init_v8_for_testing();
+        let tls_isolate = v8wrapper::TlsIsolate::for_current_thread().wrap_error()?;
+        Ok(Self { tls_isolate })
+    }
+
+    fn tear_down(self) -> googletest::Result<()> {
+        drop(self.tls_isolate);
+        Ok(())
     }
 }
 
