@@ -7,7 +7,7 @@ use generic_pipeline::{
 };
 use googletest::prelude::*;
 use hashbrown::HashMap;
-use map_macro::hashbrown::hash_map_e;
+use map_macro::hashbrown::{hash_map, hash_map_e};
 use serde_json::json;
 use v8wrapper::TlsIsolate;
 
@@ -16,7 +16,10 @@ use crate::{
     plargs::{self, ArgSet, ArgValue},
     plparams::{Param, ParamType},
     spec_types::OutputPathBuf,
-    specs::{InputPdfFile, JsContext, OutputDirectory, OutputFileJson, Spec, SpecDiscriminants},
+    specs::{
+        InputPdfFile, JsContext, JsTransform, OutputDirectory, OutputFileJson, Spec,
+        SpecDiscriminants,
+    },
     systems,
     testutil::{self, TestDataTables, node_id},
 };
@@ -82,11 +85,52 @@ fn test_e2e_small_pipeline(
             ..DefaultForTest::default_for_test()
         },
         Node {
+            id: node_id("read-table-3-1"),
+            spec: test_data_tables
+                .table_3_1
+                .to_pdf_extract_table("input-pdf")
+                .into(),
+            ..DefaultForTest::default_for_test()
+        },
+        Node {
+            id: node_id("read-table-3-2"),
+            spec: test_data_tables
+                .table_3_2
+                .to_pdf_extract_table("input-pdf")
+                .into(),
+            ..DefaultForTest::default_for_test()
+        },
+        Node {
+            id: node_id("merge-table-3"),
+            spec: JsTransform {
+                context: node_id("js-ctx"),
+                input_data: hash_map! {
+                    "part_1".into() => node_id("read-table-3-1"),
+                    "part_2".into() => node_id("read-table-3-2"),
+                },
+                code: r#"
+                    return part_1.concat(part_2);
+                "#
+                .into(),
+            }
+            .into(),
+            ..DefaultForTest::default_for_test()
+        },
+        Node {
             id: node_id("output-table-1"),
             spec: Spec::OutputFileJson(OutputFileJson {
                 input_data: node_id("read-table-1"),
                 directory: node_id("output-dir"),
                 filename: OutputPathBuf::new(Path::new("table-1.json")).wrap_error()?,
+            }),
+            ..DefaultForTest::default_for_test()
+        },
+        Node {
+            id: node_id("output-table-3"),
+            spec: Spec::OutputFileJson(OutputFileJson {
+                input_data: node_id("merge-table-3"),
+                directory: node_id("output-dir"),
+                filename: OutputPathBuf::new(Path::new("table-3.json")).wrap_error()?,
             }),
             ..DefaultForTest::default_for_test()
         },
@@ -134,7 +178,21 @@ fn test_e2e_small_pipeline(
         eq(&json!([
             ["Heading 1", "Heading 2", "Heading 3"],
             ["r1c1", "r1c2", "r1c3"],
-            ["r2c1", "r2c2", "r2c3"]
+            ["r2c1", "r2c2", "r2c3"],
+        ]))
+    );
+
+    let table_3_json = std::fs::read_to_string(test_dir.path().join("table-3.json"))?;
+    let table_3: serde_json::Value = serde_json::from_str(&table_3_json)?;
+
+    expect_that!(
+        &table_3,
+        eq(&json!([
+            ["Heading 1", "Heading 2", "Heading 3"],
+            ["r1c1", "r1c2", "r1c3"],
+            ["r2c1", "r2c2", "r2c3"],
+            ["r3c1", "r3c2", "r3c3"],
+            ["r4c1", "r4c2", "r4c3"],
         ]))
     );
 
