@@ -1,6 +1,6 @@
-use anyhow::Context;
+use thiserror_context::Context;
 
-use crate::tabula_wrapper;
+use crate::{StringError, SystemError, SystemResult, tabula_wrapper};
 
 /// Single threaded implementation of [tabula_wrapper::TabulaExtractor].
 ///
@@ -20,7 +20,7 @@ impl<'env> tabula_wrapper::TabulaExtractor for SingleThreadedTabulaExtractor<'en
     fn extract_tables(
         &self,
         request: super::TabulaExtractionRequest,
-    ) -> anyhow::Result<tabula_wrapper::JsonTableSet> {
+    ) -> SystemResult<tabula_wrapper::JsonTableSet> {
         let tabula = self
             .tabula_env
             .configure_tabula(
@@ -32,14 +32,20 @@ impl<'env> tabula_wrapper::TabulaExtractor for SingleThreadedTabulaExtractor<'en
                 request.use_returns,
                 request.password.as_deref(),
             )
+            .map_err(SystemError::map_internal())
             .context("configuring Tabula to extract table")?;
 
         let extracted_file = tempfile::NamedTempFile::new()
+            .map_err(SystemError::map_execution())
             .context("creating temporary file for extracting PDF table data")?;
         tabula
             .parse_document_into(&request.pdf_path, extracted_file.path())
+            .map_err(StringError::from_display_error)
+            .map_err(SystemError::map_execution())
             .context("extracting PDF table data")?;
 
-        serde_json::from_reader(extracted_file).context("parsing extracted PDF table data")
+        serde_json::from_reader(extracted_file)
+            .map_err(SystemError::map_execution())
+            .context("parsing extracted PDF table data")
     }
 }

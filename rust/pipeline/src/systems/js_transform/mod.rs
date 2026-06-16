@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests;
 
-use anyhow::Context;
 use generic_pipeline::plinputs;
+use thiserror_context::Context;
 use v8wrapper::CatchToResult;
 
-use crate::{NodeId, intermediates, specs::JsTransform};
+use crate::{NodeId, SystemError, SystemResult, intermediates, specs::JsTransform};
 
 /// Provides processing support for [crate::specs::Spec::JsTransform].
 #[derive(Default)]
@@ -16,8 +16,8 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         &self,
         node: &crate::Node,
         reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
-    ) -> anyhow::Result<()> {
-        let spec = <&JsTransform>::try_from(&node.spec)?;
+    ) -> SystemResult<()> {
+        let spec: &JsTransform = node.spec.downcast_spec()?;
 
         reg.add_input(&spec.context);
         for dep_id in spec.input_data.values() {
@@ -32,13 +32,11 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         node: &crate::Node,
         _args: &crate::plargs::ArgSet,
         intermediates: &crate::intermediates::IntermediateSet,
-    ) -> anyhow::Result<crate::intermediates::IntermediateValue> {
-        let spec: &JsTransform = (&node.spec).try_into()?;
+    ) -> SystemResult<crate::intermediates::IntermediateValue> {
+        let spec: &JsTransform = node.spec.downcast_spec()?;
 
-        let global_context: &intermediates::JsContext = intermediates
-            .require(&spec.context)?
-            .try_into()
-            .with_context(|| format!("from specified context node {:?}", spec.context))?;
+        let global_context: &intermediates::JsContext =
+            intermediates::get_intermediate_input(intermediates, &spec.context)?;
 
         let mut arg_refs: Vec<(&str, &NodeId)> = spec
             .input_data
@@ -49,8 +47,8 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         // nodes rely on ordering.
         arg_refs.sort_by_key(|(arg_name, _)| *arg_name);
 
-        let result =
-            v8wrapper::try_with_isolate(|tls_isolate| -> anyhow::Result<serde_json::Value> {
+        let result = v8wrapper::try_with_isolate(
+            |tls_isolate| -> SystemResult<serde_json::Value> {
                 v8::scope!(let scope, tls_isolate.isolate());
                 let ctx = v8::Local::new(scope, &global_context.0);
                 v8::scope_with_context!(let scope, scope, ctx);
@@ -70,43 +68,47 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
                     },
                     &spec.code,
                 )
+                .map_err(SystemError::map_spec())
                 .context("creating transformation function")?;
 
                 // Collect the arguments to call it with.
                 let args: Vec<v8::Local<v8::Value>> = arg_refs
                     .iter()
                     .map(
-                        |(arg_name, node_id)| -> anyhow::Result<v8::Local<v8::Value>> {
-                            let arg_json_value: &intermediates::JsonData = intermediates
-                                .require(node_id)?
-                                .try_into()
-                                .with_context(|| format!("from specified args node {node_id:?}"))?;
+                        |(arg_name, node_id)| -> SystemResult<v8::Local<v8::Value>> {
+                            let arg_json_value: &intermediates::JsonData = intermediates::get_intermediate_input(
+                            intermediates,
+                                node_id
+                            )?;
 
                             serde_v8::to_v8(try_catch, &arg_json_value.0)
-                                .context("converting JsonData to v8::Value")
+                                .map_err(SystemError::map_input(node_id))
                                 // TODO: Use `Object.freeze` to freeze any data passed in. This means
                                 // that any future batching in `process_multiple` that would require it
                                 // is not a breaking change. todo!()
                                 .with_context(|| {
-                                    format!("for argument {arg_name:?} from node {node_id:?}")
+                                    format!("converting JsonData to v8::Value for argument {arg_name:?} from node {node_id:?}")
                                 })
                         },
                     )
-                    .collect::<anyhow::Result<Vec<_>>>()?;
+                    .collect::<SystemResult<Vec<_>>>()?;
 
                 // Call the transformation function.
                 let global = ctx.global(try_catch);
                 let result_v8 = func
                     .call(try_catch, global.cast(), &args)
                     .to_exception_result(try_catch)
+                    .map_err(SystemError::map_spec())
                     .context("calling transformation function")?;
 
                 // Transform the result back to JsonData.
-                let result: serde_json::Value = serde_v8::from_v8(try_catch, result_v8)
-                    .context("converting result v8::Value to JsonData")?;
+                let result: serde_json::Value = serde_v8::from_v8(try_catch, result_v8).map_err(
+                    SystemError::map_spec(),
+                ).context("converting result v8::Value to JsonData")?;
 
                 Ok(result)
-            })??;
+            },
+        ).map_err(SystemError::map_internal())??;
 
         Ok(intermediates::JsonData(result).into())
     }

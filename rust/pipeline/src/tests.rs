@@ -1,6 +1,5 @@
 use std::{path::Path, rc::Rc};
 
-use anyhow::anyhow;
 use generic_pipeline::{
     plparams::{ParamId, ParamKey},
     systems::GenericSystem,
@@ -11,7 +10,7 @@ use map_macro::hashbrown::{hash_map, hash_map_e};
 use serde_json::json;
 
 use crate::{
-    MetaSystem, Node, PipelineTypes,
+    MetaSystem, Node, PipelineTypes, StringError, SystemError,
     plargs::{self, ArgSet, ArgValue},
     plparams::{Param, ParamType},
     spec_types::OutputPathBuf,
@@ -22,7 +21,7 @@ use crate::{
     systems,
     testutil::{self, TestDataTables, TlsIsolateFixture, node_id},
 };
-use testutils::{DefaultForTest, WrapError};
+use testutils::DefaultForTest;
 
 fn new_metasystem(tabula_extractor_fixture: &&testutil::TabulaExtractorFixture) -> MetaSystem {
     use crate::specs::SpecDiscriminants::*;
@@ -39,7 +38,11 @@ fn new_metasystem(tabula_extractor_fixture: &&testutil::TabulaExtractorFixture) 
 
     MetaSystem::new(
         systems,
-        Box::new(|discrim| anyhow!("no system found for {discrim:?}")),
+        Box::new(|discrim| {
+            SystemError::map_internal()(StringError(format!(
+                "no registered system for spec type {discrim:?}"
+            )))
+        }),
     )
 }
 
@@ -126,7 +129,7 @@ fn test_e2e_small_pipeline(
             spec: Spec::OutputFileJson(OutputFileJson {
                 input_data: node_id("read-table-1"),
                 directory: node_id("output-dir"),
-                filename: OutputPathBuf::new(Path::new("table-1.json")).wrap_error()?,
+                filename: OutputPathBuf::new(Path::new("table-1.json"))?,
             }),
             ..DefaultForTest::default_for_test()
         },
@@ -135,7 +138,7 @@ fn test_e2e_small_pipeline(
             spec: Spec::OutputFileJson(OutputFileJson {
                 input_data: node_id("read-table-2"),
                 directory: node_id("output-dir"),
-                filename: OutputPathBuf::new(Path::new("table-2.json")).wrap_error()?,
+                filename: OutputPathBuf::new(Path::new("table-2.json"))?,
             }),
             ..DefaultForTest::default_for_test()
         },
@@ -144,7 +147,7 @@ fn test_e2e_small_pipeline(
             spec: Spec::OutputFileJson(OutputFileJson {
                 input_data: node_id("merge-table-3"),
                 directory: node_id("output-dir"),
-                filename: OutputPathBuf::new(Path::new("table-3.json")).wrap_error()?,
+                filename: OutputPathBuf::new(Path::new("table-3.json"))?,
             }),
             ..DefaultForTest::default_for_test()
         },
@@ -153,7 +156,7 @@ fn test_e2e_small_pipeline(
     let input_pdf_param_key = ParamKey::new(node_id("input-pdf"), ParamId::from_static("path"));
     let output_dir_param_key = ParamKey::new(node_id("output-dir"), ParamId::from_static("path"));
 
-    let params = processor.resolve_params(&pipeline).wrap_error()?;
+    let params = processor.resolve_params(&pipeline)?;
     let expected_params: HashMap<ParamKey, Param> = hash_map_e! {
         input_pdf_param_key.clone() => Param {
             description: "Input PDF.".into(),

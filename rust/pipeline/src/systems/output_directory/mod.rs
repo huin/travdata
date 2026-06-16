@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
 use generic_pipeline::plparams::ParamId;
+use thiserror_context::Context;
 
-use crate::{intermediates, plargs, plparams, specs};
+use crate::{SystemError, SystemResult, intermediates, plargs, plparams, specs};
 
 pub struct OutputDirectorySystem;
 
@@ -17,8 +17,8 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
             'a,
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ParamType,
         >,
-    ) -> Result<()> {
-        let spec = <&specs::OutputDirectory>::try_from(&node.spec)?;
+    ) -> SystemResult<()> {
+        let spec: &specs::OutputDirectory = node.spec.downcast_spec()?;
         reg.add_param(
             PARAM_PATH,
             plparams::ParamType::OutputDirectory,
@@ -38,16 +38,17 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
         _intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue,
         >,
-    ) -> anyhow::Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
+    ) -> SystemResult<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
     {
         let output_directory_arg: &plargs::OutputDirectory =
-            args.require(&node.id, &PARAM_PATH)?.try_into()?;
+            plargs::get_arg(args, &node.id, &PARAM_PATH)?;
 
         let output_directory = intermediates::OutputDirectory(output_directory_arg.0.clone());
 
         std::fs::DirBuilder::new()
             .recursive(true)
             .create(&output_directory.0)
+            .map_err(SystemError::map_execution())
             .context("creating OutputDirectory")?;
 
         Ok(intermediates::IntermediateValue::from(output_directory))

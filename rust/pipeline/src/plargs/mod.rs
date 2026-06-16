@@ -4,7 +4,9 @@
 
 use std::path::PathBuf;
 
-use crate::impl_enum_conversions;
+use generic_pipeline::plparams::ParamId;
+
+use crate::{NodeId, StringError, SystemError, SystemResult, impl_enum_conversions};
 
 /// Monomorphic form of [generic_pipeline::plargs::GenericArgSet].
 pub type ArgSet = generic_pipeline::plargs::GenericArgSet<ArgValue>;
@@ -24,3 +26,13 @@ pub struct OutputDirectory(pub PathBuf);
 
 impl_enum_conversions!(ArgValue, InputPdf, "argument value");
 impl_enum_conversions!(ArgValue, OutputDirectory, "argument value");
+
+pub fn get_arg<'a, T>(args: &'a ArgSet, node_id: &NodeId, param_id: &ParamId) -> SystemResult<&'a T>
+where
+    &'a T: TryFrom<&'a ArgValue, Error = StringError>,
+{
+    args.require(node_id, param_id)
+        .map_err(SystemError::from)?
+        .try_into()
+        .map_err(SystemError::map_param(param_id))
+}

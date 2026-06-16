@@ -3,12 +3,13 @@ pub mod threadeddispatch;
 
 use std::path::PathBuf;
 
-use anyhow::Result;
 use serde::Deserialize;
+
+use crate::error::SystemResult;
 
 /// Required trait for making a single batch extraction call to Tabula for table(s) extraction.
 pub trait TabulaExtractor {
-    fn extract_tables(&self, request: TabulaExtractionRequest) -> Result<JsonTableSet>;
+    fn extract_tables(&self, request: TabulaExtractionRequest) -> SystemResult<JsonTableSet>;
 }
 
 /// Single request to a [TabulaExtractor] to batch extract tables from a PDF file.

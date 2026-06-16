@@ -1,6 +1,11 @@
 use std::{marker::PhantomData, rc::Rc, sync::mpsc};
 
-use crate::tabula_wrapper::{self, TabulaExtractor, singlethreaded};
+use thiserror_context::Context;
+
+use crate::{
+    error::{SystemError, SystemResult},
+    tabula_wrapper::{self, TabulaExtractor, singlethreaded},
+};
 
 /// ServingExtractor should be created and run on the main thread.
 pub struct ExtractorServer<'env> {
@@ -61,7 +66,7 @@ enum ServeRequest {
 
 struct Request {
     request: tabula_wrapper::TabulaExtractionRequest,
-    response_sender: mpsc::SyncSender<anyhow::Result<tabula_wrapper::JsonTableSet>>,
+    response_sender: mpsc::SyncSender<SystemResult<tabula_wrapper::JsonTableSet>>,
 }
 
 #[derive(Clone)]
@@ -73,14 +78,19 @@ impl tabula_wrapper::TabulaExtractor for ExtractorClient {
     fn extract_tables(
         &self,
         request: super::TabulaExtractionRequest,
-    ) -> anyhow::Result<tabula_wrapper::JsonTableSet> {
+    ) -> SystemResult<tabula_wrapper::JsonTableSet> {
         let (response_sender, response_receiver) = mpsc::sync_channel(0);
         self.request_sender
             .send(ServeRequest::ExtractTables(Request {
                 request,
                 response_sender,
-            }))?;
+            }))
+            .map_err(SystemError::map_internal())
+            .context("ExtractorClient disconnected unexpectedly")?;
 
-        response_receiver.recv()?
+        response_receiver
+            .recv()
+            .map_err(SystemError::map_internal())
+            .context("ExtractorClient lost response from ExtractorServer")?
     }
 }

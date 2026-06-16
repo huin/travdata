@@ -14,7 +14,7 @@ mod tests;
 
 use serde::{Deserialize, Serialize};
 
-use crate::impl_enum_conversions;
+use crate::{StringError, SystemError, SystemResult, impl_enum_conversions};
 pub use input_pdf_file::InputPdfFile;
 pub use js_context::JsContext;
 pub use js_transform::JsTransform;
@@ -35,6 +35,16 @@ pub enum Spec {
     OutputFileCsv(OutputFileCsv),
     OutputFileJson(OutputFileJson),
     PdfExtractTable(PdfExtractTable),
+}
+
+impl Spec {
+    // XXX rename to "downcast"
+    pub fn downcast_spec<'s, S>(&'s self) -> SystemResult<&'s S>
+    where
+        &'s S: TryFrom<&'s Spec, Error = StringError>,
+    {
+        self.try_into().map_err(SystemError::map_spec())
+    }
 }
 
 impl generic_pipeline::systems::DiscriminatedSpec for Spec {

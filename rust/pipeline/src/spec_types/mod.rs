@@ -2,8 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
+
+use crate::SystemResult;
 
 pub mod pdf;
 
@@ -21,7 +22,7 @@ impl AsRef<Path> for OutputPathBuf {
 impl OutputPathBuf {
     // TODO: Ideally this would be a TryFrom, but there's a conflicting blanket impl in the stdlib,
     // and I haven't debugged how to avoid that.
-    pub fn new<P>(value: P) -> Result<Self>
+    pub fn new<P>(value: P) -> SystemResult<Self>
     where
         P: Into<PathBuf> + AsRef<Path>,
     {

@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow.workspace = true
 csv.workspace = true
 generic-pipeline.workspace = true
 hashbrown.workspace = true
@@ -20,6 +19,7 @@ tempfile.workspace = true
 v8.workspace = true
 v8wrapper.workspace = true
 thiserror.workspace = true
+thiserror-context = "0.1.2"
 
 [dev-dependencies]
 generic-pipeline = { features = ["testing"], workspace = true }

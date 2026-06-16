@@ -2,10 +2,10 @@ use generic_pipeline::systems::GenericSystem;
 use googletest::prelude::*;
 use hashbrown::HashMap;
 use test_casing::{TestCases, cases, test_casing};
-use testutils::{DefaultForTest, WrapError};
+use testutils::DefaultForTest;
 
 use crate::{
-    Node, NodeId, intermediates,
+    Node, NodeId, SystemResult, intermediates,
     spec_types::pdf,
     specs,
     systems::tabula_pdf_extract_table::grouped_non_overlapping_slices,
@@ -37,7 +37,7 @@ fn test_extracts_single_table_lattice(
     }];
 
     let actual_results_map =
-        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds)?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
@@ -64,7 +64,7 @@ fn test_extracts_single_table_stream(
     }];
 
     let actual_results_map =
-        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds)?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
@@ -90,7 +90,7 @@ fn test_rejects_lattice_in_two_parts(
     }];
 
     let actual_results_map =
-        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds)?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
@@ -133,7 +133,7 @@ fn test_extracts_single_table_and_rejects_overlapping_split_table(
     ];
 
     let actual_results_map =
-        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds)?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
@@ -156,7 +156,7 @@ fn test_rejects_single_empty_region(
     }];
 
     let actual_results_map =
-        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds)?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
@@ -182,7 +182,7 @@ fn test_rejects_single_region_with_multiple_tables(
     }];
 
     let actual_results_map =
-        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds)?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
@@ -241,7 +241,7 @@ fn test_multiple_tables_with_overlaps(
     ];
 
     let actual_results_map =
-        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds)?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
@@ -282,7 +282,7 @@ fn test_rejects_two_overlapping_regions_with_zero_and_two_tables_respectively(
     ];
 
     let actual_results_map =
-        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds).wrap_error()?;
+        do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds)?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
 }
@@ -307,7 +307,7 @@ fn table_slice_to_to_intermediates_json_data(
 fn do_multi_process<'a, 'm>(
     extractor: ExtractorClient,
     node_expecteds: &'m [NodeExpected<'a>],
-) -> ::anyhow::Result<HashMap<NodeId, ::anyhow::Result<intermediates::IntermediateValue>>>
+) -> SystemResult<HashMap<NodeId, SystemResult<intermediates::IntermediateValue>>>
 where
     'a: 'm,
 {
@@ -321,7 +321,7 @@ where
     let interms = test_data_interms();
     let actual_results = system.process_multiple(&node_refs, &Default::default(), &interms);
 
-    let actual_results_map: HashMap<NodeId, ::anyhow::Result<intermediates::IntermediateValue>> =
+    let actual_results_map: HashMap<NodeId, crate::SystemResult<intermediates::IntermediateValue>> =
         actual_results
             .into_iter()
             .map(|node_result| (node_result.id, node_result.value))
@@ -418,7 +418,7 @@ fn test_grouped_non_overlapping_regions(node_order: [usize; 3]) -> Result<()> {
             let node = &nodes[*node_index];
             Ok(NodeSpec {
                 node,
-                spec: <&specs::PdfExtractTable>::try_from(&node.spec).wrap_error()?,
+                spec: <&specs::PdfExtractTable>::try_from(&node.spec)?,
             })
         })
         .collect::<Result<Vec<_>>>()?;

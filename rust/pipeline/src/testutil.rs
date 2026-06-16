@@ -4,7 +4,6 @@ use std::{
     thread,
 };
 
-use anyhow::Result;
 use generic_pipeline::node::Tag;
 use googletest::{matcher::Matcher, prelude::*};
 use hashbrown::{HashMap, HashSet};
@@ -12,7 +11,7 @@ use serde::Deserialize;
 use testutils::WrapError;
 
 use crate::{
-    Node, NodeId, intermediates,
+    Node, NodeId, SystemResult, intermediates,
     spec_types::pdf::{TabulaExtractionMethod, TabulaPdfRect},
     specs::PdfExtractTable,
     tabula_wrapper,
@@ -35,7 +34,7 @@ pub fn tag(s: &str) -> generic_pipeline::node::Tag {
 
 pub struct NodeExpected<'a> {
     pub node: Node,
-    pub expected: MatcherBox<&'a Result<intermediates::IntermediateValue>>,
+    pub expected: MatcherBox<&'a SystemResult<intermediates::IntermediateValue>>,
 }
 
 /// Boxed version of a [Matcher].
@@ -89,7 +88,7 @@ where
 
 #[track_caller]
 pub fn check_results<'a, 'm>(
-    actual_results_map: &'a HashMap<NodeId, Result<intermediates::IntermediateValue>>,
+    actual_results_map: &'a HashMap<NodeId, SystemResult<intermediates::IntermediateValue>>,
     node_expecteds: Vec<NodeExpected<'a>>,
 ) where
     'a: 'm,

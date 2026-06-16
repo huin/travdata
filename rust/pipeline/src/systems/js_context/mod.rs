@@ -1,6 +1,6 @@
-use anyhow::{Context, Result, bail};
+use thiserror_context::Context;
 
-use crate::{intermediates, specs};
+use crate::{SystemError, SystemResult, intermediates, specs};
 
 pub struct JsContextSystem;
 
@@ -16,12 +16,12 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsContex
         _intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue,
         >,
-    ) -> Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue> {
-        if !matches!(&node.spec, specs::Spec::JsContext(_)) {
-            bail!("node is not of type JsContext");
-        }
+    ) -> SystemResult<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
+    {
+        let _: &specs::JsContext = node.spec.downcast_spec()?;
 
         let global_context = v8wrapper::try_with_isolate(|tls_isolate| tls_isolate.new_ctx())
+            .map_err(SystemError::map_execution())
             .context("accessing JS context")?;
 
         Ok(intermediates::JsContext(global_context).into())

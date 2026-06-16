@@ -1,6 +1,5 @@
 use std::env::temp_dir;
 
-use anyhow::Result;
 use googletest::prelude::*;
 use serde_json::Value;
 use testutils::DefaultForTest;

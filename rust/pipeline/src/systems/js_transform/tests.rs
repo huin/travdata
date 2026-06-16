@@ -2,7 +2,7 @@ use generic_pipeline::systems::GenericSystem;
 use googletest::prelude::*;
 use map_macro::hashbrown::{hash_map, hash_set};
 use serde_json::json;
-use testutils::{DefaultForTest, WrapError};
+use testutils::DefaultForTest;
 
 use crate::{
     intermediates, plparams,
@@ -22,9 +22,7 @@ fn test_params(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
         ..DefaultForTest::default_for_test()
     };
 
-    system
-        .params(&node, &mut reg.for_node(&node.id))
-        .wrap_error()?;
+    system.params(&node, &mut reg.for_node(&node.id))?;
     let got_params = reg.build();
 
     expect_that!(got_params.params, is_empty());
@@ -50,9 +48,7 @@ fn test_inputs(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
         ..DefaultForTest::default_for_test()
     };
 
-    system
-        .inputs(&node, &mut reg.for_node(&node.id))
-        .wrap_error()?;
+    system.inputs(&node, &mut reg.for_node(&node.id))?;
     let got_inputs = reg.build();
 
     expect_that!(

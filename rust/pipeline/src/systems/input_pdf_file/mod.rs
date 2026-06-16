@@ -1,7 +1,9 @@
-use anyhow::{Context, Result, bail};
 use generic_pipeline::plparams::ParamId;
+use thiserror_context::Context;
 
-use crate::{intermediates, plargs, plparams, specs};
+use crate::{
+    StringError, SystemError, SystemResult, intermediates::InputFile, plargs, plparams, specs,
+};
 
 pub struct InputPdfFileSystem;
 
@@ -17,8 +19,8 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for InputPdf
             'a,
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ParamType,
         >,
-    ) -> Result<()> {
-        let spec = <&specs::InputPdfFile>::try_from(&node.spec)?;
+    ) -> SystemResult<()> {
+        let spec: &specs::InputPdfFile = node.spec.downcast_spec()?;
         reg.add_param(
             PARAM_PATH,
             plparams::ParamType::InputPdf,
@@ -38,17 +40,21 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for InputPdf
         _intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue,
         >,
-    ) -> anyhow::Result<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
+    ) -> SystemResult<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
     {
-        let input_pdf = args
-            .require(&node.id, &PARAM_PATH)?
-            .try_into()
-            .map(|arg_value: &plargs::InputPdf| intermediates::InputFile(arg_value.0.clone()))?;
+        let input_pdf: &plargs::InputPdf = plargs::get_arg(args, &node.id, &PARAM_PATH)?;
 
-        if !std::fs::exists(&input_pdf.0).context("checking for existance of input PDF")? {
-            bail!("input PDF does not exist at path {:?}", input_pdf.0);
+        if !std::fs::exists(&input_pdf.0)
+            .map_err(SystemError::map_param(&PARAM_PATH))
+            .context("checking for existance of input PDF")?
+        {
+            return Err(StringError(format!(
+                "input PDF does not exist at path {:?}",
+                input_pdf.0
+            )))
+            .map_err(SystemError::map_param(&PARAM_PATH));
         }
 
-        Ok(intermediates::IntermediateValue::from(input_pdf))
+        Ok(InputFile(input_pdf.0.clone()).into())
     }
 }

@@ -1,4 +1,3 @@
-use anyhow::{Context, Result};
 use googletest::prelude::*;
 use map_macro::hashbrown::{hash_map, hash_set};
 use test_casing::{TestCases, cases, test_casing};
@@ -138,12 +137,11 @@ fn test_cases_len() {
 #[test_casing(5, CASES)]
 #[gtest]
 fn test_reserialise_case(input: &'static str, expected: Node) -> Result<()> {
-    let got_1: Node = serde_yaml_ng::from_str(input).context("deserialising original input")?;
+    let got_1: Node = serde_yaml_ng::from_str(input)?;
     expect_that!(got_1, eq(&expected));
 
-    let reserialised = serde_yaml_ng::to_string(&got_1).context("serialising got_1")?;
-    let got_2: Node =
-        serde_yaml_ng::from_str(&reserialised).context("deserialising reserialised data")?;
+    let reserialised = serde_yaml_ng::to_string(&got_1)?;
+    let got_2: Node = serde_yaml_ng::from_str(&reserialised)?;
     expect_that!(got_2, eq(&expected));
 
     Ok(())

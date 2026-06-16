@@ -3,15 +3,17 @@ mod tests;
 
 use std::path::Path;
 
-use anyhow::{Result, anyhow, bail};
 use hashbrown::HashMap;
 use serde_json::Value;
+use thiserror_context::Context;
 
 use crate::{
-    Node, NodeResult, intermediates,
+    Node, NodeResult, StringError,
+    error::{SystemError, SystemResult},
+    intermediates,
     plargs::ArgSet,
     spec_types::pdf::{self, TabulaExtractionMethod},
-    specs,
+    specs::{self, PdfExtractTable},
     tabula_wrapper::{self, TabulaExtractionRequest, TabulaExtractor},
 };
 
@@ -35,7 +37,7 @@ impl TabulaPdfExtractTableSystem {
         pdf_path: &Path,
         group: &ExtractGroupKey,
         node_specs: &[NodeSpec],
-    ) -> Result<tabula_wrapper::JsonTableSet> {
+    ) -> SystemResult<tabula_wrapper::JsonTableSet> {
         let page_areas: Vec<_> = node_specs
             .iter()
             .map(|node_spec| node_spec.spec.rect.to_tabula_rectangle_page_area())
@@ -60,13 +62,16 @@ impl TabulaPdfExtractTableSystem {
         group: &ExtractGroupKey,
         node_specs: &[NodeSpec],
     ) {
-        let table_set = match self.extract_table_group(pdf_path, group, node_specs) {
+        let table_set = match self
+            .extract_table_group(pdf_path, group, node_specs)
+            .context("failed to batch extract table")
+        {
             Ok(table_set) => table_set,
             Err(err) => {
                 for node_spec in node_specs {
                     results.push(NodeResult {
                         id: node_spec.node.id.clone(),
-                        value: Err(anyhow!("failed to batch extract table: {err:?}")),
+                        value: Err(err.clone()),
                     });
                 }
                 return;
@@ -84,15 +89,16 @@ impl TabulaPdfExtractTableSystem {
                 found_table.add_match(table);
             }
 
-            let value: Result<intermediates::IntermediateValue> = match found_table {
-                TableMatch::None => Err(anyhow!("no table in region")),
+            let value: SystemResult<intermediates::IntermediateValue> = match found_table {
+                TableMatch::None => Err(StringError("no table in region".into())),
                 TableMatch::One(table) => {
                     // TODO: Consider if in future the raw JsonTableSet should be returned, which
                     // could be specifed via an option on the specs.
                     Ok(intermediates::JsonData(convert_tabula_table_to_table_json(table)).into())
                 }
-                TableMatch::Many(n) => Err(anyhow!("multiple ({n}) tables in region")),
-            };
+                TableMatch::Many(n) => Err(StringError(format!("multiple ({n}) tables in region"))),
+            }
+            .map_err(SystemError::map_execution());
 
             results.push(NodeResult {
                 id: node_spec.node.id.clone(),
@@ -126,18 +132,19 @@ impl TabulaPdfExtractTableSystem {
     ) {
         for (pdf_id, group_to_node_specs) in pdf_group_to_node_specs {
             // Get path to the PDF for this group of extractions.
-            let pdf_path = match intermediates
+            let pdf_path_result: SystemResult<&intermediates::InputFile> = intermediates
                 .require(&pdf_id)
-                .map_err(anyhow::Error::from)
-                .and_then(<&intermediates::InputFile>::try_from)
-            {
+                .map_err(SystemError::from)
+                .and_then(|interm| interm.try_into().map_err(SystemError::map_execution()));
+
+            let pdf_path = match pdf_path_result {
                 Ok(input_file) => &input_file.0,
                 Err(err) => {
                     for (_, node_specs) in &group_to_node_specs {
                         for node_spec in node_specs {
                             results.push(NodeResult {
                                 id: node_spec.node.id.clone(),
-                                value: Err(anyhow!("{err:?}")),
+                                value: Err(err.clone()),
                             });
                         }
                     }
@@ -162,8 +169,8 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
         &self,
         node: &Node,
         reg: &'a mut generic_pipeline::plinputs::NodeInputsRegistrator<'a>,
-    ) -> Result<()> {
-        let spec = <&specs::PdfExtractTable>::try_from(&node.spec)?;
+    ) -> SystemResult<()> {
+        let spec: &specs::PdfExtractTable = node.spec.downcast_spec()?;
         reg.add_input(&spec.pdf);
         Ok(())
     }
@@ -173,21 +180,22 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
         node: &Node,
         args: &ArgSet,
         intermediates: &intermediates::IntermediateSet,
-    ) -> Result<intermediates::IntermediateValue, anyhow::Error> {
+    ) -> SystemResult<intermediates::IntermediateValue> {
         let mut result = self.process_multiple(&[node], args, intermediates);
         if result.len() != 1 {
-            bail!(
+            return Err(StringError(format!(
                 "bug: process_multiple did not produce exactly one value, got {}",
-                result.len(),
-            );
+                result.len()
+            )))
+            .map_err(SystemError::map_internal());
         }
         let result = result.pop().expect("bug: length was checked");
         if result.id != node.id {
-            bail!(
+            return Err(StringError(format!(
                 "bug: process_multiple returned result for {:?} but expected result for {:?}",
-                result.id,
-                node.id
-            );
+                result.id, node.id
+            )))
+            .map_err(SystemError::map_internal());
         }
         result.value
     }
@@ -218,7 +226,7 @@ fn group_nodes_for_extraction<'a>(
         HashMap<ExtractGroupKey, Vec<NodeSpec>>,
     > = HashMap::new();
     for node in nodes {
-        let spec = match <&specs::PdfExtractTable>::try_from(&node.spec) {
+        let spec: &PdfExtractTable = match node.spec.downcast_spec() {
             Ok(spec) => spec,
             Err(err) => {
                 results.push(NodeResult {

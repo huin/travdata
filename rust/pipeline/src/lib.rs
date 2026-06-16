@@ -1,4 +1,5 @@
 mod enum_conversion;
+pub mod error;
 pub mod intermediates;
 pub mod plargs;
 pub mod plparams;
@@ -10,6 +11,8 @@ pub mod tabula_wrapper;
 mod tests;
 #[cfg(test)]
 mod testutil;
+
+pub use error::{StringError, SystemError, SystemErrorKind, SystemResult};
 
 pub type NodeId = generic_pipeline::node::NodeId;
 
@@ -35,7 +38,7 @@ impl generic_pipeline::PipelineTypes for PipelineTypes {
 
     type IntermediateValue = intermediates::IntermediateValue;
 
-    type SystemError = anyhow::Error;
+    type SystemError = error::SystemError;
 }
 
 /// Monomorphic form of [generic_pipeline::systems::GenericMetaSystem] used with realm
