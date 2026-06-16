@@ -85,6 +85,14 @@ fn test_e2e_small_pipeline(
             ..DefaultForTest::default_for_test()
         },
         Node {
+            id: node_id("read-table-2"),
+            spec: test_data_tables
+                .table_2
+                .to_pdf_extract_table("input-pdf")
+                .into(),
+            ..DefaultForTest::default_for_test()
+        },
+        Node {
             id: node_id("read-table-3-1"),
             spec: test_data_tables
                 .table_3_1
@@ -122,6 +130,15 @@ fn test_e2e_small_pipeline(
                 input_data: node_id("read-table-1"),
                 directory: node_id("output-dir"),
                 filename: OutputPathBuf::new(Path::new("table-1.json")).wrap_error()?,
+            }),
+            ..DefaultForTest::default_for_test()
+        },
+        Node {
+            id: node_id("output-table-2"),
+            spec: Spec::OutputFileJson(OutputFileJson {
+                input_data: node_id("read-table-2"),
+                directory: node_id("output-dir"),
+                filename: OutputPathBuf::new(Path::new("table-2.json")).wrap_error()?,
             }),
             ..DefaultForTest::default_for_test()
         },
@@ -175,6 +192,18 @@ fn test_e2e_small_pipeline(
 
     expect_that!(
         &table_1,
+        eq(&json!([
+            ["Heading 1", "Heading 2", "Heading 3"],
+            ["r1c1", "r1c2", "r1c3"],
+            ["r2c1", "r2c2", "r2c3"],
+        ]))
+    );
+
+    let table_2_json = std::fs::read_to_string(test_dir.path().join("table-2.json"))?;
+    let table_2: serde_json::Value = serde_json::from_str(&table_2_json)?;
+
+    expect_that!(
+        &table_2,
         eq(&json!([
             ["Heading 1", "Heading 2", "Heading 3"],
             ["r1c1", "r1c2", "r1c3"],
