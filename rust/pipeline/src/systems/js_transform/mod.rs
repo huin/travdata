@@ -82,7 +82,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
                             )?;
 
                             serde_v8::to_v8(try_catch, &arg_json_value.0)
-                                .map_err(SystemError::map_input(node_id))
+                                .map_err(SystemError::map_input_value(node_id))
                                 // TODO: Use `Object.freeze` to freeze any data passed in. This means
                                 // that any future batching in `process_multiple` that would require it
                                 // is not a breaking change. todo!()

@@ -28,6 +28,19 @@ impl Clone for SystemError {
 
 /// Error type produced when running a pipeline system.
 impl SystemError {
+    pub(crate) fn map_arg_value<E>(param_id: &ParamId) -> impl FnOnce(E) -> Self
+    where
+        E: StdError + 'static,
+    {
+        |err| {
+            SystemErrorKind::ArgValue {
+                param_id: param_id.clone(),
+                error: Arc::new(err),
+            }
+            .into()
+        }
+    }
+
     pub(crate) fn map_execution<E>() -> impl FnOnce(E) -> Self
     where
         E: StdError + 'static,
@@ -35,12 +48,12 @@ impl SystemError {
         |err| SystemErrorKind::Execution(Arc::new(err)).into()
     }
 
-    pub(crate) fn map_input<E>(input_node: &NodeId) -> impl FnOnce(E) -> Self
+    pub(crate) fn map_input_value<E>(input_node: &NodeId) -> impl FnOnce(E) -> Self
     where
         E: StdError + 'static,
     {
         |err| {
-            SystemErrorKind::Input {
+            SystemErrorKind::InputValue {
                 input_node: input_node.clone(),
                 error: Arc::new(err),
             }
@@ -53,19 +66,6 @@ impl SystemError {
         E: StdError + 'static,
     {
         |err| SystemErrorKind::Internal(Arc::new(err)).into()
-    }
-
-    pub(crate) fn map_param<E>(param_id: &ParamId) -> impl FnOnce(E) -> Self
-    where
-        E: StdError + 'static,
-    {
-        |err| {
-            SystemErrorKind::Param {
-                param_id: param_id.clone(),
-                error: Arc::new(err),
-            }
-            .into()
-        }
     }
 
     pub(crate) fn map_spec<E>() -> impl FnOnce(E) -> Self
@@ -101,40 +101,40 @@ type ArcStdError = Arc<dyn std::error::Error + Send + Sync>;
 /// Specifies the type of system error.
 #[derive(Clone, Error, Debug)]
 pub enum SystemErrorKind {
-    /// Could not use an argument for a node.
-    #[error("argument error: {0}")]
-    Arg(
+    /// Could not resolve an argument for a node.
+    #[error("argument resolution error: {0}")]
+    ArgResolve(
         #[from]
         #[source]
         ArgError,
     ),
-    /// System execution encountered some general error.
-    #[error("system execution error: {0}")]
-    Execution(#[source] ArcStdError),
-    /// Error while using input data from another node.
-    #[error("error processing input data from node {input_node:?}: {error}")]
-    Input {
-        input_node: NodeId,
-        #[source]
-        error: ArcStdError,
-    },
-    /// Could not acquire input data from another node.
-    #[error("intermediate data error: {0}")]
-    Intermediate(
-        #[from]
-        #[source]
-        IntermediateError,
-    ),
-    /// Internal system error (likely a bug or error misclassification).
-    #[error("internal error: {0}")]
-    Internal(#[source] ArcStdError),
-    /// Error while using a given parameter's value.
-    #[error("error processing parameter {param_id:?}: {error}")]
-    Param {
+    /// Error while using a given argument's value.
+    #[error("error processing argument value for {param_id:?}: {error}")]
+    ArgValue {
         param_id: ParamId,
         #[source]
         error: ArcStdError,
     },
+    /// System execution encountered some general error.
+    #[error("system execution error: {0}")]
+    Execution(#[source] ArcStdError),
+    /// Could not acquire input data from another node.
+    #[error("input data resolution error: {0}")]
+    InputResolve(
+        #[from]
+        #[source]
+        IntermediateError,
+    ),
+    /// Error while using input data from another node.
+    #[error("error processing input data from node {input_node:?}: {error}")]
+    InputValue {
+        input_node: NodeId,
+        #[source]
+        error: ArcStdError,
+    },
+    /// Internal system error (likely a bug or error misclassification).
+    #[error("internal error: {0}")]
+    Internal(#[source] ArcStdError),
     /// Error with the node's specification itself.
     #[error("error in spec: {0}")]
     Spec(#[source] ArcStdError),

@@ -85,5 +85,5 @@ where
         .require(input_node_id)
         .map_err(SystemError::from)?
         .try_into()
-        .map_err(SystemError::map_input(input_node_id))
+        .map_err(SystemError::map_input_value(input_node_id))
 }

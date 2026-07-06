@@ -45,14 +45,14 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for InputPdf
         let input_pdf: &plargs::InputPdf = plargs::get_arg(args, &node.id, &PARAM_PATH)?;
 
         if !std::fs::exists(&input_pdf.0)
-            .map_err(SystemError::map_param(&PARAM_PATH))
+            .map_err(SystemError::map_arg_value(&PARAM_PATH))
             .context("checking for existance of input PDF")?
         {
             return Err(StringError(format!(
                 "input PDF does not exist at path {:?}",
                 input_pdf.0
             )))
-            .map_err(SystemError::map_param(&PARAM_PATH));
+            .map_err(SystemError::map_arg_value(&PARAM_PATH));
         }
 
         Ok(InputFile(input_pdf.0.clone()).into())

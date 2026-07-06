@@ -44,7 +44,7 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileCsvSystem {
             .0
             .as_array()
             .ok_or(StringError("input data is not a JSON array".into()))
-            .map_err(SystemError::map_input(&spec.input_data))?;
+            .map_err(SystemError::map_input_value(&spec.input_data))?;
 
         let output_path = directory
             .create_parent_dirs_for_file(&spec.filename)
@@ -65,7 +65,7 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileCsvSystem {
                 .ok_or_else(|| {
                     StringError(format!("output data [{row_index}] is not a JSON array"))
                 })
-                .map_err(SystemError::map_input(&spec.input_data))?;
+                .map_err(SystemError::map_input_value(&spec.input_data))?;
 
             row_fields.resize(row.len(), Default::default());
 
@@ -79,7 +79,7 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileCsvSystem {
                             "output data [{row_index}][{field_index}] is not a JSON string"
                         ))
                     })
-                    .map_err(SystemError::map_input(&spec.input_data))?;
+                    .map_err(SystemError::map_input_value(&spec.input_data))?;
 
                 row_fields[field_index] = field.as_bytes();
             }

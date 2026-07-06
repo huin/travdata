@@ -31,8 +31,7 @@ pub fn get_arg<'a, T>(args: &'a ArgSet, node_id: &NodeId, param_id: &ParamId) ->
 where
     &'a T: TryFrom<&'a ArgValue, Error = StringError>,
 {
-    args.require(node_id, param_id)
-        .map_err(SystemError::from)?
+    args.require(node_id, param_id)?
         .try_into()
-        .map_err(SystemError::map_param(param_id))
+        .map_err(SystemError::map_arg_value(param_id))
 }
