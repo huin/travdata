@@ -1,49 +1,23 @@
 use std::{path::Path, rc::Rc};
 
-use generic_pipeline::{
-    plparams::{ParamId, ParamKey},
-    systems::GenericSystem,
-};
+use generic_pipeline::plparams::{ParamId, ParamKey};
 use googletest::prelude::*;
 use hashbrown::HashMap;
 use map_macro::hashbrown::{hash_map, hash_map_e};
 use serde_json::json;
 
 use crate::{
-    MetaSystem, Node, PipelineTypes, StringError, SystemError,
+    MetaSystem, Node,
     plargs::{self, ArgSet, ArgValue},
     plparams::{Param, ParamType},
     spec_types::OutputPathBuf,
-    specs::{
-        InputPdfFile, JsContext, JsTransform, OutputDirectory, OutputFileJson, Spec,
-        SpecDiscriminants,
-    },
-    systems,
+    specs::{InputPdfFile, JsContext, JsTransform, OutputDirectory, OutputFileJson, Spec},
     testutil::{self, TestDataTables, TlsIsolateFixture, node_id},
 };
 use testutils::DefaultForTest;
 
 fn new_metasystem(tabula_extractor_fixture: &&testutil::TabulaExtractorFixture) -> MetaSystem {
-    use crate::specs::SpecDiscriminants::*;
-
-    let systems: HashMap<SpecDiscriminants, Rc<dyn GenericSystem<PipelineTypes>>> = hash_map_e! {
-        InputPdfFile => Rc::new(systems::InputPdfFileSystem),
-        JsContext => Rc::new(systems::JsContextSystem),
-        JsTransform => Rc::new(systems::JsTransformSystem),
-        OutputDirectory => Rc::new(systems::OutputDirectorySystem),
-        OutputFileCsv => Rc::new(systems::OutputFileCsvSystem),
-        OutputFileJson => Rc::new(systems::OutputFileJsonSystem),
-        PdfExtractTable => Rc::new(systems::TabulaPdfExtractTableSystem::new(Box::new(tabula_extractor_fixture.client.clone()))),
-    };
-
-    MetaSystem::new(
-        systems,
-        Box::new(|discrim| {
-            SystemError::map_internal()(StringError(format!(
-                "no registered system for spec type {discrim:?}"
-            )))
-        }),
-    )
+    crate::new_metasystem(Box::new(tabula_extractor_fixture.client.clone()))
 }
 
 #[gtest]

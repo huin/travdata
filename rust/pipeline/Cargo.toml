@@ -8,6 +8,7 @@ csv.workspace = true
 generic-pipeline.workspace = true
 hashbrown.workspace = true
 log.workspace = true
+map-macro.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml_ng.workspace = true
@@ -25,7 +26,6 @@ thiserror-context = "0.1.2"
 generic-pipeline = { features = ["testing"], workspace = true }
 googletest.workspace = true
 lazy_static.workspace = true
-map-macro.workspace = true
 test-casing.workspace = true
 testutils.workspace = true
 v8wrapper.workspace = true

@@ -12,7 +12,14 @@ mod tests;
 #[cfg(test)]
 mod testutil;
 
+use std::rc::Rc;
+
 pub use error::{StringError, SystemError, SystemErrorKind, SystemResult};
+use generic_pipeline::systems::GenericSystem;
+use hashbrown::HashMap;
+use map_macro::hashbrown::hash_map_e;
+
+use crate::tabula_wrapper::TabulaExtractor;
 
 pub type NodeId = generic_pipeline::node::NodeId;
 
@@ -44,3 +51,27 @@ impl generic_pipeline::PipelineTypes for PipelineTypes {
 /// Monomorphic form of [generic_pipeline::systems::GenericMetaSystem] used with realm
 /// implementations.
 pub type MetaSystem = generic_pipeline::systems::GenericMetaSystem<PipelineTypes>;
+
+/// Create a new [MetaSystem] with the default implementations of all systems.
+pub fn new_metasystem(tabula: Box<dyn TabulaExtractor>) -> MetaSystem {
+    use crate::specs::SpecDiscriminants::*;
+
+    let systems: HashMap<crate::specs::SpecDiscriminants, Rc<dyn GenericSystem<PipelineTypes>>> = hash_map_e! {
+        InputPdfFile => Rc::new(systems::InputPdfFileSystem),
+        JsContext => Rc::new(systems::JsContextSystem),
+        JsTransform => Rc::new(systems::JsTransformSystem),
+        OutputDirectory => Rc::new(systems::OutputDirectorySystem),
+        OutputFileCsv => Rc::new(systems::OutputFileCsvSystem),
+        OutputFileJson => Rc::new(systems::OutputFileJsonSystem),
+        PdfExtractTable => Rc::new(systems::TabulaPdfExtractTableSystem::new(tabula)),
+    };
+
+    MetaSystem::new(
+        systems,
+        Box::new(|discrim| {
+            SystemError::map_internal()(StringError(format!(
+                "no registered system for spec type {discrim:?}"
+            )))
+        }),
+    )
+}
