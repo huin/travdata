@@ -28,13 +28,13 @@ pub enum Input {
 
     // Internal:
     PdfiumEvent(pdfiumworker::Output),
-    SpinnerSelectPage(u16),
+    SpinnerSelectPage(i32),
 }
 
 /// Relm4 component that views a PDF page preview.
 pub struct PageView {
     renderer: Rc<Renderer>,
-    page_index: u16,
+    page_index: i32,
     /// Metadata of the loaded PDF, if any.
     document_metadata: Option<pdfiumworker::PdfMetadata>,
 
@@ -109,7 +109,7 @@ impl SimpleComponent for PageView {
                         set_range: (1.0, model.document_metadata.as_ref().map(|metadata| metadata.num_pages as f64).unwrap_or(1.0)),
 
                         connect_value_changed => move |spin_button| {
-                            sender.input(Input::SpinnerSelectPage(spin_button.value_as_int() as u16 -1));
+                            sender.input(Input::SpinnerSelectPage(spin_button.value_as_int() as i32 -1));
                         },
                     },
                 },

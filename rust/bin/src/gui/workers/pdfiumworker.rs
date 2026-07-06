@@ -20,7 +20,7 @@ pub enum Input {
     /// Requests loading the PDF at the given file path.
     LoadPdf { path: PathBuf },
     /// Requests rendering a page of the identified document.
-    RenderPage { id: DocumentId, page_index: u16 },
+    RenderPage { id: DocumentId, page_index: i32 },
 }
 
 /// Output messages for [PdfiumWorker].
@@ -33,7 +33,7 @@ pub enum Output {
     /// Requested attempt to render a page of the document has completed.
     PageRendered {
         id: DocumentId,
-        page_index: u16,
+        page_index: i32,
         image_result: Result<PixbufData>,
     },
 }

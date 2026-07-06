@@ -20,7 +20,7 @@ pub struct PdfiumClient {
 #[derive(Debug)]
 pub struct PdfMetadata {
     pub id: DocumentId,
-    pub num_pages: u16,
+    pub num_pages: i32,
 }
 
 impl PdfiumClient {
@@ -45,7 +45,7 @@ impl PdfiumClient {
     }
 
     /// Renders a page from a loaded PDF.
-    pub fn render_page(&self, id: DocumentId, page_index: u16) -> Result<PageImage> {
+    pub fn render_page(&self, id: DocumentId, page_index: i32) -> Result<PageImage> {
         let (response_sender, response_receiver) = mpsc::sync_channel(0);
         self.request_sender.send(Request::RenderPage {
             id,
@@ -179,7 +179,7 @@ impl<'lib> ServerState<'lib> {
         Ok(metadata)
     }
 
-    fn render_page(&self, id: DocumentId, page_index: u16) -> Result<PageImage> {
+    fn render_page(&self, id: DocumentId, page_index: i32) -> Result<PageImage> {
         let loaded_document = self
             .loaded_documents
             .get(&id)
@@ -189,7 +189,7 @@ impl<'lib> ServerState<'lib> {
         // Render page with selected rectangle drawn.
         let config = PdfRenderConfig::new();
         let pdf_image = page.render_with_config(&config)?;
-        Ok(pdf_image.as_image().into_rgb8())
+        Ok(pdf_image.as_image()?.into_rgb8())
     }
 }
 
@@ -204,7 +204,7 @@ enum Request {
     },
     RenderPage {
         id: DocumentId,
-        page_index: u16,
+        page_index: i32,
         response_sender: mpsc::SyncSender<Result<PageImage>>,
     },
 }
