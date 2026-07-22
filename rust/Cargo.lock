@@ -2434,25 +2434,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gui"
-version = "0.1.0"
-dependencies = [
- "eframe",
- "egui",
- "egui_extras",
- "egui_inbox",
- "hashbrown 0.17.1",
- "log",
- "rfd",
- "serde",
- "serde_json",
- "simplelog",
- "strum",
- "travdata-generic-pipeline",
- "travdata-pipeline",
-]
-
-[[package]]
 name = "guillotiere"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5504,6 +5485,27 @@ dependencies = [
  "test-casing",
  "test-log",
  "thiserror 2.0.18",
+ "travdata-testutils",
+]
+
+[[package]]
+name = "travdata-gui"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "egui_extras",
+ "egui_inbox",
+ "googletest",
+ "hashbrown 0.17.1",
+ "log",
+ "rfd",
+ "serde",
+ "serde_json",
+ "simplelog",
+ "strum",
+ "travdata-generic-pipeline",
+ "travdata-pipeline",
  "travdata-testutils",
 ]
 
