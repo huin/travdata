@@ -19,6 +19,8 @@ clap = { version = "4.6.1", features = ["derive"] }
 csv = "1.4.0"
 ctrlc = "3.5.2"
 egui = "0.35.0"
+egui_extras = "0.35.0"
+egui_inbox = "0.12.0"
 eframe = { version = "0.35.0", default-features = false, features = [
   "accesskit",     # Make egui compatible with screen readers. NOTE: adds a lot of dependencies.
   "default_fonts", # Embed the default egui fonts.

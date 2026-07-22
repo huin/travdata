@@ -1,11 +1,13 @@
+mod components;
+mod data;
 mod ddo;
 mod error_modal;
 mod shortcuts;
 mod workers;
 
-use std::sync::Arc;
-
 use shortcuts::Shortcuts;
+
+use crate::app::workers::pipeline_loader;
 
 const IS_WEB: bool = cfg!(target_arch = "wasm32");
 
@@ -20,9 +22,7 @@ pub struct App {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 struct AppState {
-    /// NOTE: to mutate the PipelineNodes, use Arc::make_mut. This will clone only if necessary
-    /// (e.g. making a modification if the pipeline is currently being saved).
-    pipeline: Loadable<Arc<ddo::PipelineNodes>, ddo::PathSelection>,
+    pipeline_editor: Loadable<components::PipelineEditor, ddo::PathSelection>,
 }
 
 #[derive(Default)]
@@ -30,6 +30,7 @@ struct TransientState {
     inbox: egui_inbox::UiInbox<InboxMessage>,
     displayed_error: Option<String>,
     disable_file_pickers: bool,
+    pipeline_loading: bool,
 }
 
 impl App {
@@ -67,44 +68,7 @@ impl eframe::App for App {
         });
 
         egui::CentralPanel::default().show(ui, |ui| {
-            let reload: Option<ddo::PathSelection> = match &self.state.pipeline {
-                Loadable::Unloaded => {
-                    ui.label("No pipeline loaded.");
-                    None
-                }
-                Loadable::Loading { source } => {
-                    ui.label(&source.as_string);
-                    ui.label("loading...");
-                    ui.spinner();
-                    None
-                }
-                Loadable::LoadOk { source: _, loaded } => {
-                    ui.label("Node count: ");
-                    // TODO: don't format every frame
-                    ui.label(format!("{}", loaded.len()));
-
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        for node in loaded.iter() {
-                            ui.label(&node.meta.id.0);
-                        }
-                    });
-
-                    None
-                }
-                Loadable::LoadErr { source, error } => {
-                    ui.label(&source.as_string);
-                    ui.label("Loading error:");
-                    ui.label(error);
-                    if ui.button("Reload").clicked() {
-                        Some(source.clone())
-                    } else {
-                        None
-                    }
-                }
-            };
-            if let Some(source) = reload {
-                self.start_loading_pipeline(source);
-            }
+            self.handle_pipeline_panel(ui);
 
             ui.separator();
 
@@ -130,13 +94,11 @@ impl App {
                     }
                 }
                 InboxMessage::LoadedPipeline(source, result) => {
-                    self.state.pipeline = match result {
-                        Ok(loaded) => Loadable::LoadOk {
-                            source,
-                            loaded: Arc::new(loaded),
-                        },
-                        Err(error) => Loadable::LoadErr { source, error },
-                    };
+                    self.state.pipeline_editor =
+                        match result.and_then(components::PipelineEditor::new) {
+                            Ok(loaded) => Loadable::LoadOk { source, loaded },
+                            Err(error) => Loadable::LoadErr { source, error },
+                        };
                 }
                 InboxMessage::SaveCompleted(result) => {
                     if let Err(message) = result {
@@ -170,7 +132,7 @@ impl App {
                     self.start_open_pipeline();
                 }
 
-                let opt_load_ok = self.state.pipeline.as_load_ok();
+                let opt_load_ok = self.state.pipeline_editor.as_load_ok();
                 if ui
                     .add_enabled(
                         opt_load_ok.is_some(),
@@ -184,12 +146,12 @@ impl App {
 
                 if ui
                     .add_enabled(
-                        !self.state.pipeline.is_unloaded(),
+                        !self.state.pipeline_editor.is_unloaded(),
                         egui::Button::new("Close pipeline"),
                     )
                     .clicked()
                 {
-                    self.state.pipeline = Loadable::Unloaded;
+                    self.state.pipeline_editor = Loadable::Unloaded;
                 }
 
                 if !IS_WEB {
@@ -207,6 +169,60 @@ impl App {
         });
     }
 
+    fn handle_pipeline_panel(&mut self, ui: &mut egui::Ui) {
+        let start_loading: Option<ddo::PathSelection> = match &mut self.state.pipeline_editor {
+            Loadable::Unloaded => {
+                ui.push_id("unloaded", |ui| {
+                    ui.label("No pipeline loaded.");
+                });
+                self.transient.pipeline_loading = false;
+                None
+            }
+            Loadable::Loading { source } => {
+                ui.push_id("loading", |ui| {
+                    ui.label(&source.as_string);
+                    ui.label("loading...");
+                    ui.spinner();
+                });
+
+                if !self.transient.pipeline_loading {
+                    // This should typically only happen if the application closed with the pipeline
+                    // in the Loading state before.
+                    Some(source.clone())
+                } else {
+                    None
+                }
+            }
+            Loadable::LoadOk {
+                source: _,
+                loaded: pipeline_editor,
+            } => {
+                self.transient.pipeline_loading = false;
+                ui.push_id("editor", |ui| {
+                    pipeline_editor.ui(ui);
+                });
+                None
+            }
+            Loadable::LoadErr { source, error } => {
+                self.transient.pipeline_loading = false;
+                ui.push_id("load_err", |ui| {
+                    ui.label(&source.as_string);
+                    ui.label("Loading error:");
+                    ui.label(&*error);
+                    if ui.button("Reload").clicked() {
+                        Some(source.clone())
+                    } else {
+                        None
+                    }
+                })
+                .inner
+            }
+        };
+        if let Some(source) = start_loading {
+            self.start_loading_pipeline(source);
+        }
+    }
+
     fn start_open_pipeline(&mut self) {
         if self.transient.disable_file_pickers {
             return;
@@ -221,23 +237,29 @@ impl App {
     }
 
     fn start_loading_pipeline(&mut self, source: ddo::PathSelection) {
-        // TODO: if we serialize in this state, it won't load without more help on startup to
-        // restart the loading thread.
-        self.state.pipeline = Loadable::Loading {
+        self.state.pipeline_editor = Loadable::Loading {
             source: source.clone(),
         };
         workers::pipeline_loader::start_load(
-            source,
+            source.clone(),
             self.transient.inbox.sender(),
             InboxMessage::LoadedPipeline,
         );
+        self.transient.pipeline_loading = true;
     }
 
     fn start_saving_pipeline(&mut self) {
-        if let Some((path_selection, pipeline)) = self.state.pipeline.as_load_ok() {
-            workers::pipeline_loader::start_save(
-                path_selection.path.to_path_buf(),
+        if let Some((path_selection, pipeline_editor)) = self.state.pipeline_editor.as_load_ok() {
+            let pipeline = match pipeline_editor.pipeline_for_serialisation() {
+                Ok(pipeline) => pipeline,
+                Err(message) => {
+                    self.transient.displayed_error = Some(message);
+                    return;
+                }
+            };
+            pipeline_loader::start_save(
                 pipeline,
+                path_selection.path.clone(),
                 self.transient.inbox.sender(),
                 InboxMessage::SaveCompleted,
             );
