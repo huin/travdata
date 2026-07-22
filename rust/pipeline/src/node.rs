@@ -1,10 +1,10 @@
 use strum::IntoDiscriminant as _;
-#[cfg(test)]
-use testutils::DefaultForTest;
 
 use crate::specs::Spec;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
+)]
 pub struct NodeId(pub String);
 
 impl<S> From<S> for NodeId
@@ -41,6 +41,16 @@ impl generic_pipeline::systems::TypedNode for Node {
     }
 }
 
+#[cfg(any(test, feature = "testing"))]
+impl testutils::DefaultForTest for Node {
+    fn default_for_test() -> Self {
+        Self {
+            meta: NodeMeta::default_for_test(),
+            spec: Spec::default_for_test(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
 pub struct NodeMeta {
     pub id: NodeId,
@@ -55,8 +65,8 @@ impl NodeMeta {
     }
 }
 
-#[cfg(test)]
-impl DefaultForTest for NodeMeta {
+#[cfg(any(test, feature = "testing"))]
+impl testutils::DefaultForTest for NodeMeta {
     fn default_for_test() -> Self {
         Self {
             id: "node-id".into(),

@@ -29,4 +29,12 @@ impl OutputPathBuf {
         // TODO: Validate the path.
         Ok(Self(value.into()))
     }
+
+    #[cfg(any(test, feature = "testing"))]
+    pub fn new_for_test<P>(value: P) -> crate::spec_types::OutputPathBuf
+    where
+        P: Into<PathBuf> + AsRef<Path>,
+    {
+        crate::spec_types::OutputPathBuf::new(value).expect("expected valid OutputPathBufValue")
+    }
 }

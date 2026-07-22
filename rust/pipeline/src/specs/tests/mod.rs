@@ -3,7 +3,10 @@ use map_macro::hashbrown::hash_map;
 use test_casing::{TestCases, cases, test_casing};
 
 use super::*;
-use crate::{Node, NodeMeta, spec_types::pdf, testutil::*};
+use crate::{
+    Node, NodeMeta,
+    spec_types::{OutputPathBuf, pdf},
+};
 
 const CASES: TestCases<(&'static str, Node)> = cases! {
     [
@@ -84,7 +87,7 @@ spec:
                 spec: Spec::OutputFileJson(OutputFileJson {
                     input_data: "thingy-1-transform".into(),
                     directory: "output-directory".into(),
-                    filename: output_path_buf("thingy-1.json"),
+                    filename: OutputPathBuf::new_for_test("thingy-1.json"),
                 }),
             },
         ),
@@ -102,7 +105,7 @@ spec:
                 spec: Spec::OutputFileCsv(OutputFileCsv {
                     input_data: "thingy-1-transform".into(),
                     directory: "output-directory".into(),
-                    filename: output_path_buf("thingy-1.csv"),
+                    filename: OutputPathBuf::new_for_test("thingy-1.csv"),
                 }),
             },
         ),

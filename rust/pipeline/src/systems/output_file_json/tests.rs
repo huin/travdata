@@ -4,7 +4,7 @@ use googletest::prelude::*;
 use serde_json::Value;
 use testutils::DefaultForTest;
 
-use crate::{intermediates, specs, testutil::output_path_buf};
+use crate::{intermediates, spec_types::OutputPathBuf, specs};
 
 use super::*;
 
@@ -19,7 +19,7 @@ fn test_process_writes_file() -> Result<()> {
         spec: specs::OutputFileJson {
             input_data: "input-data".into(),
             directory: "output-directory".into(),
-            filename: output_path_buf(FILENAME),
+            filename: OutputPathBuf::new_for_test(FILENAME),
         }
         .into(),
     };

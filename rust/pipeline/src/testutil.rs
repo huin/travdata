@@ -1,8 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::mpsc,
-    thread,
-};
+use std::{path::Path, sync::mpsc, thread};
 
 use googletest::{matcher::Matcher, prelude::*};
 use hashbrown::{HashMap, HashSet};
@@ -15,13 +11,6 @@ use crate::{
     specs::PdfExtractTable,
     tabula_wrapper,
 };
-
-pub fn output_path_buf<P>(s: P) -> crate::spec_types::OutputPathBuf
-where
-    P: Into<PathBuf> + AsRef<Path>,
-{
-    crate::spec_types::OutputPathBuf::new(s).expect("expected valid OutputPathBufValue")
-}
 
 pub struct NodeExpected<'a> {
     pub node: Node,

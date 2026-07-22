@@ -1,5 +1,6 @@
+use crate::spec_types::OutputPathBuf;
+
 use super::*;
-use crate::testutil::*;
 
 impl testutils::DefaultForTest for Spec {
     fn default_for_test() -> Self {
@@ -20,7 +21,7 @@ impl testutils::DefaultForTest for OutputFileCsv {
         Self {
             input_data: "input-id".into(),
             directory: "directory-id".into(),
-            filename: output_path_buf("output.csv"),
+            filename: OutputPathBuf::new_for_test("output.csv"),
         }
     }
 }
@@ -30,7 +31,7 @@ impl testutils::DefaultForTest for OutputFileJson {
         Self {
             input_data: "input-id".into(),
             directory: "directory-id".into(),
-            filename: output_path_buf("output.json"),
+            filename: OutputPathBuf::new_for_test("output.json"),
         }
     }
 }

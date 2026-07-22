@@ -7,14 +7,14 @@ mod output_directory;
 mod output_file_csv;
 mod output_file_json;
 mod pdf_extract_table;
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 mod test_defaults;
 #[cfg(test)]
 mod tests;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{StringError, SystemError, SystemResult, impl_enum_conversions};
+use crate::{impl_enum_conversions, StringError, SystemError, SystemResult};
 pub use input_pdf_file::InputPdfFile;
 pub use js_context::JsContext;
 pub use js_transform::JsTransform;
