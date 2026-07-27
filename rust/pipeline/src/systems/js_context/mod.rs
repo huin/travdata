@@ -18,7 +18,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsContex
         >,
     ) -> SystemResult<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
     {
-        let _: &specs::JsContext = node.spec.downcast_spec()?;
+        let _: &specs::JsContext = node.spec.downcast()?;
 
         let global_context = v8wrapper::try_with_isolate(|tls_isolate| tls_isolate.new_ctx())
             .map_err(SystemError::map_execution())

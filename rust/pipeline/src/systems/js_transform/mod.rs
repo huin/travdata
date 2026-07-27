@@ -17,7 +17,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         node: &crate::Node,
         reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
     ) -> SystemResult<()> {
-        let spec: &JsTransform = node.spec.downcast_spec()?;
+        let spec: &JsTransform = node.spec.downcast()?;
 
         reg.add_input(&spec.context);
         for dep_id in spec.input_data.values() {
@@ -33,7 +33,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         _args: &crate::plargs::ArgSet,
         intermediates: &crate::intermediates::IntermediateSet,
     ) -> SystemResult<crate::intermediates::IntermediateValue> {
-        let spec: &JsTransform = node.spec.downcast_spec()?;
+        let spec: &JsTransform = node.spec.downcast()?;
 
         let global_context: &intermediates::JsContext =
             intermediates::get_intermediate_input(intermediates, &spec.context)?;

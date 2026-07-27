@@ -170,7 +170,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
         node: &Node,
         reg: &'a mut generic_pipeline::plinputs::NodeInputsRegistrator<'a>,
     ) -> SystemResult<()> {
-        let spec: &specs::PdfExtractTable = node.spec.downcast_spec()?;
+        let spec: &specs::PdfExtractTable = node.spec.downcast()?;
         reg.add_input(&spec.pdf);
         Ok(())
     }
@@ -226,7 +226,7 @@ fn group_nodes_for_extraction<'a>(
         HashMap<ExtractGroupKey, Vec<NodeSpec>>,
     > = HashMap::new();
     for node in nodes {
-        let spec: &PdfExtractTable = match node.spec.downcast_spec() {
+        let spec: &PdfExtractTable = match node.spec.downcast() {
             Ok(spec) => spec,
             Err(err) => {
                 results.push(NodeResult {

@@ -16,7 +16,7 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileCsvSystem {
         >,
         reg: &'a mut generic_pipeline::plinputs::NodeInputsRegistrator<'a>,
     ) -> SystemResult<()> {
-        let spec: &specs::OutputFileCsv = node.spec.downcast_spec()?;
+        let spec: &specs::OutputFileCsv = node.spec.downcast()?;
         reg.add_input(&spec.input_data);
         reg.add_input(&spec.directory);
         Ok(())
@@ -34,7 +34,7 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileCsvSystem {
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue,
         >,
     ) -> SystemResult<intermediates::IntermediateValue> {
-        let spec: &specs::OutputFileCsv = node.spec.downcast_spec()?;
+        let spec: &specs::OutputFileCsv = node.spec.downcast()?;
         let directory: &intermediates::OutputDirectory =
             intermediates::get_intermediate_input(intermediates, &spec.directory)?;
         let data: &intermediates::JsonData =

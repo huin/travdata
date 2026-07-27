@@ -18,7 +18,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ParamType,
         >,
     ) -> SystemResult<()> {
-        let spec: &specs::OutputDirectory = node.spec.downcast_spec()?;
+        let spec: &specs::OutputDirectory = node.spec.downcast()?;
         reg.add_param(
             PARAM_PATH,
             plparams::ParamType::OutputDirectory,

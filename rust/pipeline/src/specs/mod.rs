@@ -38,8 +38,7 @@ pub enum Spec {
 }
 
 impl Spec {
-    // XXX rename to "downcast"
-    pub fn downcast_spec<'s, S>(&'s self) -> SystemResult<&'s S>
+    pub fn downcast<'s, S>(&'s self) -> SystemResult<&'s S>
     where
         &'s S: TryFrom<&'s Spec, Error = StringError>,
     {

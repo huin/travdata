@@ -20,7 +20,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for InputPdf
             <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ParamType,
         >,
     ) -> SystemResult<()> {
-        let spec: &specs::InputPdfFile = node.spec.downcast_spec()?;
+        let spec: &specs::InputPdfFile = node.spec.downcast()?;
         reg.add_param(
             PARAM_PATH,
             plparams::ParamType::InputPdf,
