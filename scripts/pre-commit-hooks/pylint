@@ -12,7 +12,7 @@ def main() -> None:
     try:
         subprocess.check_call(
             [
-                "poetry",
+                "uv",
                 "run",
                 "pylint",
                 "--rcfile=pyproject.toml",

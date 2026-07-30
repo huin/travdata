@@ -7,7 +7,7 @@ import sys
 
 def main() -> None:
     try:
-        subprocess.check_call(["poetry", "run", "mypy", "scripts", "src", "tests"])
+        subprocess.check_call(["uv", "run", "mypy", "scripts", "src", "tests"])
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
 

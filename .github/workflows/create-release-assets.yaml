@@ -45,17 +45,17 @@ jobs:
       - name: Run mypy
         shell: bash
         run: |
-          poetry run mypy scripts src tests
+          uv run mypy scripts src tests
 
       - name: Run tests
         shell: bash
         run: |
-          poetry run pytest
+          uv run pytest
 
       - name: Build config ZIP release asset
         shell: bash
         run: |
-          poetry run python -- \
+          uv run python -- \
             ./scripts/dev/build_config_zip.py \
             "${{ inputs.github_ref_name }}" \
             "./config" \
@@ -74,7 +74,7 @@ jobs:
   build-program:
     strategy:
       matrix:
-        python-version: 
+        python-version:
           - "3.11"
         os:
           - macos-latest
@@ -100,17 +100,17 @@ jobs:
       - name: Run mypy
         shell: bash
         run: |
-          poetry run mypy scripts src tests
+          uv run mypy scripts src tests
 
       - name: Run tests
         shell: bash
         run: |
-          poetry run pytest
+          uv run pytest
 
       - name: Build release asset with PyInstaller
         shell: bash
         run: |
-          poetry run python -- \
+          uv run python -- \
             ./scripts/dev/build_pyinstaller_release.py \
             "${{ inputs.github_ref_name }}" \
             "./${{ steps.asset_filename.outputs.ZIP }}"

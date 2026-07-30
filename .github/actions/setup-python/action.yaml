@@ -9,17 +9,16 @@ inputs:
 runs:
   using: composite
   steps:
-  - name: Set up Python ${{ inputs.python-version }}
-    uses: actions/setup-python@v5
-    with:
-      python-version: ${{ inputs.python-version }}
-  - name: Install poetry
-    shell: bash
-    run: pipx install poetry
-  - name: Use in-workspace virtual environment
-    # This is required by the PyInstaller spec to find the Tabula jar.
-    shell: bash
-    run: poetry config virtualenvs.in-project true
-  - name: Install dependencies
-    shell: bash
-    run: poetry install
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install uv
+      shell: bash
+      run: pipx install uv
+    - name: Use in-workspace virtual environment
+      shell: bash
+      run: uv venv .venv
+    - name: Install dependencies
+      shell: bash
+      run: uv sync install

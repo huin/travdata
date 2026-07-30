@@ -1,4 +1,10 @@
-{ pkgs, lib, config, inputs, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  inputs,
+  ...
+}:
 
 let
   extra_libs = with pkgs; [
@@ -9,14 +15,14 @@ let
     fontconfig.lib
     freetype.out
     glib.out
-    libsForQt5.qt5.qtwayland
+    qt5.qtwayland
     libglvnd.out
     libxkbcommon.out
     wayland
-    xorg.libX11.out
+    libX11.out
     zstd.out
   ];
-  jdk = pkgs.jdk23_headless;
+  jdk = pkgs.jdk25_headless;
 in
 
 {
@@ -24,23 +30,30 @@ in
   env.GREET = "devenv";
   env.EXTRA_LIBS = builtins.toString extra_libs;
   env.JDK = builtins.toString jdk;
-  env.LD_LIBRARY_PATH =
-    builtins.concatStringsSep ":" (
-      builtins.concatLists [
-        [(jdk + "/lib/server")]
-        (builtins.map (path: path + "/lib") extra_libs)
-      ]
-    );
+  env.LD_LIBRARY_PATH = builtins.concatStringsSep ":" (
+    builtins.concatLists [
+      [ (jdk + "/lib/server") ]
+      (builtins.map (path: path + "/lib") extra_libs)
+    ]
+  );
 
   # https://devenv.sh/packages/
   packages = with pkgs; [
     gdbHostCpuOnly
     git
     jdk
-    poetry
     pre-commit
-    python311Full
   ];
+
+  languages.python = {
+    enable = true;
+    version = "3.11";
+    uv = {
+      enable = true;
+      sync.enable = true;
+      sync.allGroups = true;
+    };
+  };
 
   # https://devenv.sh/scripts/
   scripts.hello.exec = "echo hello from $GREET";

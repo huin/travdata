@@ -1,55 +1,72 @@
-[tool.poetry]
+[project]
 name = "travdata"
 version = "0.6.3"
 description = "Data utility code for Mongoose Traveller TTRPG."
-authors = ["John Beisley <johnbeisleyuk@gmail.com>"]
-keywords = ["traveller", "ttrpg"]
+authors = [{ name = "John Beisley", email = "johnbeisleyuk@gmail.com" }]
+requires-python = ">=3.11,<4"
+readme = "README.rst"
 license = "MIT"
-readme = "README.rst"                                           # rebuilt from README.adoc
-repository = "https://github.com/huin/travdata"
-packages = [{ include = "travdata", from = "src" }]
+keywords = ["traveller", "ttrpg"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "jpype1>=1.5.0,<2",
+  "pip-licenses-lib>=0.2.1,<0.3",
+  "progress>=1.6,<2",
+  "tabula-py[jpype]>=2.9.0,<3",
+  "ruamel-yaml>=0.18.6,<0.19",
+  "pyside6-essentials>=6.6.3,<7 ; python_full_version >= '3.11' and python_full_version < '3.13'",
+  "xdg-base-dirs>=6.0.1,<7",
+  "cachetools>=5.3.3,<6",
+  "types-cachetools>=5.3.0.7,<6",
+  "stpyv8>=12.6.228.21,<13",
+]
 
-[tool.poetry.urls]
-"Issues" = "https://github.com/huin/travdata/issues"
+[project.urls]
+Repository = "https://github.com/huin/travdata"
+Issues = "https://github.com/huin/travdata/issues"
 
-[tool.poetry.scripts]
+[project.scripts]
 travdata_cli = "travdata.cli.cli:main"
 travdata_gui = "travdata.gui.gui:main"
 
-[tool.poetry.group.dev.dependencies]
-black = ">=24.3.0"
-mypy = ">=1.9.0"
-pylint = "^3.1.0"
-pytest = ">=9.0.3,<10"
-testfixtures = "^8.0.0"
-trove-classifiers = "^2024.3.3"
-types-pyinstaller = "^6.5.0.20240311"
-pytest-subtests = "^0.12.1"
-pyhamcrest = "^2.1.0"
+[dependency-groups]
+dev = [
+  "black>=24.3.0",
+  "mypy>=1.9.0",
+  "pylint>=3.1.0,<4",
+  "pytest>=9.0.3,<10",
+  "testfixtures>=8.0.0,<9",
+  "trove-classifiers>=2024.3.3,<2025",
+  "types-pyinstaller>=6.5.0.20240311,<7",
+  "pytest-subtests>=0.12.1,<0.13",
+  "pyhamcrest>=2.1.0,<3",
+  "pyinstaller>=6.5.0,<7 ; python_full_version >= '3.11' and python_full_version < '3.13'",
+]
 
-[tool.poetry.group.dev.dependencies.pyinstaller]
-version = "^6.5.0"
-python = ">=3.11,<3.13"
+[tool.uv]
+default-groups = "all"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/travdata"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/travdata"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/travdata" = "travdata"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.black]
 line-length = 100
-
-[tool.poetry.dependencies]
-jpype1 = "^1.5.0"
-pip-licenses-lib = "^0.2.1"
-progress = "^1.6"
-python = "^3.11"
-tabula-py = { extras = ["jpype"], version = "^2.9.0" }
-ruamel-yaml = "^0.18.6"
-pyside6-essentials = { version = "^6.6.3", python = ">=3.11,<3.13" }
-xdg-base-dirs = "^6.0.1"
-cachetools = "^5.3.3"
-types-cachetools = "^5.3.0.7"
-stpyv8 = "^12.6.228.21"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 exclude = '''(?x)(
