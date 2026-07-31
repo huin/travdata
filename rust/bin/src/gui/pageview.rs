@@ -109,7 +109,7 @@ impl SimpleComponent for PageView {
                         set_range: (1.0, model.document_metadata.as_ref().map(|metadata| metadata.num_pages as f64).unwrap_or(1.0)),
 
                         connect_value_changed => move |spin_button| {
-                            sender.input(Input::SpinnerSelectPage(spin_button.value_as_int() as i32 -1));
+                            sender.input(Input::SpinnerSelectPage(spin_button.value_as_int() - 1));
                         },
                     },
                 },
