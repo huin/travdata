@@ -6,10 +6,9 @@ use std::path::PathBuf;
 
 use generic_pipeline::plparams::ParamId;
 
-use crate::{NodeId, StringError, SystemError, SystemResult, impl_enum_conversions};
-
-/// Monomorphic form of [generic_pipeline::plargs::GenericArgSet].
-pub type ArgSet = generic_pipeline::plargs::GenericArgSet<crate::PipelineTypes>;
+use crate::{
+    NodeId, StringError, SystemError, SystemResult, impl_enum_conversions, monomorph::ArgSet,
+};
 
 /// Typed value of an argument to a [crate::Node].
 #[derive(Debug)]

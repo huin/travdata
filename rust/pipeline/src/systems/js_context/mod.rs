@@ -1,6 +1,6 @@
 use thiserror_context::Context;
 
-use crate::{SystemError, SystemResult, intermediates, plargs, specs};
+use crate::{SystemError, SystemResult, intermediates, monomorph::ArgSet, specs};
 
 pub struct JsContextSystem;
 
@@ -8,7 +8,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsContex
     fn process(
         &self,
         node: &crate::Node,
-        _args: &plargs::ArgSet,
+        _args: &ArgSet,
         _intermediates: &intermediates::IntermediateSet,
     ) -> SystemResult<intermediates::IntermediateValue> {
         let _: &specs::JsContext = node.spec.downcast()?;

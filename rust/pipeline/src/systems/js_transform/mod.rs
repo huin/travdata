@@ -4,7 +4,11 @@ mod tests;
 use thiserror_context::Context;
 use v8wrapper::CatchToResult;
 
-use crate::{NodeId, SystemError, SystemResult, intermediates, plinputs, specs::JsTransform};
+use crate::{
+    Node, NodeId, SystemError, SystemResult, intermediates,
+    monomorph::{ArgSet, NodeInputsRegistrator},
+    specs::JsTransform,
+};
 
 /// Provides processing support for [crate::specs::Spec::JsTransform].
 #[derive(Default)]
@@ -14,7 +18,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
     fn inputs<'a>(
         &self,
         node: &crate::Node,
-        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+        reg: &'a mut NodeInputsRegistrator<'a>,
     ) -> SystemResult<()> {
         let spec: &JsTransform = node.spec.downcast()?;
 
@@ -28,8 +32,8 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
 
     fn process(
         &self,
-        node: &crate::Node,
-        _args: &crate::plargs::ArgSet,
+        node: &Node,
+        _args: &ArgSet,
         intermediates: &crate::intermediates::IntermediateSet,
     ) -> SystemResult<crate::intermediates::IntermediateValue> {
         let spec: &JsTransform = node.spec.downcast()?;

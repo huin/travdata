@@ -1,18 +1,18 @@
 use generic_pipeline::plparams::ParamId;
 use thiserror_context::Context;
 
-use crate::{SystemError, SystemResult, intermediates, plargs, plparams, specs};
+use crate::{
+    SystemError, SystemResult, intermediates,
+    monomorph::{ArgSet, NodeParamsRegistrator},
+    plargs, plparams, specs,
+};
 
 pub struct OutputDirectorySystem;
 
 const PARAM_PATH: ParamId = ParamId::from_static("path");
 
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDirectorySystem {
-    fn params(
-        &self,
-        node: &crate::Node,
-        reg: &mut plparams::NodeParamsRegistrator,
-    ) -> SystemResult<()> {
+    fn params(&self, node: &crate::Node, reg: &mut NodeParamsRegistrator) -> SystemResult<()> {
         let spec: &specs::OutputDirectory = node.spec.downcast()?;
         reg.add_param(
             PARAM_PATH,
@@ -25,7 +25,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
     fn process(
         &self,
         node: &crate::Node,
-        args: &plargs::ArgSet,
+        args: &ArgSet,
         _intermediates: &intermediates::IntermediateSet,
     ) -> SystemResult<intermediates::IntermediateValue> {
         let output_directory_arg: &plargs::OutputDirectory =

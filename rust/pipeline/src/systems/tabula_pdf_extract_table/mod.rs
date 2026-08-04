@@ -8,11 +8,10 @@ use serde_json::Value;
 use thiserror_context::Context;
 
 use crate::{
-    Node, NodeId, NodeResult, StringError,
+    Node, NodeId, StringError,
     error::{SystemError, SystemResult},
     intermediates,
-    plargs::ArgSet,
-    plinputs,
+    monomorph::{ArgSet, NodeInputsRegistrator, NodeResult},
     spec_types::pdf::{self, TabulaExtractionMethod},
     specs::{self, PdfExtractTable},
     tabula_wrapper::{self, TabulaExtractionRequest, TabulaExtractor},
@@ -164,11 +163,7 @@ impl TabulaPdfExtractTableSystem {
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
     for TabulaPdfExtractTableSystem
 {
-    fn inputs<'a>(
-        &self,
-        node: &Node,
-        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
-    ) -> SystemResult<()> {
+    fn inputs<'a>(&self, node: &Node, reg: &'a mut NodeInputsRegistrator<'a>) -> SystemResult<()> {
         let spec: &specs::PdfExtractTable = node.spec.downcast()?;
         reg.add_input(&spec.pdf);
         Ok(())

@@ -6,17 +6,3 @@ pub enum ParamType {
     InputPdf,
     OutputDirectory,
 }
-
-/// Monomorphic form of [generic_pipeline::plparams::GenericParam].
-pub type Param = generic_pipeline::plparams::GenericParam<ParamType>;
-
-/// Monomorphic form of [generic_pipeline::plparams::GenericParams].
-pub type Params = generic_pipeline::plparams::GenericParams<crate::PipelineTypes>;
-
-/// Monomorphic form of [generic_pipeline::plparams::GenericParamsRegistrator].
-pub type ParamsRegistrator =
-    generic_pipeline::plparams::GenericParamsRegistrator<crate::PipelineTypes>;
-
-/// Monomorphic form of [generic_pipeline::plparams::GenericNodeParamsRegistrator].
-pub type NodeParamsRegistrator<'a> =
-    generic_pipeline::plparams::GenericNodeParamsRegistrator<'a, crate::PipelineTypes>;

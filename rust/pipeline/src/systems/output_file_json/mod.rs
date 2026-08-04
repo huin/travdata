@@ -4,16 +4,16 @@ mod tests;
 use generic_pipeline::systems::GenericSystem;
 use thiserror_context::Context;
 
-use crate::{SystemError, SystemResult, intermediates, plargs, plinputs, specs};
+use crate::{
+    SystemError, SystemResult, intermediates,
+    monomorph::{ArgSet, NodeInputsRegistrator},
+    specs,
+};
 
 pub struct OutputFileJsonSystem;
 
 impl GenericSystem<crate::PipelineTypes> for OutputFileJsonSystem {
-    fn inputs(
-        &self,
-        node: &crate::Node,
-        reg: &mut plinputs::NodeInputsRegistrator,
-    ) -> SystemResult<()> {
+    fn inputs(&self, node: &crate::Node, reg: &mut NodeInputsRegistrator) -> SystemResult<()> {
         let spec: &specs::OutputFileJson = node.spec.downcast()?;
         reg.add_input(&spec.input_data);
         reg.add_input(&spec.directory);
@@ -23,7 +23,7 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileJsonSystem {
     fn process(
         &self,
         node: &crate::Node,
-        _args: &plargs::ArgSet,
+        _args: &ArgSet,
         intermediates: &intermediates::IntermediateSet,
     ) -> SystemResult<intermediates::IntermediateValue> {
         let spec: &specs::OutputFileJson = node.spec.downcast()?;

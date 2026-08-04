@@ -7,12 +7,13 @@ use map_macro::hashbrown::{hash_map, hash_map_e};
 use serde_json::json;
 
 use crate::{
-    MetaSystem, Node, NodeMeta, ParamKey,
-    plargs::{self, ArgSet, ArgValue},
-    plparams::{Param, ParamType},
+    Node, NodeMeta,
+    monomorph::{ArgSet, MetaSystem, Param, ParamKey, Pipeline},
+    plargs::{self, ArgValue},
+    plparams::ParamType,
     spec_types::OutputPathBuf,
     specs::{InputPdfFile, JsContext, JsTransform, OutputDirectory, OutputFileJson, Spec},
-    testutil::{self, TestDataTables, TlsIsolateFixture},
+    testutil,
 };
 
 fn new_metasystem(tabula_extractor_fixture: &&testutil::TabulaExtractorFixture) -> MetaSystem {
@@ -21,15 +22,15 @@ fn new_metasystem(tabula_extractor_fixture: &&testutil::TabulaExtractorFixture) 
 
 #[gtest]
 fn test_e2e_small_pipeline(
-    _tls_isolate_fixture: &TlsIsolateFixture,
+    _tls_isolate_fixture: &testutil::TlsIsolateFixture,
     test_dir: testutil::TestDirectory,
     tabula_extractor_fixture: &&testutil::TabulaExtractorFixture,
-    test_data_tables: &&TestDataTables,
+    test_data_tables: &&testutil::TestDataTables,
 ) -> Result<()> {
     let system = new_metasystem(tabula_extractor_fixture);
     let processor = generic_pipeline::processing::GenericProcessor::new(Rc::new(system));
 
-    let pipeline = crate::Pipeline::new(vec![
+    let pipeline = Pipeline::new(vec![
         Node {
             meta: NodeMeta::new("input-pdf"),
             spec: Spec::InputPdfFile(InputPdfFile {

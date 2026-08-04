@@ -4,6 +4,7 @@ use thiserror_context::Context;
 use crate::{
     StringError, SystemError, SystemResult,
     intermediates::{self, InputFile},
+    monomorph::{ArgSet, NodeParamsRegistrator},
     plargs,
     plparams::{self},
     specs,
@@ -14,11 +15,7 @@ pub struct InputPdfFileSystem;
 const PARAM_PATH: ParamId = ParamId::from_static("path");
 
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for InputPdfFileSystem {
-    fn params(
-        &self,
-        node: &crate::Node,
-        reg: &mut plparams::NodeParamsRegistrator,
-    ) -> SystemResult<()> {
+    fn params(&self, node: &crate::Node, reg: &mut NodeParamsRegistrator) -> SystemResult<()> {
         let spec: &specs::InputPdfFile = node.spec.downcast()?;
         reg.add_param(
             PARAM_PATH,
@@ -31,7 +28,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for InputPdf
     fn process(
         &self,
         node: &crate::Node,
-        args: &plargs::ArgSet,
+        args: &ArgSet,
         _intermediates: &intermediates::IntermediateSet,
     ) -> SystemResult<intermediates::IntermediateValue> {
         let input_pdf: &plargs::InputPdf = plargs::get_arg(args, &node.meta.id, &PARAM_PATH)?;

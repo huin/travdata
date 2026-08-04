@@ -4,7 +4,12 @@ use map_macro::hashbrown::{hash_map, hash_set};
 use serde_json::json;
 use testutils::DefaultForTest;
 
-use crate::{NodeMeta, intermediates, plparams, specs::JsTransform, testutil::TlsIsolateFixture};
+use crate::{
+    NodeMeta, intermediates,
+    monomorph::{InputsRegistrator, Params},
+    specs::JsTransform,
+    testutil::TlsIsolateFixture,
+};
 
 use super::*;
 
@@ -12,7 +17,7 @@ use super::*;
 fn test_params(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
     let system = JsTransformSystem;
 
-    let mut reg = plparams::Params::registrator();
+    let mut reg = Params::registrator();
 
     let node = crate::Node {
         meta: DefaultForTest::default_for_test(),
@@ -34,7 +39,7 @@ fn test_params(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
 fn test_inputs(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
     let system = JsTransformSystem;
 
-    let mut reg = plinputs::InputsRegistrator::new();
+    let mut reg = InputsRegistrator::new();
 
     let node = crate::Node {
         meta: NodeMeta::new("foo"),

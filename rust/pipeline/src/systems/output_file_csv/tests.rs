@@ -4,7 +4,7 @@ use googletest::prelude::*;
 use serde_json::Value;
 use testutils::DefaultForTest;
 
-use crate::{intermediates, plargs, specs, testutil::output_path_buf};
+use crate::{intermediates, specs, testutil::output_path_buf};
 
 use super::*;
 
@@ -52,7 +52,7 @@ fn test_process_writes_file() -> Result<()> {
         "output-directory".into(),
         intermediates::OutputDirectory(output_dir.clone()).into(),
     );
-    let args = plargs::ArgSet::default();
+    let args = ArgSet::default();
 
     expect_that!(
         system.process(&node, &args, &intermediates)?,

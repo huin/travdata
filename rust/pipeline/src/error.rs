@@ -4,7 +4,10 @@ use generic_pipeline::plparams::ParamId;
 use thiserror::Error;
 use thiserror_context::{Context, impl_context};
 
-use crate::{ArgError, IntermediateError, NodeId};
+use crate::{
+    NodeId,
+    monomorph::{ArgError, IntermediateError},
+};
 
 pub type SystemResult<T> = std::result::Result<T, SystemError>;
 
