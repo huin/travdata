@@ -24,7 +24,7 @@ pub use output_file_json::OutputFileJson;
 pub use pdf_extract_table::PdfExtractTable;
 
 /// Per-type wrapper of a specific type of extraction configuration node.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, strum_macros::EnumDiscriminants)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, strum_macros::EnumDiscriminants)]
 #[strum_discriminants(derive(Hash))]
 #[serde(tag = "type", content = "spec")]
 pub enum Spec {

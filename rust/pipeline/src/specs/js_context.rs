@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Defines a JavaScript context for evaluating JavaScript within.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct JsContext;
 
 #[cfg(test)]

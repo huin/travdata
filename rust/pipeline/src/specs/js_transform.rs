@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Specifies the transformation of data using ECMAScript.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct JsTransform {
     /// Node ID of the [super::js_context::JsContext] to use for evaluation.
     pub context: crate::NodeId,

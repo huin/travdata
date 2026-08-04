@@ -14,7 +14,7 @@ pub use core_type::{NodeId, Tag};
 /// Generic wrapper and properties of an extraction configuration node.
 ///
 /// `S` is the spec type.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct GenericNode<S> {
     pub id: core_type::NodeId,
     #[serde(default)]
