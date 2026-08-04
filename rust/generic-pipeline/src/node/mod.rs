@@ -14,6 +14,10 @@ pub use core_type::{NodeId, Tag};
 /// Generic wrapper and properties of an extraction configuration node.
 ///
 /// `S` is the spec type.
+///
+/// TODO: Consider moving except `id` and `spec` into a generic type for metadata, as
+/// `generic_pipeline` does not consume those fields. Or even just delete them and allow for the
+/// caller to wrap the node with any metadata type.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct GenericNode<S> {
     pub id: core_type::NodeId,

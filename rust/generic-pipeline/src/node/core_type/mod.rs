@@ -22,7 +22,7 @@ pub struct ValueError<V> {
 pub struct NodeId(String);
 
 impl NodeId {
-    const EXPECTED: &str = r#"a node ID string matching ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"#;
+    const EXPECTED: &str = "a node ID string starting and ending with an alphanumeric, with alphanumeric and hyphen characters in between";
 
     #[cfg(any(test, feature = "testing"))]
     pub fn test_node_id(s: &str) -> Self {
@@ -50,6 +50,11 @@ impl NodeId {
     #[cfg(any(test, feature = "testing"))]
     fn new_unchecked(value: String) -> Self {
         Self(value)
+    }
+
+    /// Consumes the [NodeId], returning the contained [String].
+    pub fn into_inner(self) -> String {
+        self.0
     }
 }
 
@@ -106,7 +111,7 @@ impl AsRef<str> for NodeId {
 pub struct Tag(String);
 
 impl Tag {
-    const EXPECTED: &str = r#"a valid tag string containing one or more slash delimited components, each matching ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$"#;
+    const EXPECTED: &str = "a sequence of tags separated by '/' characters, each tag string starting and ending with an alphanumeric, with alphanumeric and hyphen characters in between";
 
     #[cfg(any(test, feature = "testing"))]
     pub fn test_tag(s: &str) -> Self {
@@ -129,6 +134,11 @@ impl Tag {
         } else {
             std::result::Result::Err(value)
         }
+    }
+
+    /// Consumes the [Tag], returning the contained [String].
+    pub fn into_inner(self) -> String {
+        self.0
     }
 
     #[cfg(test)]
