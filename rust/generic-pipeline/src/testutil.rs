@@ -1,5 +1,8 @@
-use crate::node;
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct FakeNodeId(pub &'static str);
 
-pub fn node_id(s: &str) -> node::NodeId {
-    node::NodeId::test_node_id(s)
+impl From<&'static str> for FakeNodeId {
+    fn from(value: &'static str) -> Self {
+        Self(value)
+    }
 }

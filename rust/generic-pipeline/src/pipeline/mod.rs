@@ -1,17 +1,20 @@
 use hashbrown::HashMap;
 
-use crate::node;
+use crate::{PipelineTypes, node::PipelineNode};
 
-/// Immutable set of [node::GenericNode]s, indexed for processing.
-pub struct GenericPipeline<S> {
-    id_to_node: HashMap<node::NodeId, node::GenericNode<S>>,
+/// Immutable set of [crate::node::PipelineNode]s, indexed for processing.
+pub struct GenericPipeline<P: PipelineTypes> {
+    id_to_node: HashMap<P::NodeId, P::Node>,
 }
 
-impl<S> GenericPipeline<S> {
-    pub fn new(nodes: impl IntoIterator<Item = node::GenericNode<S>>) -> Self {
+impl<P> GenericPipeline<P>
+where
+    P: PipelineTypes,
+{
+    pub fn new(nodes: impl IntoIterator<Item = P::Node>) -> Self {
         let id_to_node = nodes
             .into_iter()
-            .map(|node| (node.id.clone(), node))
+            .map(|node| (node.id().clone(), node))
             .collect();
         Self { id_to_node }
     }
@@ -24,13 +27,13 @@ impl<S> GenericPipeline<S> {
         self.id_to_node.len()
     }
 
-    /// Returns an [Iterator] over all [node::GenericNode]s in the set.
-    pub fn nodes(&self) -> impl Iterator<Item = &node::GenericNode<S>> {
+    /// Returns an [Iterator] over all nodes in the set.
+    pub fn nodes(&self) -> impl Iterator<Item = &P::Node> {
         self.id_to_node.values()
     }
 
-    /// Returns the [node::GenericNode] for the given [node::NodeId].
-    pub fn get(&self, node_id: &node::NodeId) -> Option<&node::GenericNode<S>> {
+    /// Returns the node for the given ID.
+    pub fn get(&self, node_id: &P::NodeId) -> Option<&P::Node> {
         self.id_to_node.get(node_id)
     }
 }

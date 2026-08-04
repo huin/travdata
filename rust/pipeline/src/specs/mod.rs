@@ -46,10 +46,10 @@ impl Spec {
     }
 }
 
-impl generic_pipeline::systems::DiscriminatedSpec for Spec {
-    type Discrim = SpecDiscriminants;
+impl generic_pipeline::systems::TypedNode for Spec {
+    type NodeType = SpecDiscriminants;
 
-    fn discriminant(&self) -> Self::Discrim {
+    fn node_type(&self) -> Self::NodeType {
         self.into()
     }
 }

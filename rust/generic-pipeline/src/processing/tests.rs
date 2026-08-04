@@ -7,10 +7,11 @@ use map_macro::hashbrown::{hash_map, hash_set};
 
 use crate::{
     intermediates::{self, IntermediateError},
-    node, pipeline, plargs, plinputs, plparams,
+    node::PipelineNode,
+    pipeline, plargs, plinputs, plparams,
     processing::{self, NodeError, NodeUnprocessedReason, UnprocessedDependencyReason},
     systems::{self, NodeResult},
-    testutil::node_id,
+    testutil::FakeNodeId,
 };
 
 const NODE_1_ID: &str = "node-1-id";
@@ -63,7 +64,7 @@ fn test_feeds_argument() {
     let processor = TestProcessor::new(sys);
     let mut args = TestArgSet::default();
     args.set(
-        node_id(NODE_1_ID),
+        NODE_1_ID.into(),
         plparams::ParamId::from_static(FakeSystem::PARAM_NAME),
         TestArgValue("arg_value".into()),
     );
@@ -103,14 +104,14 @@ fn test_errors_on_missing_argument() {
     // THEN: all nodes should be reported as successful.
     expect_that!(
         outcome,
-        eq(&processing::PipelineOutcome::<TestSystemError> {
+        eq(&processing::PipelineOutcome::<TestPipelineTypes> {
             node_results: hash_map! {
-                node_id(NODE_1_ID) => Err(NodeError::ProcessErrored(TestSystemError::Arg(plargs::ArgError::NotFound{
-                    node_id: node_id(NODE_1_ID),
+                NODE_1_ID.into() => Err(NodeError::ProcessErrored(TestSystemError::Arg(plargs::ArgError::NotFound{
+                    node_id: NODE_1_ID.into(),
                     param_id: plparams::ParamId::from_static(FakeSystem::PARAM_NAME),
                 }))),
-                node_id(NODE_2_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason{
-                    unprocessed_dependencies: hash_map![node_id(NODE_1_ID) => UnprocessedDependencyReason::Unprocessed],
+                NODE_2_ID.into() => Err(NodeError::Unprocessed(NodeUnprocessedReason{
+                    unprocessed_dependencies: hash_map![NODE_1_ID.into() => UnprocessedDependencyReason::Unprocessed],
                 })),
             },
         }),
@@ -169,10 +170,10 @@ fn test_passes_all_runnable_nodes_together() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                node_id(NODE_1_ID) => Ok(()),
-                node_id(NODE_2_ID) => Ok(()),
-                node_id(NODE_3_ID) => Ok(()),
-                node_id(NODE_4_ID) => Ok(()),
+                NODE_1_ID.into() => Ok(()),
+                NODE_2_ID.into() => Ok(()),
+                NODE_3_ID.into() => Ok(()),
+                NODE_4_ID.into() => Ok(()),
             },
         }),
     );
@@ -181,8 +182,8 @@ fn test_passes_all_runnable_nodes_together() {
     expect_that!(
         *sys.process_sets.borrow(),
         eq(&vec![
-            hash_set![node_id(NODE_1_ID), node_id(NODE_2_ID)],
-            hash_set![node_id(NODE_3_ID), node_id(NODE_4_ID)],
+            hash_set![NODE_1_ID.into(), NODE_2_ID.into()],
+            hash_set![NODE_3_ID.into(), NODE_4_ID.into()],
         ])
     );
 }
@@ -206,9 +207,9 @@ fn test_handles_direct_loop() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                node_id(NODE_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
+                NODE_1_ID.into() => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
-                        node_id(NODE_1_ID) => UnprocessedDependencyReason::Unprocessed,
+                        NODE_1_ID.into() => UnprocessedDependencyReason::Unprocessed,
                     }
                 })),
             },
@@ -241,14 +242,14 @@ fn test_handles_indirect_loop() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                node_id(NODE_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
+                NODE_1_ID.into() => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
-                        node_id(NODE_3_ID) => UnprocessedDependencyReason::Unprocessed,
+                        NODE_3_ID.into() => UnprocessedDependencyReason::Unprocessed,
                     }
                 })),
-                node_id(NODE_3_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
+                NODE_3_ID.into() => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
-                        node_id(NODE_1_ID) => UnprocessedDependencyReason::Unprocessed,
+                        NODE_1_ID.into() => UnprocessedDependencyReason::Unprocessed,
                     }
                 })),
             },
@@ -279,9 +280,9 @@ fn test_handles_unknown_dependency() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                node_id(NODE_1_ID) => Err(NodeError::Unprocessed(NodeUnprocessedReason {
+                NODE_1_ID.into() => Err(NodeError::Unprocessed(NodeUnprocessedReason {
                     unprocessed_dependencies: hash_map! {
-                        node_id(UNKNOWN_ID) => UnprocessedDependencyReason::Unknown,
+                        UNKNOWN_ID.into() => UnprocessedDependencyReason::Unknown,
                     }
                 })),
             },
@@ -313,10 +314,10 @@ fn test_process_system_error() {
         outcome,
         eq(&processing::PipelineOutcome {
             node_results: hash_map! {
-                node_id(NODE_1_ID) => Err(NodeError::ProcessErrored(
+                NODE_1_ID.into() => Err(NodeError::ProcessErrored(
                     TestSystemError::System,
                 )),
-                node_id(NODE_2_ID) => Err(NodeError::ProcessErrored(
+                NODE_2_ID.into() => Err(NodeError::ProcessErrored(
                     TestSystemError::System,
                 )),
             },
@@ -327,7 +328,7 @@ fn test_process_system_error() {
     // process.
     expect_that!(
         *sys.process_sets.borrow(),
-        eq(&vec![hash_set![node_id(NODE_2_ID)],])
+        eq(&vec![hash_set![NODE_2_ID.into()],])
     );
 }
 
@@ -399,7 +400,7 @@ struct ValueFromArgSpec;
 
 #[derive(Debug, Default, Eq, PartialEq)]
 struct ConcatSpec {
-    deps: Vec<node::NodeId>,
+    deps: Vec<FakeNodeId>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -413,7 +414,7 @@ impl StoredValues {
 
 #[derive(Debug, Eq, PartialEq)]
 struct StoreSpec {
-    dep: node::NodeId,
+    dep: FakeNodeId,
     stored_values: Rc<StoredValues>,
 }
 
@@ -424,75 +425,76 @@ enum SystemErrorWhen {
     Process,
 }
 
-type FakeNode = node::GenericNode<FakeSpec>;
+struct FakeNode {
+    id: FakeNodeId,
+    spec: FakeSpec,
+}
+
+impl PipelineNode for FakeNode {
+    type Id = FakeNodeId;
+
+    fn id(&self) -> &FakeNodeId {
+        &self.id
+    }
+}
 
 impl Default for FakeNode {
     fn default() -> Self {
         Self {
-            id: node_id("default-node-id"),
-            tags: Default::default(),
-            public: Default::default(),
+            id: "default-node-id".into(),
             spec: ValueSpec::default().into(),
         }
     }
 }
 
-fn value_node(id: &str, value: &str) -> FakeNode {
+fn value_node(id: &'static str, value: &str) -> FakeNode {
     FakeNode {
-        id: node_id(id),
+        id: id.into(),
         spec: ValueSpec {
             value: value.into(),
         }
         .into(),
-        ..Default::default()
     }
 }
 
-fn value_from_arg_node(id: &str) -> FakeNode {
+fn value_from_arg_node(id: &'static str) -> FakeNode {
     FakeNode {
-        id: node_id(id),
+        id: id.into(),
         spec: ValueFromArgSpec.into(),
-        ..Default::default()
     }
 }
 
-fn concat_node(id: &str, deps: &[&str]) -> FakeNode {
+fn concat_node(id: &'static str, deps: &[&'static str]) -> FakeNode {
     FakeNode {
-        id: node_id(id),
+        id: id.into(),
         spec: ConcatSpec {
-            deps: deps.iter().map(|s| node_id(s)).collect(),
+            deps: deps.iter().map(|&s| s.into()).collect(),
         }
         .into(),
-        ..Default::default()
     }
 }
 
-fn store_node(id: &str, dep: &str, stored_values: Rc<StoredValues>) -> FakeNode {
+fn store_node(id: &'static str, dep: &'static str, stored_values: Rc<StoredValues>) -> FakeNode {
     FakeNode {
-        id: node_id(id),
+        id: id.into(),
         spec: StoreSpec {
-            dep: node_id(dep),
+            dep: dep.into(),
             stored_values,
         }
         .into(),
-        ..Default::default()
     }
 }
 
-fn error_node(id: &str, when: SystemErrorWhen) -> FakeNode {
+fn error_node(id: &'static str, when: SystemErrorWhen) -> FakeNode {
     FakeNode {
-        id: node_id(id),
+        id: id.into(),
         spec: FakeSpec::Error(when),
-        ..Default::default()
     }
 }
 
-fn outcome_all_okay(pipeline: TestPipeline) -> processing::PipelineOutcome<TestSystemError> {
+fn outcome_all_okay(pipeline: TestPipeline) -> processing::PipelineOutcome<TestPipelineTypes> {
     processing::PipelineOutcome {
-        node_results: pipeline
-            .nodes()
-            .map(|node| (node.id.clone(), Ok(())))
-            .collect(),
+        node_results: pipeline.nodes().map(|node| (node.id, Ok(()))).collect(),
     }
 }
 
@@ -502,19 +504,21 @@ struct TestParamType;
 #[derive(Debug, Eq, PartialEq)]
 struct TestArgValue(String);
 
-type TestArgSet = plargs::GenericArgSet<TestArgValue>;
+type TestArgSet = plargs::GenericArgSet<TestPipelineTypes>;
 
 #[derive(Debug, Eq, PartialEq)]
 struct TestIntermediateValue(String);
 
-type TestIntermediateSet = intermediates::GenericIntermediateSet<TestIntermediateValue>;
+type TestIntermediateSet = intermediates::GenericIntermediateSet<TestPipelineTypes>;
 
-type TestPipeline = pipeline::GenericPipeline<FakeSpec>;
+type TestPipeline = pipeline::GenericPipeline<TestPipelineTypes>;
 
 struct TestPipelineTypes;
 
 impl crate::PipelineTypes for TestPipelineTypes {
-    type Spec = FakeSpec;
+    type NodeId = FakeNodeId;
+
+    type Node = FakeNode;
 
     type ParamType = TestParamType;
 
@@ -531,13 +535,13 @@ enum TestSystemError {
     // contract).
     Never(NeverReason),
     System,
-    Arg(#[from] plargs::ArgError),
-    Intermediate(#[from] intermediates::IntermediateError),
+    Arg(#[from] plargs::ArgError<TestPipelineTypes>),
+    Intermediate(#[from] intermediates::IntermediateError<TestPipelineTypes>),
 }
 
 #[derive(Debug, Eq, PartialEq)]
 enum NeverReason {
-    MissingInput(IntermediateError),
+    MissingInput(IntermediateError<TestPipelineTypes>),
     OutOfOrder,
 }
 
@@ -550,7 +554,7 @@ impl std::fmt::Display for TestSystemError {
 type TestProcessor = processing::GenericProcessor<TestPipelineTypes>;
 
 struct FakeSystem {
-    process_sets: std::cell::RefCell<Vec<HashSet<node::NodeId>>>,
+    process_sets: std::cell::RefCell<Vec<HashSet<FakeNodeId>>>,
 }
 
 impl FakeSystem {
@@ -616,7 +620,7 @@ impl systems::GenericSystem<TestPipelineTypes> for FakeSystem {
     fn params<'a>(
         &self,
         node: &FakeNode,
-        params: &'a mut plparams::GenericNodeParamsRegistrator<'a, TestParamType>,
+        params: &'a mut plparams::GenericNodeParamsRegistrator<'a, TestPipelineTypes>,
     ) -> Result<(), TestSystemError> {
         use FakeSpec::*;
         match &node.spec {
@@ -641,7 +645,7 @@ impl systems::GenericSystem<TestPipelineTypes> for FakeSystem {
     fn inputs<'a>(
         &self,
         node: &FakeNode,
-        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+        reg: &'a mut plinputs::NodeInputsRegistrator<'a, TestPipelineTypes>,
     ) -> Result<(), TestSystemError> {
         use FakeSpec::*;
         match &node.spec {
@@ -669,19 +673,15 @@ impl systems::GenericSystem<TestPipelineTypes> for FakeSystem {
         args: &TestArgSet,
         intermediates: &TestIntermediateSet,
     ) -> Result<TestIntermediateValue, TestSystemError> {
-        self.process_sets
-            .borrow_mut()
-            .push(hash_set![node.id.clone()]);
+        self.process_sets.borrow_mut().push(hash_set![node.id]);
         self.do_process(node, args, intermediates)
     }
 
     fn process_multiple<'a>(
         &self,
-        nodes: &'a [&'a node::GenericNode<<TestPipelineTypes as crate::PipelineTypes>::Spec>],
-        args: &plargs::GenericArgSet<<TestPipelineTypes as crate::PipelineTypes>::ArgValue>,
-        intermediates: &intermediates::GenericIntermediateSet<
-            <TestPipelineTypes as crate::PipelineTypes>::IntermediateValue,
-        >,
+        nodes: &'a [&'a FakeNode],
+        args: &TestArgSet,
+        intermediates: &intermediates::GenericIntermediateSet<TestPipelineTypes>,
     ) -> Vec<NodeResult<TestPipelineTypes>> {
         self.process_sets
             .borrow_mut()
@@ -691,10 +691,7 @@ impl systems::GenericSystem<TestPipelineTypes> for FakeSystem {
             .iter()
             .map(|node| {
                 let value = self.do_process(node, args, intermediates);
-                NodeResult {
-                    id: node.id.clone(),
-                    value,
-                }
+                NodeResult { id: node.id, value }
             })
             .collect()
     }

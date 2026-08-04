@@ -4,42 +4,38 @@ mod tests;
 use std::rc::Rc;
 
 use super::{GenericSystem, NodeResult};
-use crate::{intermediates, node, plinputs, plparams};
+use crate::{intermediates, plinputs, plparams};
 
-pub trait DiscriminatedSpec {
-    type Discrim: std::fmt::Debug + Eq + std::hash::Hash;
+pub trait TypedNode {
+    type NodeType: std::fmt::Debug + Eq + std::hash::Hash;
 
-    fn discriminant(&self) -> Self::Discrim;
+    fn node_type(&self) -> Self::NodeType;
 }
 
 pub type MissingSystemErrorFn<D, E> = dyn Fn(D) -> E;
 
-/// A system that delegates to other systems based on the [DiscriminatedSpec::discriminant] of any
-/// given [node::GenericNode]'s `spec`.
+/// A system that delegates to other systems based on the [TypedNode::node_type].
 pub struct GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
-    P::Spec: DiscriminatedSpec,
+    P::Node: TypedNode,
 {
-    systems: hashbrown::HashMap<<P::Spec as DiscriminatedSpec>::Discrim, Rc<dyn GenericSystem<P>>>,
+    systems: hashbrown::HashMap<<P::Node as TypedNode>::NodeType, Rc<dyn GenericSystem<P>>>,
     missing_system_error:
-        Box<MissingSystemErrorFn<<P::Spec as DiscriminatedSpec>::Discrim, P::SystemError>>,
+        Box<MissingSystemErrorFn<<P::Node as TypedNode>::NodeType, P::SystemError>>,
 }
 
 impl<P> GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
-    P::Spec: DiscriminatedSpec,
+    P::Node: TypedNode,
 {
     /// Creates a new [GenericMetaSystem] that delegates to the given systems for the given
     /// [DiscriminatedSpec::discriminant].
     pub fn new(
-        systems: hashbrown::HashMap<
-            <P::Spec as DiscriminatedSpec>::Discrim,
-            Rc<dyn GenericSystem<P>>,
-        >,
+        systems: hashbrown::HashMap<<P::Node as TypedNode>::NodeType, Rc<dyn GenericSystem<P>>>,
         missing_system_error: Box<
-            MissingSystemErrorFn<<P::Spec as DiscriminatedSpec>::Discrim, P::SystemError>,
+            MissingSystemErrorFn<<P::Node as TypedNode>::NodeType, P::SystemError>,
         >,
     ) -> Self {
         Self {
@@ -50,7 +46,7 @@ where
 
     fn system_for(
         &self,
-        spec_type: <P::Spec as DiscriminatedSpec>::Discrim,
+        spec_type: <P::Node as TypedNode>::NodeType,
     ) -> Result<&dyn GenericSystem<P>, P::SystemError> {
         self.systems
             .get(&spec_type)
@@ -62,48 +58,46 @@ where
 impl<P> GenericSystem<P> for GenericMetaSystem<P>
 where
     P: crate::PipelineTypes,
-    P::Spec: DiscriminatedSpec,
+    P::Node: TypedNode,
 {
     fn params<'a>(
         &self,
-        node: &node::GenericNode<P::Spec>,
-        reg: &'a mut plparams::GenericNodeParamsRegistrator<'a, P::ParamType>,
+        node: &P::Node,
+        reg: &'a mut plparams::GenericNodeParamsRegistrator<'a, P>,
     ) -> Result<(), P::SystemError> {
-        self.system_for(node.spec.discriminant())?.params(node, reg)
+        self.system_for(node.node_type())?.params(node, reg)
     }
 
     fn inputs<'a>(
         &self,
-        node: &node::GenericNode<P::Spec>,
-        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+        node: &P::Node,
+        reg: &'a mut plinputs::NodeInputsRegistrator<'a, P>,
     ) -> Result<(), P::SystemError> {
-        self.system_for(node.spec.discriminant())?.inputs(node, reg)
+        self.system_for(node.node_type())?.inputs(node, reg)
     }
 
     fn process(
         &self,
-        node: &node::GenericNode<P::Spec>,
-        args: &crate::plargs::GenericArgSet<P::ArgValue>,
-        intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
+        node: &P::Node,
+        args: &crate::plargs::GenericArgSet<P>,
+        intermediates: &intermediates::GenericIntermediateSet<P>,
     ) -> Result<P::IntermediateValue, P::SystemError> {
-        self.system_for(node.spec.discriminant())?
+        self.system_for(node.node_type())?
             .process(node, args, intermediates)
     }
 
     fn process_multiple<'a>(
         &self,
-        nodes: &'a [&'a node::GenericNode<P::Spec>],
-        args: &crate::plargs::GenericArgSet<P::ArgValue>,
-        intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
+        nodes: &'a [&'a P::Node],
+        args: &crate::plargs::GenericArgSet<P>,
+        intermediates: &intermediates::GenericIntermediateSet<P>,
     ) -> Vec<NodeResult<P>> {
-        let mut node_groups = hashbrown::HashMap::<
-            <P::Spec as DiscriminatedSpec>::Discrim,
-            Vec<&node::GenericNode<P::Spec>>,
-        >::new();
+        let mut node_groups =
+            hashbrown::HashMap::<<P::Node as TypedNode>::NodeType, Vec<&P::Node>>::new();
 
         // Group nodes by their discriminant.
         for node in nodes {
-            let discrim = node.spec.discriminant();
+            let discrim = node.node_type();
             node_groups.entry(discrim).or_default().push(node);
         }
 

@@ -3,40 +3,85 @@
 #[cfg(test)]
 mod tests;
 
+use std::fmt::Debug;
+use std::hash::Hash;
+
 use std::rc::Rc;
 
 use hashbrown::{HashMap, HashSet};
 
-use crate::{PipelineTypes, intermediates, node, pipeline, plinputs, plparams, systems};
+use crate::{
+    PipelineTypes, intermediates, node::PipelineNode as _, pipeline, plinputs, plparams, systems,
+};
 
 /// Describes the outcome of an entire processing attempt. It does not attempt to contain the
 /// processed data itself, but rather information about the processing.
-#[derive(Debug, PartialEq)]
-pub struct PipelineOutcome<SE: std::fmt::Debug> {
-    pub node_results: HashMap<node::NodeId, Result<(), NodeError<SE>>>,
+pub struct PipelineOutcome<P: PipelineTypes>
+where
+    P::SystemError: Debug,
+{
+    pub node_results: HashMap<P::NodeId, Result<(), NodeError<P>>>,
+}
+
+impl<P> Debug for PipelineOutcome<P>
+where
+    P: PipelineTypes,
+    P::SystemError: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PipelineOutcome")
+            .field("node_results", &self.node_results)
+            .finish()
+    }
+}
+
+impl<P> PartialEq for PipelineOutcome<P>
+where
+    P: PipelineTypes,
+    P::SystemError: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.node_results == other.node_results
+    }
 }
 
 /// Describes the outcome of a single node.
-#[derive(Debug)]
-pub enum NodeError<SE: std::fmt::Debug> {
+pub enum NodeError<P: PipelineTypes> {
     /// Node processed, but unexpectedly. Dependent nodes not processed.
     Unexpected,
     /// Attempted to process the node, but resulted in an error.
-    ProcessErrored(SE),
+    ProcessErrored(P::SystemError),
     /// System did not process a node when requested to.
     SystemUnprocessed,
     /// No attempt was made to process the node.
-    Unprocessed(NodeUnprocessedReason),
+    Unprocessed(NodeUnprocessedReason<P::NodeId>),
     /// Processing encountered an internal error, likely a bug.
     InternalError(String),
+}
+
+impl<P> Debug for NodeError<P>
+where
+    P: PipelineTypes,
+    P::SystemError: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unexpected => write!(f, "Unexpected"),
+            Self::ProcessErrored(arg0) => f.debug_tuple("ProcessErrored").field(arg0).finish(),
+            Self::SystemUnprocessed => write!(f, "SystemUnprocessed"),
+            Self::Unprocessed(arg0) => f.debug_tuple("Unprocessed").field(arg0).finish(),
+            Self::InternalError(arg0) => f.debug_tuple("InternalError").field(arg0).finish(),
+        }
+    }
 }
 
 /// NOTE: the equality comparison does not check any form of equality for underlying errors in the
 /// case of [NodeError::InternalError], instead regarding them as equal on the basis of variant
 /// selection equality.
-impl<SE> PartialEq for NodeError<SE>
+impl<P> PartialEq for NodeError<P>
 where
-    SE: std::fmt::Debug + PartialEq,
+    P: PipelineTypes,
+    P::SystemError: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         use NodeError::*;
@@ -51,10 +96,10 @@ where
     }
 }
 
-/// Describes the reasons for a single [node::GenericNode] being unprocessed.
+/// Describes the reasons for a single [crate::node::PipelineNode] being unprocessed.
 #[derive(Debug, PartialEq)]
-pub struct NodeUnprocessedReason {
-    pub unprocessed_dependencies: HashMap<node::NodeId, UnprocessedDependencyReason>,
+pub struct NodeUnprocessedReason<Id: Hash + Eq + PartialEq> {
+    pub unprocessed_dependencies: HashMap<Id, UnprocessedDependencyReason>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -79,90 +124,96 @@ impl<P: PipelineTypes> GenericProcessor<P> {
 
     pub fn resolve_params(
         &self,
-        nodes: &pipeline::GenericPipeline<P::Spec>,
-    ) -> Result<plparams::GenericParams<P::ParamType>, P::SystemError> {
-        let mut reg = plparams::GenericParams::<P::ParamType>::registrator();
+        nodes: &pipeline::GenericPipeline<P>,
+    ) -> Result<plparams::GenericParams<P>, P::SystemError> {
+        let mut reg = plparams::GenericParams::<P>::registrator();
         for node in nodes.nodes() {
-            self.system.params(node, &mut reg.for_node(&node.id))?;
+            self.system.params(node, &mut reg.for_node(node.id()))?;
         }
         Ok(reg.build())
     }
 
     pub fn process(
         &self,
-        nodes: &pipeline::GenericPipeline<P::Spec>,
-        args: &crate::plargs::GenericArgSet<P::ArgValue>,
-    ) -> PipelineOutcome<P::SystemError> {
+        nodes: &pipeline::GenericPipeline<P>,
+        args: &crate::plargs::GenericArgSet<P>,
+    ) -> PipelineOutcome<P> {
         let state = GenericProcessingState::new(nodes, args, self.system.clone());
         state.process()
     }
 }
 
-struct GenericProcessingState<'a, P: PipelineTypes> {
-    nodes: &'a pipeline::GenericPipeline<P::Spec>,
-    args: &'a crate::plargs::GenericArgSet<P::ArgValue>,
+struct GenericProcessingState<'a, P>
+where
+    P: PipelineTypes,
+{
+    nodes: &'a pipeline::GenericPipeline<P>,
+    args: &'a crate::plargs::GenericArgSet<P>,
 
     system: Rc<dyn systems::GenericSystem<P>>,
 
     // Map from NodeId to the NodeIds that depend on it.
-    dep_id_to_dependee_ids: HashMap<node::NodeId, Vec<node::NodeId>>,
+    dep_id_to_dependee_ids: HashMap<P::NodeId, Vec<P::NodeId>>,
 
-    outcome: PipelineOutcome<P::SystemError>,
-    interms: intermediates::GenericIntermediateSet<P::IntermediateValue>,
-    processable_ids: HashSet<node::NodeId>,
+    outcome: PipelineOutcome<P>,
+    interms: intermediates::GenericIntermediateSet<P>,
+    processable_ids: HashSet<P::NodeId>,
     // Map from NodeId to the NodeIds that it depends on. This is dynamically updated to remove
     // dependent NodeIds that have been successfully processed (when the value is empty, the
     // key can be scheduled for processing).
-    unprocessed_id_to_dep_ids: HashMap<node::NodeId, HashSet<node::NodeId>>,
+    unprocessed_id_to_dep_ids: HashMap<P::NodeId, HashSet<P::NodeId>>,
 }
 
-impl<'a, P: PipelineTypes> GenericProcessingState<'a, P> {
+impl<'a, P> GenericProcessingState<'a, P>
+where
+    P: PipelineTypes,
+{
     // TODO: we shouldn't process _all_ nodes, just selected ones, and all they depend on.
     // As such, the state setup should be much lighter.
     fn new(
-        nodes: &'a pipeline::GenericPipeline<P::Spec>,
-        args: &'a crate::plargs::GenericArgSet<P::ArgValue>,
+        nodes: &'a pipeline::GenericPipeline<P>,
+        args: &'a crate::plargs::GenericArgSet<P>,
         system: Rc<dyn systems::GenericSystem<P>>,
     ) -> Self {
         log::debug!("Processing {} nodes total.", nodes.nodes().count());
 
-        let mut outcome = PipelineOutcome::<P::SystemError> {
+        let mut outcome = PipelineOutcome::<P> {
             node_results: HashMap::with_capacity(nodes.len()),
         };
 
         let mut inputs_reg = plinputs::InputsRegistrator::new();
         for node in nodes.nodes() {
-            let mut reg_for_node = inputs_reg.for_node(&node.id);
+            let mut reg_for_node = inputs_reg.for_node(node.id());
             if let Err(err) = system.inputs(node, &mut reg_for_node) {
                 outcome
                     .node_results
-                    .insert(node.id.clone(), Err(NodeError::ProcessErrored(err)));
+                    .insert(node.id().clone(), Err(NodeError::ProcessErrored(err)));
             }
         }
 
         // Map from NodeId to the NodeIds that it depends on.
         let unprocessed_id_to_dep_ids = inputs_reg.build();
 
-        let mut processable_ids: HashSet<node::NodeId> = HashSet::new();
+        let mut processable_ids: HashSet<P::NodeId> = HashSet::new();
         // Map from NodeId to the NodeIds that depend on it.
-        let mut dep_id_to_dependee_ids = HashMap::<node::NodeId, Vec<node::NodeId>>::new();
+        let mut dep_id_to_dependee_ids = HashMap::<P::NodeId, Vec<P::NodeId>>::new();
 
         for node in nodes.nodes() {
-            if outcome.node_results.contains_key(&node.id) {
+            if outcome.node_results.contains_key(node.id()) {
                 continue;
             }
-            match unprocessed_id_to_dep_ids.get(&node.id) {
+            match unprocessed_id_to_dep_ids.get(node.id()) {
                 Some(dependency_ids) if !dependency_ids.is_empty() => {
                     for dep_id in dependency_ids {
                         dep_id_to_dependee_ids
                             .entry_ref(dep_id)
                             .or_default()
-                            .push(node.id.clone());
+                            .push(node.id().clone());
                     }
                 }
                 _ => {
                     // The node has no dependencies, so it is immediately processable.
-                    processable_ids.insert(node.id.clone());
+                    processable_ids.insert(node.id().clone());
                 }
             }
         }
@@ -182,7 +233,7 @@ impl<'a, P: PipelineTypes> GenericProcessingState<'a, P> {
         }
     }
 
-    fn process(mut self) -> PipelineOutcome<P::SystemError> {
+    fn process(mut self) -> PipelineOutcome<P> {
         while !self.processable_ids.is_empty() {
             log::debug!(
                 "Processing {} nodes in this pass.",
@@ -254,7 +305,7 @@ impl<'a, P: PipelineTypes> GenericProcessingState<'a, P> {
         self.outcome
     }
 
-    fn gather_phase_nodes(&self) -> Vec<&'a node::GenericNode<P::Spec>> {
+    fn gather_phase_nodes(&self) -> Vec<&'a P::Node> {
         self.processable_ids
             .iter()
             .filter_map(|node_id| {
@@ -271,7 +322,7 @@ impl<'a, P: PipelineTypes> GenericProcessingState<'a, P> {
     fn process_result(
         &mut self,
         node_result: systems::NodeResult<P>,
-        newly_processable_ids: &mut HashSet<node::NodeId>,
+        newly_processable_ids: &mut HashSet<P::NodeId>,
     ) {
         match node_result.value {
             Ok(interm) => {
@@ -296,8 +347,8 @@ impl<'a, P: PipelineTypes> GenericProcessingState<'a, P> {
     /// Updates unprocessed_id_to_dep_ids and find newly processable nodes in the process.
     fn mark_dependent_nodes_processable(
         &mut self,
-        processed_node_id: &node::NodeId,
-        newly_processable_ids: &mut HashSet<node::NodeId>,
+        processed_node_id: &P::NodeId,
+        newly_processable_ids: &mut HashSet<P::NodeId>,
     ) {
         let dependee_ids = match self.dep_id_to_dependee_ids.get(processed_node_id) {
             Some(dependee_ids) => dependee_ids,

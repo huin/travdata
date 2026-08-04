@@ -4,10 +4,11 @@ use googletest::{Result as GResult, prelude::*};
 use hashbrown::{HashMap, HashSet};
 use map_macro::hashbrown::{hash_map, hash_map_e, hash_set};
 use mockall::mock;
-use serde::{Deserialize, Serialize};
 
 use super::*;
-use crate::{intermediates, node, plargs, plinputs, plparams, systems, testutil::node_id};
+use crate::{
+    PipelineNode, intermediates, plargs, plinputs, plparams, systems, testutil::FakeNodeId,
+};
 
 #[gtest]
 fn test_params() -> GResult<()> {
@@ -63,11 +64,10 @@ fn test_params() -> GResult<()> {
 
     // GIVEN: a meta_system that dispatches for Foo and Bar.
     let systems: TestSystemMap = hash_map_e! {
-        FakeSpecDiscriminants::Foo => Rc::new(foo_sys),
-        FakeSpecDiscriminants::Bar => Rc::new(bar_sys),
+        FakeNodeType::Foo => Rc::new(foo_sys),
+        FakeNodeType::Bar => Rc::new(bar_sys),
     };
-    let meta_system =
-        GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError::ErrorOne));
+    let meta_system = GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError));
 
     // GIVEN: a registrator.
     let mut reg = TestParams::registrator();
@@ -81,14 +81,14 @@ fn test_params() -> GResult<()> {
     let want_params = TestParams {
         params: hash_map! {
             plparams::ParamKey::new(
-                foo_node.id.clone(),
+                foo_node.id,
                 foo_param_id,
             ) => TestParam {
                 description: "foo-param description.".into(),
                 param_type: TestParamType::TypeOne,
             },
             plparams::ParamKey::new(
-                bar_node.id.clone(),
+                bar_node.id,
                 bar_param_id,
             ) => TestParam {
                 description: "bar-param description.".into(),
@@ -117,37 +117,36 @@ fn test_inputs() -> GResult<()> {
         .returning_st(|node, reg| node.add_inputs(reg));
 
     let systems: TestSystemMap = hash_map_e! {
-        FakeSpecDiscriminants::Foo => Rc::new(foo_sys),
-        FakeSpecDiscriminants::Bar => Rc::new(bar_sys),
+        FakeNodeType::Foo => Rc::new(foo_sys),
+        FakeNodeType::Bar => Rc::new(bar_sys),
     };
 
     // GIVEN: a meta_system that dispatches for Foo and Bar.
-    let meta_system =
-        GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError::ErrorOne));
+    let meta_system = GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError));
 
     // WHEN: the inputs for `Foo` and `Bar` nodes are requested.
     let mut reg = plinputs::InputsRegistrator::new();
     meta_system.inputs(
         &FakeNode {
             spec: FooSpec {
-                deps: vec![node_id("foo-dep-1"), node_id("foo-dep-2")],
+                deps: vec!["foo-dep-1".into(), "foo-dep-2".into()],
                 ..Default::default()
             }
             .into(),
             ..Default::default()
         },
-        &mut reg.for_node(&node_id("foo")),
+        &mut reg.for_node(&"foo".into()),
     )?;
     meta_system.inputs(
         &FakeNode {
             spec: BarSpec {
-                deps: vec![node_id("bar-dep-1"), node_id("bar-dep-2")],
+                deps: vec!["bar-dep-1".into(), "bar-dep-2".into()],
                 ..Default::default()
             }
             .into(),
             ..Default::default()
         },
-        &mut reg.for_node(&node_id("bar")),
+        &mut reg.for_node(&"bar".into()),
     )?;
 
     // THEN: the expected dependencies are registered.
@@ -155,8 +154,8 @@ fn test_inputs() -> GResult<()> {
     expect_that!(
         inputs,
         eq(&hash_map! {
-            node_id("foo") => hash_set! {node_id("foo-dep-1"), node_id("foo-dep-2")},
-            node_id("bar") => hash_set! {node_id("bar-dep-1"), node_id("bar-dep-2")},
+            "foo".into() => hash_set! {"foo-dep-1".into(), "foo-dep-2".into()},
+            "bar".into() => hash_set! {"bar-dep-1".into(), "bar-dep-2".into()},
         })
     );
 
@@ -167,24 +166,24 @@ fn process_fixture() -> (TestArgSet, TestIntermediateSet) {
     // GIVEN: arguments.
     let mut args = TestArgSet::default();
     args.set(
-        node_id("foo-1"),
+        "foo-1".into(),
         plparams::ParamId::from_static("param-1"),
         TestArgValue::TypeOne(3),
     );
     args.set(
-        node_id("foo-2"),
+        "foo-2".into(),
         plparams::ParamId::from_static("param-1"),
         TestArgValue::TypeOne(4),
     );
     args.set(
-        node_id("bar"),
+        "bar".into(),
         plparams::ParamId::from_static("param-1"),
         TestArgValue::TypeTwo(4),
     );
 
     // GIVEN: intermediates.
     let mut intermediates = TestIntermediateSet::new();
-    intermediates.set(node_id("base-node"), TestIntermediateValue::ValueOne(2));
+    intermediates.set("base-node".into(), TestIntermediateValue::ValueOne(2));
 
     (args, intermediates)
 }
@@ -198,17 +197,14 @@ fn test_process() {
     foo_sys
         .expect_process()
         .withf_st(|node, args, intermediates| {
-            node.id == node_id("foo-1")
+            node.id == "foo-1".into()
                 && matches!(node.spec, FakeSpec::Foo(_))
                 && matches!(
-                    args.get(
-                        &node_id("foo-1"),
-                        &plparams::ParamId::from_static("param-1")
-                    ),
+                    args.get(&"foo-1".into(), &plparams::ParamId::from_static("param-1")),
                     Some(&TestArgValue::TypeOne(3))
                 )
                 && matches!(
-                    intermediates.get(&node_id("base-node")),
+                    intermediates.get(&"base-node".into()),
                     Some(&TestIntermediateValue::ValueOne(2))
                 )
         })
@@ -216,17 +212,14 @@ fn test_process() {
     foo_sys
         .expect_process()
         .withf_st(|node, args, intermediates| {
-            node.id == node_id("foo-2")
+            node.id == "foo-2".into()
                 && matches!(node.spec, FakeSpec::Foo(_))
                 && matches!(
-                    args.get(
-                        &node_id("foo-2"),
-                        &plparams::ParamId::from_static("param-1")
-                    ),
+                    args.get(&"foo-2".into(), &plparams::ParamId::from_static("param-1")),
                     Some(&TestArgValue::TypeOne(4))
                 )
                 && matches!(
-                    intermediates.get(&node_id("base-node")),
+                    intermediates.get(&"base-node".into()),
                     Some(&TestIntermediateValue::ValueOne(2))
                 )
         })
@@ -234,36 +227,34 @@ fn test_process() {
     bar_sys
         .expect_process()
         .withf_st(|node, args, intermediates| {
-            node.id == node_id("bar")
+            node.id == "bar".into()
                 && matches!(node.spec, FakeSpec::Bar(_))
                 && matches!(
-                    args.get(&node_id("bar"), &plparams::ParamId::from_static("param-1")),
+                    args.get(&"bar".into(), &plparams::ParamId::from_static("param-1")),
                     Some(&TestArgValue::TypeTwo(4))
                 )
                 && matches!(
-                    intermediates.get(&node_id("base-node")),
+                    intermediates.get(&"base-node".into()),
                     Some(&TestIntermediateValue::ValueOne(2))
                 )
         })
-        .returning_st(|_node, _args, _intermediates| Err(TestSystemError::ErrorOne));
+        .returning_st(|_node, _args, _intermediates| Err(TestSystemError));
 
     let systems: TestSystemMap = hash_map_e! {
-        FakeSpecDiscriminants::Foo => Rc::new(foo_sys),
-        FakeSpecDiscriminants::Bar => Rc::new(bar_sys),
+        FakeNodeType::Foo => Rc::new(foo_sys),
+        FakeNodeType::Bar => Rc::new(bar_sys),
     };
 
     // GIVEN: a meta_system that dispatches for Foo and Bar.
-    let meta_system =
-        GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError::ErrorOne));
+    let meta_system = GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError));
 
     let (args, intermediates) = process_fixture();
 
     // WHEN: process is called with the first Foo node.
     let foo_1_result = meta_system.process(
         &FakeNode {
-            id: node_id("foo-1"),
+            id: "foo-1".into(),
             spec: FooSpec::default().into(),
-            ..Default::default()
         },
         &args,
         &intermediates,
@@ -275,9 +266,8 @@ fn test_process() {
     // WHEN: process is called with the first Foo node.
     let foo_2_result = meta_system.process(
         &FakeNode {
-            id: node_id("foo-2"),
+            id: "foo-2".into(),
             spec: FooSpec::default().into(),
-            ..Default::default()
         },
         &args,
         &intermediates,
@@ -289,9 +279,8 @@ fn test_process() {
     // WHEN: process is called with the Bar node.
     let bar_result = meta_system.process(
         &FakeNode {
-            id: node_id("bar"),
+            id: "bar".into(),
             spec: BarSpec::default().into(),
-            ..Default::default()
         },
         &args,
         &intermediates,
@@ -310,53 +299,46 @@ fn test_process_multiple() {
     foo_sys
         .expect_process_multiple()
         .withf_st(|nodes, _args, _intermediates| {
-            nodes
-                .iter()
-                .map(|node| node.id.clone())
-                .collect::<HashSet<_>>()
+            nodes.iter().map(|node| node.id).collect::<HashSet<_>>()
                 == hash_set! {
-                    node_id("foo-1"),
-                    node_id("foo-2"),
+                    "foo-1".into(),
+                    "foo-2".into(),
                 }
         })
         .returning_st(|_node, _args, _intermediates| {
             vec![
                 NodeResult {
-                    id: node_id("foo-1"),
+                    id: "foo-1".into(),
                     value: Ok(TestIntermediateValue::ValueOne(1)),
                 },
                 NodeResult {
-                    id: node_id("foo-2"),
-                    value: Err(TestSystemError::ErrorOne),
+                    id: "foo-2".into(),
+                    value: Err(TestSystemError),
                 },
             ]
         });
     bar_sys
         .expect_process_multiple()
         .withf_st(|nodes, _args, _intermediates| {
-            nodes
-                .iter()
-                .map(|node| node.id.clone())
-                .collect::<HashSet<_>>()
+            nodes.iter().map(|node| node.id).collect::<HashSet<_>>()
                 == hash_set! {
-                    node_id("bar"),
+                    "bar".into(),
                 }
         })
         .returning_st(|_node, _args, _intermediates| {
             vec![NodeResult {
-                id: node_id("bar"),
+                id: "bar".into(),
                 value: Ok(TestIntermediateValue::ValueOne(3)),
             }]
         });
 
     let systems: TestSystemMap = hash_map_e! {
-        FakeSpecDiscriminants::Foo => Rc::new(foo_sys),
-        FakeSpecDiscriminants::Bar => Rc::new(bar_sys),
+        FakeNodeType::Foo => Rc::new(foo_sys),
+        FakeNodeType::Bar => Rc::new(bar_sys),
     };
 
     // GIVEN: a meta_system that dispatches for Foo and Bar.
-    let meta_system =
-        GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError::ErrorOne));
+    let meta_system = GenericMetaSystem::new(systems, Box::new(|_discrim| TestSystemError));
 
     let (args, intermediates) = process_fixture();
 
@@ -364,19 +346,16 @@ fn test_process_multiple() {
     let result = meta_system.process_multiple(
         &[
             &FakeNode {
-                id: node_id("foo-1"),
+                id: "foo-1".into(),
                 spec: FooSpec::default().into(),
-                ..Default::default()
             },
             &FakeNode {
-                id: node_id("foo-2"),
+                id: "foo-2".into(),
                 spec: FooSpec::default().into(),
-                ..Default::default()
             },
             &FakeNode {
-                id: node_id("bar"),
+                id: "bar".into(),
                 spec: BarSpec::default().into(),
-                ..Default::default()
             },
         ],
         &args,
@@ -385,36 +364,32 @@ fn test_process_multiple() {
 
     // THEN: the expected result is returned.
     expect_that!(result, len(eq(3)));
-    let result_map: HashMap<_, _> = result
+    let result_map: HashMap<FakeNodeId, _> = result
         .into_iter()
         .map(|node_result| (node_result.id, node_result.value))
         .collect();
     expect_that!(
-        result_map.get(&node_id("foo-1")),
+        result_map.get(&FakeNodeId("foo-1")),
         some(ok(eq(&TestIntermediateValue::ValueOne(1)))),
     );
-    expect_that!(result_map.get(&node_id("foo-2")), some(err(anything())));
+    expect_that!(result_map.get(&FakeNodeId("foo-2")), some(err(anything())));
     expect_that!(
-        result_map.get(&node_id("bar")),
+        result_map.get(&FakeNodeId("bar")),
         some(ok(eq(&TestIntermediateValue::ValueOne(3)))),
     );
 }
 
-/// Per-type wrapper of a specific type of extraction configuration node.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, strum_macros::EnumDiscriminants)]
-#[strum_discriminants(derive(Hash))]
-#[serde(tag = "type", content = "spec")]
-pub enum FakeSpec {
-    Foo(FooSpec),
-    Bar(BarSpec),
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+enum FakeNodeType {
+    Foo,
+    Bar,
 }
 
-impl DiscriminatedSpec for FakeSpec {
-    type Discrim = FakeSpecDiscriminants;
-
-    fn discriminant(&self) -> Self::Discrim {
-        self.into()
-    }
+/// Per-type wrapper of a specific type of extraction configuration node.
+#[derive(Debug, Eq, PartialEq)]
+enum FakeSpec {
+    Foo(FooSpec),
+    Bar(BarSpec),
 }
 
 impl From<FooSpec> for FakeSpec {
@@ -429,10 +404,10 @@ impl From<BarSpec> for FakeSpec {
     }
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct FooSpec {
-    pub value: String,
-    pub deps: Vec<node::NodeId>,
+#[derive(Debug, Eq, PartialEq)]
+struct FooSpec {
+    value: String,
+    deps: Vec<FakeNodeId>,
 }
 
 impl Default for FooSpec {
@@ -444,10 +419,10 @@ impl Default for FooSpec {
     }
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct BarSpec {
-    pub value: String,
-    pub deps: Vec<node::NodeId>,
+#[derive(Debug, Eq, PartialEq)]
+struct BarSpec {
+    value: String,
+    deps: Vec<FakeNodeId>,
 }
 
 impl Default for BarSpec {
@@ -459,35 +434,54 @@ impl Default for BarSpec {
     }
 }
 
-pub type FakeNode = node::GenericNode<FakeSpec>;
+#[derive(Debug, Eq, PartialEq)]
+struct FakeNode {
+    id: FakeNodeId,
+    spec: FakeSpec,
+}
 
 impl Default for FakeNode {
     fn default() -> Self {
         Self {
-            id: node_id("default-node-id"),
-            tags: Default::default(),
-            public: Default::default(),
+            id: "default-node-id".into(),
             spec: FooSpec::default().into(),
         }
     }
 }
 
-impl node::GenericNode<FakeSpec> {
-    pub fn default_with_spec<S>(spec: S) -> Self
+impl PipelineNode for FakeNode {
+    type Id = FakeNodeId;
+
+    fn id(&self) -> &Self::Id {
+        &self.id
+    }
+}
+
+impl TypedNode for FakeNode {
+    type NodeType = FakeNodeType;
+
+    fn node_type(&self) -> Self::NodeType {
+        match &self.spec {
+            FakeSpec::Foo(_foo_spec) => FakeNodeType::Foo,
+            FakeSpec::Bar(_bar_spec) => FakeNodeType::Bar,
+        }
+    }
+}
+
+impl FakeNode {
+    fn default_with_spec<S>(spec: S) -> Self
     where
         S: Into<FakeSpec>,
     {
         Self {
-            id: node_id("foo"),
-            tags: Default::default(),
-            public: false,
+            id: "foo".into(),
             spec: spec.into(),
         }
     }
 
-    pub fn add_inputs<'a>(
+    fn add_inputs<'a>(
         &self,
-        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+        reg: &'a mut plinputs::NodeInputsRegistrator<'a, TestPipelineTypes>,
     ) -> Result<(), TestSystemError> {
         let deps = match &self.spec {
             FakeSpec::Foo(foo_spec) => &foo_spec.deps,
@@ -503,33 +497,35 @@ impl node::GenericNode<FakeSpec> {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum TestParamType {
+enum TestParamType {
     TypeOne,
     TypeTwo,
 }
 
-pub type TestParam = plparams::GenericParam<TestParamType>;
-pub type TestParams = plparams::GenericParams<TestParamType>;
+type TestParam = plparams::GenericParam<TestParamType>;
+type TestParams = plparams::GenericParams<TestPipelineTypes>;
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum TestArgValue {
+enum TestArgValue {
     TypeOne(u16),
     TypeTwo(u32),
 }
 
-pub type TestArgSet = plargs::GenericArgSet<TestArgValue>;
+type TestArgSet = plargs::GenericArgSet<TestPipelineTypes>;
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum TestIntermediateValue {
+enum TestIntermediateValue {
     ValueOne(u16),
 }
 
-pub type TestIntermediateSet = intermediates::GenericIntermediateSet<TestIntermediateValue>;
+type TestIntermediateSet = intermediates::GenericIntermediateSet<TestPipelineTypes>;
 
-pub struct TestPipelineTypes;
+struct TestPipelineTypes;
 
 impl crate::PipelineTypes for TestPipelineTypes {
-    type Spec = FakeSpec;
+    type NodeId = FakeNodeId;
+
+    type Node = FakeNode;
 
     type ParamType = TestParamType;
 
@@ -541,10 +537,7 @@ impl crate::PipelineTypes for TestPipelineTypes {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum TestSystemError {
-    ErrorOne,
-    ErrorTwo,
-}
+struct TestSystemError;
 
 impl std::fmt::Display for TestSystemError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -554,10 +547,8 @@ impl std::fmt::Display for TestSystemError {
 
 impl std::error::Error for TestSystemError {}
 
-pub type TestSystemMap = hashbrown::HashMap<
-    FakeSpecDiscriminants,
-    std::rc::Rc<dyn systems::GenericSystem<TestPipelineTypes>>,
->;
+type TestSystemMap =
+    hashbrown::HashMap<FakeNodeType, std::rc::Rc<dyn systems::GenericSystem<TestPipelineTypes>>>;
 
 mock! {
     pub FakeSystem {}
@@ -566,13 +557,13 @@ mock! {
         fn params<'a>(
             &self,
             node: &FakeNode,
-            params: &'a mut plparams::GenericNodeParamsRegistrator<'a, TestParamType>,
+            params: &'a mut plparams::GenericNodeParamsRegistrator<'a, TestPipelineTypes>,
         ) -> Result<(), TestSystemError>;
 
         fn inputs<'a>(
             &self,
             node: &FakeNode,
-            reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+            reg: &'a mut plinputs::NodeInputsRegistrator<'a, TestPipelineTypes>,
         ) -> Result<(), TestSystemError>;
 
         fn process(
@@ -585,7 +576,7 @@ mock! {
         fn process_multiple<'a>(
             &self,
             nodes: &'a [&'a FakeNode],
-            args: &plargs::GenericArgSet<TestArgValue>,
+            args: &TestArgSet,
             intermediates: &TestIntermediateSet,
         ) -> Vec<systems::NodeResult<TestPipelineTypes>>;
     }

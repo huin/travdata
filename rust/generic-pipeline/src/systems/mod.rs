@@ -1,17 +1,18 @@
-//! Data types that act upon a [node::GenericNode] to perform individual parts of an pipeline.
+//! Data types that act upon a [crate::node::PipelineNode] to perform individual parts of an
+//! pipeline.
 
 mod metasystem;
 
-use crate::{PipelineTypes, intermediates, node, plargs, plinputs, plparams};
+use crate::{PipelineTypes, intermediates, node::PipelineNode as _, plargs, plinputs, plparams};
 
-pub use metasystem::{DiscriminatedSpec, GenericMetaSystem};
+pub use metasystem::{GenericMetaSystem, TypedNode};
 
 /// Result of processing a node.
 pub struct NodeResult<P>
 where
     P: PipelineTypes,
 {
-    pub id: node::NodeId,
+    pub id: P::NodeId,
     pub value: Result<P::IntermediateValue, P::SystemError>,
 }
 
@@ -29,7 +30,7 @@ where
     }
 }
 
-/// Required trait for types that perform processing of a [crate::node::GenericNode].
+/// Required trait for types that perform processing of a [crate::node::PipelineNode].
 /// Implementations are expected to be stateless with regards to nodes, their arguments, outputs,
 /// etc.
 pub trait GenericSystem<P>
@@ -39,8 +40,8 @@ where
     /// Generates the parameters for the node, if any.
     fn params<'a>(
         &self,
-        _node: &node::GenericNode<P::Spec>,
-        _reg: &'a mut plparams::GenericNodeParamsRegistrator<'a, P::ParamType>,
+        _node: &P::Node,
+        _reg: &'a mut plparams::GenericNodeParamsRegistrator<'a, P>,
     ) -> Result<(), P::SystemError> {
         Ok(())
     }
@@ -48,36 +49,37 @@ where
     /// Registers the set of node IDs that the given node depends on as inputs.
     fn inputs<'a>(
         &self,
-        _node: &node::GenericNode<P::Spec>,
-        _reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
+        _node: &P::Node,
+        _reg: &'a mut plinputs::NodeInputsRegistrator<'a, P>,
     ) -> Result<(), P::SystemError> {
         Ok(())
     }
 
-    /// Performs processing of the given [node::GenericNode], returning its intermediate value.
+    /// Performs processing of the given [crate::node::PipelineNode], returning its intermediate
+    /// value.
     fn process(
         &self,
-        node: &node::GenericNode<P::Spec>,
-        args: &plargs::GenericArgSet<P::ArgValue>,
-        intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
+        node: &P::Node,
+        args: &plargs::GenericArgSet<P>,
+        intermediates: &intermediates::GenericIntermediateSet<P>,
     ) -> Result<P::IntermediateValue, P::SystemError>;
 
-    /// Performs processing of the given [node::GenericNode]s, returning their
-    /// intermediate value(s).
+    /// Performs processing of the given [crate::node::PipelineNode]s, returning their intermediate
+    /// value(s).
     ///
     /// The default implementation processes in serial. Specific implementations may choose to
     /// optimise this.
     fn process_multiple<'a>(
         &self,
-        nodes: &'a [&'a node::GenericNode<P::Spec>],
-        args: &plargs::GenericArgSet<P::ArgValue>,
-        intermediates: &intermediates::GenericIntermediateSet<P::IntermediateValue>,
+        nodes: &'a [&'a P::Node],
+        args: &plargs::GenericArgSet<P>,
+        intermediates: &intermediates::GenericIntermediateSet<P>,
         // TODO: maybe this should return `impl Iterator` instead of an allocated vector
     ) -> Vec<NodeResult<P>> {
         nodes
             .iter()
             .map(|&node| NodeResult::<P> {
-                id: node.id.clone(),
+                id: node.id().clone(),
                 value: self.process(node, args, intermediates),
             })
             .collect()

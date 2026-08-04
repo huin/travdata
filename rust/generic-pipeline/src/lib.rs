@@ -1,5 +1,5 @@
 pub mod intermediates;
-pub mod node;
+mod node;
 pub mod pipeline;
 pub mod plargs;
 pub mod plinputs;
@@ -9,11 +9,16 @@ pub mod systems;
 #[cfg(test)]
 mod testutil;
 
+pub use node::PipelineNode;
+pub use node::PipelineNodeId;
+
 /// Types associated with a [systems::GenericSystem] implementation.
 pub trait PipelineTypes {
-    /// Type of the [node::GenericNode::spec] field expected by the [systems::GenericSystem]
+    /// [node::PipelineNodeId] implementation expected by the [systems::GenericSystem]
     /// implementation.
-    type Spec;
+    type NodeId: PipelineNodeId;
+    /// [node::PipelineNode] implementation expected by the [systems::GenericSystem] implementation.
+    type Node: PipelineNode<Id = Self::NodeId>;
     /// Parameter type emitted by the [systems::GenericSystem] implementation.
     type ParamType;
     /// Argument type expected by the [systems::GenericSystem] implementation.
