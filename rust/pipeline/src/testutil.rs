@@ -4,7 +4,6 @@ use std::{
     thread,
 };
 
-use generic_pipeline::node::Tag;
 use googletest::{matcher::Matcher, prelude::*};
 use hashbrown::{HashMap, HashSet};
 use serde::Deserialize;
@@ -17,19 +16,11 @@ use crate::{
     tabula_wrapper,
 };
 
-pub fn node_id(s: &str) -> crate::NodeId {
-    NodeId::test_node_id(s)
-}
-
 pub fn output_path_buf<P>(s: P) -> crate::spec_types::OutputPathBuf
 where
     P: Into<PathBuf> + AsRef<Path>,
 {
     crate::spec_types::OutputPathBuf::new(s).expect("expected valid OutputPathBufValue")
-}
-
-pub fn tag(s: &str) -> generic_pipeline::node::Tag {
-    Tag::test_tag(s)
 }
 
 pub struct NodeExpected<'a> {
@@ -96,18 +87,18 @@ pub fn check_results<'a, 'm>(
     let actual_node_ids: HashSet<NodeId> = actual_results_map.keys().cloned().collect();
     let expected_node_ids: HashSet<NodeId> = node_expecteds
         .iter()
-        .map(|node_expected| node_expected.node.id.clone())
+        .map(|node_expected| node_expected.node.meta.id.clone())
         .collect();
     expect_that!(actual_node_ids, eq(&expected_node_ids));
 
     for node_expected in node_expecteds {
-        match actual_results_map.get(&node_expected.node.id) {
+        match actual_results_map.get(&node_expected.node.meta.id) {
             Some(actual_result) => {
                 expect_that!(
                     actual_result,
                     node_expected.expected,
                     "for node_id {:?}",
-                    node_expected.node.id,
+                    node_expected.node.meta.id,
                 );
             }
             None => {
@@ -215,7 +206,7 @@ pub struct TestDataTable {
 impl TestDataTable {
     pub fn to_pdf_extract_table(&self, pdf_node_id: &str) -> PdfExtractTable {
         PdfExtractTable {
-            pdf: node_id(pdf_node_id),
+            pdf: pdf_node_id.into(),
             page: self.page,
             method: self.method,
             rect: self.rect,

@@ -1,23 +1,16 @@
 use thiserror_context::Context;
 
-use crate::{SystemError, SystemResult, intermediates, specs};
+use crate::{SystemError, SystemResult, intermediates, plargs, specs};
 
 pub struct JsContextSystem;
 
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsContextSystem {
     fn process(
         &self,
-        node: &generic_pipeline::node::GenericNode<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::Spec,
-        >,
-        _args: &generic_pipeline::plargs::GenericArgSet<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ArgValue,
-        >,
-        _intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue,
-        >,
-    ) -> SystemResult<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
-    {
+        node: &crate::Node,
+        _args: &plargs::ArgSet,
+        _intermediates: &intermediates::IntermediateSet,
+    ) -> SystemResult<intermediates::IntermediateValue> {
         let _: &specs::JsContext = node.spec.downcast()?;
 
         let global_context = v8wrapper::try_with_isolate(|tls_isolate| tls_isolate.new_ctx())

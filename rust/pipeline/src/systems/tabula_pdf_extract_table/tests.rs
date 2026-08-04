@@ -5,12 +5,12 @@ use test_casing::{TestCases, cases, test_casing};
 use testutils::DefaultForTest;
 
 use crate::{
-    Node, NodeId, SystemResult, intermediates,
+    Node, NodeId, NodeMeta, SystemResult, intermediates,
     spec_types::pdf,
     specs,
     systems::tabula_pdf_extract_table::grouped_non_overlapping_slices,
     tabula_wrapper::threadeddispatch::ExtractorClient,
-    testutil::{self, MatcherBox, NodeExpected, TestDataTables, check_results, node_id},
+    testutil::{self, MatcherBox, NodeExpected, TestDataTables, check_results},
 };
 
 use super::{NodeSpec, TabulaPdfExtractTableSystem};
@@ -22,12 +22,11 @@ fn test_extracts_single_table_lattice(
 ) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
-            id: node_id("node-one"),
+            meta: NodeMeta::new("node-one"),
             spec: test_data_tables
                 .table_1
                 .to_pdf_extract_table("pdf-file")
                 .into(),
-            ..DefaultForTest::default_for_test()
         },
         expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
             &["Heading 1", "Heading 2", "Heading 3"],
@@ -49,12 +48,11 @@ fn test_extracts_single_table_stream(
 ) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
-            id: node_id("node-one"),
+            meta: NodeMeta::new("node-one"),
             spec: test_data_tables
                 .table_2
                 .to_pdf_extract_table("pdf-file")
                 .into(),
-            ..DefaultForTest::default_for_test()
         },
         expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
             &["Heading 1", "Heading 2", "Heading 3"],
@@ -76,13 +74,12 @@ fn test_rejects_lattice_in_two_parts(
 ) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
-            id: node_id("node-one"),
+            meta: NodeMeta::new("node-one"),
             spec: test_data_tables
                 .table_3_1
                 .try_union_with(&test_data_tables.table_3_2)?
                 .to_pdf_extract_table("pdf-file")
                 .into(),
-            ..DefaultForTest::default_for_test()
         },
         expected: MatcherBox::new(err(displays_as(contains_substring(
             "multiple (2) tables in region",
@@ -103,12 +100,11 @@ fn test_extracts_single_table_and_rejects_overlapping_split_table(
     let node_expecteds = vec![
         NodeExpected {
             node: Node {
-                id: node_id("first-table-only"),
+                meta: NodeMeta::new("first-table-only"),
                 spec: test_data_tables
                     .table_3_1
                     .to_pdf_extract_table("pdf-file")
                     .into(),
-                ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
                 &["Heading 1", "Heading 2", "Heading 3"],
@@ -118,13 +114,12 @@ fn test_extracts_single_table_and_rejects_overlapping_split_table(
         },
         NodeExpected {
             node: Node {
-                id: node_id("both-tables"),
+                meta: NodeMeta::new("both-tables"),
                 spec: test_data_tables
                     .table_3_1
                     .try_union_with(&test_data_tables.table_3_2)?
                     .to_pdf_extract_table("pdf-file")
                     .into(),
-                ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(err(displays_as(contains_substring(
                 "multiple (2) tables in region",
@@ -145,12 +140,11 @@ fn test_rejects_single_empty_region(
 ) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
-            id: node_id("no-tables-in-region"),
+            meta: NodeMeta::new("no-tables-in-region"),
             spec: test_data_tables
                 .no_table
                 .to_pdf_extract_table("pdf-file")
                 .into(),
-            ..DefaultForTest::default_for_test()
         },
         expected: MatcherBox::new(err(displays_as(contains_substring("no table in region")))),
     }];
@@ -168,13 +162,12 @@ fn test_rejects_single_region_with_multiple_tables(
 ) -> Result<()> {
     let node_expecteds = vec![NodeExpected {
         node: Node {
-            id: node_id("two-tables-in-region"),
+            meta: NodeMeta::new("two-tables-in-region"),
             spec: test_data_tables
                 .table_3_1
                 .try_union_with(&test_data_tables.table_3_2)?
                 .to_pdf_extract_table("pdf-file")
                 .into(),
-            ..DefaultForTest::default_for_test()
         },
         expected: MatcherBox::new(err(displays_as(contains_substring(
             "multiple (2) tables in region",
@@ -196,12 +189,11 @@ fn test_multiple_tables_with_overlaps(
     let node_expecteds = vec![
         NodeExpected {
             node: Node {
-                id: node_id("table-1-complete"),
+                meta: NodeMeta::new("table-1-complete"),
                 spec: test_data_tables
                     .table_1
                     .to_pdf_extract_table("pdf-file")
                     .into(),
-                ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
                 &["Heading 1", "Heading 2", "Heading 3"],
@@ -211,12 +203,11 @@ fn test_multiple_tables_with_overlaps(
         },
         NodeExpected {
             node: Node {
-                id: node_id("table-1-headings-only"),
+                meta: NodeMeta::new("table-1-headings-only"),
                 spec: test_data_tables
                     .table_1_heading
                     .to_pdf_extract_table("pdf-file")
                     .into(),
-                ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[&[
                 "Heading 1",
@@ -226,12 +217,11 @@ fn test_multiple_tables_with_overlaps(
         },
         NodeExpected {
             node: Node {
-                id: node_id("table-1-data-rows-only"),
+                meta: NodeMeta::new("table-1-data-rows-only"),
                 spec: test_data_tables
                     .table_1_rows
                     .to_pdf_extract_table("pdf-file")
                     .into(),
-                ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(ok(eq(table_slice_to_to_intermediates_json_data(&[
                 &["r1c1", "r1c2", "r1c3"],
@@ -256,24 +246,22 @@ fn test_rejects_two_overlapping_regions_with_zero_and_two_tables_respectively(
     let node_expecteds = vec![
         NodeExpected {
             node: Node {
-                id: node_id("no-tables-in-region"),
+                meta: NodeMeta::new("no-tables-in-region"),
                 spec: test_data_tables
                     .no_table
                     .to_pdf_extract_table("pdf-file")
                     .into(),
-                ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(err(displays_as(contains_substring("no table in region")))),
         },
         NodeExpected {
             node: Node {
-                id: node_id("two-tables-in-region"),
+                meta: NodeMeta::new("two-tables-in-region"),
                 spec: test_data_tables
                     .table_3_1
                     .try_union_with(&test_data_tables.table_3_2)?
                     .to_pdf_extract_table("pdf-file")
                     .into(),
-                ..DefaultForTest::default_for_test()
             },
             expected: MatcherBox::new(err(displays_as(contains_substring(
                 "multiple (2) tables in region",
@@ -333,7 +321,7 @@ where
 fn test_data_interms() -> intermediates::IntermediateSet {
     let mut interms = intermediates::IntermediateSet::new();
     interms.set(
-        node_id("pdf-file"),
+        "pdf-file".into(),
         intermediates::InputFile("./test_data/tables.pdf".into()).into(),
     );
     interms
@@ -363,9 +351,9 @@ fn test_grouped_non_overlapping_regions_cases() {
 #[test_casing(6, TEST_GROUPED_NON_OVERLAPPING_REGIONS_CASES)]
 #[gtest]
 fn test_grouped_non_overlapping_regions(node_order: [usize; 3]) -> Result<()> {
-    let node_a_id = node_id("node-a");
+    let node_a_id: NodeId = "node-a".into();
     let node_a = Node {
-        id: node_a_id.clone(),
+        meta: NodeMeta::new(node_a_id.clone()),
         spec: crate::specs::PdfExtractTable {
             rect: pdf::TabulaPdfRect {
                 left: 5.0.into(),
@@ -376,12 +364,11 @@ fn test_grouped_non_overlapping_regions(node_order: [usize; 3]) -> Result<()> {
             ..DefaultForTest::default_for_test()
         }
         .into(),
-        ..DefaultForTest::default_for_test()
     };
     // node_b overlaps with node_a.
-    let node_b_id = node_id("node-b");
+    let node_b_id: NodeId = "node-b".into();
     let node_b = Node {
-        id: node_b_id.clone(),
+        meta: NodeMeta::new(node_b_id.clone()),
         spec: crate::specs::PdfExtractTable {
             rect: pdf::TabulaPdfRect {
                 left: 7.0.into(),
@@ -392,12 +379,11 @@ fn test_grouped_non_overlapping_regions(node_order: [usize; 3]) -> Result<()> {
             ..DefaultForTest::default_for_test()
         }
         .into(),
-        ..DefaultForTest::default_for_test()
     };
     // node_c overlaps with neither.
-    let node_c_id = node_id("node-c");
+    let node_c_id: NodeId = "node-c".into();
     let node_c = Node {
-        id: node_c_id.clone(),
+        meta: NodeMeta::new(node_c_id.clone()),
         spec: crate::specs::PdfExtractTable {
             rect: pdf::TabulaPdfRect {
                 left: 5.0.into(),
@@ -408,7 +394,6 @@ fn test_grouped_non_overlapping_regions(node_order: [usize; 3]) -> Result<()> {
             ..DefaultForTest::default_for_test()
         }
         .into(),
-        ..DefaultForTest::default_for_test()
     };
 
     let nodes = [node_a, node_b, node_c];
@@ -428,7 +413,7 @@ fn test_grouped_non_overlapping_regions(node_order: [usize; 3]) -> Result<()> {
     grouped_non_overlapping_slices(node_specs, |node_specs_group| {
         let group: Vec<_> = node_specs_group
             .iter()
-            .map(|node_spec| node_spec.node.id.clone())
+            .map(|node_spec| node_spec.node.meta.id.clone())
             .collect();
         all_node_ids_seen.extend(group.iter().cloned());
         all_groups_seen.push(group);

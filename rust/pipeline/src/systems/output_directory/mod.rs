@@ -8,15 +8,10 @@ pub struct OutputDirectorySystem;
 const PARAM_PATH: ParamId = ParamId::from_static("path");
 
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDirectorySystem {
-    fn params<'a>(
+    fn params(
         &self,
-        node: &generic_pipeline::node::GenericNode<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::Spec,
-        >,
-        reg: &'a mut generic_pipeline::plparams::GenericNodeParamsRegistrator<
-            'a,
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ParamType,
-        >,
+        node: &crate::Node,
+        reg: &mut plparams::NodeParamsRegistrator,
     ) -> SystemResult<()> {
         let spec: &specs::OutputDirectory = node.spec.downcast()?;
         reg.add_param(
@@ -29,19 +24,12 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for OutputDi
 
     fn process(
         &self,
-        node: &generic_pipeline::node::GenericNode<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::Spec,
-        >,
-        args: &generic_pipeline::plargs::GenericArgSet<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ArgValue,
-        >,
-        _intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue,
-        >,
-    ) -> SystemResult<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
-    {
+        node: &crate::Node,
+        args: &plargs::ArgSet,
+        _intermediates: &intermediates::IntermediateSet,
+    ) -> SystemResult<intermediates::IntermediateValue> {
         let output_directory_arg: &plargs::OutputDirectory =
-            plargs::get_arg(args, &node.id, &PARAM_PATH)?;
+            plargs::get_arg(args, &node.meta.id, &PARAM_PATH)?;
 
         let output_directory = intermediates::OutputDirectory(output_directory_arg.0.clone());
 

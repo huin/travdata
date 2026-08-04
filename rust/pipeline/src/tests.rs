@@ -1,20 +1,19 @@
 use std::{path::Path, rc::Rc};
 
-use generic_pipeline::plparams::{ParamId, ParamKey};
+use generic_pipeline::plparams::ParamId;
 use googletest::prelude::*;
 use hashbrown::HashMap;
 use map_macro::hashbrown::{hash_map, hash_map_e};
 use serde_json::json;
 
 use crate::{
-    MetaSystem, Node,
+    MetaSystem, Node, NodeMeta, ParamKey,
     plargs::{self, ArgSet, ArgValue},
     plparams::{Param, ParamType},
     spec_types::OutputPathBuf,
     specs::{InputPdfFile, JsContext, JsTransform, OutputDirectory, OutputFileJson, Spec},
-    testutil::{self, TestDataTables, TlsIsolateFixture, node_id},
+    testutil::{self, TestDataTables, TlsIsolateFixture},
 };
-use testutils::DefaultForTest;
 
 fn new_metasystem(tabula_extractor_fixture: &&testutil::TabulaExtractorFixture) -> MetaSystem {
     crate::new_metasystem(Box::new(tabula_extractor_fixture.client.clone()))
@@ -32,63 +31,56 @@ fn test_e2e_small_pipeline(
 
     let pipeline = crate::Pipeline::new(vec![
         Node {
-            id: node_id("input-pdf"),
+            meta: NodeMeta::new("input-pdf"),
             spec: Spec::InputPdfFile(InputPdfFile {
                 description: "Input PDF.".into(),
             }),
-            ..DefaultForTest::default_for_test()
         },
         Node {
-            id: node_id("js-ctx"),
+            meta: NodeMeta::new("js-ctx"),
             spec: Spec::JsContext(JsContext),
-            ..DefaultForTest::default_for_test()
         },
         Node {
-            id: node_id("output-dir"),
+            meta: NodeMeta::new("output-dir"),
             spec: Spec::OutputDirectory(OutputDirectory {
                 description: "Output directory.".into(),
             }),
-            ..DefaultForTest::default_for_test()
         },
         Node {
-            id: node_id("read-table-1"),
+            meta: NodeMeta::new("read-table-1"),
             spec: test_data_tables
                 .table_1
                 .to_pdf_extract_table("input-pdf")
                 .into(),
-            ..DefaultForTest::default_for_test()
         },
         Node {
-            id: node_id("read-table-2"),
+            meta: NodeMeta::new("read-table-2"),
             spec: test_data_tables
                 .table_2
                 .to_pdf_extract_table("input-pdf")
                 .into(),
-            ..DefaultForTest::default_for_test()
         },
         Node {
-            id: node_id("read-table-3-1"),
+            meta: NodeMeta::new("read-table-3-1"),
             spec: test_data_tables
                 .table_3_1
                 .to_pdf_extract_table("input-pdf")
                 .into(),
-            ..DefaultForTest::default_for_test()
         },
         Node {
-            id: node_id("read-table-3-2"),
+            meta: NodeMeta::new("read-table-3-2"),
             spec: test_data_tables
                 .table_3_2
                 .to_pdf_extract_table("input-pdf")
                 .into(),
-            ..DefaultForTest::default_for_test()
         },
         Node {
-            id: node_id("merge-table-3"),
+            meta: NodeMeta::new("merge-table-3"),
             spec: JsTransform {
-                context: node_id("js-ctx"),
+                context: "js-ctx".into(),
                 input_data: hash_map! {
-                    "part_1".into() => node_id("read-table-3-1"),
-                    "part_2".into() => node_id("read-table-3-2"),
+                    "part_1".into() => "read-table-3-1".into(),
+                    "part_2".into() => "read-table-3-2".into(),
                 },
                 code: r#"
                     return part_1.concat(part_2);
@@ -96,39 +88,35 @@ fn test_e2e_small_pipeline(
                 .into(),
             }
             .into(),
-            ..DefaultForTest::default_for_test()
         },
         Node {
-            id: node_id("output-table-1"),
+            meta: NodeMeta::new("output-table-1"),
             spec: Spec::OutputFileJson(OutputFileJson {
-                input_data: node_id("read-table-1"),
-                directory: node_id("output-dir"),
+                input_data: "read-table-1".into(),
+                directory: "output-dir".into(),
                 filename: OutputPathBuf::new(Path::new("table-1.json"))?,
             }),
-            ..DefaultForTest::default_for_test()
         },
         Node {
-            id: node_id("output-table-2"),
+            meta: NodeMeta::new("output-table-2"),
             spec: Spec::OutputFileJson(OutputFileJson {
-                input_data: node_id("read-table-2"),
-                directory: node_id("output-dir"),
+                input_data: "read-table-2".into(),
+                directory: "output-dir".into(),
                 filename: OutputPathBuf::new(Path::new("table-2.json"))?,
             }),
-            ..DefaultForTest::default_for_test()
         },
         Node {
-            id: node_id("output-table-3"),
+            meta: NodeMeta::new("output-table-3"),
             spec: Spec::OutputFileJson(OutputFileJson {
-                input_data: node_id("merge-table-3"),
-                directory: node_id("output-dir"),
+                input_data: "merge-table-3".into(),
+                directory: "output-dir".into(),
                 filename: OutputPathBuf::new(Path::new("table-3.json"))?,
             }),
-            ..DefaultForTest::default_for_test()
         },
     ]);
 
-    let input_pdf_param_key = ParamKey::new(node_id("input-pdf"), ParamId::from_static("path"));
-    let output_dir_param_key = ParamKey::new(node_id("output-dir"), ParamId::from_static("path"));
+    let input_pdf_param_key = ParamKey::new("input-pdf".into(), ParamId::from_static("path"));
+    let output_dir_param_key = ParamKey::new("output-dir".into(), ParamId::from_static("path"));
 
     let params = processor.resolve_params(&pipeline)?;
     let expected_params: HashMap<ParamKey, Param> = hash_map_e! {

@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests;
 
-use generic_pipeline::plinputs;
 use thiserror_context::Context;
 use v8wrapper::CatchToResult;
 
-use crate::{NodeId, SystemError, SystemResult, intermediates, specs::JsTransform};
+use crate::{NodeId, SystemError, SystemResult, intermediates, plinputs, specs::JsTransform};
 
 /// Provides processing support for [crate::specs::Spec::JsTransform].
 #[derive(Default)]
@@ -62,7 +61,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
                     try_catch,
                     &arg_names,
                     &v8wrapper::ESScriptOrigin {
-                        resource_name: format!("nodes[{:?}].spec.code", node.id.as_ref()),
+                        resource_name: format!("nodes[{:?}].spec.code", node.meta.id),
                         is_module: false,
                         ..Default::default()
                     },

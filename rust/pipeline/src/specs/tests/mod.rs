@@ -1,9 +1,9 @@
 use googletest::prelude::*;
-use map_macro::hashbrown::{hash_map, hash_set};
+use map_macro::hashbrown::hash_map;
 use test_casing::{TestCases, cases, test_casing};
 
 use super::*;
-use crate::{Node, spec_types::pdf, testutil::*};
+use crate::{Node, NodeMeta, spec_types::pdf, testutil::*};
 
 const CASES: TestCases<(&'static str, Node)> = cases! {
     [
@@ -15,9 +15,7 @@ spec:
   description: input PDF file
             "#,
             Node{
-                id: node_id("foo-pdf"),
-                tags: Default::default(),
-                public: false,
+                meta: NodeMeta::new("foo-pdf"),
                 spec: Spec::InputPdfFile(InputPdfFile { description: "input PDF file".into() }),
             },
         ),
@@ -36,11 +34,9 @@ spec:
     bottom: 30.0
             "#,
             Node{
-                id: node_id("thingy-1-extract"),
-                tags: Default::default(),
-                public: false,
+                meta: NodeMeta::new("thingy-1-extract"),
                 spec: Spec::PdfExtractTable(PdfExtractTable {
-                    pdf: node_id("foo-pdf"),
+                    pdf: "foo-pdf".into(),
                     page: 123,
                     method: pdf::TabulaExtractionMethod::Stream,
                     rect: pdf::TabulaPdfRect {
@@ -64,13 +60,11 @@ spec:
     return foo.bar;
 "#,
             Node{
-                id: node_id("thingy-1-transform"),
-                tags: Default::default(),
-                public: false,
+                meta: NodeMeta::new("thingy-1-transform"),
                 spec: Spec::JsTransform(JsTransform {
-                    context: node_id("js-context-id"),
+                    context: "js-context-id".into(),
                     input_data: hash_map! {
-                        "foo".to_string() => node_id("thingy-1-extract"),
+                        "foo".to_string() => "thingy-1-extract".into(),
                     },
                     code: "return foo.bar;\n".to_string(),
                 }),
@@ -79,24 +73,17 @@ spec:
         (
             r#"
 id: thingy-1-json-out
-tags: [thingy-1, format/json]
 type: OutputFileJson
-public: true
 spec:
   input_data: thingy-1-transform
   directory: output-directory
   filename: thingy-1.json
             "#,
             Node{
-                id: node_id("thingy-1-json-out"),
-                tags: hash_set!{
-                    tag("format/json"),
-                    tag("thingy-1"),
-                },
-                public: true,
+                meta: NodeMeta::new("thingy-1-json-out"),
                 spec: Spec::OutputFileJson(OutputFileJson {
-                    input_data: node_id("thingy-1-transform"),
-                    directory: node_id("output-directory"),
+                    input_data: "thingy-1-transform".into(),
+                    directory: "output-directory".into(),
                     filename: output_path_buf("thingy-1.json"),
                 }),
             },
@@ -104,24 +91,17 @@ spec:
         (
             r#"
 id: thingy-1-csv-out
-tags: [thingy-1, format/csv]
 type: OutputFileCsv
-public: true
 spec:
   input_data: thingy-1-transform
   directory: output-directory
   filename: thingy-1.csv
             "#,
             Node{
-                id: node_id("thingy-1-csv-out"),
-                tags: hash_set!{
-                    tag("format/csv"),
-                    tag("thingy-1"),
-                },
-                public: true,
+                meta: NodeMeta::new("thingy-1-csv-out"),
                 spec: Spec::OutputFileCsv(OutputFileCsv {
-                    input_data: node_id("thingy-1-transform"),
-                    directory: node_id("output-directory"),
+                    input_data: "thingy-1-transform".into(),
+                    directory: "output-directory".into(),
                     filename: output_path_buf("thingy-1.csv"),
                 }),
             },

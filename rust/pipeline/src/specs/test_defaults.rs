@@ -18,8 +18,8 @@ impl testutils::DefaultForTest for InputPdfFile {
 impl testutils::DefaultForTest for OutputFileCsv {
     fn default_for_test() -> Self {
         Self {
-            input_data: node_id("input-id"),
-            directory: node_id("directory-id"),
+            input_data: "input-id".into(),
+            directory: "directory-id".into(),
             filename: output_path_buf("output.csv"),
         }
     }
@@ -28,8 +28,8 @@ impl testutils::DefaultForTest for OutputFileCsv {
 impl testutils::DefaultForTest for OutputFileJson {
     fn default_for_test() -> Self {
         Self {
-            input_data: node_id("input-id"),
-            directory: node_id("directory-id"),
+            input_data: "input-id".into(),
+            directory: "directory-id".into(),
             filename: output_path_buf("output.json"),
         }
     }

@@ -4,10 +4,7 @@ use googletest::prelude::*;
 use serde_json::Value;
 use testutils::DefaultForTest;
 
-use crate::{
-    intermediates, plargs, specs,
-    testutil::{node_id, output_path_buf},
-};
+use crate::{intermediates, plargs, specs, testutil::output_path_buf};
 
 use super::*;
 
@@ -18,13 +15,13 @@ fn test_process_writes_file() -> Result<()> {
     const FILENAME: &str = "bar/foo.json";
 
     let node = crate::Node {
+        meta: DefaultForTest::default_for_test(),
         spec: specs::OutputFileJson {
-            input_data: node_id("input-data"),
-            directory: node_id("output-directory"),
+            input_data: "input-data".into(),
+            directory: "output-directory".into(),
             filename: output_path_buf(FILENAME),
         }
         .into(),
-        ..DefaultForTest::default_for_test()
     };
 
     let mut intermediates = intermediates::IntermediateSet::new();
@@ -36,13 +33,13 @@ fn test_process_writes_file() -> Result<()> {
         Value::Object(map)
     };
     intermediates.set(
-        node_id("input-data"),
+        "input-data".into(),
         intermediates::JsonData(original_data.clone()).into(),
     );
 
     let output_dir = temp_dir();
     intermediates.set(
-        node_id("output-directory"),
+        "output-directory".into(),
         intermediates::OutputDirectory(output_dir.clone()).into(),
     );
     let args = plargs::ArgSet::default();

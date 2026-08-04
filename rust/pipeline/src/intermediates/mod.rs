@@ -12,7 +12,7 @@ use crate::{
 
 /// Monomorphic form of [generic_pipeline::intermediates::GenericIntermediateSet].
 pub type IntermediateSet =
-    generic_pipeline::intermediates::GenericIntermediateSet<IntermediateValue>;
+    generic_pipeline::intermediates::GenericIntermediateSet<crate::PipelineTypes>;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum IntermediateValue {

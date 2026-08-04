@@ -24,10 +24,8 @@ pub struct JsTransform {
 #[cfg(test)]
 impl testutils::DefaultForTest for JsTransform {
     fn default_for_test() -> Self {
-        use crate::testutil::node_id;
-
         Self {
-            context: node_id("default-test-js-context"),
+            context: "default-test-js-context".into(),
             input_data: Default::default(),
             code: "return {}".into(),
         }

@@ -8,10 +8,11 @@ use serde_json::Value;
 use thiserror_context::Context;
 
 use crate::{
-    Node, NodeResult, StringError,
+    Node, NodeId, NodeResult, StringError,
     error::{SystemError, SystemResult},
     intermediates,
     plargs::ArgSet,
+    plinputs,
     spec_types::pdf::{self, TabulaExtractionMethod},
     specs::{self, PdfExtractTable},
     tabula_wrapper::{self, TabulaExtractionRequest, TabulaExtractor},
@@ -70,7 +71,7 @@ impl TabulaPdfExtractTableSystem {
             Err(err) => {
                 for node_spec in node_specs {
                     results.push(NodeResult {
-                        id: node_spec.node.id.clone(),
+                        id: node_spec.node.meta.id.clone(),
                         value: Err(err.clone()),
                     });
                 }
@@ -101,7 +102,7 @@ impl TabulaPdfExtractTableSystem {
             .map_err(SystemError::map_execution());
 
             results.push(NodeResult {
-                id: node_spec.node.id.clone(),
+                id: node_spec.node.meta.id.clone(),
                 value,
             });
         }
@@ -121,12 +122,10 @@ impl TabulaPdfExtractTableSystem {
 
     fn extract_groups(
         &self,
-        intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
-            intermediates::IntermediateValue,
-        >,
+        intermediates: &intermediates::IntermediateSet,
         results: &mut Vec<NodeResult>,
         pdf_group_to_node_specs: HashMap<
-            generic_pipeline::node::NodeId,
+            crate::NodeId,
             HashMap<ExtractGroupKey, Vec<NodeSpec<'_>>>,
         >,
     ) {
@@ -143,7 +142,7 @@ impl TabulaPdfExtractTableSystem {
                     for (_, node_specs) in &group_to_node_specs {
                         for node_spec in node_specs {
                             results.push(NodeResult {
-                                id: node_spec.node.id.clone(),
+                                id: node_spec.node.meta.id.clone(),
                                 value: Err(err.clone()),
                             });
                         }
@@ -168,7 +167,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
     fn inputs<'a>(
         &self,
         node: &Node,
-        reg: &'a mut generic_pipeline::plinputs::NodeInputsRegistrator<'a>,
+        reg: &'a mut plinputs::NodeInputsRegistrator<'a>,
     ) -> SystemResult<()> {
         let spec: &specs::PdfExtractTable = node.spec.downcast()?;
         reg.add_input(&spec.pdf);
@@ -190,10 +189,10 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
             .map_err(SystemError::map_internal());
         }
         let result = result.pop().expect("bug: length was checked");
-        if result.id != node.id {
+        if result.id != node.meta.id {
             return Err(StringError(format!(
                 "bug: process_multiple returned result for {:?} but expected result for {:?}",
-                result.id, node.id
+                result.id, node.meta.id
             )))
             .map_err(SystemError::map_internal());
         }
@@ -218,9 +217,9 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes>
 
 /// Groups nodes for extraction by [ExtractGroupKey], to reduce the number of calls into Tabula.
 fn group_nodes_for_extraction<'a>(
-    nodes: &'a [&'a generic_pipeline::node::GenericNode<specs::Spec>],
+    nodes: &'a [&'a Node],
     results: &mut Vec<NodeResult>,
-) -> HashMap<generic_pipeline::node::NodeId, HashMap<ExtractGroupKey, Vec<NodeSpec<'a>>>> {
+) -> HashMap<NodeId, HashMap<ExtractGroupKey, Vec<NodeSpec<'a>>>> {
     let mut pdf_group_to_node_specs: HashMap<
         crate::NodeId,
         HashMap<ExtractGroupKey, Vec<NodeSpec>>,
@@ -230,7 +229,7 @@ fn group_nodes_for_extraction<'a>(
             Ok(spec) => spec,
             Err(err) => {
                 results.push(NodeResult {
-                    id: node.id.clone(),
+                    id: node.meta.id.clone(),
                     value: Err(err),
                 });
                 continue;

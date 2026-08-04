@@ -4,17 +4,15 @@ mod tests;
 use generic_pipeline::systems::GenericSystem;
 use thiserror_context::Context;
 
-use crate::{StringError, SystemError, SystemResult, intermediates, specs};
+use crate::{StringError, SystemError, SystemResult, intermediates, plargs, plinputs, specs};
 
 pub struct OutputFileCsvSystem;
 
 impl GenericSystem<crate::PipelineTypes> for OutputFileCsvSystem {
-    fn inputs<'a>(
+    fn inputs(
         &self,
-        node: &generic_pipeline::node::GenericNode<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::Spec,
-        >,
-        reg: &'a mut generic_pipeline::plinputs::NodeInputsRegistrator<'a>,
+        node: &crate::Node,
+        reg: &mut plinputs::NodeInputsRegistrator,
     ) -> SystemResult<()> {
         let spec: &specs::OutputFileCsv = node.spec.downcast()?;
         reg.add_input(&spec.input_data);
@@ -24,15 +22,9 @@ impl GenericSystem<crate::PipelineTypes> for OutputFileCsvSystem {
 
     fn process(
         &self,
-        node: &generic_pipeline::node::GenericNode<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::Spec,
-        >,
-        _args: &generic_pipeline::plargs::GenericArgSet<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ArgValue,
-        >,
-        intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue,
-        >,
+        node: &crate::Node,
+        _args: &plargs::ArgSet,
+        intermediates: &intermediates::IntermediateSet,
     ) -> SystemResult<intermediates::IntermediateValue> {
         let spec: &specs::OutputFileCsv = node.spec.downcast()?;
         let directory: &intermediates::OutputDirectory =

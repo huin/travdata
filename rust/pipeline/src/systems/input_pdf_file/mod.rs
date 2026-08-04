@@ -2,7 +2,11 @@ use generic_pipeline::plparams::ParamId;
 use thiserror_context::Context;
 
 use crate::{
-    StringError, SystemError, SystemResult, intermediates::InputFile, plargs, plparams, specs,
+    StringError, SystemError, SystemResult,
+    intermediates::{self, InputFile},
+    plargs,
+    plparams::{self},
+    specs,
 };
 
 pub struct InputPdfFileSystem;
@@ -10,15 +14,10 @@ pub struct InputPdfFileSystem;
 const PARAM_PATH: ParamId = ParamId::from_static("path");
 
 impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for InputPdfFileSystem {
-    fn params<'a>(
+    fn params(
         &self,
-        node: &generic_pipeline::node::GenericNode<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::Spec,
-        >,
-        reg: &'a mut generic_pipeline::plparams::GenericNodeParamsRegistrator<
-            'a,
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ParamType,
-        >,
+        node: &crate::Node,
+        reg: &mut plparams::NodeParamsRegistrator,
     ) -> SystemResult<()> {
         let spec: &specs::InputPdfFile = node.spec.downcast()?;
         reg.add_param(
@@ -31,18 +30,11 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for InputPdf
 
     fn process(
         &self,
-        node: &generic_pipeline::node::GenericNode<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::Spec,
-        >,
-        args: &generic_pipeline::plargs::GenericArgSet<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::ArgValue,
-        >,
-        _intermediates: &generic_pipeline::intermediates::GenericIntermediateSet<
-            <crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue,
-        >,
-    ) -> SystemResult<<crate::PipelineTypes as generic_pipeline::PipelineTypes>::IntermediateValue>
-    {
-        let input_pdf: &plargs::InputPdf = plargs::get_arg(args, &node.id, &PARAM_PATH)?;
+        node: &crate::Node,
+        args: &plargs::ArgSet,
+        _intermediates: &intermediates::IntermediateSet,
+    ) -> SystemResult<intermediates::IntermediateValue> {
+        let input_pdf: &plargs::InputPdf = plargs::get_arg(args, &node.meta.id, &PARAM_PATH)?;
 
         if !std::fs::exists(&input_pdf.0)
             .map_err(SystemError::map_arg_value(&PARAM_PATH))

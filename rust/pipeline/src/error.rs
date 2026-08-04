@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use generic_pipeline::{intermediates::IntermediateError, plargs::ArgError, plparams::ParamId};
+use generic_pipeline::plparams::ParamId;
 use thiserror::Error;
 use thiserror_context::{Context, impl_context};
 
-use crate::NodeId;
+use crate::{ArgError, IntermediateError, NodeId};
 
 pub type SystemResult<T> = std::result::Result<T, SystemError>;
 
