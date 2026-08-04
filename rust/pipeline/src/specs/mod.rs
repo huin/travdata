@@ -25,7 +25,7 @@ pub use pdf_extract_table::PdfExtractTable;
 
 /// Per-type wrapper of a specific type of extraction configuration node.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, strum_macros::EnumDiscriminants)]
-#[strum_discriminants(derive(Hash))]
+#[strum_discriminants(derive(Hash, strum::VariantNames))]
 #[serde(tag = "type", content = "spec")]
 pub enum Spec {
     InputPdfFile(InputPdfFile),
@@ -51,6 +51,24 @@ impl generic_pipeline::systems::DiscriminatedSpec for Spec {
 
     fn discriminant(&self) -> Self::Discrim {
         self.into()
+    }
+}
+
+impl strum::VariantMetadata for SpecDiscriminants {
+    const VARIANT_COUNT: usize = <SpecDiscriminants as strum::VariantNames>::VARIANTS.len();
+    const VARIANT_NAMES: &'static [&'static str] =
+        <SpecDiscriminants as strum::VariantNames>::VARIANTS;
+
+    fn variant_name(&self) -> &'static str {
+        match self {
+            SpecDiscriminants::InputPdfFile => "InputPdfFile",
+            SpecDiscriminants::JsContext => "JsContext",
+            SpecDiscriminants::JsTransform => "JsTransform",
+            SpecDiscriminants::OutputDirectory => "OutputDirectory",
+            SpecDiscriminants::OutputFileCsv => "OutputFileCsv",
+            SpecDiscriminants::OutputFileJson => "OutputFileJson",
+            SpecDiscriminants::PdfExtractTable => "PdfExtractTable",
+        }
     }
 }
 
