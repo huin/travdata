@@ -1,25 +1,15 @@
 use generic_pipeline::systems::TypedNode as _;
 use strum::VariantMetadata as _;
 
-use crate::app::{components::node_editor, data, ddo};
+use crate::app::{components::node_editor, data};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct PipelineEditor {
-    // TODO: Consider factoring out `nodes`, and only keep the component state in here. Passing in
-    // OrderedNodeSet to `::ui()`.
-    nodes: data::OrderedNodeSet,
     selected_node_ref: Option<data::NodeRef>,
 }
 
 impl PipelineEditor {
-    pub fn new(pipeline: ddo::PipelineNodes) -> Result<Self, String> {
-        Ok(Self {
-            nodes: data::OrderedNodeSet::new(pipeline)?,
-            selected_node_ref: None,
-        })
-    }
-
-    pub fn ui(&mut self, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, ui: &mut egui::Ui, pipeline: &mut data::EditablePipeline) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             let text_height = egui::TextStyle::Body
                 .resolve(ui.style())
@@ -43,9 +33,9 @@ impl PipelineEditor {
                     });
                 })
                 .body(|body| {
-                    body.rows(text_height, self.nodes.len(), |mut row| {
+                    body.rows(text_height, pipeline.len(), |mut row| {
                         let row_index = row.index();
-                        let (node_ref, node) = match self.nodes.get_by_index_mut(row_index) {
+                        let (node_ref, node) = match pipeline.get_node_by_index(row_index) {
                             Some(node) => node,
                             None => return,
                         };
@@ -68,14 +58,13 @@ impl PipelineEditor {
 
             ui.separator();
 
-            match self.selected_node_ref.and_then(|node_ref| {
-                self.nodes
-                    .get_by_node_ref_mut(node_ref)
-                    .map(|node| (node_ref, node))
-            }) {
-                Some((node_ref, node)) => {
-                    ui.push_id(node_ref, |ui| {
-                        node_editor::node_editor_ui(ui, node);
+            match self
+                .selected_node_ref
+                .and_then(|node_ref| pipeline.get_node_ctx_by_ref_mut(node_ref))
+            {
+                Some(mut node_ctx) => {
+                    ui.push_id(node_ctx.node_ref, |ui| {
+                        node_editor::node_editor_ui(ui, &mut node_ctx);
                     });
                 }
                 None => {
@@ -85,17 +74,5 @@ impl PipelineEditor {
                 }
             };
         });
-    }
-
-    pub fn pipeline_for_serialisation(&self) -> Result<ddo::PipelineNodes, String> {
-        self.nodes
-            .nodes_in_order()
-            .map(|node_opt| {
-                node_opt
-                    .cloned()
-                    .ok_or("could not resolve NodeRef")
-                    .map_err(String::from)
-            })
-            .collect::<Result<Vec<_>, String>>()
     }
 }

@@ -1,29 +1,39 @@
 use pipeline::specs::Spec;
 
-use crate::app::components::{node_ref_editor_ui, todo_ui};
+use crate::app::{
+    components::{node_ref_editor_ui, todo_ui},
+    data,
+};
 
 // TODO: Consider if we need component state, passing in NodeRef so that a change to which node is
 // being edited can be detected.
 
-pub fn node_editor_ui(ui: &mut egui::Ui, node: &mut pipeline::Node) {
+pub fn node_editor_ui(ui: &mut egui::Ui, node_ctx: &mut data::NodeContextMut) {
     form_grid(ui, "node_editor_ui", |ui| {
-        node_meta_editor(ui, node);
+        node_meta_editor(ui, node_ctx);
 
-        node_spec_editor(ui, node);
+        node_spec_editor(ui, node_ctx);
     });
 }
 
-fn node_meta_editor(ui: &mut egui::Ui, node: &mut pipeline::Node) {
+fn node_meta_editor(ui: &mut egui::Ui, node_ctx: &mut data::NodeContextMut) {
     ui.label("ID:");
-    ui.text_edit_singleline(&mut node.meta.id.0);
+    if ui
+        .text_edit_singleline(&mut node_ctx.node.meta.id.0)
+        .changed()
+    {
+        node_ctx.mark_node_changed();
+    }
     ui.end_row();
 }
 
-fn node_spec_editor(ui: &mut egui::Ui, node: &mut pipeline::Node) {
-    match &mut node.spec {
+fn node_spec_editor(ui: &mut egui::Ui, node_ctx: &mut data::NodeContextMut) {
+    match &mut node_ctx.node.spec {
         Spec::InputPdfFile(spec) => {
             ui.label("PDF description:");
-            ui.text_edit_multiline(&mut spec.description);
+            if ui.text_edit_multiline(&mut spec.description).changed() {
+                node_ctx.mark_node_changed();
+            }
             ui.end_row();
         }
         Spec::JsContext(_spec) => {
@@ -39,12 +49,16 @@ fn node_spec_editor(ui: &mut egui::Ui, node: &mut pipeline::Node) {
             // TODO: Input data.
 
             ui.label("Code:");
-            ui.text_edit_multiline(&mut spec.code);
+            if ui.text_edit_multiline(&mut spec.code).changed() {
+                node_ctx.mark_node_changed();
+            }
             ui.end_row();
         }
         Spec::OutputDirectory(spec) => {
             ui.label("Directory description:");
-            ui.text_edit_multiline(&mut spec.description);
+            if ui.text_edit_multiline(&mut spec.description).changed() {
+                node_ctx.mark_node_changed();
+            }
             ui.end_row();
         }
         Spec::OutputFileCsv(spec) => {

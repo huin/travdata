@@ -22,7 +22,8 @@ pub struct App {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 struct AppState {
-    pipeline_editor: Loadable<components::PipelineEditor, ddo::PathSelection>,
+    pipeline_editor: components::PipelineEditor,
+    pipeline: Loadable<data::EditablePipeline, ddo::PathSelection>,
 }
 
 #[derive(Default)]
@@ -94,11 +95,14 @@ impl App {
                     }
                 }
                 InboxMessage::LoadedPipeline(source, result) => {
-                    self.state.pipeline_editor =
-                        match result.and_then(components::PipelineEditor::new) {
-                            Ok(loaded) => Loadable::LoadOk { source, loaded },
-                            Err(error) => Loadable::LoadErr { source, error },
-                        };
+                    self.state.pipeline = match result.and_then(data::EditablePipeline::try_from) {
+                        Ok(loaded) => {
+                            // Clear any existing component state in the PipelineEditor.
+                            self.state.pipeline_editor = components::PipelineEditor::default();
+                            Loadable::LoadOk { source, loaded }
+                        }
+                        Err(error) => Loadable::LoadErr { source, error },
+                    };
                 }
                 InboxMessage::SaveCompleted(result) => {
                     if let Err(message) = result {
@@ -132,7 +136,7 @@ impl App {
                     self.start_open_pipeline();
                 }
 
-                let opt_load_ok = self.state.pipeline_editor.as_load_ok();
+                let opt_load_ok = self.state.pipeline.as_load_ok();
                 if ui
                     .add_enabled(
                         opt_load_ok.is_some(),
@@ -146,12 +150,12 @@ impl App {
 
                 if ui
                     .add_enabled(
-                        !self.state.pipeline_editor.is_unloaded(),
+                        !self.state.pipeline.is_unloaded(),
                         egui::Button::new("Close pipeline"),
                     )
                     .clicked()
                 {
-                    self.state.pipeline_editor = Loadable::Unloaded;
+                    self.state.pipeline = Loadable::Unloaded;
                 }
 
                 if !IS_WEB {
@@ -170,7 +174,7 @@ impl App {
     }
 
     fn handle_pipeline_panel(&mut self, ui: &mut egui::Ui) {
-        let start_loading: Option<ddo::PathSelection> = match &mut self.state.pipeline_editor {
+        let start_loading: Option<ddo::PathSelection> = match &mut self.state.pipeline {
             Loadable::Unloaded => {
                 ui.push_id("unloaded", |ui| {
                     ui.label("No pipeline loaded.");
@@ -195,11 +199,11 @@ impl App {
             }
             Loadable::LoadOk {
                 source: _,
-                loaded: pipeline_editor,
+                loaded: pipeline,
             } => {
                 self.transient.pipeline_loading = false;
                 ui.push_id("editor", |ui| {
-                    pipeline_editor.ui(ui);
+                    self.state.pipeline_editor.ui(ui, pipeline);
                 });
                 None
             }
@@ -237,7 +241,7 @@ impl App {
     }
 
     fn start_loading_pipeline(&mut self, source: ddo::PathSelection) {
-        self.state.pipeline_editor = Loadable::Loading {
+        self.state.pipeline = Loadable::Loading {
             source: source.clone(),
         };
         workers::pipeline_loader::start_load(
@@ -249,8 +253,8 @@ impl App {
     }
 
     fn start_saving_pipeline(&mut self) {
-        if let Some((path_selection, pipeline_editor)) = self.state.pipeline_editor.as_load_ok() {
-            let pipeline = match pipeline_editor.pipeline_for_serialisation() {
+        if let Some((path_selection, pipeline)) = self.state.pipeline.as_load_ok() {
+            let pipeline = match pipeline.to_pipeline() {
                 Ok(pipeline) => pipeline,
                 Err(message) => {
                     self.transient.displayed_error = Some(message);
