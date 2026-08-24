@@ -3,6 +3,8 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+#[cfg(any(test, feature = "testing"))]
+use testutils::DefaultForTest;
 
 use crate::SystemResult;
 
@@ -36,5 +38,12 @@ impl OutputPathBuf {
         P: Into<PathBuf> + AsRef<Path>,
     {
         crate::spec_types::OutputPathBuf::new(value).expect("expected valid OutputPathBufValue")
+    }
+}
+
+#[cfg(any(test, feature = "testing"))]
+impl DefaultForTest for OutputPathBuf {
+    fn default_for_test() -> Self {
+        Self(PathBuf::from("fake-output-path.txt"))
     }
 }

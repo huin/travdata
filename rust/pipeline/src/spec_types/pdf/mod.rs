@@ -2,8 +2,6 @@
 mod tests;
 
 use serde::{Deserialize, Serialize, de::Visitor};
-#[cfg(test)]
-use testutils::DefaultForTest;
 
 /// Defines a page-aligned rectangular region within a page of a PDF, using the Tabula origin at
 /// the top-left of the page, rather than the standard PDF origin at the bottom left.
@@ -22,8 +20,8 @@ pub struct TabulaPdfRect {
     pub bottom: PdfPoints,
 }
 
-#[cfg(test)]
-impl DefaultForTest for TabulaPdfRect {
+#[cfg(any(test, feature = "testing"))]
+impl testutils::DefaultForTest for TabulaPdfRect {
     fn default_for_test() -> Self {
         Self {
             left: PdfPoints::from_f32(0.0),

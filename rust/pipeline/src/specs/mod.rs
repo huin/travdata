@@ -1,43 +1,23 @@
-//! Concrete specialisations of [generic_pipeline::node::GenericNode]s.
+//! Concrete specialisations of [generic_pipeline::Node]s.
 
-mod input_pdf_file;
-mod js_context;
-mod js_transform;
-mod output_directory;
-mod output_file_csv;
-mod output_file_json;
-mod pdf_extract_table;
-#[cfg(any(test, feature = "testing"))]
-mod test_defaults;
 #[cfg(test)]
 mod tests;
 
-use serde::{Deserialize, Serialize};
+use crate::{NodeId, StringError, SystemError, SystemResult, generic, impl_enum_conversions};
 
-use crate::{impl_enum_conversions, StringError, SystemError, SystemResult};
-pub use input_pdf_file::InputPdfFile;
-pub use js_context::JsContext;
-pub use js_transform::JsTransform;
-pub use output_directory::OutputDirectory;
-pub use output_file_csv::OutputFileCsv;
-pub use output_file_json::OutputFileJson;
-pub use pdf_extract_table::PdfExtractTable;
+pub type Spec = generic::specs::Spec<NodeId>;
 
-/// Per-type wrapper of a specific type of extraction configuration node.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, strum_macros::EnumDiscriminants)]
-#[strum_discriminants(derive(Hash, strum::VariantNames))]
-#[serde(tag = "type", content = "spec")]
-pub enum Spec {
-    InputPdfFile(InputPdfFile),
-    JsContext(JsContext),
-    JsTransform(JsTransform),
-    OutputDirectory(OutputDirectory),
-    OutputFileCsv(OutputFileCsv),
-    OutputFileJson(OutputFileJson),
-    PdfExtractTable(PdfExtractTable),
-}
+pub type SpecDiscriminants = generic::specs::SpecDiscriminants;
 
-impl Spec {
+pub type InputPdfFile = generic::specs::InputPdfFile;
+pub type JsContext = generic::specs::JsContext;
+pub type JsTransform = generic::specs::JsTransform<NodeId>;
+pub type OutputDirectory = generic::specs::OutputDirectory;
+pub type OutputFileCsv = generic::specs::OutputFileCsv<NodeId>;
+pub type OutputFileJson = generic::specs::OutputFileJson<NodeId>;
+pub type PdfExtractTable = generic::specs::PdfExtractTable<NodeId>;
+
+impl generic::specs::Spec<NodeId> {
     pub fn downcast<'s, S>(&'s self) -> SystemResult<&'s S>
     where
         &'s S: TryFrom<&'s Spec, Error = StringError>,
@@ -46,29 +26,11 @@ impl Spec {
     }
 }
 
-impl generic_pipeline::systems::TypedNode for Spec {
-    type NodeType = SpecDiscriminants;
+impl generic_pipeline::systems::TypedNode for generic::specs::Spec<NodeId> {
+    type NodeType = generic::specs::SpecDiscriminants;
 
     fn node_type(&self) -> Self::NodeType {
         self.into()
-    }
-}
-
-impl strum::VariantMetadata for SpecDiscriminants {
-    const VARIANT_COUNT: usize = <SpecDiscriminants as strum::VariantNames>::VARIANTS.len();
-    const VARIANT_NAMES: &'static [&'static str] =
-        <SpecDiscriminants as strum::VariantNames>::VARIANTS;
-
-    fn variant_name(&self) -> &'static str {
-        match self {
-            SpecDiscriminants::InputPdfFile => "InputPdfFile",
-            SpecDiscriminants::JsContext => "JsContext",
-            SpecDiscriminants::JsTransform => "JsTransform",
-            SpecDiscriminants::OutputDirectory => "OutputDirectory",
-            SpecDiscriminants::OutputFileCsv => "OutputFileCsv",
-            SpecDiscriminants::OutputFileJson => "OutputFileJson",
-            SpecDiscriminants::PdfExtractTable => "PdfExtractTable",
-        }
     }
 }
 
