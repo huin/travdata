@@ -1,4 +1,5 @@
 mod app;
+mod error;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {

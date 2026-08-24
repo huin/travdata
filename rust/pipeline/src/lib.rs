@@ -25,6 +25,7 @@ use map_macro::hashbrown::hash_map_e;
 pub use error::{StringError, SystemError, SystemErrorKind, SystemResult};
 pub use monomorph::PipelineTypes;
 pub use node::{Node, NodeId, NodeMeta};
+pub use specs::Spec;
 
 /// Create a new [MetaSystem] with the default implementations of all systems.
 pub fn new_metasystem(tabula: Box<dyn TabulaExtractor>) -> monomorph::MetaSystem {

@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "testing"))]
 use testutils::DefaultForTest;
 
+use crate::generic::node::{NodeIdTransformer, TranslateFromNodeId};
+
 /// Specifies the transformation of data using ECMAScript.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct JsTransform<NodeId> {
@@ -21,6 +23,28 @@ pub struct JsTransform<NodeId> {
     /// return param1[0] + param2.data;
     /// ```
     pub code: String,
+}
+
+impl<FromNodeId, NodeId> TranslateFromNodeId<FromNodeId> for JsTransform<NodeId> {
+    type FromType = JsTransform<FromNodeId>;
+    type NodeId = NodeId;
+
+    fn transform_node_ids<
+        Transformer: NodeIdTransformer<FromNodeId = FromNodeId, ToNodeId = Self::NodeId>,
+    >(
+        from: Self::FromType,
+        trn: &Transformer,
+    ) -> Result<Self, Transformer::Error> {
+        Ok(Self {
+            context: trn.transform_node_id(from.context)?,
+            input_data: from
+                .input_data
+                .into_iter()
+                .map(|(name, node_id)| Ok((name, trn.transform_node_id(node_id)?)))
+                .collect::<Result<hashbrown::HashMap<String, NodeId>, Transformer::Error>>()?,
+            code: from.code.clone(),
+        })
+    }
 }
 
 #[cfg(any(test, feature = "testing"))]

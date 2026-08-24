@@ -1,11 +1,8 @@
-use generic_pipeline::systems::TypedNode as _;
-use strum::VariantMetadata as _;
-
 use crate::app::{components::node_editor, data};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct PipelineEditor {
-    selected_node_ref: Option<data::NodeRef>,
+    selected_node_ref: data::NodeRef,
 }
 
 impl PipelineEditor {
@@ -35,44 +32,43 @@ impl PipelineEditor {
                 .body(|body| {
                     body.rows(text_height, pipeline.len(), |mut row| {
                         let row_index = row.index();
-                        let (node_ref, node) = match pipeline.get_node_by_index(row_index) {
+                        let (node_ref, gui_node) = match pipeline.get_node_by_index(row_index) {
                             Some(node) => node,
                             None => return,
                         };
-                        row.set_selected(self.selected_node_ref == Some(node_ref));
+                        row.set_selected(self.selected_node_ref == node_ref);
 
                         let mut do_select = false;
                         row.col(|ui| {
-                            do_select |= ui.label(&node.meta.id.0).clicked();
+                            do_select |= ui.label(&gui_node.node_id).clicked();
                         });
                         row.col(|ui| {
-                            do_select |= ui.label(node.spec.node_type().variant_name()).clicked();
+                            do_select |= ui.label(gui_node.node.spec.variant_name()).clicked();
                         });
                         do_select |= row.response().clicked();
 
                         if do_select {
-                            self.selected_node_ref = Some(node_ref);
+                            self.selected_node_ref = node_ref;
                         }
                     });
                 });
 
             ui.separator();
 
-            match self
-                .selected_node_ref
-                .and_then(|node_ref| pipeline.get_node_ctx_by_ref_mut(node_ref))
-            {
-                Some(mut node_ctx) => {
-                    ui.push_id(node_ctx.node_ref, |ui| {
-                        node_editor::node_editor_ui(ui, &mut node_ctx);
-                    });
-                }
-                None => {
-                    ui.push_id("no-selection", |ui| {
-                        ui.label("No node selected.");
-                    });
-                }
-            };
+            pipeline.with_node_ctx_by_ref_mut(self.selected_node_ref, |node_ctx| {
+                match node_ctx {
+                    Some(mut node_ctx) => {
+                        ui.push_id(node_ctx.node_ref, |ui| {
+                            node_editor::node_editor_ui(ui, &mut node_ctx);
+                        });
+                    }
+                    None => {
+                        ui.push_id("no-selection", |ui| {
+                            ui.label("No node selected.");
+                        });
+                    }
+                };
+            });
         });
     }
 }

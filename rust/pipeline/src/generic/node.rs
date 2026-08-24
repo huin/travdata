@@ -2,12 +2,51 @@ use strum::IntoDiscriminant as _;
 
 use crate::generic::specs;
 
+/// Trait for transforming between `NodeId` types.
+pub trait NodeIdTransformer {
+    type FromNodeId;
+    type ToNodeId;
+    type Error;
+
+    fn transform_node_id(&self, node_id: Self::FromNodeId) -> Result<Self::ToNodeId, Self::Error>;
+}
+
+/// Trait for [Node]s and their components to transform from one `NodeId` type to another.
+pub trait TranslateFromNodeId<FromNodeId>: Sized {
+    type FromType;
+    type NodeId;
+
+    fn transform_node_ids<
+        Transformer: NodeIdTransformer<FromNodeId = FromNodeId, ToNodeId = Self::NodeId>,
+    >(
+        from: Self::FromType,
+        trn: &Transformer,
+    ) -> Result<Self, Transformer::Error>;
+}
+
 #[derive(Clone, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
 pub struct Node<NodeId> {
     #[serde(flatten)]
     pub meta: NodeMeta<NodeId>,
     #[serde(flatten)]
     pub spec: specs::Spec<NodeId>,
+}
+
+impl<FromNodeId, NodeId> TranslateFromNodeId<FromNodeId> for Node<NodeId> {
+    type FromType = Node<FromNodeId>;
+    type NodeId = NodeId;
+
+    fn transform_node_ids<
+        Transformer: NodeIdTransformer<FromNodeId = FromNodeId, ToNodeId = Self::NodeId>,
+    >(
+        from: Self::FromType,
+        trn: &Transformer,
+    ) -> Result<Self, Transformer::Error> {
+        Ok(Self {
+            meta: NodeMeta::transform_node_ids(from.meta, trn)?,
+            spec: specs::Spec::transform_node_ids(from.spec, trn)?,
+        })
+    }
 }
 
 impl<NodeId> generic_pipeline::systems::TypedNode for Node<NodeId> {
@@ -54,6 +93,22 @@ impl<NodeId> NodeMeta<NodeId> {
         Id: Into<NodeId>,
     {
         Self { id: id.into() }
+    }
+}
+
+impl<FromNodeId, NodeId> TranslateFromNodeId<FromNodeId> for NodeMeta<NodeId> {
+    type FromType = NodeMeta<FromNodeId>;
+    type NodeId = NodeId;
+
+    fn transform_node_ids<
+        Transformer: NodeIdTransformer<FromNodeId = FromNodeId, ToNodeId = Self::NodeId>,
+    >(
+        from: Self::FromType,
+        trn: &Transformer,
+    ) -> Result<Self, Transformer::Error> {
+        Ok(Self {
+            id: trn.transform_node_id(from.id)?,
+        })
     }
 }
 

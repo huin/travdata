@@ -95,7 +95,9 @@ impl App {
                     }
                 }
                 InboxMessage::LoadedPipeline(source, result) => {
-                    self.state.pipeline = match result.and_then(data::EditablePipeline::try_from) {
+                    self.state.pipeline = match result.and_then(|nodes| {
+                        data::EditablePipeline::try_from(nodes).map_err(|err| format!("{err:?}"))
+                    }) {
                         Ok(loaded) => {
                             // Clear any existing component state in the PipelineEditor.
                             self.state.pipeline_editor = components::PipelineEditor::default();
@@ -257,7 +259,7 @@ impl App {
             let pipeline = match pipeline.to_pipeline() {
                 Ok(pipeline) => pipeline,
                 Err(message) => {
-                    self.transient.displayed_error = Some(message);
+                    self.transient.displayed_error = Some(format!("{message:?}"));
                     return;
                 }
             };

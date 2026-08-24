@@ -1,8 +1,6 @@
-use pipeline::specs::Spec;
-
 use crate::app::{
     components::{node_ref_editor_ui, todo_ui},
-    data,
+    data::{self, GuiSpec},
 };
 
 // TODO: Consider if we need component state, passing in NodeRef so that a change to which node is
@@ -19,7 +17,7 @@ pub fn node_editor_ui(ui: &mut egui::Ui, node_ctx: &mut data::NodeContextMut) {
 fn node_meta_editor(ui: &mut egui::Ui, node_ctx: &mut data::NodeContextMut) {
     ui.label("ID:");
     if ui
-        .text_edit_singleline(&mut node_ctx.node.meta.id.0)
+        .text_edit_singleline(&mut node_ctx.node.node_id)
         .changed()
     {
         node_ctx.mark_node_changed();
@@ -28,20 +26,20 @@ fn node_meta_editor(ui: &mut egui::Ui, node_ctx: &mut data::NodeContextMut) {
 }
 
 fn node_spec_editor(ui: &mut egui::Ui, node_ctx: &mut data::NodeContextMut) {
-    match &mut node_ctx.node.spec {
-        Spec::InputPdfFile(spec) => {
+    match &mut node_ctx.node.node.spec {
+        GuiSpec::InputPdfFile(spec) => {
             ui.label("PDF description:");
             if ui.text_edit_multiline(&mut spec.description).changed() {
                 node_ctx.mark_node_changed();
             }
             ui.end_row();
         }
-        Spec::JsContext(_spec) => {
+        GuiSpec::JsContext(_spec) => {
             // No fields yet.
             ui.label("No settings for JsContext yet.");
             ui.end_row();
         }
-        Spec::JsTransform(spec) => {
+        GuiSpec::JsTransform(spec) => {
             ui.label("Context:");
             node_ref_editor_ui(ui, &mut spec.context);
             ui.end_row();
@@ -54,14 +52,14 @@ fn node_spec_editor(ui: &mut egui::Ui, node_ctx: &mut data::NodeContextMut) {
             }
             ui.end_row();
         }
-        Spec::OutputDirectory(spec) => {
+        GuiSpec::OutputDirectory(spec) => {
             ui.label("Directory description:");
             if ui.text_edit_multiline(&mut spec.description).changed() {
                 node_ctx.mark_node_changed();
             }
             ui.end_row();
         }
-        Spec::OutputFileCsv(spec) => {
+        GuiSpec::OutputFileCsv(spec) => {
             ui.label("Input data:");
             node_ref_editor_ui(ui, &mut spec.input_data);
             ui.end_row();
@@ -74,7 +72,7 @@ fn node_spec_editor(ui: &mut egui::Ui, node_ctx: &mut data::NodeContextMut) {
             todo_ui(ui, "Output file path editor.");
             ui.end_row();
         }
-        Spec::OutputFileJson(spec) => {
+        GuiSpec::OutputFileJson(spec) => {
             ui.label("Input data:");
             node_ref_editor_ui(ui, &mut spec.input_data);
             ui.end_row();
@@ -87,7 +85,7 @@ fn node_spec_editor(ui: &mut egui::Ui, node_ctx: &mut data::NodeContextMut) {
             todo_ui(ui, "Output file path editor.");
             ui.end_row();
         }
-        Spec::PdfExtractTable(spec) => {
+        GuiSpec::PdfExtractTable(spec) => {
             ui.label("PDF:");
             node_ref_editor_ui(ui, &mut spec.pdf);
             ui.end_row();

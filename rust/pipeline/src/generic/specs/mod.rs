@@ -17,6 +17,9 @@ pub use output_directory::OutputDirectory;
 pub use output_file_csv::OutputFileCsv;
 pub use output_file_json::OutputFileJson;
 pub use pdf_extract_table::PdfExtractTable;
+use strum::{IntoDiscriminant, VariantMetadata};
+
+use crate::generic::node::{NodeIdTransformer, TranslateFromNodeId};
 
 /// Per-type wrapper of a specific type of extraction configuration node.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, strum_macros::EnumDiscriminants)]
@@ -30,6 +33,44 @@ pub enum Spec<NodeId> {
     OutputFileCsv(OutputFileCsv<NodeId>),
     OutputFileJson(OutputFileJson<NodeId>),
     PdfExtractTable(PdfExtractTable<NodeId>),
+}
+
+impl<FromNodeId, NodeId> TranslateFromNodeId<FromNodeId> for Spec<NodeId> {
+    type FromType = Spec<FromNodeId>;
+    type NodeId = NodeId;
+
+    fn transform_node_ids<
+        Transformer: NodeIdTransformer<FromNodeId = FromNodeId, ToNodeId = Self::NodeId>,
+    >(
+        from: Self::FromType,
+        trn: &Transformer,
+    ) -> Result<Self, Transformer::Error> {
+        Ok(match from {
+            Spec::InputPdfFile(input_pdf_file) => Spec::InputPdfFile(input_pdf_file.clone()),
+            Spec::JsContext(js_context) => Spec::JsContext(js_context.clone()),
+            Spec::JsTransform(js_transform) => {
+                Spec::JsTransform(JsTransform::transform_node_ids(js_transform, trn)?)
+            }
+            Spec::OutputDirectory(output_directory) => {
+                Spec::OutputDirectory(output_directory.clone())
+            }
+            Spec::OutputFileCsv(output_file_csv) => {
+                Spec::OutputFileCsv(OutputFileCsv::transform_node_ids(output_file_csv, trn)?)
+            }
+            Spec::OutputFileJson(output_file_json) => {
+                Spec::OutputFileJson(OutputFileJson::transform_node_ids(output_file_json, trn)?)
+            }
+            Spec::PdfExtractTable(pdf_extract_table) => {
+                Spec::PdfExtractTable(PdfExtractTable::transform_node_ids(pdf_extract_table, trn)?)
+            }
+        })
+    }
+}
+
+impl<NodeId> Spec<NodeId> {
+    pub fn variant_name(&self) -> &'static str {
+        self.discriminant().variant_name()
+    }
 }
 
 impl strum::VariantMetadata for SpecDiscriminants {
