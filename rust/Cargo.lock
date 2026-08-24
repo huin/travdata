@@ -5504,6 +5504,7 @@ dependencies = [
  "serde_json",
  "simplelog",
  "strum",
+ "thiserror 2.0.18",
  "travdata-generic-pipeline",
  "travdata-pipeline",
  "travdata-testutils",

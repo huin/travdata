@@ -3,10 +3,9 @@ mod tests;
 
 use std::{borrow::Cow, collections::BTreeSet};
 
-use generic_pipeline::PipelineNode as _;
 use hashbrown::{HashMap, hash_map::Entry};
 
-use crate::app::data;
+use crate::app::data::{self, node::GuiNodeWithId};
 
 /// Provides an index of nodes. The data is stale and updated by calls to [NodeIndex::index_node].
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -14,8 +13,10 @@ pub struct NodeIndex {
     heap: HashMap<data::NodeRef, NodeIndexEntry>,
 
     /// `node_id_idx` is effectively an ordered multimap from [pipeline::NodeId] to zero or more
-    /// [[data::NodeRef]s.
+    /// [data::NodeRef]s.
     node_id_idx: BTreeSet<NodeIdNodeRef<'static>>,
+
+    node_ids: HashMap<data::NodeRef, String>,
 
     generation: NodeIndexGeneration,
 }
@@ -26,6 +27,7 @@ impl NodeIndex {
         Self {
             heap: HashMap::with_capacity(capacity),
             node_id_idx: BTreeSet::new(),
+            node_ids: HashMap::with_capacity(capacity),
             generation: NodeIndexGeneration::default(),
         }
     }
@@ -38,19 +40,19 @@ impl NodeIndex {
         self.generation
     }
 
-    /// Adds or updates a [pipeline::Node] in the index.
+    /// Adds or updates a [data::GuiNodeWithId] in the index.
     ///
     /// Assumes that a [data::NodeRef] value is a stable identifier for a Node throughout the
     /// lifetime of `self`.
-    pub fn index_node(&mut self, node_ref: data::NodeRef, node: &pipeline::Node) {
+    pub fn index_node(&mut self, node_ref: data::NodeRef, node: &GuiNodeWithId) {
         match self.heap.entry(node_ref) {
             Entry::Occupied(mut occupied_entry) => {
                 let existing_entry = occupied_entry.get_mut();
 
-                if &existing_entry.node_id != node.id() {
+                if existing_entry.node_id != node.node_id {
                     // Update `NodeEntry::node_id`, capture the old value.
                     let old_node_id = {
-                        let mut node_id = node.id().clone();
+                        let mut node_id = node.node_id.clone();
                         std::mem::swap(&mut node_id, &mut existing_entry.node_id);
                         node_id
                     };
@@ -60,7 +62,7 @@ impl NodeIndex {
                         .remove(&NodeIdNodeRef(Cow::Owned(old_node_id), node_ref));
                     // Insert new entry into node_id_idx.
                     self.node_id_idx
-                        .insert(NodeIdNodeRef(Cow::Owned(node.id().clone()), node_ref));
+                        .insert(NodeIdNodeRef(Cow::Owned(node.node_id.clone()), node_ref));
 
                     self.generation.increment();
                 }
@@ -70,11 +72,11 @@ impl NodeIndex {
                 // Add to heap.
                 vacant_entry.insert_entry(NodeIndexEntry {
                     node_ref,
-                    node_id: node.id().clone(),
+                    node_id: node.node_id.clone(),
                 });
                 // Insert new entry into node_id_idx.
                 self.node_id_idx
-                    .insert(NodeIdNodeRef(Cow::Owned(node.id().clone()), node_ref));
+                    .insert(NodeIdNodeRef(Cow::Owned(node.node_id.clone()), node_ref));
 
                 self.generation.increment();
             }
@@ -99,7 +101,7 @@ impl NodeIndex {
 
     pub fn by_node_id<'idx, 'id>(
         &'idx self,
-        id: &'id pipeline::NodeId,
+        id: &'id str,
     ) -> impl Iterator<Item = &'idx NodeIndexEntry> + 'id
     where
         'idx: 'id,
@@ -153,7 +155,7 @@ impl NodeIndexGeneration {
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct NodeIndexEntry {
     node_ref: data::NodeRef,
-    node_id: pipeline::NodeId,
+    node_id: String,
 }
 
 impl NodeIndexEntry {
@@ -164,10 +166,10 @@ impl NodeIndexEntry {
 
     /// Returns the [pipeline::NodeId] identifying the node. This is not required to be unique by
     /// the [NodeIndex], to support editing where node IDs may temporarily be equal.
-    pub fn node_id(&self) -> &pipeline::NodeId {
+    pub fn node_id(&self) -> &str {
         &self.node_id
     }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize, serde::Serialize)]
-struct NodeIdNodeRef<'a>(Cow<'a, pipeline::NodeId>, data::NodeRef);
+struct NodeIdNodeRef<'a>(Cow<'a, str>, data::NodeRef);

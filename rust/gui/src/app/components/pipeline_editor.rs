@@ -1,6 +1,3 @@
-use generic_pipeline::systems::TypedNode as _;
-use strum::VariantMetadata as _;
-
 use crate::app::{components::node_editor, data};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -35,7 +32,7 @@ impl PipelineEditor {
                 .body(|body| {
                     body.rows(text_height, pipeline.len(), |mut row| {
                         let row_index = row.index();
-                        let (node_ref, node) = match pipeline.get_node_by_index(row_index) {
+                        let (node_ref, gui_node) = match pipeline.get_node_by_index(row_index) {
                             Some(node) => node,
                             None => return,
                         };
@@ -43,10 +40,10 @@ impl PipelineEditor {
 
                         let mut do_select = false;
                         row.col(|ui| {
-                            do_select |= ui.label(&node.meta.id.0).clicked();
+                            do_select |= ui.label(&gui_node.node_id).clicked();
                         });
                         row.col(|ui| {
-                            do_select |= ui.label(node.spec.node_type().variant_name()).clicked();
+                            do_select |= ui.label(gui_node.node.spec.variant_name()).clicked();
                         });
                         do_select |= row.response().clicked();
 
