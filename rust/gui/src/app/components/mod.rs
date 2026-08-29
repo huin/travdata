@@ -2,7 +2,6 @@ mod node_editor;
 mod node_ref_editor;
 mod pipeline_editor;
 
-pub use node_ref_editor::node_ref_editor_ui;
 pub use pipeline_editor::PipelineEditor;
 
 /// Placeholder UI element.

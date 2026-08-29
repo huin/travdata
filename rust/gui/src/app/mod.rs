@@ -22,7 +22,6 @@ pub struct App {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 struct AppState {
-    pipeline_editor: components::PipelineEditor,
     pipeline: Loadable<data::EditablePipeline, ddo::PathSelection>,
 }
 
@@ -98,11 +97,7 @@ impl App {
                     self.state.pipeline = match result.and_then(|nodes| {
                         data::EditablePipeline::try_from(nodes).map_err(|err| format!("{err:?}"))
                     }) {
-                        Ok(loaded) => {
-                            // Clear any existing component state in the PipelineEditor.
-                            self.state.pipeline_editor = components::PipelineEditor::default();
-                            Loadable::LoadOk { source, loaded }
-                        }
+                        Ok(loaded) => Loadable::LoadOk { source, loaded },
                         Err(error) => Loadable::LoadErr { source, error },
                     };
                 }
@@ -204,9 +199,7 @@ impl App {
                 loaded: pipeline,
             } => {
                 self.transient.pipeline_loading = false;
-                ui.push_id("editor", |ui| {
-                    self.state.pipeline_editor.ui(ui, pipeline);
-                });
+                ui.add(components::PipelineEditor::new(pipeline));
                 None
             }
             Loadable::LoadErr { source, error } => {
