@@ -11,7 +11,7 @@ use crate::{
         data::{
             self, GuiNode, GuiNodeId, GuiSpec, NodeRef,
             node::{GuiNodeMeta, GuiNodeWithId},
-            node_index::{self, NodeIndex, NodeIndexEntry, NodeIndexGeneration},
+            node_index::{self, NodeIndex},
         },
         ddo,
     },
@@ -163,18 +163,13 @@ pub struct NodeContextMut<'a> {
     pub node_ref: NodeRef,
     pub node: &'a mut GuiNodeWithId,
     node_changed: bool,
-    node_index: &'a mut data::node_index::NodeIndex,
+    pub node_index: &'a mut data::node_index::NodeIndex,
 }
 
 impl<'a> NodeContextMut<'a> {
     /// Should be called if a field in [NodeContextMut::node] has been modified.
     pub fn mark_node_changed(&mut self) {
         self.node_changed = true;
-    }
-
-    /// Returns the [data::NodeIndex] for the [EditablePipeline].
-    pub fn node_index(&self) -> &data::node_index::NodeIndex {
-        self.node_index
     }
 }
 
