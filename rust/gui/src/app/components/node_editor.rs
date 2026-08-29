@@ -1,5 +1,5 @@
 use crate::app::{
-    components::{node_ref_editor::node_ref_editor_ui, todo_ui},
+    components::{node_ref_editor::NodeIdRefEditor, todo_ui},
     data,
 };
 
@@ -60,10 +60,17 @@ where
             }
             GuiSpec::JsTransform(spec) => {
                 ui.label("Context:");
-                node_ref_editor_ui(ui, &mut spec.context);
+                ui.add(NodeIdRefEditor::new(
+                    &mut spec.context,
+                    self.node_ctx.node_index,
+                ));
                 ui.end_row();
 
-                // TODO: Input data.
+                for (var_name, node_ref) in spec.input_data.iter_mut() {
+                    ui.label(var_name);
+                    ui.add(NodeIdRefEditor::new(node_ref, self.node_ctx.node_index));
+                    ui.end_row();
+                }
 
                 ui.label("Code:");
                 if ui.text_edit_multiline(&mut spec.code).changed() {
@@ -80,11 +87,17 @@ where
             }
             GuiSpec::OutputFileCsv(spec) => {
                 ui.label("Input data:");
-                node_ref_editor_ui(ui, &mut spec.input_data);
+                ui.add(NodeIdRefEditor::new(
+                    &mut spec.input_data,
+                    self.node_ctx.node_index,
+                ));
                 ui.end_row();
 
                 ui.label("Directory:");
-                node_ref_editor_ui(ui, &mut spec.directory);
+                ui.add(NodeIdRefEditor::new(
+                    &mut spec.directory,
+                    self.node_ctx.node_index,
+                ));
                 ui.end_row();
 
                 ui.label("Filename:");
@@ -93,11 +106,17 @@ where
             }
             GuiSpec::OutputFileJson(spec) => {
                 ui.label("Input data:");
-                node_ref_editor_ui(ui, &mut spec.input_data);
+                ui.add(NodeIdRefEditor::new(
+                    &mut spec.input_data,
+                    self.node_ctx.node_index,
+                ));
                 ui.end_row();
 
                 ui.label("Directory:");
-                node_ref_editor_ui(ui, &mut spec.directory);
+                ui.add(NodeIdRefEditor::new(
+                    &mut spec.directory,
+                    self.node_ctx.node_index,
+                ));
                 ui.end_row();
 
                 ui.label("Filename:");
@@ -106,7 +125,10 @@ where
             }
             GuiSpec::PdfExtractTable(spec) => {
                 ui.label("PDF:");
-                node_ref_editor_ui(ui, &mut spec.pdf);
+                ui.add(NodeIdRefEditor::new(
+                    &mut spec.pdf,
+                    self.node_ctx.node_index,
+                ));
                 ui.end_row();
 
                 ui.label("Page:");

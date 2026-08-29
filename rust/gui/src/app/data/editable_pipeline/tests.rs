@@ -135,6 +135,70 @@ fn test_finds_with_node_id_collision_update() {
 }
 
 #[gtest]
+fn test_scan_node_id_prefix() {
+    let mut pl = EditablePipeline::default();
+
+    // GIVEN: nodes with same node ID prefix.
+    let common_node_ref = make_node("common-prefix", &mut pl);
+    let common_node_max_suffix_ref = make_node("common-prefix-\u{10ffff}", &mut pl);
+    let common_node_max_1_ref = make_node("common-prefix-\u{10ffff}-1", &mut pl);
+    let common_node_1_ref = make_node("common-prefix-1", &mut pl);
+    let common_node_2_ref = make_node("common-prefix-2", &mut pl);
+    let common_node_3_ref = make_node("common-prefix-3", &mut pl);
+
+    // GIVEN: nodes with different node ID prefix.
+    let common_prefiw_ref = make_node("common-prefiw", &mut pl);
+    let common_prefiy_ref = make_node("common-prefiy", &mut pl);
+    let other_ref = make_node("other-prefix", &mut pl);
+    let another_ref = make_node("another-prefix", &mut pl);
+
+    expect_that!(
+        // WHEN: searching for nodes with ID prefix "common-prefix".
+        collect_node_ref_id(pl.node_index().scan_node_id_prefix("common-prefix")),
+        // THEN: only matching nodes and their IDs are returned.
+        unordered_elements_are![
+            eq(&(common_node_ref, "common-prefix")),
+            eq(&(common_node_max_suffix_ref, "common-prefix-\u{10ffff}")),
+            eq(&(common_node_max_1_ref, "common-prefix-\u{10ffff}-1")),
+            eq(&(common_node_1_ref, "common-prefix-1")),
+            eq(&(common_node_2_ref, "common-prefix-2")),
+            eq(&(common_node_3_ref, "common-prefix-3")),
+        ]
+    );
+
+    expect_that!(
+        // WHEN: searching for nodes with ID prefix "common-prefix-\u{10ffff}".
+        collect_node_ref_id(
+            pl.node_index()
+                .scan_node_id_prefix("common-prefix-\u{10ffff}")
+        ),
+        // THEN: only matching nodes and their IDs are returned.
+        unordered_elements_are![
+            eq(&(common_node_max_suffix_ref, "common-prefix-\u{10ffff}")),
+            eq(&(common_node_max_1_ref, "common-prefix-\u{10ffff}-1")),
+        ]
+    );
+
+    expect_that!(
+        // WHEN: searching for nodes with ID prefix "".
+        collect_node_ref_id(pl.node_index().scan_node_id_prefix("")),
+        // THEN: all nodes and their IDs are returned.
+        unordered_elements_are![
+            eq(&(common_node_ref, "common-prefix")),
+            eq(&(common_node_max_suffix_ref, "common-prefix-\u{10ffff}")),
+            eq(&(common_node_max_1_ref, "common-prefix-\u{10ffff}-1")),
+            eq(&(common_node_1_ref, "common-prefix-1")),
+            eq(&(common_node_2_ref, "common-prefix-2")),
+            eq(&(common_node_3_ref, "common-prefix-3")),
+            eq(&(common_prefiw_ref, "common-prefiw")),
+            eq(&(common_prefiy_ref, "common-prefiy")),
+            eq(&(other_ref, "other-prefix")),
+            eq(&(another_ref, "another-prefix")),
+        ]
+    );
+}
+
+#[gtest]
 fn test_reindex_to_same_node_id_does_not_change_generation() {
     let mut pl = EditablePipeline::default();
     let mut index_gen = pl.node_index().generation();

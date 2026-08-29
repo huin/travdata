@@ -5499,6 +5499,7 @@ dependencies = [
  "egui_inbox",
  "googletest",
  "hashbrown 0.17.1",
+ "itertools 0.15.0",
  "log",
  "rfd",
  "serde",

@@ -1,6 +1,12 @@
-use std::{borrow::Cow, collections::BTreeSet};
+use std::{
+    borrow::Cow,
+    collections::BTreeSet,
+    hash::Hash,
+    ops::{Bound, RangeBounds},
+};
 
 use hashbrown::{HashMap, hash_map::Entry};
+use itertools::Itertools;
 use slotmap::{Key as _, KeyData};
 
 use crate::app::data::{self, node::GuiNodeWithId};
@@ -111,14 +117,50 @@ impl NodeIndex {
         'idx: 'id,
     {
         self.node_id_idx
-            .range(NodeIdNodeRef::first_for_node_id(id)..=NodeIdNodeRef::last_for_node_id(id))
-            .filter_map(move |idx_entry| match self.heap.get(&idx_entry.1) {
-                Some(node_entry) => Some(node_entry),
-                None => {
-                    log::warn!("bug: dangling entry in node_id_idx: {idx_entry:?}");
-                    None
-                }
-            })
+            .range(
+                NodeIdNodeRef::first_for_node_id(Cow::Borrowed(id))
+                    ..=NodeIdNodeRef::last_for_node_id(Cow::Borrowed(id)),
+            )
+            .filter_map(move |idx_entry| self.index_entry(idx_entry))
+    }
+
+    /// Scan for nodes by IDs sharing the given prefix.
+    pub fn scan_node_id_prefix<'idx, 'id>(
+        &'idx self,
+        id: &'id str,
+    ) -> impl Iterator<Item = &'idx NodeIndexEntry> + 'id
+    where
+        'idx: 'id,
+    {
+        let range_bound = if id.is_empty() {
+            // Everything matches the empty prefix.
+            NodeIdNodeRefScanRangeBounds {
+                start: Bound::Unbounded,
+                end: Bound::Unbounded,
+            }
+        } else {
+            let last_matching_id: String = successive_prefix(id);
+            NodeIdNodeRefScanRangeBounds {
+                start: Bound::Included(NodeIdNodeRef::first_for_node_id(Cow::Borrowed(id))),
+                end: Bound::Excluded(NodeIdNodeRef::first_for_node_id(Cow::Owned(
+                    last_matching_id,
+                ))),
+            }
+        };
+
+        self.node_id_idx
+            .range(range_bound)
+            .filter_map(move |idx_entry| self.index_entry(idx_entry))
+    }
+
+    fn index_entry<'idx>(&'idx self, idx_entry: &NodeIdNodeRef) -> Option<&'idx NodeIndexEntry> {
+        match self.heap.get(&idx_entry.1) {
+            Some(node_entry) => Some(node_entry),
+            None => {
+                log::warn!("bug: dangling entry in node_id_idx: {idx_entry:?}");
+                None
+            }
+        }
     }
 }
 
@@ -127,7 +169,7 @@ impl NodeIndex {
 ///
 /// If the [NodeIndexGeneration] is equal to the last read, then there have been no changes to the
 /// index at all. If they are unequal, then any data from the last read may be stale.
-#[derive(Copy, Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Copy, Clone, Debug, Default, Hash, serde::Deserialize, serde::Serialize)]
 pub struct NodeIndexGeneration(usize);
 
 impl NodeIndexGeneration {
@@ -153,7 +195,7 @@ impl NodeIndexGeneration {
 /// Indexed data about a node.
 ///
 /// NOTE: This data will be stale between an update to the node and the update of the [NodeIndex].
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct NodeIndexEntry {
     node_ref: data::NodeRef,
     node_id: String,
@@ -176,17 +218,11 @@ impl NodeIndexEntry {
 struct NodeIdNodeRef<'a>(Cow<'a, str>, data::NodeRef);
 
 impl<'a> NodeIdNodeRef<'a> {
-    fn first_for_node_id(node_id: &'a str) -> Self {
-        Self(
-            Cow::Borrowed(node_id),
-            data::NodeRef::from(KeyData::from_ffi(u64::MIN)),
-        )
+    fn first_for_node_id(node_id: Cow<'a, str>) -> Self {
+        Self(node_id, data::NodeRef::from(KeyData::from_ffi(u64::MIN)))
     }
-    fn last_for_node_id(node_id: &'a str) -> Self {
-        Self(
-            Cow::Borrowed(node_id),
-            data::NodeRef::from(KeyData::from_ffi(u64::MAX)),
-        )
+    fn last_for_node_id(node_id: Cow<'a, str>) -> Self {
+        Self(node_id, data::NodeRef::from(KeyData::from_ffi(u64::MAX)))
     }
 }
 
@@ -205,4 +241,46 @@ impl<'a> Ord for NodeIdNodeRef<'a> {
             .cmp(&other.0)
             .then_with(|| self.1.data().as_ffi().cmp(&other.1.data().as_ffi()))
     }
+}
+
+#[derive(Debug)]
+struct NodeIdNodeRefScanRangeBounds<'a> {
+    start: Bound<NodeIdNodeRef<'a>>,
+    end: Bound<NodeIdNodeRef<'a>>,
+}
+
+impl<'a> RangeBounds<NodeIdNodeRef<'a>> for NodeIdNodeRefScanRangeBounds<'a> {
+    fn start_bound(&self) -> Bound<&NodeIdNodeRef<'a>> {
+        self.start.as_ref()
+    }
+
+    fn end_bound(&self) -> Bound<&NodeIdNodeRef<'a>> {
+        self.end.as_ref()
+    }
+}
+
+/// Generates the [String] that is the successive prefix to `s`.
+fn successive_prefix(s: &str) -> String {
+    let mut do_append = false;
+    let mut next_str: String = s
+        .chars()
+        .enumerate()
+        .circular_array_windows()
+        .map(|[(_, cur_char), (next_index, _)]| {
+            if next_index > 0 {
+                cur_char
+            } else {
+                // In the rare case that the last char in `s` is char::MAX, leave it as it is, and
+                // we append char::MAX below.
+                (cur_char..=char::MAX).nth(1).unwrap_or_else(|| {
+                    do_append = true;
+                    cur_char
+                })
+            }
+        })
+        .collect();
+    if do_append {
+        next_str.push(char::MAX);
+    }
+    next_str
 }
