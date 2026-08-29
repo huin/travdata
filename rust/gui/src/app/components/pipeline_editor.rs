@@ -1,3 +1,5 @@
+use slotmap::Key;
+
 use crate::app::{components::node_editor, data};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -54,6 +56,17 @@ impl PipelineEditor {
                 });
 
             ui.separator();
+
+            if ui
+                .add_enabled(
+                    !self.selected_node_ref.is_null(),
+                    egui::Button::new("Delete node"),
+                )
+                .clicked()
+            {
+                pipeline.remove_node(self.selected_node_ref);
+                self.selected_node_ref = data::NodeRef::null();
+            }
 
             pipeline.with_node_ctx_by_ref_mut(self.selected_node_ref, |node_ctx| {
                 match node_ctx {
