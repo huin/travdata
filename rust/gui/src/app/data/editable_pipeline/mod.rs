@@ -11,7 +11,7 @@ use crate::{
         data::{
             self, GuiNode, GuiNodeId, GuiSpec, NodeRef,
             node::{GuiNodeMeta, GuiNodeWithId},
-            node_index::{self, NodeIndex},
+            node_index,
         },
         ddo,
     },
@@ -107,7 +107,8 @@ impl EditablePipeline {
         self.node_index.deindex_node(node_ref);
     }
 
-    pub fn node_index(&self) -> &NodeIndex {
+    #[cfg(test)]
+    pub fn node_index(&self) -> &data::NodeIndex {
         &self.node_index
     }
 

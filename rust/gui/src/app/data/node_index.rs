@@ -175,6 +175,7 @@ pub struct NodeIndexGeneration(usize);
 impl NodeIndexGeneration {
     /// Compare if `self` and `new_value` are of the same generation (returned directly) and update
     /// `self` to `new_value`.
+    #[cfg(test)]
     pub fn is_same_and_update(&mut self, new_value: Self) -> bool {
         let result = self.is_same(new_value);
         *self = new_value;
@@ -182,6 +183,7 @@ impl NodeIndexGeneration {
     }
 
     /// Compare if `self` and `new_value` are of the same generation.
+    #[cfg(test)]
     pub fn is_same(&mut self, other: Self) -> bool {
         self.0 == other.0
     }
