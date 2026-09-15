@@ -27,12 +27,15 @@ impl<'n, 'idx> NodeIdRefEditor<'n, 'idx> {
     }
 
     pub fn show(self, ui: &mut egui::Ui) {
-        // TODO: Consider making this a DND target for dragging a node to.
-
         let mut state = State::get_or_default(ui);
 
-        let (button_response, initial_query) = self.search_button(ui);
+        let (drop_zone_response, dragged_node_ref) = ui
+            .dnd_drop_zone::<data::NodeRef, _>(egui::Frame::default().inner_margin(4.0), |ui| {
+                self.search_button(ui)
+            });
 
+        // Handle starting/stopping a search from a click on the search button.
+        let (button_response, initial_query) = drop_zone_response.inner;
         if button_response.clicked() {
             state.search = if state.search.is_none() {
                 Some(Search {
@@ -41,6 +44,11 @@ impl<'n, 'idx> NodeIdRefEditor<'n, 'idx> {
             } else {
                 None
             };
+        }
+
+        // Handle DND drop onto the search button.
+        if let Some(dragged_node_ref) = dragged_node_ref {
+            *self.gui_node_id = data::GuiNodeId::Resolved(*dragged_node_ref)
         }
 
         let popup_response = if let Some(search) = &mut state.search {

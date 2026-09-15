@@ -71,7 +71,9 @@ impl<'pl> PipelineEditor<'pl> {
 
                             let mut do_select = false;
                             row.col(|ui| {
-                                do_select |= ui.label(&gui_node.node_id).clicked();
+                                ui.dnd_drag_source(ui.id().with("node_id"), node_ref, |ui| {
+                                    do_select |= ui.label(&gui_node.node_id).clicked();
+                                });
                             });
                             row.col(|ui| {
                                 do_select |= ui.label(gui_node.node.spec.variant_name()).clicked();
