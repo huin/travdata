@@ -83,34 +83,34 @@ impl<'pl> PipelineEditor<'pl> {
                             }
                         });
                     });
-
-                ui.separator();
-
-                if ui
-                    .add_enabled(
-                        !state.selected_node_ref.is_null(),
-                        egui::Button::new("Delete node"),
-                    )
-                    .clicked()
-                {
-                    self.pipeline.remove_node(state.selected_node_ref);
-                    state.selected_node_ref = data::NodeRef::null();
-                }
-
-                self.pipeline
-                    .with_node_ctx_by_ref_mut(state.selected_node_ref, |node_ctx| {
-                        match node_ctx {
-                            Some(mut node_ctx) => {
-                                ui.add(node_editor::NodeEditor::new(&mut node_ctx));
-                            }
-                            None => {
-                                ui.push_id("no-selection", |ui| {
-                                    ui.label("No node selected.");
-                                });
-                            }
-                        };
-                    });
             });
+
+            ui.separator();
+
+            if ui
+                .add_enabled(
+                    !state.selected_node_ref.is_null(),
+                    egui::Button::new("Delete node"),
+                )
+                .clicked()
+            {
+                self.pipeline.remove_node(state.selected_node_ref);
+                state.selected_node_ref = data::NodeRef::null();
+            }
+
+            self.pipeline
+                .with_node_ctx_by_ref_mut(state.selected_node_ref, |node_ctx| {
+                    match node_ctx {
+                        Some(mut node_ctx) => {
+                            ui.add(node_editor::NodeEditor::new(&mut node_ctx));
+                        }
+                        None => {
+                            ui.push_id("no-selection", |ui| {
+                                ui.label("No node selected.");
+                            });
+                        }
+                    };
+                });
 
             state.store(ui);
         });
