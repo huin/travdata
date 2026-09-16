@@ -77,10 +77,8 @@ where
                 ui.end_row();
 
                 ui.label("Code:");
-                if ui
-                    .add(egui::TextEdit::multiline(&mut spec.code).font(egui::TextStyle::Monospace))
-                    .changed()
-                {
+
+                if ui.code_editor(&mut spec.code).changed() {
                     self.node_ctx.mark_node_changed();
                 }
                 ui.end_row();
