@@ -1,6 +1,6 @@
 use slotmap::Key;
 
-use crate::app::{components::node_editor, data};
+use crate::app::{colours, components::node_editor, data, icons};
 
 #[derive(Copy, Clone, Default, serde::Deserialize, serde::Serialize)]
 struct PipelineEditorState {
@@ -46,14 +46,17 @@ impl<'pl> PipelineEditor<'pl> {
                 let available_height = ui.available_height();
                 egui_extras::TableBuilder::new(ui)
                     .striped(true)
-                    .column(egui_extras::Column::auto())
+                    .column(egui_extras::Column::auto_with_initial_suggestion(60.0))
                     .column(egui_extras::Column::remainder())
+                    .resizable(true)
                     .min_scrolled_height(10.0)
                     .max_scroll_height(available_height)
                     .sense(egui::Sense::click())
                     .header(20.0, |mut header| {
                         header.col(|ui| {
-                            ui.strong("ID");
+                            ui.strong("ID").on_hover_text(
+                                "Drag a node ID from this column to a node reference to reference it from another node.",
+                            );
                         });
                         header.col(|ui| {
                             ui.strong("Type");
@@ -72,7 +75,10 @@ impl<'pl> PipelineEditor<'pl> {
                             let mut do_select = false;
                             row.col(|ui| {
                                 ui.dnd_drag_source(ui.id().with("node_id"), node_ref, |ui| {
-                                    do_select |= ui.label(&gui_node.node_id).clicked();
+                                    ui.horizontal(|ui| {
+                                        icons::node_ref_src(ui);
+                                        do_select |= ui.colored_label(colours::DRAGGABLE_NODE_ID, &gui_node.node_id).clicked();
+                                    })
                                 });
                             });
                             row.col(|ui| {

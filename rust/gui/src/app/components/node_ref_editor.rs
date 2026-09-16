@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use crate::app::{
+    colours,
     components::{WidgetState as _, WidgetStateTemporary},
-    data,
+    data, icons,
 };
 
 pub struct NodeIdRefEditor<'n, 'idx> {
@@ -29,13 +30,20 @@ impl<'n, 'idx> NodeIdRefEditor<'n, 'idx> {
     pub fn show(self, ui: &mut egui::Ui) {
         let mut state = State::get_or_default(ui);
 
-        let (drop_zone_response, dragged_node_ref) = ui
-            .dnd_drop_zone::<data::NodeRef, _>(egui::Frame::default().inner_margin(4.0), |ui| {
+        let (drop_zone_response, dragged_node_ref) =
+            ui.dnd_drop_zone::<data::NodeRef, _>(egui::Frame::default().inner_margin(4.0), |ui| {
+                icons::node_ref_dest(ui, self.gui_node_id.is_resolved());
                 self.search_button(ui)
             });
+        drop_zone_response
+            .response
+            .on_hover_cursor(egui::CursorIcon::Grab)
+            .on_hover_and_drag_cursor(egui::CursorIcon::Grabbing);
 
         // Handle starting/stopping a search from a click on the search button.
-        let (button_response, initial_query) = drop_zone_response.inner;
+        let (mut button_response, initial_query) = drop_zone_response.inner;
+        button_response = button_response
+            .on_hover_text("Reference to another node, drag a node ID here to reference it.");
         if button_response.clicked() {
             state.search = if state.search.is_none() {
                 Some(Search {
@@ -69,16 +77,21 @@ impl<'n, 'idx> NodeIdRefEditor<'n, 'idx> {
     fn search_button<'a>(&'a self, ui: &mut egui::Ui) -> (egui::Response, &'a str) {
         use data::GuiNodeId;
 
-        match &self.gui_node_id {
-            GuiNodeId::Unresolved(node_id) => (ui.button(node_id), node_id),
+        let (button_text, initial_search_text): (&str, &str) = match &self.gui_node_id {
+            GuiNodeId::Unresolved(node_id) => (node_id, node_id),
             GuiNodeId::Resolved(node_ref) => match self.node_index.lookup_node_ref(*node_ref) {
                 Some(node_index_entry) => {
                     let node_id = node_index_entry.node_id();
-                    (ui.button(node_id), node_id)
+                    (node_id, node_id)
                 }
-                None => (ui.button("<deleted node>"), ""),
+                None => ("<deleted node>", ""),
             },
-        }
+        };
+
+        (
+            ui.button(egui::RichText::new(button_text).color(colours::DRAGGABLE_NODE_ID)),
+            initial_search_text,
+        )
     }
 
     fn search_popup(

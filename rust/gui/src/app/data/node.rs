@@ -29,6 +29,12 @@ pub enum GuiNodeId {
     Resolved(NodeRef),
 }
 
+impl GuiNodeId {
+    pub fn is_resolved(&self) -> bool {
+        matches!(self, Self::Resolved(_))
+    }
+}
+
 impl From<pipeline::NodeId> for GuiNodeId {
     fn from(value: pipeline::NodeId) -> Self {
         Self::Unresolved(value.0)

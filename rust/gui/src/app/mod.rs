@@ -1,7 +1,9 @@
+mod colours;
 mod components;
 mod data;
 mod ddo;
 mod error_modal;
+mod icons;
 mod shortcuts;
 mod workers;
 
