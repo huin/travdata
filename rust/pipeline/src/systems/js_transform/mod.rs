@@ -23,8 +23,8 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         let spec: &JsTransform = node.spec.downcast()?;
 
         reg.add_input(&spec.context);
-        for dep_id in spec.input_data.values() {
-            reg.add_input(dep_id);
+        for param in &spec.input_data {
+            reg.add_input(&param.input);
         }
 
         Ok(())
@@ -44,7 +44,7 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         let mut arg_refs: Vec<(&str, &NodeId)> = spec
             .input_data
             .iter()
-            .map(|(arg_name, node_id)| (arg_name.as_str(), node_id))
+            .map(|param| (param.name.as_str(), &param.input))
             .collect();
         // Sort the argument names for consistent ordering of arguments, in case any JsTransform
         // nodes rely on ordering.

@@ -3,11 +3,12 @@ use std::{path::Path, rc::Rc};
 use generic_pipeline::plparams::ParamId;
 use googletest::prelude::*;
 use hashbrown::HashMap;
-use map_macro::hashbrown::{hash_map, hash_map_e};
+use map_macro::hashbrown::hash_map_e;
 use serde_json::json;
 
 use crate::{
     Node, NodeMeta,
+    generic::specs::JsTransformParam,
     monomorph::{ArgSet, MetaSystem, Param, ParamKey, Pipeline},
     plargs::{self, ArgValue},
     plparams::ParamType,
@@ -79,10 +80,16 @@ fn test_e2e_small_pipeline(
             meta: NodeMeta::new("merge-table-3"),
             spec: JsTransform {
                 context: "js-ctx".into(),
-                input_data: hash_map! {
-                    "part_1".into() => "read-table-3-1".into(),
-                    "part_2".into() => "read-table-3-2".into(),
-                },
+                input_data: vec![
+                    JsTransformParam {
+                        name: "part_1".into(),
+                        input: "read-table-3-1".into(),
+                    },
+                    JsTransformParam {
+                        name: "part_2".into(),
+                        input: "read-table-3-2".into(),
+                    },
+                ],
                 code: r#"
                     return part_1.concat(part_2);
                 "#

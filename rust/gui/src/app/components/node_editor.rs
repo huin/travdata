@@ -68,9 +68,12 @@ where
 
                 ui.label("Inputs:");
                 ui.end_row();
-                for (var_name, node_ref) in spec.input_data.iter_mut() {
-                    ui.label(var_name);
-                    ui.add(NodeIdRefEditor::new(node_ref, self.node_ctx.node_index));
+                for param in spec.input_data.iter_mut() {
+                    ui.label(&param.name);
+                    ui.add(NodeIdRefEditor::new(
+                        &mut param.input,
+                        self.node_ctx.node_index,
+                    ));
                     ui.end_row();
                 }
                 ui.separator();

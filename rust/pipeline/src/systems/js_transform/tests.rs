@@ -5,7 +5,9 @@ use serde_json::json;
 use testutils::DefaultForTest;
 
 use crate::{
-    NodeMeta, intermediates,
+    NodeMeta,
+    generic::specs::JsTransformParam,
+    intermediates,
     monomorph::{InputsRegistrator, Params},
     specs::JsTransform,
     testutil::TlsIsolateFixture,
@@ -23,7 +25,7 @@ fn test_params(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
         meta: DefaultForTest::default_for_test(),
         spec: crate::specs::Spec::JsTransform(JsTransform {
             context: "context-id".into(),
-            input_data: hash_map! {},
+            input_data: vec![],
             code: "".into(),
         }),
     };
@@ -45,10 +47,16 @@ fn test_inputs(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
         meta: NodeMeta::new("foo"),
         spec: crate::specs::Spec::JsTransform(JsTransform {
             context: "context-id".into(),
-            input_data: hash_map! {
-                "a".into() => "foo-dep-1".into(),
-                "b".into() => "foo-dep-2".into(),
-            },
+            input_data: vec![
+                JsTransformParam {
+                    name: "a".into(),
+                    input: "foo-dep-1".into(),
+                },
+                JsTransformParam {
+                    name: "b".into(),
+                    input: "foo-dep-2".into(),
+                },
+            ],
             code: "".into(),
         }),
     };
@@ -97,10 +105,16 @@ fn test_process_uses_intermediate_values(_tls_isolate_fixture: &TlsIsolateFixtur
         meta: DefaultForTest::default_for_test(),
         spec: crate::specs::Spec::JsTransform(JsTransform {
             context: "context-id".into(),
-            input_data: hash_map! {
-                "a".into() => "node-a".into(),
-                "b".into() => "node-b".into(),
-            },
+            input_data: vec![
+                JsTransformParam {
+                    name: "a".into(),
+                    input: "node-a".into(),
+                },
+                JsTransformParam {
+                    name: "b".into(),
+                    input: "node-b".into(),
+                },
+            ],
             code: r#"
                 return a + " " + b
             "#

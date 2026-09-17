@@ -10,8 +10,9 @@ pub type Spec = generic::specs::Spec<NodeId>;
 pub type SpecDiscriminants = generic::specs::SpecDiscriminants;
 
 pub type InputPdfFile = generic::specs::InputPdfFile;
-pub type JsContext = generic::specs::JsContext;
+pub use generic::specs::JsContext;
 pub type JsTransform = generic::specs::JsTransform<NodeId>;
+pub type JsTransformParam = generic::specs::JsTransformParam<NodeId>;
 pub type OutputDirectory = generic::specs::OutputDirectory;
 pub type OutputFileCsv = generic::specs::OutputFileCsv<NodeId>;
 pub type OutputFileJson = generic::specs::OutputFileJson<NodeId>;

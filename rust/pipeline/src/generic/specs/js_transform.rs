@@ -11,8 +11,14 @@ pub struct JsTransform<NodeId> {
     pub context: NodeId,
     /// Maps from function parameter name to [crate::NodeId] that the intermediate data is from.
     ///
-    /// E.g. `{"param1": "node-1", "param2": "node-2"}`
-    pub input_data: hashbrown::HashMap<String, NodeId>,
+    /// E.g.
+    /// ```json
+    /// "input_data": [
+    ///     {"name": "param1", "input": "node-1"},
+    ///     {"name": "param2", "input": "node-2"}
+    /// ]
+    /// ```
+    pub input_data: Vec<JsTransformParam<NodeId>>,
     /// Body of a JavaScript function that receives each named parameter from `input_data`, and
     /// returns the [crate::Node]'s intermediate data. The named arguments from `input_data` will
     /// be in scope and be provided with values when the code is run.
@@ -40,8 +46,8 @@ impl<FromNodeId, NodeId> TranslateFromNodeId<FromNodeId> for JsTransform<NodeId>
             input_data: from
                 .input_data
                 .into_iter()
-                .map(|(name, node_id)| Ok((name, trn.transform_node_id(node_id)?)))
-                .collect::<Result<hashbrown::HashMap<String, NodeId>, Transformer::Error>>()?,
+                .map(|param| JsTransformParam::transform_node_ids(param, trn))
+                .collect::<Result<Vec<JsTransformParam<NodeId>>, Transformer::Error>>()?,
             code: from.code.clone(),
         })
     }
@@ -58,5 +64,28 @@ where
             input_data: Default::default(),
             code: "return {}".into(),
         }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct JsTransformParam<NodeId> {
+    pub name: String,
+    pub input: NodeId,
+}
+
+impl<FromNodeId, NodeId> TranslateFromNodeId<FromNodeId> for JsTransformParam<NodeId> {
+    type FromType = JsTransformParam<FromNodeId>;
+    type NodeId = NodeId;
+
+    fn transform_node_ids<
+        Transformer: NodeIdTransformer<FromNodeId = FromNodeId, ToNodeId = Self::NodeId>,
+    >(
+        from: Self::FromType,
+        trn: &Transformer,
+    ) -> Result<Self, Transformer::Error> {
+        Ok(Self {
+            name: from.name,
+            input: trn.transform_node_id(from.input)?,
+        })
     }
 }

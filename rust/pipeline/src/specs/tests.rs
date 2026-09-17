@@ -1,5 +1,4 @@
 use googletest::prelude::*;
-use map_macro::hashbrown::hash_map;
 use test_casing::{TestCases, cases, test_casing};
 
 use super::*;
@@ -58,7 +57,8 @@ type: JsTransform
 spec:
   context: js-context-id
   input_data:
-    foo: thingy-1-extract
+    - name: foo
+      input: thingy-1-extract
   code: |
     return foo.bar;
 "#,
@@ -66,9 +66,12 @@ spec:
                 meta: NodeMeta::new("thingy-1-transform"),
                 spec: Spec::JsTransform(JsTransform {
                     context: "js-context-id".into(),
-                    input_data: hash_map! {
-                        "foo".to_string() => "thingy-1-extract".into(),
-                    },
+                    input_data: vec! [
+                        JsTransformParam {
+                            name: "foo".to_string(),
+                            input: "thingy-1-extract".into(),
+                        },
+                    ],
                     code: "return foo.bar;\n".to_string(),
                 }),
             },

@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 pub use input_pdf_file::InputPdfFile;
 pub use js_context::JsContext;
 pub use js_transform::JsTransform;
+pub use js_transform::JsTransformParam;
 pub use output_directory::OutputDirectory;
 pub use output_file_csv::OutputFileCsv;
 pub use output_file_json::OutputFileJson;
