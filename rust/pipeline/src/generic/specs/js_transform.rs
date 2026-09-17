@@ -67,7 +67,7 @@ where
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
 pub struct JsTransformParam<NodeId> {
     pub name: String,
     pub input: NodeId,

@@ -1,6 +1,11 @@
+use std::sync::Arc;
+
+use itertools::intersperse;
+use pipeline::generic::specs::JsTransformParam;
+
 use crate::app::{
     components::{node_ref_editor::NodeIdRefEditor, todo_ui},
-    data,
+    data::{self, GuiNodeId},
 };
 
 pub struct NodeEditor<'node_ctx, 'node_ref> {
@@ -67,21 +72,44 @@ where
                 ui.end_row();
 
                 ui.label("Inputs:");
-                ui.end_row();
-                for param in spec.input_data.iter_mut() {
-                    ui.label(&param.name);
-                    ui.add(NodeIdRefEditor::new(
-                        &mut param.input,
-                        self.node_ctx.node_index,
-                    ));
-                    ui.end_row();
-                }
-                ui.separator();
+                ui.vertical(|ui| {
+                    let mut remove_indices = Vec::with_capacity(0);
+                    for (index, param) in spec.input_data.iter_mut().enumerate() {
+                        ui.horizontal(|ui| {
+                            ui.text_edit_singleline(&mut param.name);
+                            ui.add(NodeIdRefEditor::new(
+                                &mut param.input,
+                                self.node_ctx.node_index,
+                            ));
+                            if ui.button("Remove input").clicked() {
+                                remove_indices.push(index);
+                            }
+                        });
+                    }
+
+                    remove_indices.reverse();
+                    for index in remove_indices.into_iter() {
+                        spec.input_data.remove(index);
+                    }
+
+                    if ui.button("New input").clicked() {
+                        spec.input_data.push(JsTransformParam {
+                            name: "new_input".into(),
+                            input: GuiNodeId::Unresolved("".into()),
+                        });
+                    }
+                });
                 ui.end_row();
 
                 ui.label("Code:");
-
-                if ui.code_editor(&mut spec.code).changed() {
+                let response = ui.vertical(|ui| {
+                    let func_sig = FunctionSigRenderer::render(ui, &spec.input_data);
+                    ui.code(func_sig.as_ref());
+                    let response = ui.code_editor(&mut spec.code);
+                    ui.code("}");
+                    response
+                });
+                if response.inner.changed() {
                     self.node_ctx.mark_node_changed();
                 }
                 ui.end_row();
@@ -156,3 +184,28 @@ fn form_grid<F: FnOnce(&mut egui::Ui) -> R, R>(
 ) -> egui::InnerResponse<R> {
     egui::Grid::new(id_salt).num_columns(2).show(ui, show)
 }
+
+#[derive(Default)]
+struct FunctionSigRenderer;
+
+impl FunctionSigRenderer {
+    fn render(ui: &mut egui::Ui, inputs: &[JsTransformParam<GuiNodeId>]) -> Arc<str> {
+        ui.memory_mut(|mem| mem.caches.cache::<FunctionSigCache>().get(inputs).clone())
+    }
+}
+
+impl egui::cache::ComputerMut<&[JsTransformParam<GuiNodeId>], Arc<str>> for FunctionSigRenderer {
+    fn compute(&mut self, key: &[JsTransformParam<GuiNodeId>]) -> Arc<str> {
+        ["function("]
+            .into_iter()
+            .chain(intersperse(
+                key.iter().map(|param| param.name.as_str()),
+                ", ",
+            ))
+            .chain([") {"])
+            .collect::<String>()
+            .into()
+    }
+}
+
+type FunctionSigCache = egui::cache::FrameCache<Arc<str>, FunctionSigRenderer>;

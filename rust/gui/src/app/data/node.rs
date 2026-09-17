@@ -18,7 +18,7 @@ impl hashbrown::Equivalent<NodeRef> for &NodeRef {
 
 /// NodeId type that may be resolved to an actual [Node] (via its NodeRef), or not (then the String
 /// of the unresolved NodeId).
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Hash, Serialize)]
 pub enum GuiNodeId {
     /// The [pipeline::NodeId] has not (yet) been resolved to a specific [NodeRef].
     ///
