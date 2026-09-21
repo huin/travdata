@@ -1,10 +1,15 @@
 use slotmap::Key;
 
-use crate::app::{colours, components::node_editor, data, icons};
+use crate::app::{
+    colours,
+    components::node_editor,
+    data::{self, guinode},
+    icons,
+};
 
 #[derive(Copy, Clone, Default, serde::Deserialize, serde::Serialize)]
 struct PipelineEditorState {
-    selected_node_ref: data::NodeRef,
+    selected_node_ref: guinode::NodeRef,
 }
 
 impl PipelineEditorState {
@@ -77,12 +82,12 @@ impl<'pl> PipelineEditor<'pl> {
                                 ui.dnd_drag_source(ui.id().with("node_id"), node_ref, |ui| {
                                     ui.horizontal(|ui| {
                                         icons::node_ref_src(ui);
-                                        do_select |= ui.colored_label(colours::DRAGGABLE_NODE_ID, &gui_node.node_id).clicked();
+                                        do_select |= ui.colored_label(colours::DRAGGABLE_NODE_ID, &gui_node.meta.id).clicked();
                                     })
                                 });
                             });
                             row.col(|ui| {
-                                do_select |= ui.label(gui_node.node.spec.variant_name()).clicked();
+                                do_select |= ui.label(gui_node.spec.variant_name()).clicked();
                             });
                             do_select |= row.response().clicked();
 
@@ -103,7 +108,7 @@ impl<'pl> PipelineEditor<'pl> {
                 .clicked()
             {
                 self.pipeline.remove_node(state.selected_node_ref);
-                state.selected_node_ref = data::NodeRef::null();
+                state.selected_node_ref = guinode::NodeRef::null();
             }
 
             self.pipeline

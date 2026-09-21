@@ -1,24 +1,71 @@
-//! Concrete specialisations of [generic_pipeline::Node]s.
+//! Concrete specialisations of [generic_pipeline::node::GenericNode]s.
 
+mod input_pdf_file;
+mod js_context;
+mod js_transform;
+mod output_directory;
+mod output_file_csv;
+mod output_file_json;
+mod pdf_extract_table;
 #[cfg(test)]
 mod tests;
 
-use crate::{NodeId, StringError, SystemError, SystemResult, generic, impl_enum_conversions};
+use serde::{Deserialize, Serialize};
 
-pub type Spec = generic::specs::Spec<NodeId>;
+pub use input_pdf_file::InputPdfFile;
+pub use js_context::JsContext;
+pub use js_transform::JsTransform;
+pub use js_transform::JsTransformParam;
+pub use output_directory::OutputDirectory;
+pub use output_file_csv::OutputFileCsv;
+pub use output_file_json::OutputFileJson;
+pub use pdf_extract_table::PdfExtractTable;
+use strum::{IntoDiscriminant, VariantMetadata};
 
-pub type SpecDiscriminants = generic::specs::SpecDiscriminants;
+use crate::StringError;
+use crate::SystemError;
+use crate::SystemResult;
+use crate::impl_enum_conversions;
 
-pub type InputPdfFile = generic::specs::InputPdfFile;
-pub use generic::specs::JsContext;
-pub type JsTransform = generic::specs::JsTransform<NodeId>;
-pub type JsTransformParam = generic::specs::JsTransformParam<NodeId>;
-pub type OutputDirectory = generic::specs::OutputDirectory;
-pub type OutputFileCsv = generic::specs::OutputFileCsv<NodeId>;
-pub type OutputFileJson = generic::specs::OutputFileJson<NodeId>;
-pub type PdfExtractTable = generic::specs::PdfExtractTable<NodeId>;
+/// Per-type wrapper of a specific type of extraction configuration node.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, strum_macros::EnumDiscriminants)]
+#[strum_discriminants(derive(Hash, strum::VariantNames))]
+#[serde(tag = "type", content = "spec")]
+pub enum Spec {
+    InputPdfFile(InputPdfFile),
+    JsContext(JsContext),
+    JsTransform(JsTransform),
+    OutputDirectory(OutputDirectory),
+    OutputFileCsv(OutputFileCsv),
+    OutputFileJson(OutputFileJson),
+    PdfExtractTable(PdfExtractTable),
+}
 
-impl generic::specs::Spec<NodeId> {
+impl Spec {
+    pub fn variant_name(&self) -> &'static str {
+        self.discriminant().variant_name()
+    }
+}
+
+impl strum::VariantMetadata for SpecDiscriminants {
+    const VARIANT_COUNT: usize = <SpecDiscriminants as strum::VariantNames>::VARIANTS.len();
+    const VARIANT_NAMES: &'static [&'static str] =
+        <SpecDiscriminants as strum::VariantNames>::VARIANTS;
+
+    fn variant_name(&self) -> &'static str {
+        match self {
+            SpecDiscriminants::InputPdfFile => "InputPdfFile",
+            SpecDiscriminants::JsContext => "JsContext",
+            SpecDiscriminants::JsTransform => "JsTransform",
+            SpecDiscriminants::OutputDirectory => "OutputDirectory",
+            SpecDiscriminants::OutputFileCsv => "OutputFileCsv",
+            SpecDiscriminants::OutputFileJson => "OutputFileJson",
+            SpecDiscriminants::PdfExtractTable => "PdfExtractTable",
+        }
+    }
+}
+
+impl Spec {
     pub fn downcast<'s, S>(&'s self) -> SystemResult<&'s S>
     where
         &'s S: TryFrom<&'s Spec, Error = StringError>,
@@ -27,8 +74,8 @@ impl generic::specs::Spec<NodeId> {
     }
 }
 
-impl generic_pipeline::systems::TypedNode for generic::specs::Spec<NodeId> {
-    type NodeType = generic::specs::SpecDiscriminants;
+impl generic_pipeline::systems::TypedNode for Spec {
+    type NodeType = SpecDiscriminants;
 
     fn node_type(&self) -> Self::NodeType {
         self.into()
@@ -42,3 +89,10 @@ impl_enum_conversions!(Spec, OutputDirectory, "node");
 impl_enum_conversions!(Spec, OutputFileCsv, "node");
 impl_enum_conversions!(Spec, OutputFileJson, "node");
 impl_enum_conversions!(Spec, PdfExtractTable, "node");
+
+#[cfg(any(test, feature = "testing"))]
+impl testutils::DefaultForTest for Spec {
+    fn default_for_test() -> Self {
+        Spec::InputPdfFile(InputPdfFile::default_for_test())
+    }
+}

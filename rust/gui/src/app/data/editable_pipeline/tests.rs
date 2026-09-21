@@ -2,7 +2,7 @@ use googletest::prelude::*;
 use testutils::DefaultForTest;
 
 use crate::app::{
-    data::{EditablePipeline, GuiNode, NodeRef, node::GuiNodeWithId, node_index::NodeIndexEntry},
+    data::{EditablePipeline, guinode, node_index::NodeIndexEntry},
     ddo,
 };
 
@@ -45,7 +45,7 @@ fn test_finds_indexed_node_id() {
     let node_1_id_after = "node-1-id-after";
     pl.with_node_ctx_by_ref_mut(node_1_ref, |node_ctx| {
         let mut node_ctx = node_ctx.unwrap();
-        node_ctx.node.node_id = node_1_id_after.to_string();
+        node_ctx.node.meta.id = node_1_id_after.to_string();
         node_ctx.mark_node_changed();
     });
     expect_false!(index_gen.is_same_and_update(pl.node_index().generation()));
@@ -91,7 +91,7 @@ fn test_finds_with_node_id_collision_update() {
     // WHEN: node_1 is reindexed with id changed to node_2_id (colliding with node_2).
     pl.with_node_ctx_by_ref_mut(node_1_ref, |node_ctx| {
         let mut node_ctx = node_ctx.unwrap();
-        node_ctx.node.node_id = node_2_id.to_string();
+        node_ctx.node.meta.id = node_2_id.to_string();
         node_ctx.mark_node_changed();
     });
     expect_false!(index_gen.is_same_and_update(pl.node_index().generation()));
@@ -114,7 +114,7 @@ fn test_finds_with_node_id_collision_update() {
     let node_1_id_after = "node-1-id-after";
     pl.with_node_ctx_by_ref_mut(node_1_ref, |node_ctx| {
         let mut node_ctx = node_ctx.unwrap();
-        node_ctx.node.node_id = node_1_id_after.to_string();
+        node_ctx.node.meta.id = node_1_id_after.to_string();
         node_ctx.mark_node_changed();
     });
     expect_false!(index_gen.is_same_and_update(pl.node_index().generation()));
@@ -264,16 +264,14 @@ fn test_remove_node() {
 
 fn collect_node_ref_id<'a>(
     iter: impl Iterator<Item = &'a NodeIndexEntry>,
-) -> Vec<(NodeRef, &'a str)> {
+) -> Vec<(guinode::NodeRef, &'a str)> {
     iter.map(|entry| (*entry.node_ref(), entry.node_id()))
         .collect()
 }
 
-fn make_node(id: &'static str, pl: &mut EditablePipeline) -> NodeRef {
-    pl.add_node(GuiNodeWithId {
-        node_id: id.into(),
-        node: GuiNode {
-            ..DefaultForTest::default_for_test()
-        },
+fn make_node(id: &'static str, pl: &mut EditablePipeline) -> guinode::NodeRef {
+    pl.add_node(guinode::Node {
+        meta: guinode::NodeMeta { id: id.into() },
+        ..DefaultForTest::default_for_test()
     })
 }

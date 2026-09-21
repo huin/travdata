@@ -5,11 +5,10 @@ use serde_json::json;
 use testutils::DefaultForTest;
 
 use crate::{
-    NodeMeta,
-    generic::specs::JsTransformParam,
-    intermediates,
+    NodeMeta, intermediates,
     monomorph::{InputsRegistrator, Params},
     specs::JsTransform,
+    specs::JsTransformParam,
     testutil::TlsIsolateFixture,
 };
 

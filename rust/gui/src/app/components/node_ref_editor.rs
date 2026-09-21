@@ -3,11 +3,12 @@ use std::sync::Arc;
 use crate::app::{
     colours,
     components::{WidgetState as _, WidgetStateTemporary},
-    data, icons,
+    data::{self, guinode},
+    icons,
 };
 
 pub struct NodeIdRefEditor<'n, 'idx> {
-    gui_node_id: &'n mut data::GuiNodeId,
+    gui_node_id: &'n mut guinode::NodeIdRef,
     node_index: &'idx data::NodeIndex,
 }
 
@@ -20,7 +21,7 @@ impl<'n, 'idx> egui::Widget for NodeIdRefEditor<'n, 'idx> {
 
 /// Component to edit a reference to a node.
 impl<'n, 'idx> NodeIdRefEditor<'n, 'idx> {
-    pub fn new(gui_node_id: &'n mut data::GuiNodeId, node_index: &'idx data::NodeIndex) -> Self {
+    pub fn new(gui_node_id: &'n mut guinode::NodeIdRef, node_index: &'idx data::NodeIndex) -> Self {
         Self {
             gui_node_id,
             node_index,
@@ -30,11 +31,13 @@ impl<'n, 'idx> NodeIdRefEditor<'n, 'idx> {
     pub fn show(self, ui: &mut egui::Ui) {
         let mut state = State::get_or_default(ui);
 
-        let (drop_zone_response, dragged_node_ref) =
-            ui.dnd_drop_zone::<data::NodeRef, _>(egui::Frame::default().inner_margin(4.0), |ui| {
+        let (drop_zone_response, dragged_node_ref) = ui.dnd_drop_zone::<guinode::NodeRef, _>(
+            egui::Frame::default().inner_margin(4.0),
+            |ui| {
                 icons::node_ref_dest(ui, self.gui_node_id.is_resolved());
                 self.search_button(ui)
-            });
+            },
+        );
         drop_zone_response
             .response
             .on_hover_cursor(egui::CursorIcon::Grab)
@@ -56,7 +59,7 @@ impl<'n, 'idx> NodeIdRefEditor<'n, 'idx> {
 
         // Handle DND drop onto the search button.
         if let Some(dragged_node_ref) = dragged_node_ref {
-            *self.gui_node_id = data::GuiNodeId::Resolved(*dragged_node_ref)
+            *self.gui_node_id = guinode::NodeIdRef::Resolved(*dragged_node_ref)
         }
 
         let popup_response = if let Some(search) = &mut state.search {
@@ -75,11 +78,11 @@ impl<'n, 'idx> NodeIdRefEditor<'n, 'idx> {
     }
 
     fn search_button<'a>(&'a self, ui: &mut egui::Ui) -> (egui::Response, &'a str) {
-        use data::GuiNodeId;
+        use guinode::NodeIdRef;
 
         let (button_text, initial_search_text): (&str, &str) = match &self.gui_node_id {
-            GuiNodeId::Unresolved(node_id) => (node_id, node_id),
-            GuiNodeId::Resolved(node_ref) => match self.node_index.lookup_node_ref(*node_ref) {
+            NodeIdRef::Unresolved(node_id) => (node_id, node_id),
+            NodeIdRef::Resolved(node_ref) => match self.node_index.lookup_node_ref(*node_ref) {
                 Some(node_index_entry) => {
                     let node_id = node_index_entry.node_id();
                     (node_id, node_id)
@@ -122,7 +125,8 @@ impl<'n, 'idx> NodeIdRefEditor<'n, 'idx> {
 
                         for result in search_result.results.iter() {
                             if ui.button(result.node_id()).clicked() {
-                                *self.gui_node_id = data::GuiNodeId::Resolved(*result.node_ref());
+                                *self.gui_node_id =
+                                    guinode::NodeIdRef::Resolved(*result.node_ref());
 
                                 ui.close();
                             }

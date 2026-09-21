@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use itertools::intersperse;
-use pipeline::generic::specs::JsTransformParam;
 
 use crate::app::{
     components::{node_ref_editor::NodeIdRefEditor, todo_ui},
-    data::{self, GuiNodeId},
+    data::{self, guinode},
 };
 
 pub struct NodeEditor<'node_ctx, 'node_ref> {
@@ -39,7 +38,7 @@ where
     fn node_meta_editor(&mut self, ui: &mut egui::Ui) {
         ui.label("ID:");
         if ui
-            .text_edit_singleline(&mut self.node_ctx.node.node_id)
+            .text_edit_singleline(&mut self.node_ctx.node.meta.id)
             .changed()
         {
             self.node_ctx.mark_node_changed();
@@ -48,22 +47,22 @@ where
     }
 
     fn node_spec_editor(&mut self, ui: &mut egui::Ui) {
-        use data::GuiSpec;
+        use guinode::Spec;
 
-        match &mut self.node_ctx.node.node.spec {
-            GuiSpec::InputPdfFile(spec) => {
+        match &mut self.node_ctx.node.spec {
+            Spec::InputPdfFile(spec) => {
                 ui.label("PDF description:");
                 if ui.text_edit_multiline(&mut spec.description).changed() {
                     self.node_ctx.mark_node_changed();
                 }
                 ui.end_row();
             }
-            GuiSpec::JsContext(_spec) => {
+            Spec::JsContext(_spec) => {
                 // No fields yet.
                 ui.label("No settings for JsContext yet.");
                 ui.end_row();
             }
-            GuiSpec::JsTransform(spec) => {
+            Spec::JsTransform(spec) => {
                 ui.label("Context:");
                 ui.add(NodeIdRefEditor::new(
                     &mut spec.context,
@@ -93,9 +92,9 @@ where
                     }
 
                     if ui.button("New input").clicked() {
-                        spec.input_data.push(JsTransformParam {
+                        spec.input_data.push(guinode::JsTransformParam {
                             name: "new_input".into(),
-                            input: GuiNodeId::Unresolved("".into()),
+                            input: guinode::NodeIdRef::Unresolved("".into()),
                         });
                     }
                 });
@@ -114,14 +113,14 @@ where
                 }
                 ui.end_row();
             }
-            GuiSpec::OutputDirectory(spec) => {
+            Spec::OutputDirectory(spec) => {
                 ui.label("Directory description:");
                 if ui.text_edit_multiline(&mut spec.description).changed() {
                     self.node_ctx.mark_node_changed();
                 }
                 ui.end_row();
             }
-            GuiSpec::OutputFileCsv(spec) => {
+            Spec::OutputFileCsv(spec) => {
                 ui.label("Input data:");
                 ui.add(NodeIdRefEditor::new(
                     &mut spec.input_data,
@@ -140,7 +139,7 @@ where
                 todo_ui(ui, "Output file path editor.");
                 ui.end_row();
             }
-            GuiSpec::OutputFileJson(spec) => {
+            Spec::OutputFileJson(spec) => {
                 ui.label("Input data:");
                 ui.add(NodeIdRefEditor::new(
                     &mut spec.input_data,
@@ -159,7 +158,7 @@ where
                 todo_ui(ui, "Output file path editor.");
                 ui.end_row();
             }
-            GuiSpec::PdfExtractTable(spec) => {
+            Spec::PdfExtractTable(spec) => {
                 ui.label("PDF:");
                 ui.add(NodeIdRefEditor::new(
                     &mut spec.pdf,
@@ -189,13 +188,13 @@ fn form_grid<F: FnOnce(&mut egui::Ui) -> R, R>(
 struct FunctionSigRenderer;
 
 impl FunctionSigRenderer {
-    fn render(ui: &mut egui::Ui, inputs: &[JsTransformParam<GuiNodeId>]) -> Arc<str> {
+    fn render(ui: &mut egui::Ui, inputs: &[guinode::JsTransformParam]) -> Arc<str> {
         ui.memory_mut(|mem| mem.caches.cache::<FunctionSigCache>().get(inputs).clone())
     }
 }
 
-impl egui::cache::ComputerMut<&[JsTransformParam<GuiNodeId>], Arc<str>> for FunctionSigRenderer {
-    fn compute(&mut self, key: &[JsTransformParam<GuiNodeId>]) -> Arc<str> {
+impl egui::cache::ComputerMut<&[guinode::JsTransformParam], Arc<str>> for FunctionSigRenderer {
+    fn compute(&mut self, key: &[guinode::JsTransformParam]) -> Arc<str> {
         ["function("]
             .into_iter()
             .chain(intersperse(

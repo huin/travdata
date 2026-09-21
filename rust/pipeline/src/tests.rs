@@ -8,11 +8,11 @@ use serde_json::json;
 
 use crate::{
     Node, NodeMeta,
-    generic::specs::JsTransformParam,
     monomorph::{ArgSet, MetaSystem, Param, ParamKey, Pipeline},
     plargs::{self, ArgValue},
     plparams::ParamType,
     spec_types::OutputPathBuf,
+    specs::JsTransformParam,
     specs::{InputPdfFile, JsContext, JsTransform, OutputDirectory, OutputFileJson, Spec},
     testutil,
 };

@@ -1,6 +1,5 @@
 mod enum_conversion;
 pub mod error;
-pub mod generic;
 pub mod intermediates;
 pub mod monomorph;
 mod node;
@@ -29,7 +28,7 @@ pub use specs::Spec;
 
 /// Create a new [MetaSystem] with the default implementations of all systems.
 pub fn new_metasystem(tabula: Box<dyn TabulaExtractor>) -> monomorph::MetaSystem {
-    use crate::generic::specs::SpecDiscriminants::*;
+    use crate::specs::SpecDiscriminants::*;
 
     let systems: HashMap<crate::specs::SpecDiscriminants, Rc<dyn GenericSystem<PipelineTypes>>> = hash_map_e! {
         InputPdfFile => Rc::new(systems::InputPdfFileSystem),

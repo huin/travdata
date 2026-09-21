@@ -9,18 +9,18 @@ use hashbrown::{HashMap, hash_map::Entry};
 use itertools::Itertools;
 use slotmap::{Key as _, KeyData};
 
-use crate::app::data::{self, node::GuiNodeWithId};
+use crate::app::data::guinode;
 
 /// Provides an index of nodes. The data is stale and updated by calls to [NodeIndex::index_node].
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct NodeIndex {
-    heap: HashMap<data::NodeRef, NodeIndexEntry>,
+    heap: HashMap<guinode::NodeRef, NodeIndexEntry>,
 
     /// `node_id_idx` is effectively an ordered multimap from [pipeline::NodeId] to zero or more
-    /// [data::NodeRef]s.
+    /// [guinode::NodeRef]s.
     node_id_idx: BTreeSet<NodeIdNodeRef<'static>>,
 
-    node_ids: HashMap<data::NodeRef, String>,
+    node_ids: HashMap<guinode::NodeRef, String>,
 
     generation: NodeIndexGeneration,
 }
@@ -44,19 +44,19 @@ impl NodeIndex {
         self.generation
     }
 
-    /// Adds or updates a [data::GuiNodeWithId] in the index.
+    /// Adds or updates a [guinode::Node] in the index.
     ///
-    /// Assumes that a [data::NodeRef] value is a stable identifier for a Node throughout the
+    /// Assumes that a [guinode::NodeRef] value is a stable identifier for a Node throughout the
     /// lifetime of `self`.
-    pub fn index_node(&mut self, node_ref: data::NodeRef, node: &GuiNodeWithId) {
+    pub fn index_node(&mut self, node_ref: guinode::NodeRef, node: &guinode::Node) {
         match self.heap.entry(node_ref) {
             Entry::Occupied(mut occupied_entry) => {
                 let existing_entry = occupied_entry.get_mut();
 
-                if existing_entry.node_id != node.node_id {
+                if existing_entry.node_id != node.meta.id {
                     // Update `NodeEntry::node_id`, capture the old value.
                     let old_node_id = {
-                        let mut node_id = node.node_id.clone();
+                        let mut node_id = node.meta.id.clone();
                         std::mem::swap(&mut node_id, &mut existing_entry.node_id);
                         node_id
                     };
@@ -66,7 +66,7 @@ impl NodeIndex {
                         .remove(&NodeIdNodeRef(Cow::Owned(old_node_id), node_ref));
                     // Insert new entry into node_id_idx.
                     self.node_id_idx
-                        .insert(NodeIdNodeRef(Cow::Owned(node.node_id.clone()), node_ref));
+                        .insert(NodeIdNodeRef(Cow::Owned(node.meta.id.clone()), node_ref));
 
                     self.generation.increment();
                 }
@@ -76,19 +76,19 @@ impl NodeIndex {
                 // Add to heap.
                 vacant_entry.insert_entry(NodeIndexEntry {
                     node_ref,
-                    node_id: node.node_id.clone(),
+                    node_id: node.meta.id.clone(),
                 });
                 // Insert new entry into node_id_idx.
                 self.node_id_idx
-                    .insert(NodeIdNodeRef(Cow::Owned(node.node_id.clone()), node_ref));
+                    .insert(NodeIdNodeRef(Cow::Owned(node.meta.id.clone()), node_ref));
 
                 self.generation.increment();
             }
         };
     }
 
-    /// Removes the node with the given [data::NodeRef] from the index.
-    pub fn deindex_node(&mut self, node_ref: data::NodeRef) {
+    /// Removes the node with the given [guinode::NodeRef] from the index.
+    pub fn deindex_node(&mut self, node_ref: guinode::NodeRef) {
         let entry = self.heap.remove(&node_ref);
 
         let entry = if let Some(entry) = entry {
@@ -103,8 +103,8 @@ impl NodeIndex {
         self.generation.increment();
     }
 
-    /// Looks up a node by its [data::NodeRef].
-    pub fn lookup_node_ref(&self, node_ref: data::NodeRef) -> Option<&NodeIndexEntry> {
+    /// Looks up a node by its [guinode::NodeRef].
+    pub fn lookup_node_ref(&self, node_ref: guinode::NodeRef) -> Option<&NodeIndexEntry> {
         self.heap.get(&node_ref)
     }
 
@@ -199,13 +199,13 @@ impl NodeIndexGeneration {
 /// NOTE: This data will be stale between an update to the node and the update of the [NodeIndex].
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct NodeIndexEntry {
-    node_ref: data::NodeRef,
+    node_ref: guinode::NodeRef,
     node_id: String,
 }
 
 impl NodeIndexEntry {
-    /// Returns the [data::NodeRef] uniquely identifying the node.
-    pub fn node_ref(&self) -> &data::NodeRef {
+    /// Returns the [guinode::NodeRef] uniquely identifying the node.
+    pub fn node_ref(&self) -> &guinode::NodeRef {
         &self.node_ref
     }
 
@@ -217,14 +217,14 @@ impl NodeIndexEntry {
 }
 
 #[derive(Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
-struct NodeIdNodeRef<'a>(Cow<'a, str>, data::NodeRef);
+struct NodeIdNodeRef<'a>(Cow<'a, str>, guinode::NodeRef);
 
 impl<'a> NodeIdNodeRef<'a> {
     fn first_for_node_id(node_id: Cow<'a, str>) -> Self {
-        Self(node_id, data::NodeRef::from(KeyData::from_ffi(u64::MIN)))
+        Self(node_id, guinode::NodeRef::from(KeyData::from_ffi(u64::MIN)))
     }
     fn last_for_node_id(node_id: Cow<'a, str>) -> Self {
-        Self(node_id, data::NodeRef::from(KeyData::from_ffi(u64::MAX)))
+        Self(node_id, guinode::NodeRef::from(KeyData::from_ffi(u64::MAX)))
     }
 }
 

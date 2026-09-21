@@ -39,6 +39,10 @@ impl OutputPathBuf {
     {
         crate::spec_types::OutputPathBuf::new(value).expect("expected valid OutputPathBufValue")
     }
+
+    pub fn into_inner(self) -> PathBuf {
+        self.0
+    }
 }
 
 #[cfg(any(test, feature = "testing"))]
