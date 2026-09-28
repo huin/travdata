@@ -270,8 +270,11 @@ fn collect_node_ref_id<'a>(
 }
 
 fn make_node(id: &'static str, pl: &mut EditablePipeline) -> guinode::NodeRef {
-    pl.add_node(guinode::Node {
-        meta: guinode::NodeMeta { id: id.into() },
+    pl.add_node(|self_ref| guinode::Node {
+        meta: guinode::NodeMeta {
+            id: id.into(),
+            self_ref,
+        },
         ..DefaultForTest::default_for_test()
     })
 }

@@ -27,7 +27,7 @@ where
     }
 
     pub fn show(mut self, ui: &mut egui::Ui) {
-        ui.push_id(("NodeEditor", self.node_ctx.node_ref), |ui| {
+        ui.push_id(("NodeEditor", self.node_ctx.node.meta.self_ref), |ui| {
             form_grid(ui, "node_editor_ui", |ui| {
                 self.node_meta_editor(ui);
                 self.node_spec_editor(ui);

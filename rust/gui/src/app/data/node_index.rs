@@ -46,10 +46,10 @@ impl NodeIndex {
 
     /// Adds or updates a [guinode::Node] in the index.
     ///
-    /// Assumes that a [guinode::NodeRef] value is a stable identifier for a Node throughout the
-    /// lifetime of `self`.
-    pub fn index_node(&mut self, node_ref: guinode::NodeRef, node: &guinode::Node) {
-        match self.heap.entry(node_ref) {
+    /// Assumes that the [guinode::NodeRef] value on `node.meta.self_ref` is a stable identifier for
+    /// a Node throughout the lifetime of `self`.
+    pub fn index_node(&mut self, node: &guinode::Node) {
+        match self.heap.entry(node.meta.self_ref) {
             Entry::Occupied(mut occupied_entry) => {
                 let existing_entry = occupied_entry.get_mut();
 
@@ -63,10 +63,12 @@ impl NodeIndex {
 
                     // Remove stale entry from node_id_idx.
                     self.node_id_idx
-                        .remove(&NodeIdNodeRef(Cow::Owned(old_node_id), node_ref));
+                        .remove(&NodeIdNodeRef(Cow::Owned(old_node_id), node.meta.self_ref));
                     // Insert new entry into node_id_idx.
-                    self.node_id_idx
-                        .insert(NodeIdNodeRef(Cow::Owned(node.meta.id.clone()), node_ref));
+                    self.node_id_idx.insert(NodeIdNodeRef(
+                        Cow::Owned(node.meta.id.clone()),
+                        node.meta.self_ref,
+                    ));
 
                     self.generation.increment();
                 }
@@ -75,12 +77,14 @@ impl NodeIndex {
             Entry::Vacant(vacant_entry) => {
                 // Add to heap.
                 vacant_entry.insert_entry(NodeIndexEntry {
-                    node_ref,
+                    node_ref: node.meta.self_ref,
                     node_id: node.meta.id.clone(),
                 });
                 // Insert new entry into node_id_idx.
-                self.node_id_idx
-                    .insert(NodeIdNodeRef(Cow::Owned(node.meta.id.clone()), node_ref));
+                self.node_id_idx.insert(NodeIdNodeRef(
+                    Cow::Owned(node.meta.id.clone()),
+                    node.meta.self_ref,
+                ));
 
                 self.generation.increment();
             }

@@ -81,7 +81,6 @@ impl EditablePipeline {
         F: FnOnce(Option<NodeContextMut<'a>>) -> T,
     {
         let node_ctx = self.nodes.get_mut(node_ref).map(|node| NodeContextMut {
-            node_ref,
             node,
             node_changed: false,
             node_index: &mut self.node_index,
@@ -96,11 +95,16 @@ impl EditablePipeline {
             .and_then(|&node_ref| self.nodes.get(node_ref).map(|node| (node_ref, node)))
     }
 
-    /// Adds a new node, returning its allocated [guinode::NodeRef].
-    pub fn add_node(&mut self, node: guinode::Node) -> guinode::NodeRef {
+    /// Adds a new node, returning its allocated [guinode::NodeRef]. Also sets the
+    /// [guinode::NodeRef] on `node.meta.self_ref`.
+    pub fn add_node<F>(&mut self, f: F) -> guinode::NodeRef
+    where
+        F: FnOnce(guinode::NodeRef) -> guinode::Node,
+    {
         self.nodes.insert_with_key(|node_ref| {
+            let node = f(node_ref);
             self.node_order.push(node_ref);
-            self.node_index.index_node(node_ref, &node);
+            self.node_index.index_node(&node);
             node
         })
     }
@@ -139,8 +143,11 @@ impl TryFrom<ddo::PipelineNodes> for EditablePipeline {
         };
 
         for node in pipeline.into_iter() {
-            let gui_node = guinode::Node::from_pipeline(node)?;
-            editable_pipeline.add_node(gui_node);
+            let mut gui_node = guinode::Node::from_pipeline(node)?;
+            editable_pipeline.add_node(|node_ref| {
+                gui_node.meta.self_ref = node_ref;
+                gui_node
+            });
         }
 
         editable_pipeline.resolve_node_ids();
@@ -151,7 +158,6 @@ impl TryFrom<ddo::PipelineNodes> for EditablePipeline {
 
 /// Provides context for editing a [guinode::Node] that is part of an [EditablePipeline].
 pub struct NodeContextMut<'a> {
-    pub node_ref: guinode::NodeRef,
     pub node: &'a mut guinode::Node,
     node_changed: bool,
     pub node_index: &'a mut data::node_index::NodeIndex,
@@ -167,7 +173,7 @@ impl<'a> NodeContextMut<'a> {
 impl<'a> Drop for NodeContextMut<'a> {
     fn drop(&mut self) {
         if self.node_changed {
-            self.node_index.index_node(self.node_ref, self.node);
+            self.node_index.index_node(self.node);
         }
     }
 }

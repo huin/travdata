@@ -4,6 +4,7 @@ pub mod spec_types;
 mod specs;
 
 use serde::{Deserialize, Serialize};
+use slotmap::Key;
 #[cfg(test)]
 use testutils::DefaultForTest;
 
@@ -173,6 +174,9 @@ pub struct NodeMeta {
     /// NodeMeta has a [String] instead of [NodeIdRef] because it is authoritative about what the ID
     /// text is.
     pub id: String,
+    /// [NodeRef] of this node. This should not be modified following being created within its
+    /// [editable_pipeline::EditablePipeline].
+    pub self_ref: NodeRef,
 }
 
 impl NodeComponent for NodeMeta {
@@ -191,7 +195,10 @@ impl NodeComponent for NodeMeta {
     fn from_pipeline(
         value: Self::PipelineType,
     ) -> Result<Self, editable_pipeline::ConversionError> {
-        Ok(Self { id: value.id.0 })
+        Ok(Self {
+            id: value.id.0,
+            self_ref: NodeRef::null(),
+        })
     }
 
     fn resolve_node_ids(&mut self, _resolver: &dyn Fn(&str) -> Option<NodeRef>) {}
@@ -202,6 +209,7 @@ impl DefaultForTest for NodeMeta {
     fn default_for_test() -> Self {
         Self {
             id: "default-gui-node-id".into(),
+            self_ref: NodeRef::null(),
         }
     }
 }
