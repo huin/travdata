@@ -8,7 +8,6 @@ use crate::{
     NodeMeta, intermediates,
     monomorph::{InputsRegistrator, Params},
     specs::JsTransform,
-    specs::JsTransformParam,
     testutil::TlsIsolateFixture,
 };
 
@@ -24,7 +23,7 @@ fn test_params(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
         meta: DefaultForTest::default_for_test(),
         spec: crate::specs::Spec::JsTransform(JsTransform {
             context: "context-id".into(),
-            input_data: vec![],
+            input_data: hash_map![],
             code: "".into(),
         }),
     };
@@ -46,15 +45,9 @@ fn test_inputs(_tls_isolate_fixture: &TlsIsolateFixture) -> Result<()> {
         meta: NodeMeta::new("foo"),
         spec: crate::specs::Spec::JsTransform(JsTransform {
             context: "context-id".into(),
-            input_data: vec![
-                JsTransformParam {
-                    name: "a".into(),
-                    input: "foo-dep-1".into(),
-                },
-                JsTransformParam {
-                    name: "b".into(),
-                    input: "foo-dep-2".into(),
-                },
+            input_data: hash_map![
+                "a".to_string() => "foo-dep-1".into(),
+                "b".to_string() => "foo-dep-2".into(),
             ],
             code: "".into(),
         }),
@@ -104,15 +97,9 @@ fn test_process_uses_intermediate_values(_tls_isolate_fixture: &TlsIsolateFixtur
         meta: DefaultForTest::default_for_test(),
         spec: crate::specs::Spec::JsTransform(JsTransform {
             context: "context-id".into(),
-            input_data: vec![
-                JsTransformParam {
-                    name: "a".into(),
-                    input: "node-a".into(),
-                },
-                JsTransformParam {
-                    name: "b".into(),
-                    input: "node-b".into(),
-                },
+            input_data: hash_map![
+                "a".to_string() => "node-a".into(),
+                "b".to_string() => "node-b".into(),
             ],
             code: r#"
                 return a + " " + b

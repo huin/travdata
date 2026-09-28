@@ -1,3 +1,4 @@
+use hashbrown::HashMap;
 use pipeline::spec_types::pdf;
 use serde::{Deserialize, Serialize};
 
@@ -211,15 +212,22 @@ impl guinode::NodeComponent for JsTransform {
         )
             -> Result<pipeline::NodeId, editable_pipeline::ConversionError>,
     ) -> Result<Self::PipelineType, editable_pipeline::ConversionError> {
-        Ok(pipeline::specs::JsTransform {
-            context: self.context.to_pipeline(resolve_id)?,
-            input_data: self
-                .input_data
-                .into_iter()
-                .map(|trn_param| trn_param.to_pipeline(resolve_id))
-                .collect::<Result<Vec<_>, editable_pipeline::ConversionError>>()?,
-            code: self.code,
-        })
+        Ok(
+            pipeline::specs::JsTransform {
+                context: self.context.to_pipeline(resolve_id)?,
+                input_data:
+                    self.input_data
+                        .into_iter()
+                        .map(|trn_param| {
+                            Ok((trn_param.name, trn_param.input.to_pipeline(resolve_id)?))
+                        })
+                        .collect::<Result<
+                            HashMap<String, pipeline::NodeId>,
+                            editable_pipeline::ConversionError,
+                        >>()?,
+                code: self.code,
+            },
+        )
     }
 
     fn from_pipeline(
@@ -230,7 +238,12 @@ impl guinode::NodeComponent for JsTransform {
             input_data: value
                 .input_data
                 .into_iter()
-                .map(|trn_param| trn_param.to_gui())
+                .map(|(name, node_id)| {
+                    Ok(JsTransformParam {
+                        name,
+                        input: node_id.to_gui()?,
+                    })
+                })
                 .collect::<Result<Vec<JsTransformParam>, editable_pipeline::ConversionError>>()?,
             code: value.code,
         })
@@ -239,7 +252,7 @@ impl guinode::NodeComponent for JsTransform {
     fn resolve_node_ids(&mut self, resolver: &dyn Fn(&str) -> Option<guinode::NodeRef>) {
         self.context.resolve_node_ids(resolver);
         for trn_param in &mut self.input_data {
-            trn_param.resolve_node_ids(resolver);
+            trn_param.input.resolve_node_ids(resolver);
         }
     }
 }
@@ -259,36 +272,6 @@ impl DefaultForTest for JsTransform {
 pub struct JsTransformParam {
     pub name: String,
     pub input: guinode::NodeIdRef,
-}
-
-impl guinode::NodeComponent for JsTransformParam {
-    type PipelineType = pipeline::specs::JsTransformParam;
-
-    fn to_pipeline(
-        self,
-        resolve_id: &dyn Fn(
-            guinode::NodeIdRef,
-        )
-            -> Result<pipeline::NodeId, editable_pipeline::ConversionError>,
-    ) -> Result<Self::PipelineType, editable_pipeline::ConversionError> {
-        Ok(pipeline::specs::JsTransformParam {
-            name: self.name,
-            input: self.input.to_pipeline(resolve_id)?,
-        })
-    }
-
-    fn from_pipeline(
-        value: Self::PipelineType,
-    ) -> Result<Self, editable_pipeline::ConversionError> {
-        Ok(Self {
-            name: value.name,
-            input: value.input.to_gui()?,
-        })
-    }
-
-    fn resolve_node_ids(&mut self, resolver: &dyn Fn(&str) -> Option<guinode::NodeRef>) {
-        self.input.resolve_node_ids(resolver);
-    }
 }
 
 #[cfg(test)]

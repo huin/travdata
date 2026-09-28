@@ -1,3 +1,4 @@
+use hashbrown::HashMap;
 use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "testing"))]
 use testutils::DefaultForTest;
@@ -13,12 +14,12 @@ pub struct JsTransform {
     ///
     /// E.g.
     /// ```json
-    /// "input_data": [
-    ///     {"name": "param1", "input": "node-1"},
-    ///     {"name": "param2", "input": "node-2"}
-    /// ]
+    /// "input_data": {
+    ///     "param1": "node-1",
+    ///     "param2": "node-2"
+    /// }
     /// ```
-    pub input_data: Vec<JsTransformParam>,
+    pub input_data: HashMap<String, NodeId>,
     /// Body of a JavaScript function that receives each named parameter from `input_data`, and
     /// returns the [crate::Node]'s intermediate data. The named arguments from `input_data` will
     /// be in scope and be provided with values when the code is run.
@@ -40,10 +41,4 @@ impl DefaultForTest for JsTransform {
             code: "return {}".into(),
         }
     }
-}
-
-#[derive(Clone, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
-pub struct JsTransformParam {
-    pub name: String,
-    pub input: NodeId,
 }
