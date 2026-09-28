@@ -84,7 +84,7 @@ fn test_e2e_small_pipeline(
                         "part_2".to_string() => "read-table-3-2".into(),
                 ],
                 code: r#"
-                    return part_1.concat(part_2);
+                    return inputs.part_1.concat(inputs.part_2);
                 "#
                 .into(),
             }

@@ -41,15 +41,11 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
         let global_context: &intermediates::JsContext =
             intermediates::get_intermediate_input(intermediates, &spec.context)?;
 
-        let mut arg_refs: Vec<(&str, &NodeId)> = spec
+        let arg_refs: Vec<(&str, &NodeId)> = spec
             .input_data
             .iter()
             .map(|(param_name, node_id)| (param_name.as_str(), node_id))
             .collect();
-        // Sort the argument names for consistent ordering of arguments, in case any JsTransform
-        // nodes rely on ordering.
-        // TODO: Consider feeding in the arguments in a single Object argument keyed by param names.
-        arg_refs.sort_by_key(|(arg_name, _)| *arg_name);
 
         let result = v8wrapper::try_with_isolate(
             |tls_isolate| -> SystemResult<serde_json::Value> {
@@ -57,14 +53,12 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
                 let ctx = v8::Local::new(scope, &global_context.0);
                 v8::scope_with_context!(let scope, scope, ctx);
 
-                let arg_names: Vec<&str> = arg_refs.iter().map(|(arg_name, _)| *arg_name).collect();
-
                 v8::tc_scope!(let try_catch, scope);
 
                 // Create the transformation function.
                 let func = v8wrapper::new_v8_function(
                     try_catch,
-                    &arg_names,
+                    &["inputs"],
                     &v8wrapper::ESScriptOrigin {
                         resource_name: format!("nodes[{:?}].spec.code", node.meta.id),
                         is_module: false,
@@ -75,32 +69,32 @@ impl generic_pipeline::systems::GenericSystem<crate::PipelineTypes> for JsTransf
                 .map_err(SystemError::map_spec())
                 .context("creating transformation function")?;
 
-                // Collect the arguments to call it with.
-                let args: Vec<v8::Local<v8::Value>> = arg_refs
-                    .iter()
-                    .map(
-                        |(arg_name, node_id)| -> SystemResult<v8::Local<v8::Value>> {
-                            let arg_json_value: &intermediates::JsonData = intermediates::get_intermediate_input(
-                            intermediates,
-                                node_id
-                            )?;
+                let inputs = v8::Object::new(try_catch);
 
-                            serde_v8::to_v8(try_catch, &arg_json_value.0)
-                                .map_err(SystemError::map_input_value(node_id))
-                                // TODO: Use `Object.freeze` to freeze any data passed in. This means
-                                // that any future batching in `process_multiple` that would require it
-                                // is not a breaking change. todo!()
-                                .with_context(|| {
-                                    format!("converting JsonData to v8::Value for argument {arg_name:?} from node {node_id:?}")
-                                })
-                        },
-                    )
-                    .collect::<SystemResult<Vec<_>>>()?;
+                // Collect the arguments to call it with into `inputs`.
+                for (arg_name, node_id) in arg_refs {
+                    let arg_value_json: &intermediates::JsonData = intermediates::get_intermediate_input(
+                    intermediates,
+                        node_id
+                    )?;
+
+                    let arg_name_v8 = v8wrapper::new_v8_string(try_catch, arg_name).map_err(SystemError::map_internal())?;
+                    let arg_value_v8 = serde_v8::to_v8(try_catch, &arg_value_json.0)
+                        .map_err(SystemError::map_input_value(node_id))
+                        // TODO: Use `Object.freeze` to freeze any data passed in. This means
+                        // that any future batching in `process_multiple` that would require it
+                        // is not a breaking change. todo!()
+                        .with_context(|| {
+                            format!("converting JsonData to v8::Value for argument {arg_name:?} from node {node_id:?}")
+                        })?;
+
+                    inputs.set(try_catch, arg_name_v8.into(), arg_value_v8);
+                }
 
                 // Call the transformation function.
                 let global = ctx.global(try_catch);
                 let result_v8 = func
-                    .call(try_catch, global.cast(), &args)
+                    .call(try_catch, global.cast(), &[inputs.into()])
                     .to_exception_result(try_catch)
                     .map_err(SystemError::map_spec())
                     .context("calling transformation function")?;

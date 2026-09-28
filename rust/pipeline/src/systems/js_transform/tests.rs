@@ -102,7 +102,7 @@ fn test_process_uses_intermediate_values(_tls_isolate_fixture: &TlsIsolateFixtur
                 "b".to_string() => "node-b".into(),
             ],
             code: r#"
-                return a + " " + b
+                return inputs.a + " " + inputs.b
             "#
             .into(),
         }),

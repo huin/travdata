@@ -1,7 +1,3 @@
-use std::sync::Arc;
-
-use itertools::intersperse;
-
 use crate::app::{
     components::{node_ref_editor::NodeIdRefEditor, todo_ui},
     data::{self, guinode},
@@ -102,8 +98,7 @@ where
 
                 ui.label("Code:");
                 let response = ui.vertical(|ui| {
-                    let func_sig = FunctionSigRenderer::render(ui, &spec.input_data);
-                    ui.code(func_sig.as_ref());
+                    ui.code("function(inputs) {");
                     let response = ui.code_editor(&mut spec.code);
                     ui.code("}");
                     response
@@ -183,28 +178,3 @@ fn form_grid<F: FnOnce(&mut egui::Ui) -> R, R>(
 ) -> egui::InnerResponse<R> {
     egui::Grid::new(id_salt).num_columns(2).show(ui, show)
 }
-
-#[derive(Default)]
-struct FunctionSigRenderer;
-
-impl FunctionSigRenderer {
-    fn render(ui: &mut egui::Ui, inputs: &[guinode::JsTransformParam]) -> Arc<str> {
-        ui.memory_mut(|mem| mem.caches.cache::<FunctionSigCache>().get(inputs).clone())
-    }
-}
-
-impl egui::cache::ComputerMut<&[guinode::JsTransformParam], Arc<str>> for FunctionSigRenderer {
-    fn compute(&mut self, key: &[guinode::JsTransformParam]) -> Arc<str> {
-        ["function("]
-            .into_iter()
-            .chain(intersperse(
-                key.iter().map(|param| param.name.as_str()),
-                ", ",
-            ))
-            .chain([") {"])
-            .collect::<String>()
-            .into()
-    }
-}
-
-type FunctionSigCache = egui::cache::FrameCache<Arc<str>, FunctionSigRenderer>;
