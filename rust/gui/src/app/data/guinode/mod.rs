@@ -80,6 +80,21 @@ impl NodeIdRef {
     }
 }
 
+impl validator::Validate for NodeIdRef {
+    fn validate(&self) -> Result<(), validator::ValidationErrors> {
+        if self.is_resolved() {
+            Ok(())
+        } else {
+            let mut errors = validator::ValidationErrors::new();
+            errors.add(
+                "self",
+                validator::ValidationError::new("unresolved node ID"),
+            );
+            Err(errors)
+        }
+    }
+}
+
 impl NodeComponent for NodeIdRef {
     type PipelineType = pipeline::NodeId;
 
@@ -169,10 +184,11 @@ impl DefaultForTest for Node {
     }
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, validator::Validate)]
 pub struct NodeMeta {
     /// NodeMeta has a [String] instead of [NodeIdRef] because it is authoritative about what the ID
     /// text is.
+    #[validate(length(min = 1, max = 100))]
     pub id: String,
     /// [NodeRef] of this node. This should not be modified following being created within its
     /// [editable_pipeline::EditablePipeline].

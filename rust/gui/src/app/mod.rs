@@ -5,6 +5,7 @@ mod ddo;
 mod error_modal;
 mod icons;
 mod shortcuts;
+mod validate;
 mod workers;
 
 use shortcuts::Shortcuts;
