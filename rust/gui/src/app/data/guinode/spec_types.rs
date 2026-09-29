@@ -44,6 +44,15 @@ impl guinode::NodeComponent for OutputPath {
     fn resolve_node_ids(&mut self, _resolver: &dyn Fn(&str) -> Option<guinode::NodeRef>) {}
 }
 
+impl validator::Validate for OutputPath {
+    fn validate(&self) -> Result<(), validator::ValidationErrors> {
+        // TODO XXX Ok(())
+        let mut errors = validator::ValidationErrors::new();
+        errors.add("self", validator::ValidationError::new("XXX"));
+        Err(errors)
+    }
+}
+
 impl From<String> for OutputPath {
     fn from(value: String) -> Self {
         Self(value)

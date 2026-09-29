@@ -1,6 +1,12 @@
+use egui_form::{
+    Form,
+    validator::{ValidatorReport, field_path},
+};
+
 use crate::app::{
     components::{node_ref_editor::NodeIdRefEditor, todo_ui},
     data::{self, guinode},
+    validate::FormFieldFactory as _,
 };
 
 pub struct NodeEditor<'node_ctx, 'node_ref> {
@@ -24,17 +30,20 @@ where
 
     pub fn show(mut self, ui: &mut egui::Ui) {
         ui.push_id(("NodeEditor", self.node_ctx.node.meta.self_ref), |ui| {
-            form_grid(ui, "node_editor_ui", |ui| {
-                self.node_meta_editor(ui);
-                self.node_spec_editor(ui);
-            });
+            self.node_meta_editor(ui);
+            self.node_spec_editor(ui);
         });
     }
 
     fn node_meta_editor(&mut self, ui: &mut egui::Ui) {
-        ui.label("ID:");
-        if ui
-            .text_edit_singleline(&mut self.node_ctx.node.meta.id)
+        let mut form = Form::new().add_report(ValidatorReport::validate(&self.node_ctx.node.meta));
+        if form
+            .field(field_path!("id"))
+            .label("ID")
+            .ui(
+                ui,
+                egui::TextEdit::singleline(&mut self.node_ctx.node.meta.id),
+            )
             .changed()
         {
             self.node_ctx.mark_node_changed();
@@ -47,38 +56,45 @@ where
 
         match &mut self.node_ctx.node.spec {
             Spec::InputPdfFile(spec) => {
-                ui.label("PDF description:");
-                if ui.text_edit_multiline(&mut spec.description).changed() {
+                let mut form = Form::new().add_report(ValidatorReport::validate(&*spec));
+                if form
+                    .field(field_path!("descripion"))
+                    .label("PDF description")
+                    .ui(ui, egui::TextEdit::multiline(&mut spec.description))
+                    .changed()
+                {
                     self.node_ctx.mark_node_changed();
                 }
-                ui.end_row();
             }
             Spec::JsContext(_spec) => {
                 // No fields yet.
                 ui.label("No settings for JsContext yet.");
-                ui.end_row();
             }
             Spec::JsTransform(spec) => {
-                ui.label("Context:");
-                ui.add(NodeIdRefEditor::new(
-                    &mut spec.context,
-                    self.node_ctx.node_index,
-                ));
-                ui.end_row();
+                let mut form = Form::new().add_report(ValidatorReport::validate(&*spec));
+                form.field(field_path!("context", "self"))
+                    .label("Context")
+                    .ui(
+                        ui,
+                        NodeIdRefEditor::new(&mut spec.context, self.node_ctx.node_index),
+                    );
 
                 ui.label("Inputs:");
                 ui.vertical(|ui| {
                     let mut remove_indices = Vec::with_capacity(0);
                     for (index, param) in spec.input_data.iter_mut().enumerate() {
                         ui.horizontal(|ui| {
-                            ui.text_edit_singleline(&mut param.name);
+                            if ui.button("Remove").clicked() {
+                                remove_indices.push(index);
+                            }
+
+                            form.field(field_path!("inputs", index, "name"))
+                                .ui(ui, egui::TextEdit::singleline(&mut param.name));
+
                             ui.add(NodeIdRefEditor::new(
                                 &mut param.input,
                                 self.node_ctx.node_index,
                             ));
-                            if ui.button("Remove input").clicked() {
-                                remove_indices.push(index);
-                            }
                         });
                     }
 
@@ -94,87 +110,83 @@ where
                         });
                     }
                 });
-                ui.end_row();
 
-                ui.label("Code:");
                 let response = ui.vertical(|ui| {
                     ui.code("function(inputs) {");
-                    let response = ui.code_editor(&mut spec.code);
+                    let response = form
+                        .field(field_path!("code"))
+                        .label("Code")
+                        .ui(ui, egui::TextEdit::multiline(&mut spec.code).code_editor());
                     ui.code("}");
                     response
                 });
                 if response.inner.changed() {
                     self.node_ctx.mark_node_changed();
                 }
-                ui.end_row();
             }
             Spec::OutputDirectory(spec) => {
-                ui.label("Directory description:");
-                if ui.text_edit_multiline(&mut spec.description).changed() {
+                let mut form = Form::new().add_report(ValidatorReport::validate(&*spec));
+                if form
+                    .field(field_path!("description"))
+                    .label("Directory description")
+                    .ui(ui, egui::TextEdit::multiline(&mut spec.description))
+                    .changed()
+                {
                     self.node_ctx.mark_node_changed();
                 }
-                ui.end_row();
             }
             Spec::OutputFileCsv(spec) => {
-                ui.label("Input data:");
-                ui.add(NodeIdRefEditor::new(
-                    &mut spec.input_data,
-                    self.node_ctx.node_index,
-                ));
-                ui.end_row();
+                let mut form = Form::new().add_report(ValidatorReport::validate(&*spec));
+                form.field(field_path!("input_data"))
+                    .label("Input data")
+                    .ui(
+                        ui,
+                        NodeIdRefEditor::new(&mut spec.input_data, self.node_ctx.node_index),
+                    );
 
-                ui.label("Directory:");
-                ui.add(NodeIdRefEditor::new(
-                    &mut spec.directory,
-                    self.node_ctx.node_index,
-                ));
-                ui.end_row();
+                form.field(field_path!("directory")).label("Directory").ui(
+                    ui,
+                    NodeIdRefEditor::new(&mut spec.directory, self.node_ctx.node_index),
+                );
 
-                ui.label("Filename:");
-                todo_ui(ui, "Output file path editor.");
-                ui.end_row();
+                form.field(field_path!("filename", "self"))
+                    .label("Filename")
+                    .ui(ui, egui::Label::new(&spec.filename.0));
             }
             Spec::OutputFileJson(spec) => {
-                ui.label("Input data:");
-                ui.add(NodeIdRefEditor::new(
-                    &mut spec.input_data,
-                    self.node_ctx.node_index,
-                ));
-                ui.end_row();
+                let mut form = Form::new().add_report(ValidatorReport::validate(&*spec));
+                form.field(field_path!("input_data"))
+                    .label("Input data")
+                    .ui(
+                        ui,
+                        NodeIdRefEditor::new(&mut spec.input_data, self.node_ctx.node_index),
+                    );
 
-                ui.label("Directory:");
-                ui.add(NodeIdRefEditor::new(
-                    &mut spec.directory,
-                    self.node_ctx.node_index,
-                ));
-                ui.end_row();
+                form.field(field_path!("directory")).label("Directory").ui(
+                    ui,
+                    NodeIdRefEditor::new(&mut spec.directory, self.node_ctx.node_index),
+                );
 
-                ui.label("Filename:");
-                todo_ui(ui, "Output file path editor.");
-                ui.end_row();
+                form.field(field_path!("filename", "self"))
+                    .label("Filename")
+                    .ui(ui, egui::Label::new(&spec.filename.0));
             }
             Spec::PdfExtractTable(spec) => {
-                ui.label("PDF:");
-                ui.add(NodeIdRefEditor::new(
-                    &mut spec.pdf,
-                    self.node_ctx.node_index,
-                ));
-                ui.end_row();
+                let mut form = Form::new().add_report(ValidatorReport::validate(&*spec));
+                form.field(field_path!("pdf")).label("PDF").ui(
+                    ui,
+                    NodeIdRefEditor::new(&mut spec.pdf, self.node_ctx.node_index),
+                );
 
-                ui.label("Page:");
-                todo_ui(ui, "Numerical selection component.");
-                ui.end_row();
+                form.field(field_path!("page")).label("Page").ui(
+                    ui,
+                    egui::DragValue::new(&mut spec.page)
+                        .speed(1)
+                        .range(1..=i32::MAX),
+                );
 
-                // TODO: Other fields.
+                todo_ui(ui, "Other fields.");
             }
         }
     }
-}
-
-fn form_grid<F: FnOnce(&mut egui::Ui) -> R, R>(
-    ui: &mut egui::Ui,
-    id_salt: impl egui::AsIdSalt,
-    show: F,
-) -> egui::InnerResponse<R> {
-    egui::Grid::new(id_salt).num_columns(2).show(ui, show)
 }

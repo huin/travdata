@@ -1,6 +1,7 @@
 use hashbrown::HashMap;
 use pipeline::spec_types::pdf;
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 use strum::{IntoDiscriminant, VariantMetadata};
 #[cfg(test)]
@@ -121,10 +122,11 @@ impl strum::VariantMetadata for SpecDiscriminants {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, validator::Validate)]
 pub struct InputPdfFile {
     /// Human readable description of the PDF file to show to the user when prompted to choose an
     /// input PDF.
+    #[validate(length(max = 200))]
     pub description: String,
 }
 
@@ -195,9 +197,11 @@ impl DefaultForTest for JsContext {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, validator::Validate)]
 pub struct JsTransform {
+    #[validate(nested)]
     pub context: guinode::NodeIdRef,
+    #[validate(nested)]
     pub input_data: Vec<JsTransformParam>,
     pub code: String,
 }
@@ -268,9 +272,11 @@ impl DefaultForTest for JsTransform {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Hash, Eq, PartialEq, Serialize, validator::Validate)]
 pub struct JsTransformParam {
+    #[validate(length(min = 1))]
     pub name: String,
+    #[validate(nested)]
     pub input: guinode::NodeIdRef,
 }
 
@@ -284,8 +290,9 @@ impl DefaultForTest for JsTransformParam {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, validator::Validate)]
 pub struct OutputDirectory {
+    #[validate(length(max = 200))]
     pub description: String,
 }
 
@@ -324,10 +331,13 @@ impl DefaultForTest for OutputDirectory {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, validator::Validate)]
 pub struct OutputFileCsv {
+    #[validate(nested)]
     pub input_data: guinode::NodeIdRef,
+    #[validate(nested)]
     pub directory: guinode::NodeIdRef,
+    #[validate(nested)]
     pub filename: guinode::spec_types::OutputPath,
 }
 
@@ -376,10 +386,13 @@ impl DefaultForTest for OutputFileCsv {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, validator::Validate)]
 pub struct OutputFileJson {
+    #[validate(nested)]
     pub input_data: guinode::NodeIdRef,
+    #[validate(nested)]
     pub directory: guinode::NodeIdRef,
+    #[validate(nested)]
     pub filename: guinode::spec_types::OutputPath,
 }
 
@@ -428,11 +441,14 @@ impl DefaultForTest for OutputFileJson {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, validator::Validate)]
 pub struct PdfExtractTable {
+    #[validate(nested)]
     pub pdf: guinode::NodeIdRef,
+    #[validate(range(min = 1))]
     pub page: i32,
     pub method: pdf::TabulaExtractionMethod,
+    // TODO: Validate for this. Either custom function or implemented in pipeline crate.
     pub rect: pdf::TabulaPdfRect,
 }
 
