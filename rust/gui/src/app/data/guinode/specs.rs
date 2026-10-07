@@ -42,19 +42,13 @@ impl guinode::NodeComponent for Spec {
             -> Result<pipeline::NodeId, editable_pipeline::ConversionError>,
     ) -> Result<Self::PipelineType, editable_pipeline::ConversionError> {
         Ok(match self {
-            Spec::InputPdfFile(input_pdf_file) => input_pdf_file.to_pipeline(resolve_id)?.into(),
-            Spec::JsContext(js_context) => js_context.to_pipeline(resolve_id)?.into(),
-            Spec::JsTransform(js_transform) => js_transform.to_pipeline(resolve_id)?.into(),
-            Spec::OutputDirectory(output_directory) => {
-                output_directory.to_pipeline(resolve_id)?.into()
-            }
-            Spec::OutputFileCsv(output_file_csv) => output_file_csv.to_pipeline(resolve_id)?.into(),
-            Spec::OutputFileJson(output_file_json) => {
-                output_file_json.to_pipeline(resolve_id)?.into()
-            }
-            Spec::PdfExtractTable(pdf_extract_table) => {
-                pdf_extract_table.to_pipeline(resolve_id)?.into()
-            }
+            Spec::InputPdfFile(spec) => spec.to_pipeline(resolve_id)?.into(),
+            Spec::JsContext(spec) => spec.to_pipeline(resolve_id)?.into(),
+            Spec::JsTransform(spec) => spec.to_pipeline(resolve_id)?.into(),
+            Spec::OutputDirectory(spec) => spec.to_pipeline(resolve_id)?.into(),
+            Spec::OutputFileCsv(spec) => spec.to_pipeline(resolve_id)?.into(),
+            Spec::OutputFileJson(spec) => spec.to_pipeline(resolve_id)?.into(),
+            Spec::PdfExtractTable(spec) => spec.to_pipeline(resolve_id)?.into(),
         })
     }
 
@@ -62,37 +56,25 @@ impl guinode::NodeComponent for Spec {
         value: Self::PipelineType,
     ) -> Result<Self, editable_pipeline::ConversionError> {
         Ok(match value {
-            pipeline::Spec::InputPdfFile(input_pdf_file) => {
-                Spec::InputPdfFile(input_pdf_file.to_gui()?)
-            }
-            pipeline::Spec::JsContext(js_context) => Spec::JsContext(js_context.to_gui()?),
-            pipeline::Spec::JsTransform(js_transform) => Spec::JsTransform(js_transform.to_gui()?),
-            pipeline::Spec::OutputDirectory(output_directory) => {
-                Spec::OutputDirectory(output_directory.to_gui()?)
-            }
-            pipeline::Spec::OutputFileCsv(output_file_csv) => {
-                Spec::OutputFileCsv(output_file_csv.to_gui()?)
-            }
-            pipeline::Spec::OutputFileJson(output_file_json) => {
-                Spec::OutputFileJson(output_file_json.to_gui()?)
-            }
-            pipeline::Spec::PdfExtractTable(pdf_extract_table) => {
-                Spec::PdfExtractTable(pdf_extract_table.to_gui()?)
-            }
+            pipeline::Spec::InputPdfFile(spec) => Spec::InputPdfFile(spec.to_gui()?),
+            pipeline::Spec::JsContext(spec) => Spec::JsContext(spec.to_gui()?),
+            pipeline::Spec::JsTransform(spec) => Spec::JsTransform(spec.to_gui()?),
+            pipeline::Spec::OutputDirectory(spec) => Spec::OutputDirectory(spec.to_gui()?),
+            pipeline::Spec::OutputFileCsv(spec) => Spec::OutputFileCsv(spec.to_gui()?),
+            pipeline::Spec::OutputFileJson(spec) => Spec::OutputFileJson(spec.to_gui()?),
+            pipeline::Spec::PdfExtractTable(spec) => Spec::PdfExtractTable(spec.to_gui()?),
         })
     }
 
     fn resolve_node_ids(&mut self, resolver: &dyn Fn(&str) -> Option<guinode::NodeRef>) {
         match self {
-            Spec::InputPdfFile(input_pdf_file) => input_pdf_file.resolve_node_ids(resolver),
-            Spec::JsContext(js_context) => js_context.resolve_node_ids(resolver),
-            Spec::JsTransform(js_transform) => js_transform.resolve_node_ids(resolver),
-            Spec::OutputDirectory(output_directory) => output_directory.resolve_node_ids(resolver),
-            Spec::OutputFileCsv(output_file_csv) => output_file_csv.resolve_node_ids(resolver),
-            Spec::OutputFileJson(output_file_json) => output_file_json.resolve_node_ids(resolver),
-            Spec::PdfExtractTable(pdf_extract_table) => {
-                pdf_extract_table.resolve_node_ids(resolver)
-            }
+            Spec::InputPdfFile(spec) => spec.resolve_node_ids(resolver),
+            Spec::JsContext(spec) => spec.resolve_node_ids(resolver),
+            Spec::JsTransform(spec) => spec.resolve_node_ids(resolver),
+            Spec::OutputDirectory(spec) => spec.resolve_node_ids(resolver),
+            Spec::OutputFileCsv(spec) => spec.resolve_node_ids(resolver),
+            Spec::OutputFileJson(spec) => spec.resolve_node_ids(resolver),
+            Spec::PdfExtractTable(spec) => spec.resolve_node_ids(resolver),
         }
     }
 }
