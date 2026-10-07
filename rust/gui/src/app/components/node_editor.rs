@@ -72,6 +72,7 @@ where
             }
             Spec::JsTransform(spec) => {
                 let mut form = Form::new().add_report(ValidatorReport::validate(&*spec));
+
                 form.field(field_path!("context", "self"))
                     .label("Context")
                     .ui(
@@ -79,37 +80,77 @@ where
                         NodeIdRefEditor::new(&mut spec.context, self.node_ctx.node_index),
                     );
 
-                ui.label("Inputs:");
-                ui.vertical(|ui| {
-                    let mut remove_indices = Vec::with_capacity(0);
-                    for (index, param) in spec.input_data.iter_mut().enumerate() {
-                        ui.horizontal(|ui| {
-                            if ui.button("Remove").clicked() {
-                                remove_indices.push(index);
-                            }
-
-                            form.field(field_path!("inputs", index, "name"))
-                                .ui(ui, egui::TextEdit::singleline(&mut param.name));
-
-                            ui.add(NodeIdRefEditor::new(
-                                &mut param.input,
-                                self.node_ctx.node_index,
-                            ));
-                        });
-                    }
-
-                    remove_indices.reverse();
-                    for index in remove_indices.into_iter() {
-                        spec.input_data.remove(index);
-                    }
-
+                ui.separator();
+                ui.label("Inputs");
+                {
                     if ui.button("New input").clicked() {
                         spec.input_data.push(guinode::JsTransformParam {
                             name: "new_input".into(),
                             input: guinode::NodeIdRef::Unresolved("".into()),
                         });
                     }
-                });
+
+                    let text_height = egui::TextStyle::Body
+                        .resolve(ui.style())
+                        .size
+                        .max(ui.spacing().interact_size.y);
+                    let available_height = ui.available_height();
+
+                    let mut remove_indices = Vec::with_capacity(0);
+                    egui_extras::TableBuilder::new(ui)
+                        .striped(true)
+                        .column(egui_extras::Column::auto_with_initial_suggestion(100.0))
+                        .column(egui_extras::Column::auto_with_initial_suggestion(100.0))
+                        .column(egui_extras::Column::auto_with_initial_suggestion(60.0))
+                        .resizable(true)
+                        .min_scrolled_height(10.0)
+                        .max_scroll_height(available_height)
+                        .header(20.0, |mut header| {
+                            header.col(|ui| {
+                                ui.strong("Name");
+                            });
+                            header.col(|ui| {
+                                ui.strong("Value");
+                            });
+                            header.col(|ui| {
+                                ui.strong("Remove");
+                            });
+                        })
+                        .body(|body| {
+                            body.rows(text_height, spec.input_data.len(), |mut row| {
+                                let index = row.index();
+                                let param = match spec.input_data.get_mut(index) {
+                                    Some(param) => param,
+                                    None => return,
+                                };
+
+                                row.col(|ui| {
+                                    form.field(field_path!("inputs", index, "name"))
+                                        .ui(ui, egui::TextEdit::singleline(&mut param.name));
+                                });
+
+                                row.col(|ui| {
+                                    ui.add(NodeIdRefEditor::new(
+                                        &mut param.input,
+                                        self.node_ctx.node_index,
+                                    ));
+                                });
+
+                                row.col(|ui| {
+                                    if ui.button("Remove").clicked() {
+                                        remove_indices.push(index);
+                                    }
+                                });
+                            });
+                        });
+
+                    remove_indices.reverse();
+                    for index in remove_indices.into_iter() {
+                        spec.input_data.remove(index);
+                    }
+                }
+
+                ui.separator();
 
                 let response = ui.vertical(|ui| {
                     ui.code("function(inputs) {");
