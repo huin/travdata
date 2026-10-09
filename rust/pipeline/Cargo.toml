@@ -22,6 +22,11 @@ v8wrapper.workspace = true
 thiserror.workspace = true
 thiserror-context = "0.1.2"
 testutils = { optional = true, workspace = true }
+# XXX move to workspace
+pdf_oxide = "0.3.78"
+# office_oxide is a dependency of pdf_oxide, but 0.1.12 introduces a
+# field that pdf_oxide 0.3.78 doesn't populate.
+office_oxide = { version = "=0.1.11", default-features = false }
 
 [dev-dependencies]
 generic-pipeline = { features = ["testing"], workspace = true }

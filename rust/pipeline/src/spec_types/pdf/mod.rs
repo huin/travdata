@@ -61,11 +61,11 @@ impl TabulaPdfRect {
         self.left <= self.right && self.top <= self.bottom
     }
 
-    fn width(&self) -> PdfPoints {
+    pub fn width(&self) -> PdfPoints {
         self.right - self.left
     }
 
-    fn height(&self) -> PdfPoints {
+    pub fn height(&self) -> PdfPoints {
         self.bottom - self.top
     }
 

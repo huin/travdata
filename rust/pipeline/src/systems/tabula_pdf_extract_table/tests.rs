@@ -1,6 +1,10 @@
 use generic_pipeline::systems::GenericSystem;
 use googletest::prelude::*;
 use hashbrown::HashMap;
+use pdf_oxide::{
+    api::Rect,
+    structure::{TableDetectionConfig, spatial_table_detector::TableStrategy},
+};
 use test_casing::{TestCases, cases, test_casing};
 use testutils::DefaultForTest;
 
@@ -39,6 +43,80 @@ fn test_extracts_single_table_lattice(
         do_multi_process(tabula_extractor_fixture.client.clone(), &node_expecteds)?;
     check_results(&actual_results_map, node_expecteds);
     Ok(())
+}
+
+#[gtest]
+fn test_pdf_oxide(test_data_tables: &&TestDataTables) -> Result<()> {
+    let doc = pdf_oxide::PdfDocument::open("./test_data/tables.pdf")?;
+    {
+        let tables = doc.extract_tables(0)?;
+        print_tables(&tables);
+    }
+
+    let media_box = doc.get_page_media_box(0)?;
+    let page_box = doc.get_page_visible_box(0)?;
+    println!("media_box = {media_box:?}");
+    println!("page_page = {page_box:?}");
+    let t_rect = &test_data_tables.table_2.rect;
+    println!("t_rect = {:?}", t_rect);
+    let rect = Rect {
+        x: t_rect.left.to_f32(),
+        y: page_box.3 - t_rect.top.to_f32(),
+        width: t_rect.width().to_f32(),
+        height: -t_rect.height().to_f32(),
+    }
+    .normalize();
+    let rect = Rect {
+        x: 51.,
+        y: 593. + 66.0,
+        width: 495.,
+        height: 66.,
+    };
+    // let rect = Rect {
+    //     x: 52.,
+    //     y: 687. + 68.,
+    //     width: 491.,
+    //     height: 68.,
+    // };
+    println!("rect = {}", format_rect(rect));
+    let tables = doc.extract_tables_in_rect_with_config(
+        0,
+        rect,
+        TableDetectionConfig {
+            vertical_strategy: TableStrategy::Text,
+            v_split_gap: 5.0,
+            ..Default::default()
+        },
+    )?;
+
+    print_tables(&tables);
+
+    assert!(false, "XXX");
+
+    Ok(())
+}
+
+fn print_tables(tables: &[pdf_oxide::structure::Table]) {
+    for table in tables {
+        println!("Table");
+        println!("  bbox = {:?}", table.bbox.map(format_rect));
+        for row in &table.rows {
+            println!("  Row is_header={}", row.is_header);
+            for cell in &row.cells {
+                println!("    Cell: {}", cell.text);
+            }
+        }
+    }
+}
+
+fn format_rect(rect: Rect) -> String {
+    format!(
+        "{rect:?} left={} right={} top={} bottom={}",
+        rect.left(),
+        rect.right(),
+        rect.top(),
+        rect.bottom(),
+    )
 }
 
 #[gtest]

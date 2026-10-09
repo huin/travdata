@@ -1,0 +1,14 @@
+[package]
+name = "testy-pdfy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# office_oxide is a dependency of pdf_oxide, but 0.1.12 introduces a
+# field that pdf_oxide 0.3.78 doesn't populate, and fails to compile.
+office_oxide = { version = "=0.1.11", default-features = false }
+anyhow.workspace = true
+
+[dependencies.pdf_oxide]
+version = "0.3.78"
+features = ["rendering"]

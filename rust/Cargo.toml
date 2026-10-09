@@ -5,7 +5,7 @@ members = [
   "generic-pipeline",
   "gui",
   "pipeline",
-  "testutils",
+  "testutils", "testy-pdfy",
   "utils",
   "v8wrapper",
 ]
