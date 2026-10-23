@@ -1,0 +1,13 @@
+[package]
+name = "mlua_experiment"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde.workspace = true
+mlua_luau.workspace = true
+
+# [dependencies.mlua_lua53]
+# package = "mlua"
+# version = "0.12.2"
+# features = ["anyhow", "lua53", "mlua_derive", "serde"]

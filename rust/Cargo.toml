@@ -4,12 +4,13 @@ members = [
   "bin",
   "generic-pipeline",
   "gui",
+  "mlua_experiment",
   "pipeline",
   "testutils",
   "utils",
   "v8wrapper",
 ]
-exclude = ["deps/tabula-rs"]
+exclude = ["deps/tabula-rs", "scratch"]
 
 [workspace.dependencies]
 anyhow = "1.0.103"
@@ -41,6 +42,11 @@ lazy_static = "1.5.0"
 log = "0.4.33"
 lru = "0.18.0"
 map-macro = { version = "0.3.0", features = ["hashbrown"] }
+mlua_luau = { package = "mlua", version = "0.12.2", features = [
+  "luau",
+  "mlua_derive",
+  "serde",
+] }
 mockall = "0.15.0"
 predicates = "3.1.4"
 relm4 = "0.11.0"

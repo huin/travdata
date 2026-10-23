@@ -1,4 +1,10 @@
-{ pkgs, lib, config, inputs, ... }:
+{
+  pkgs,
+  lib,
+  # config,
+  # inputs,
+  ...
+}:
 
 let
   jdk = pkgs.jdk25_headless;
@@ -10,12 +16,14 @@ in
     JDK = builtins.toString "${jdk.out}/lib/openjdk/lib/server";
     GSETTINGS_SCHEMA_DIR = "${pkgs.gtk4}/share/gsettings-schemas/gtk4-${pkgs.gtk4.version}/glib-2.0/schemas/";
     PDFIUM_DYNAMIC_LIB_PATH = "${pkgs.pdfium-binaries}/lib";
-    LD_LIBRARY_PATH = with pkgs; lib.makeLibraryPath [
-      libGL
-      libxkbcommon
-      wayland-protocols
-      wayland
-    ];
+    LD_LIBRARY_PATH =
+      with pkgs;
+      lib.makeLibraryPath [
+        libGL
+        libxkbcommon
+        wayland-protocols
+        wayland
+      ];
   };
 
   # https://devenv.sh/packages/

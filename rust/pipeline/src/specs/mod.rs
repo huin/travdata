@@ -3,6 +3,7 @@
 mod input_pdf_file;
 mod js_context;
 mod js_transform;
+mod luau;
 mod output_directory;
 mod output_file_csv;
 mod output_file_json;
@@ -15,6 +16,7 @@ use serde::{Deserialize, Serialize};
 pub use input_pdf_file::InputPdfFile;
 pub use js_context::JsContext;
 pub use js_transform::JsTransform;
+pub use luau::{LuauContext, LuauTransform};
 pub use output_directory::OutputDirectory;
 pub use output_file_csv::OutputFileCsv;
 pub use output_file_json::OutputFileJson;
@@ -34,6 +36,8 @@ pub enum Spec {
     InputPdfFile(InputPdfFile),
     JsContext(JsContext),
     JsTransform(JsTransform),
+    LuauContext(LuauContext),
+    LuauTransform(LuauTransform),
     OutputDirectory(OutputDirectory),
     OutputFileCsv(OutputFileCsv),
     OutputFileJson(OutputFileJson),
@@ -56,6 +60,8 @@ impl strum::VariantMetadata for SpecDiscriminants {
             SpecDiscriminants::InputPdfFile => "InputPdfFile",
             SpecDiscriminants::JsContext => "JsContext",
             SpecDiscriminants::JsTransform => "JsTransform",
+            SpecDiscriminants::LuauContext => "LuauContext",
+            SpecDiscriminants::LuauTransform => "LuauTransform",
             SpecDiscriminants::OutputDirectory => "OutputDirectory",
             SpecDiscriminants::OutputFileCsv => "OutputFileCsv",
             SpecDiscriminants::OutputFileJson => "OutputFileJson",
@@ -84,6 +90,8 @@ impl generic_pipeline::systems::TypedNode for Spec {
 impl_enum_conversions!(Spec, InputPdfFile, "node");
 impl_enum_conversions!(Spec, JsContext, "node");
 impl_enum_conversions!(Spec, JsTransform, "node");
+impl_enum_conversions!(Spec, LuauContext, "node");
+impl_enum_conversions!(Spec, LuauTransform, "node");
 impl_enum_conversions!(Spec, OutputDirectory, "node");
 impl_enum_conversions!(Spec, OutputFileCsv, "node");
 impl_enum_conversions!(Spec, OutputFileJson, "node");
