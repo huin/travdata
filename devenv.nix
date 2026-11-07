@@ -47,7 +47,7 @@ in
 
   languages.python = {
     enable = true;
-    version = "3.11";
+    version = "3.11.17";
     uv = {
       enable = true;
       sync.enable = true;
@@ -56,18 +56,8 @@ in
   };
 
   # https://devenv.sh/scripts/
-  scripts.hello.exec = "echo hello from $GREET";
-
-  enterShell = ''
-    hello
-    git --version
-  '';
 
   # https://devenv.sh/tests/
-  enterTest = ''
-    echo "Running tests"
-    git --version | grep "2.42.0"
-  '';
 
   # See full reference at https://devenv.sh/reference/options/
 }
