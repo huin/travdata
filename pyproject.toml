@@ -16,15 +16,15 @@ classifiers = [
 ]
 dependencies = [
   "jpype1>=1.5.0,<2",
-  "pip-licenses-lib>=0.2.1,<0.3",
+  "pip-licenses-lib>=0.2.1,<1.3",
   "progress>=1.6,<2",
   "tabula-py[jpype]>=2.9.0,<3",
-  "ruamel-yaml>=0.18.6,<0.19",
+  "ruamel-yaml>=0.18.6,<0.20",
   "pyside6-essentials>=6.6.3,<7 ; python_full_version >= '3.11' and python_full_version < '3.13'",
   "xdg-base-dirs>=6.0.1,<7",
-  "cachetools>=5.3.3,<6",
-  "types-cachetools>=5.3.0.7,<6",
-  "stpyv8>=12.6.228.21,<13",
+  "cachetools>=5.3.3,<9",
+  "types-cachetools>=5.3.0.7,<8",
+  "stpyv8>=12.6.228.21,<14",
 ]
 
 [project.urls]
@@ -39,7 +39,7 @@ travdata_gui = "travdata.gui.gui:main"
 dev = [
   "black>=24.3.0",
   "mypy>=1.9.0",
-  "pylint>=3.1.0,<4",
+  "pylint>=4,<5",
   "pytest>=9.0.3,<10",
   "testfixtures>=8.0.0,<9",
   "trove-classifiers>=2024.3.3,<2025",
