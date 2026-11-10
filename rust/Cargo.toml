@@ -62,7 +62,7 @@ thiserror = "2.0.18"
 v8 = "149.4.0"
 walkdir = "2.5.0"
 xdg = "3.0.0"
-zip = "8.6.0"
+zip = "9.5.0"
 
 [workspace.dependencies.generic-pipeline]
 package = "travdata-generic-pipeline"

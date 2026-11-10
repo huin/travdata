@@ -73,7 +73,7 @@ impl<'a> Reader<'a> for ZipReader {
                 let paths: Vec<_> = zip_archive
                     .borrow()
                     .file_names()
-                    .map(|s| Ok(PathBuf::from(s)))
+                    .map(|s| Ok(PathBuf::from(s?.as_ref())))
                     .collect();
                 Box::new(paths.into_iter())
             }
@@ -206,10 +206,11 @@ impl<'a> ReadWriter<'a> for ZipReadWriter {
                 let zip_entry = zip_archive_mut.by_index(index)?;
 
                 // Filter out files that have been overwritten.
-                if new_paths.contains(zip_entry.name()) {
+                let name = zip_entry.name()?;
+                if new_paths.contains(name.as_ref()) {
                     continue;
                 }
-                new_paths.insert(zip_entry.name().to_owned());
+                new_paths.insert(name.to_string());
 
                 zip_writer.raw_copy_file(zip_entry)?;
             }
